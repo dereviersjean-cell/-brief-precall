@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { AdminConfig } from "./admin-config";
-import { enrichWithPappers } from "./pappers";
+import type { NewsArticle } from "./news";
 
 const client = new Anthropic();
 
@@ -36,6 +36,7 @@ export type UserContext = {
 function buildUserPrompt(
   company: string,
   legalContext: string,
+  newsContext: string,
   config: AdminConfig,
   userContext: UserContext
 ): string {
@@ -56,8 +57,16 @@ function buildUserPrompt(
         }`
       : "";
 
+  const actualitesSchema = newsContext
+    ? `  "actualites": [\n    { "titre": "...", "description": "...", "url": "...", "source": "...", "date": "..." }\n  ],\n`
+    : "";
+
+  const actualitesConstraint = newsContext
+    ? `\n- Sélectionne les 3 actualités les plus pertinentes parmi celles fournies et retourne-les dans "actualites" en copiant exactement les valeurs titre, description, url, source et date`
+    : "";
+
   return `Génère un brief pré-call complet pour un commercial B2B qui s'apprête à appeler ${company}.
-${legalContext}${contextBlock}
+${legalContext}${newsContext}${contextBlock}
 ${toneDesc}
 Retourne ce JSON (structure stricte, aucun texte autour) :
 
@@ -70,8 +79,8 @@ Retourne ce JSON (structure stricte, aucun texte autour) :
   "arguments": [
     { "title": "Titre de l'argument commercial", "detail": "Bénéfice concret chiffré si possible" }
   ],
-  "vocabulaire": ["mot-clé-1", "mot-clé-2"]
-}
+  "vocabulaire": ["mot-clé-1", "mot-clé-2"],
+${actualitesSchema}}
 
 Contraintes :
 - Exactement ${config.painPointsCount} pain_points
@@ -82,24 +91,35 @@ Contraintes :
     userContext?.product_description
       ? `\n- Les arguments doivent montrer comment "${userContext.product_description}" répond aux besoins de ${company}`
       : ""
-  }`;
+  }${actualitesConstraint}`;
 }
 
 export async function generateBrief(
   company: string,
   config: AdminConfig,
-  userContext: UserContext = null
+  userContext: UserContext = null,
+  pappersData?: unknown,
+  newsArticles?: NewsArticle[]
 ): Promise<unknown> {
-  const pappersData = await enrichWithPappers(company);
   const legalContext = pappersData
     ? `\nVoici les données légales officielles de l'entreprise (source : registre français officiel) :\n${JSON.stringify(pappersData, null, 2)}\n\nBase-toi sur ces faits réels pour le brief. Ne les contredis pas.\n`
     : "";
 
+  const newsContext =
+    newsArticles && newsArticles.length > 0
+      ? `\nActualités récentes sur l'entreprise (90 derniers jours) :\n${newsArticles
+          .map(
+            (a, i) =>
+              `${i + 1}. [${a.source}] ${a.titre} — ${a.description}${a.date ? ` (${a.date.slice(0, 10)})` : ""} — ${a.url}`
+          )
+          .join("\n")}\n`
+      : "";
+
   const message = await client.messages.create({
     model: config.model,
-    max_tokens: 1024,
+    max_tokens: 1536,
     system: config.systemPrompt,
-    messages: [{ role: "user", content: buildUserPrompt(company, legalContext, config, userContext) }],
+    messages: [{ role: "user", content: buildUserPrompt(company, legalContext, newsContext, config, userContext) }],
   });
 
   const textBlock = message.content.find((b) => b.type === "text");

@@ -15,6 +15,15 @@ interface CalendarEvent {
   attendees: Array<{ name?: string; email: string }>;
 }
 
+interface StoredBrief {
+  id: string;
+  company_name: string | null;
+  calendar_event_id: string | null;
+  model_used: string | null;
+  created_at: string;
+}
+
+
 const GENERIC_DOMAINS = new Set([
   "gmail.com", "yahoo.com", "yahoo.fr", "hotmail.com", "hotmail.fr",
   "outlook.com", "outlook.fr", "live.com", "live.fr",
@@ -25,6 +34,18 @@ const GENERIC_DOMAINS = new Set([
 function domainToCompany(domain: string): string {
   const name = domain.split(".")[0];
   return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+const DISPLAY_TLDS = /\.(com|fr|ai|io|co|net|org|eu|be|app|tech|dev|uk|de|es|it|nl|ch|ca|au|me|biz|info|saas)$/i;
+
+function formatCompanyName(name: string | null): string {
+  if (!name) return "—";
+  return name
+    .replace(DISPLAY_TLDS, "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 }
 
 function getCompanyFromDomain(event: CalendarEvent): string | null {
@@ -295,6 +316,7 @@ export default function DashboardClient() {
   const [calendarError, setCalendarError] = useState<string | null>(null);
   const [modalEvent, setModalEvent] = useState<CalendarEvent | null>(null);
   const [modalDefaultCompany, setModalDefaultCompany] = useState("");
+  const [recentBriefs, setRecentBriefs] = useState<StoredBrief[]>([]);
 
   // Redirect to onboarding if authenticated but no profile yet
   useEffect(() => {
@@ -321,6 +343,15 @@ export default function DashboardClient() {
     setModalEvent(null);
     router.push(`/brief/${eventId}?company=${encodeURIComponent(company)}`);
   }
+
+  useEffect(() => {
+    fetch("/api/briefs")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setRecentBriefs(data.slice(0, 5));
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -525,6 +556,54 @@ export default function DashboardClient() {
               </div>
             )}
           </>
+        )}
+        {/* Briefs récents */}
+        {recentBriefs.length > 0 && (
+          <div className="mt-12">
+            <div className="flex items-center gap-3 mb-4">
+              <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
+                Briefs récents
+              </h2>
+              <div className="flex-1 h-px bg-slate-200" />
+            </div>
+            <div className="space-y-2">
+              {recentBriefs.map((brief) => (
+                <div
+                  key={brief.id}
+                  className="bg-white border border-slate-200 rounded-xl px-5 py-4 flex items-center gap-4 hover:border-indigo-200 hover:shadow-sm transition-all"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-violet-50 border border-violet-100 flex items-center justify-center shrink-0">
+                    <span className="text-xs font-bold text-violet-500">
+                      {formatCompanyName(brief.company_name).charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-slate-900 truncate text-sm">
+                      {formatCompanyName(brief.company_name)}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {new Date(brief.created_at).toLocaleDateString("fr-FR", {
+                        day: "numeric",
+                        month: "long",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                  <span className="text-xs bg-violet-50 text-violet-700 border border-violet-100 px-2 py-0.5 rounded-full font-medium shrink-0">
+                    Brief IA
+                  </span>
+                  <Link
+                    href={`/brief/${brief.calendar_event_id ?? brief.id}?company=${encodeURIComponent(brief.company_name ?? "")}&cached=true`}
+                    className="flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 shrink-0 transition-colors"
+                  >
+                    Revoir
+                    <span>→</span>
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </main>
 

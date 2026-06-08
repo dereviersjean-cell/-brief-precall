@@ -24,6 +24,14 @@ export type Meeting = {
   brief?: Brief;
 };
 
+export type NewsItem = {
+  titre: string;
+  description: string;
+  url: string;
+  source: string;
+  date: string | null;
+};
+
 export type Brief = {
   companyOverview: string;
   revenue?: string;
@@ -35,4 +43,5 @@ export type Brief = {
   competitorsUsed?: string[];
   suggestedOpeningLine?: string;
   keywords?: string[];
+  actualites?: NewsItem[];
 };

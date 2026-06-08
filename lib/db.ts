@@ -121,6 +121,17 @@ export async function upsertUserProfile(
   }
 }
 
+export async function getBriefById(briefId: string): Promise<{ content: unknown; company_name: string | null } | null> {
+  const { data, error } = await supabase
+    .from("briefs")
+    .select("content, company_name")
+    .eq("id", briefId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data as { content: unknown; company_name: string | null } | null;
+}
+
 export async function getAdminConfig(key: string): Promise<unknown> {
   const { data, error } = await supabase
     .from("admin_config")

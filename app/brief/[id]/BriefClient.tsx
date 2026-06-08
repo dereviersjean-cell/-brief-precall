@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Meeting, Brief, TalkingPoint } from "@/lib/types";
+import { Meeting, Brief, TalkingPoint, NewsItem } from "@/lib/types";
 
 function formatDateTime(iso: string) {
   const d = new Date(iso);
@@ -184,6 +184,7 @@ interface ApiResponse {
   pain_points: Array<{ title: string; detail: string }>;
   arguments: Array<{ title: string; detail: string }>;
   vocabulaire: string[];
+  actualites?: NewsItem[];
 }
 
 function adaptApiBrief(api: ApiResponse): Brief {
@@ -195,7 +196,23 @@ function adaptApiBrief(api: ApiResponse): Brief {
     recentNews: [],
     objectives: [],
     keywords: api.vocabulaire,
+    actualites: api.actualites,
   };
+}
+
+function formatNewsDate(iso: string | null): string | null {
+  if (!iso) return null;
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+    return d.toLocaleDateString("fr-FR", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  } catch {
+    return null;
+  }
 }
 
 export default function BriefClient({
@@ -209,10 +226,12 @@ export default function BriefClient({
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAiGenerated, setIsAiGenerated] = useState(false);
+  const [rateLimited, setRateLimited] = useState<{ message: string; retryAfterMs: number } | null>(null);
 
   const generateBrief = useCallback(async () => {
     setIsGenerating(true);
     setError(null);
+    setRateLimited(null);
     try {
       const res = await fetch("/api/generate-brief", {
         method: "POST",
@@ -220,6 +239,10 @@ export default function BriefClient({
         body: JSON.stringify({ company: meeting.company }),
       });
       const data = await res.json();
+      if (res.status === 429) {
+        setRateLimited({ message: data.error ?? "Limite atteinte.", retryAfterMs: data.retryAfterMs ?? 0 });
+        return;
+      }
       if (!res.ok) {
         setError(data.error ?? "Une erreur est survenue.");
         return;
@@ -303,6 +326,19 @@ export default function BriefClient({
             </div>
           </div>
         </div>
+
+        {/* Rate limit banner */}
+        {rateLimited && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+            <svg className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
+            </svg>
+            <div>
+              <p className="text-sm font-semibold text-amber-800 mb-0.5">Limite de génération atteinte</p>
+              <p className="text-sm text-amber-700">{rateLimited.message}</p>
+            </div>
+          </div>
+        )}
 
         {/* Error banner */}
         {error && (
@@ -403,8 +439,45 @@ export default function BriefClient({
                   )}
                 </Section>
 
-                {brief.recentNews.length > 0 && (
+                {brief.actualites && brief.actualites.length > 0 && (
                   <Section title="Actualités récentes">
+                    <div className="space-y-3">
+                      {brief.actualites.map((article, i) => (
+                        <a
+                          key={i}
+                          href={article.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-start gap-3 group rounded-xl p-3 -mx-3 hover:bg-slate-50 transition-colors"
+                        >
+                          <div className="w-5 h-5 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+                            {i + 1}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-slate-800 text-sm font-medium leading-snug group-hover:text-indigo-600 transition-colors">
+                              {article.titre}
+                            </p>
+                            {article.description && (
+                              <p className="text-slate-500 text-xs mt-0.5 leading-relaxed line-clamp-2">
+                                {article.description}
+                              </p>
+                            )}
+                            <p className="text-slate-400 text-xs mt-1">
+                              {article.source}
+                              {(() => { const d = formatNewsDate(article.date); return d ? ` · ${d}` : ""; })()}
+                            </p>
+                          </div>
+                          <svg className="w-3.5 h-3.5 text-slate-300 group-hover:text-indigo-400 shrink-0 mt-1 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </a>
+                      ))}
+                    </div>
+                  </Section>
+                )}
+
+                {brief.recentNews.length > 0 && (
+                  <Section title="Actualités (texte)">
                     <div className="space-y-3">
                       {brief.recentNews.map((news, i) => (
                         <div key={i} className="flex items-start gap-3">
