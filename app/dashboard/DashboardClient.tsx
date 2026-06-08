@@ -289,12 +289,23 @@ function EventsSkeleton() {
 
 export default function DashboardClient() {
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[] | null>(null);
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [calendarError, setCalendarError] = useState<string | null>(null);
   const [modalEvent, setModalEvent] = useState<CalendarEvent | null>(null);
   const [modalDefaultCompany, setModalDefaultCompany] = useState("");
+
+  // Redirect to onboarding if authenticated but no profile yet
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    fetch("/api/onboarding")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.hasProfile) router.push("/onboarding");
+      })
+      .catch(() => {});
+  }, [status, router]);
 
   function handlePrepare(event: CalendarEvent) {
     const company = getCompanyFromDomain(event);
@@ -344,55 +355,9 @@ export default function DashboardClient() {
     ? "—"
     : `${Math.round((briefsReady / Math.max(mockUpcoming.length, 1)) * 100)}%`;
 
-  const userName = session?.user?.name ?? "Jean Dupont";
-  const userInitials = userName
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-  const userRole = session?.user?.email ?? "Account Executive";
-
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Nav */}
-      <header className="border-b border-slate-200 bg-white sticky top-0 z-10">
-        <nav className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-                <span className="text-white text-sm font-bold">B</span>
-              </div>
-              <span className="font-semibold text-slate-900 text-lg">Brief</span>
-            </Link>
-            <div className="flex items-center gap-1">
-              <Link
-                href="/dashboard"
-                className="text-sm font-medium text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg"
-              >
-                Dashboard
-              </Link>
-              <a
-                href="#"
-                className="text-sm font-medium text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded-lg transition-colors"
-              >
-                Paramètres
-              </a>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
-              <span className="text-indigo-700 text-xs font-bold">{userInitials}</span>
-            </div>
-            <div className="text-sm">
-              <p className="font-medium text-slate-900 leading-none">{userName}</p>
-              <p className="text-slate-400 text-xs mt-0.5 truncate max-w-[180px]">{userRole}</p>
-            </div>
-          </div>
-        </nav>
-      </header>
-
-      <main className="max-w-3xl mx-auto w-full px-6 py-10 flex-1">
+    <div className="min-h-screen bg-slate-50">
+      <main className="max-w-3xl mx-auto w-full px-6 py-10">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
