@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { GoogleSignInButton } from "./GoogleSignInButton";
+import { MicrosoftSignInButton } from "./MicrosoftSignInButton";
 
 export default function LoginPage() {
   return (
@@ -86,6 +87,7 @@ export default function LoginPage() {
                 </div>
               </div>
               <GoogleSignInButton />
+              <MicrosoftSignInButton />
             </div>
           </div>
 

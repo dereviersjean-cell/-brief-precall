@@ -5,6 +5,7 @@ declare module "next-auth" {
   interface Session {
     accessToken?: string;
     supabaseUserId?: string;
+    provider?: string;
   }
 }
 
@@ -13,5 +14,6 @@ declare module "next-auth/jwt" {
     accessToken?: string;
     refreshToken?: string;
     supabaseUserId?: string;
+    provider?: string;
   }
 }

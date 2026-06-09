@@ -182,9 +182,11 @@ function MeetingCard({ meeting }: { meeting: Meeting }) {
 function CalendarEventCard({
   event,
   onPrepare,
+  provider = "google",
 }: {
   event: CalendarEvent;
   onPrepare: (event: CalendarEvent) => void;
+  provider?: string;
 }) {
   const start = eventStartDate(event);
   const duration = eventDuration(event);
@@ -205,7 +207,7 @@ function CalendarEventCard({
           </div>
           <h3 className="font-semibold text-slate-900 truncate">{event.summary}</h3>
           <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full font-medium shrink-0">
-            Google Calendar
+            {provider === "azure-ad" ? "Microsoft Calendar" : "Google Calendar"}
           </span>
         </div>
         <p className="text-sm text-slate-500 truncate">
@@ -310,7 +312,8 @@ function EventsSkeleton() {
 
 export default function DashboardClient() {
   const router = useRouter();
-  const { status } = useSession();
+  const { data: session, status } = useSession();
+  const provider = session?.provider ?? "google";
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[] | null>(null);
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [calendarError, setCalendarError] = useState<string | null>(null);
@@ -395,7 +398,7 @@ export default function DashboardClient() {
             <h1 className="text-2xl font-bold text-slate-900">Vos rendez-vous</h1>
             <p className="text-slate-500 text-sm mt-1">
               {upcomingCount} RDV à venir
-              {showCalendar ? " · Google Calendar" : ` · ${mockCompleted.length} complétés`}
+              {showCalendar ? ` · ${provider === "azure-ad" ? "Microsoft Calendar" : "Google Calendar"}` : ` · ${mockCompleted.length} complétés`}
             </p>
           </div>
           <button className="flex items-center gap-2 text-sm font-medium text-slate-600 border border-slate-200 bg-white px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
@@ -431,7 +434,7 @@ export default function DashboardClient() {
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-center justify-between gap-4">
             <p className="text-sm text-red-700">{calendarError}</p>
             <button
-              onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+              onClick={() => signIn(provider === "azure-ad" ? "azure-ad" : "google", { callbackUrl: "/dashboard" })}
               className="text-sm font-medium text-red-700 border border-red-300 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors shrink-0"
             >
               Reconnecter
@@ -490,7 +493,7 @@ export default function DashboardClient() {
                   <DayDivider label={dayLabel(eventStartDate(events[0]))} />
                   <div className="space-y-3">
                     {events.map((e) => (
-                      <CalendarEventCard key={e.id} event={e} onPrepare={handlePrepare} />
+                      <CalendarEventCard key={e.id} event={e} onPrepare={handlePrepare} provider={provider} />
                     ))}
                   </div>
                 </div>
