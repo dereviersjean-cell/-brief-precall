@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
-import { generateBrief } from "@/lib/brief-generator";
+import { generateBrief, UserContext } from "@/lib/brief-generator";
 import { AdminConfig } from "@/lib/admin-config";
+import { fetchRecentNews } from "@/lib/news";
 import Anthropic from "@anthropic-ai/sdk";
 
 export async function POST(request: NextRequest) {
@@ -11,8 +12,10 @@ export async function POST(request: NextRequest) {
 
   let company: string;
   let config: AdminConfig;
+  let userContext: UserContext = null;
+  let includeNews = false;
   try {
-    ({ company, config } = await request.json());
+    ({ company, config, userContext = null, includeNews = false } = await request.json());
   } catch {
     return NextResponse.json({ error: "Corps invalide." }, { status: 400 });
   }
@@ -22,7 +25,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const brief = await generateBrief(company.trim(), config);
+    const newsArticles = includeNews ? await fetchRecentNews(company.trim()) : undefined;
+    const brief = await generateBrief(company.trim(), config, userContext, undefined, newsArticles);
     return NextResponse.json(brief);
   } catch (err) {
     if (err instanceof Anthropic.AuthenticationError) {
