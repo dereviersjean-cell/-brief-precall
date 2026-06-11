@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
       fetchRecentNews(trimmed, contactDomain),
     ]);
 
-    const brief = await generateBrief(trimmed, config, userContext, pappersData, newsArticles);
+    const brief = await generateBrief(trimmed, config, userContext, pappersData, newsArticles, userId ?? undefined);
 
     if (userId) {
       saveBrief(userId, trimmed, contactEmail, calendarEventId, brief, config.model).catch(

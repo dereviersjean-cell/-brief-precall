@@ -44,4 +44,5 @@ export type Brief = {
   suggestedOpeningLine?: string;
   keywords?: string[];
   actualites?: NewsItem[];
+  references?: Array<{ client_name: string; relevance: string; pitch: string }>;
 };

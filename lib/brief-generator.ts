@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { AdminConfig } from "./admin-config";
 import type { NewsArticle } from "./news";
+import { findSimilarReferences, SimilarReference } from "./embeddings";
 
 const client = new Anthropic();
 
@@ -38,7 +39,8 @@ function buildUserPrompt(
   legalContext: string,
   newsContext: string,
   config: AdminConfig,
-  userContext: UserContext
+  userContext: UserContext,
+  similarRefs: SimilarReference[] = []
 ): string {
   const overviewDesc = OVERVIEW_LENGTH[config.overviewLength];
   const toneDesc = TONE_INSTRUCTION[config.tone];
@@ -50,11 +52,31 @@ function buildUserPrompt(
           userContext.product_description
             ? `- Ce commercial vend : ${userContext.product_description}\n`
             : ""
-        }${
-          userContext.icp ? `- Sa cible : ${userContext.icp}\n` : ""
-        }${
+        }${userContext.icp ? `- Sa cible : ${userContext.icp}\n` : ""}${
           userContext.sector ? `- Son secteur : ${userContext.sector}\n` : ""
         }`
+      : "";
+
+  const referencesBlock =
+    similarRefs.length > 0
+      ? `\nRéférences clients similaires dans votre portfolio :\n${similarRefs
+          .map(
+            (r) =>
+              `- ${r.client_name ?? "Client"} (${[r.sector, r.company_size].filter(Boolean).join(", ")}) — Problème : ${r.problem ?? "–"} — Solution : ${r.solution ?? "–"} — Résultat : ${r.result ?? "–"}`
+          )
+          .join(
+            "\n"
+          )}\n\nVoici les références clients les plus pertinentes pour ce prospect. Pour chacune génère un bloc avec : pourquoi cette référence est pertinente pour ce prospect spécifiquement, et une formulation exacte prête à dire à l'oral avec contexte et chiffres.`
+      : "";
+
+  const referencesSchema =
+    similarRefs.length > 0
+      ? `  "references": [\n    { "client_name": "...", "relevance": "Pourquoi pertinent pour ce prospect", "pitch": "Formulation prête à l'oral avec chiffres" }\n  ],\n`
+      : "";
+
+  const referencesConstraint =
+    similarRefs.length > 0
+      ? `\n- Pour chaque référence dans "references" : explique en 1 phrase pourquoi c'est pertinent pour ${company}, puis rédige une formulation exacte prête à l'oral avec le nom du client, le contexte et les chiffres clés`
       : "";
 
   const actualitesSchema = newsContext
@@ -66,7 +88,7 @@ function buildUserPrompt(
     : "";
 
   return `Génère un brief pré-call complet pour un commercial B2B qui s'apprête à appeler ${company}.
-${legalContext}${newsContext}${contextBlock}
+${legalContext}${newsContext}${contextBlock}${referencesBlock}
 ${toneDesc}
 Retourne ce JSON (structure stricte, aucun texte autour) :
 
@@ -80,7 +102,7 @@ Retourne ce JSON (structure stricte, aucun texte autour) :
     { "title": "Titre de l'argument commercial", "detail": "Bénéfice concret chiffré si possible" }
   ],
   "vocabulaire": ["mot-clé-1", "mot-clé-2"],
-${actualitesSchema}}
+${referencesSchema}${actualitesSchema}}
 
 Contraintes :
 - Exactement ${config.painPointsCount} pain_points
@@ -91,7 +113,7 @@ Contraintes :
     userContext?.product_description
       ? `\n- Les arguments doivent montrer comment "${userContext.product_description}" répond aux besoins de ${company}`
       : ""
-  }${actualitesConstraint}`;
+  }${referencesConstraint}${actualitesConstraint}`;
 }
 
 export async function generateBrief(
@@ -99,7 +121,8 @@ export async function generateBrief(
   config: AdminConfig,
   userContext: UserContext = null,
   pappersData?: unknown,
-  newsArticles?: NewsArticle[]
+  newsArticles?: NewsArticle[],
+  userId?: string
 ): Promise<unknown> {
   const legalContext = pappersData
     ? `\nVoici les données légales officielles de l'entreprise (source : registre français officiel) :\n${JSON.stringify(pappersData, null, 2)}\n\nBase-toi sur ces faits réels pour le brief. Ne les contredis pas.\n`
@@ -115,17 +138,47 @@ export async function generateBrief(
           .join("\n")}\n`
       : "";
 
+  let similarRefs: SimilarReference[] = [];
+  if (userId) {
+    try {
+      const sectorFromPappers =
+        (pappersData as Record<string, unknown>)?.libelle_naf ??
+        (pappersData as Record<string, unknown>)?.code_naf ??
+        "";
+      const prospectContext = [company, sectorFromPappers, userContext?.sector]
+        .filter(Boolean)
+        .join(" ");
+      similarRefs = await findSimilarReferences(userId, prospectContext);
+    } catch (err) {
+      console.warn("[brief-generator] findSimilarReferences failed:", err);
+    }
+  }
+
   const message = await client.messages.create({
     model: config.model,
-    max_tokens: 1536,
+    max_tokens: 6000,
     system: config.systemPrompt,
-    messages: [{ role: "user", content: buildUserPrompt(company, legalContext, newsContext, config, userContext) }],
+    messages: [
+      {
+        role: "user",
+        content: buildUserPrompt(
+          company,
+          legalContext,
+          newsContext,
+          config,
+          userContext,
+          similarRefs
+        ),
+      },
+    ],
   });
 
   const textBlock = message.content.find((b) => b.type === "text");
   if (!textBlock || textBlock.type !== "text") {
     throw new Error("Réponse inattendue de l'API.");
   }
+
+  console.log("[brief-generator] raw response:", textBlock.text);
 
   try {
     return extractJSON(textBlock.text);

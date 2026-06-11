@@ -185,6 +185,7 @@ interface ApiResponse {
   arguments: Array<{ title: string; detail: string }>;
   vocabulaire: string[];
   actualites?: NewsItem[];
+  references?: Array<{ client_name: string; relevance: string; pitch: string }>;
 }
 
 function adaptApiBrief(api: ApiResponse): Brief {
@@ -197,6 +198,7 @@ function adaptApiBrief(api: ApiResponse): Brief {
     objectives: [],
     keywords: api.vocabulaire,
     actualites: api.actualites,
+    references: api.references,
   };
 }
 
@@ -496,6 +498,25 @@ export default function BriefClient({
                     <div className="space-y-4">
                       {brief.talkingPoints.map((p, i) => (
                         <TalkingPointItem key={i} point={p} color={talkingPointColors[i % talkingPointColors.length]} />
+                      ))}
+                    </div>
+                  </Section>
+                )}
+
+                {brief.references && brief.references.length > 0 && (
+                  <Section title="Références clients">
+                    <div className="space-y-4">
+                      {brief.references.map((ref, i) => (
+                        <div key={i} className={i > 0 ? "pt-4 border-t border-slate-100" : ""}>
+                          <p className="font-semibold text-slate-800 text-sm mb-1">{ref.client_name}</p>
+                          <p className="text-slate-500 text-xs mb-3 leading-relaxed">{ref.relevance}</p>
+                          <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3">
+                            <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wider mb-1.5">
+                              À dire en call
+                            </p>
+                            <p className="text-indigo-900 text-sm leading-relaxed">{ref.pitch}</p>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </Section>
