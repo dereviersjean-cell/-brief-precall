@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { getLatestImportJob } from "@/lib/db";
+import { getLatestImportJob, getClientReferencesCount } from "@/lib/db";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -11,14 +11,21 @@ export async function GET() {
     return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
   }
 
-  const job = await getLatestImportJob(userId);
+  const [job, refCount] = await Promise.all([
+    getLatestImportJob(userId),
+    getClientReferencesCount(userId),
+  ]);
+
   if (!job) {
-    return NextResponse.json({ status: null });
+    return NextResponse.json({ status: null, ref_count: refCount });
   }
 
   return NextResponse.json({
     status: job.status,
     total: job.total,
     processed: job.processed,
+    chunks_total: job.chunks_total,
+    chunks_done: job.chunks_done,
+    ref_count: refCount,
   });
 }

@@ -212,12 +212,23 @@ export async function getClientReferences(userId: string): Promise<ClientReferen
   return (data ?? []) as ClientReference[];
 }
 
+export async function getClientReferencesCount(userId: string): Promise<number> {
+  const { count, error } = await supabaseAdmin
+    .from("client_references")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId);
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export type ImportJob = {
   id: string;
   user_id: string;
   status: "pending" | "processing" | "done" | "error";
   total: number;
   processed: number;
+  chunks_total: number;
+  chunks_done: number;
   created_at: string;
   updated_at: string;
 };
@@ -234,7 +245,13 @@ export async function createImportJob(userId: string, total: number): Promise<st
 
 export async function updateImportJob(
   jobId: string,
-  patch: { status?: ImportJob["status"]; processed?: number; total?: number }
+  patch: {
+    status?: ImportJob["status"];
+    processed?: number;
+    total?: number;
+    chunks_total?: number;
+    chunks_done?: number;
+  }
 ): Promise<void> {
   const { error } = await supabaseAdmin
     .from("import_jobs")
