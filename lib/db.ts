@@ -97,6 +97,43 @@ export async function getBriefByEventId(
   return data;
 }
 
+export async function getBriefByCalendarEventIdGlobal(calendarEventId: string): Promise<{
+  user_id: string;
+  company_name: string | null;
+  contact_email: string | null;
+} | null> {
+  const { data, error } = await supabaseAdmin
+    .from("briefs")
+    .select("user_id, company_name, contact_email")
+    .eq("calendar_event_id", calendarEventId)
+    .maybeSingle();
+  if (error) throw error;
+  return data as { user_id: string; company_name: string | null; contact_email: string | null } | null;
+}
+
+export type CallData = {
+  user_id: string;
+  calendar_event_id: string | null;
+  contact_email: string | null;
+  company_name: string | null;
+  transcript: string;
+  status: string;
+  duration_seconds: number | null;
+  recall_bot_id: string | null;
+  recording_id: string | null;
+  transcript_id: string | null;
+};
+
+export async function createCall(data: CallData): Promise<{ id: string }> {
+  const { data: row, error } = await supabaseAdmin
+    .from("calls")
+    .insert(data)
+    .select("id")
+    .single();
+  if (error) throw error;
+  return row as { id: string };
+}
+
 export type UserProfile = {
   id: string;
   user_id: string;

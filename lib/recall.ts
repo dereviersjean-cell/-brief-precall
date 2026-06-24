@@ -160,6 +160,47 @@ export async function syncAndScheduleForUser(
   return { checked: events.length, scheduled, skipped };
 }
 
+export async function getTranscriptContent(transcriptId: string): Promise<unknown> {
+  const key = process.env.RECALL_API_KEY;
+  if (!key) throw new Error("RECALL_API_KEY is not set");
+
+  const metaRes = await fetch(
+    `${RECALL_BASE_URL}/transcript/${transcriptId}/`,
+    { headers: recallHeaders() }
+  );
+  if (!metaRes.ok) throw new Error(`Recall.AI transcript metadata failed (${metaRes.status})`);
+
+  const meta = await metaRes.json() as Record<string, unknown>;
+  const downloadUrl = (meta.data as Record<string, unknown> | undefined)?.download_url as string | undefined;
+  if (!downloadUrl) throw new Error(`No download_url for transcript ${transcriptId}`);
+
+  const contentRes = await fetch(downloadUrl);
+  if (!contentRes.ok) throw new Error(`Transcript download failed (${contentRes.status})`);
+
+  return contentRes.json();
+}
+
+export function transcriptToText(content: unknown): string {
+  if (!Array.isArray(content)) return typeof content === "string" ? content : JSON.stringify(content);
+  return content
+    .map((segment: unknown) => {
+      const s = segment as { speaker?: string; words?: Array<{ text?: string }> };
+      const speaker = s.speaker ?? "Unknown";
+      const text = (s.words ?? []).map((w) => w.text ?? "").join(" ").trim();
+      return text ? `${speaker}: ${text}` : null;
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
+export async function getBotInfo(botId: string): Promise<Record<string, unknown>> {
+  const res = await fetch(`https://eu-central-1.recall.ai/api/v2/bot/${botId}/`, {
+    headers: recallHeaders(),
+  });
+  if (!res.ok) throw new Error(`Recall.AI bot info failed (${res.status})`);
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
 export async function createAsyncTranscript(recordingId: string): Promise<Record<string, unknown>> {
   const key = process.env.RECALL_API_KEY;
   if (!key) throw new Error("RECALL_API_KEY is not set");
