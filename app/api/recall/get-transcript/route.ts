@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   }
 
   const meta = await metaRes.json() as Record<string, unknown>;
-  const downloadUrl = meta.download_url as string | undefined;
+  const downloadUrl = (meta.data as Record<string, unknown> | undefined)?.download_url as string | undefined;
 
   if (!downloadUrl) {
     return NextResponse.json({ error: "Pas de download_url dans la réponse.", meta });
