@@ -31,7 +31,11 @@ export async function GET() {
       },
     });
 
-    const data = await res.json();
+    const raw = await res.json() as Record<string, unknown>;
+    // Strip any oauth_* fields before returning to the client
+    const data = Object.fromEntries(
+      Object.entries(raw).filter(([k]) => !k.startsWith("oauth_"))
+    );
     return NextResponse.json({ status: res.status, data });
   } catch (err) {
     return NextResponse.json(

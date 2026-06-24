@@ -21,7 +21,11 @@ export async function POST() {
 
   try {
     const calendar = await createRecallCalendarV2(userId, refreshToken);
-    return NextResponse.json({ ok: true, calendar });
+    return NextResponse.json({
+      ok: true,
+      calendarId: calendar.id,
+      status: (calendar as Record<string, unknown>).status ?? null,
+    });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : String(err) },
