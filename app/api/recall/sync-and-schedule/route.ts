@@ -116,7 +116,7 @@ export async function POST() {
           Authorization: `Token ${key}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ deduplication_key: event.id, bot_config: {} }),
       });
       if (botRes.ok) {
         console.log(logPrefix, "bot scheduled ✓");
