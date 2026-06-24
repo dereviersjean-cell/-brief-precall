@@ -22,6 +22,7 @@ export async function GET() {
       join_at: bot.join_at,
       status_changes: bot.status_changes,
       meeting_url: bot.meeting_url,
+      recordings: bot.recordings,
     }));
     return NextResponse.json({ status: res.status, count: bots.length, bots });
   } catch (err) {
