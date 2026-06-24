@@ -1,7 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { inngest } from "./inngest";
 import { generateEmbeddingsBatch } from "./embeddings";
-import { saveClientReferences, updateImportJob } from "./db";
+import { saveClientReferences, updateImportJob, getAllUsersWithRecallCalendar } from "./db";
+import { syncAndScheduleForUser } from "./recall";
 
 // ─── Text extraction ──────────────────────────────────────────────────────────
 
@@ -223,5 +224,37 @@ export const processReferencesImport = inngest.createFunction(
     await step.run("update-status-done", async () => {
       await updateImportJob(jobId, { status: "done", processed: allRefs.length });
     });
+  }
+);
+
+export const syncRecallCalendars = inngest.createFunction(
+  {
+    id: "sync-recall-calendars",
+    triggers: [{ cron: "*/15 * * * *" }],
+  },
+  async ({ step }) => {
+    const users = (await step.run("get-users-with-recall", async () => {
+      return getAllUsersWithRecallCalendar();
+    })) as { id: string; email: string; recall_calendar_id: string }[];
+
+    console.log("[sync-recall-calendars] users with calendar:", users.length);
+
+    let totalChecked = 0;
+    let totalScheduled = 0;
+    let totalSkipped = 0;
+
+    for (const user of users) {
+      const result = (await step.run(`sync-user-${user.id}`, async () => {
+        return syncAndScheduleForUser(user.id, user.email);
+      })) as { checked: number; scheduled: number; skipped: number };
+
+      totalChecked += result.checked;
+      totalScheduled += result.scheduled;
+      totalSkipped += result.skipped;
+    }
+
+    const summary = { users: users.length, checked: totalChecked, scheduled: totalScheduled, skipped: totalSkipped };
+    console.log("[sync-recall-calendars] done —", JSON.stringify(summary));
+    return summary;
   }
 );

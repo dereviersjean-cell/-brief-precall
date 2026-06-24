@@ -70,6 +70,96 @@ export async function createRecallCalendarV2(
   return res.json() as Promise<RecallCalendarV2>;
 }
 
+const RECALL_API_V2 = "https://eu-central-1.recall.ai/api/v2";
+
+type Attendee = {
+  email: string;
+  responseStatus: string;
+  self?: boolean;
+};
+
+type CalendarEvent = {
+  id: string;
+  start_time: string | null;
+  meeting_url: string | null;
+  bots: unknown[];
+  raw: { attendees?: Attendee[]; [key: string]: unknown };
+};
+
+export type SyncResult = { checked: number; scheduled: number; skipped: number };
+
+export async function syncAndScheduleForUser(
+  userId: string,
+  userEmail: string
+): Promise<SyncResult> {
+  const { getRecallCalendarId } = await import("./db");
+
+  const key = process.env.RECALL_API_KEY;
+  if (!key) throw new Error("RECALL_API_KEY is not set");
+
+  const calendarId = await getRecallCalendarId(userId);
+  if (!calendarId) {
+    console.log(`[sync] userId ${userId} has no recall_calendar_id, skipping`);
+    return { checked: 0, scheduled: 0, skipped: 0 };
+  }
+
+  const userDomain = userEmail.split("@")[1] ?? "";
+  const now = new Date().toISOString();
+
+  const eventsRes = await fetch(
+    `${RECALL_API_V2}/calendar-events/?calendar_id=${calendarId}&start_time__gte=${encodeURIComponent(now)}`,
+    { headers: { Authorization: `Token ${key}`, "Content-Type": "application/json" } }
+  );
+  if (!eventsRes.ok) throw new Error(`Recall.AI calendar-events error (${eventsRes.status})`);
+
+  const eventsData = await eventsRes.json() as { results?: CalendarEvent[] };
+  const events = eventsData.results ?? [];
+  console.log(`[sync] userId ${userId} — ${events.length} upcoming events`);
+
+  let scheduled = 0;
+  let skipped = 0;
+
+  for (const event of events) {
+    const logPrefix = `[sync] event ${event.id}`;
+
+    if (!event.meeting_url) { console.log(logPrefix, "skipped — no meeting_url"); skipped++; continue; }
+
+    const attendees: Attendee[] = event.raw?.attendees ?? [];
+
+    const hasExternal = attendees.some((a) => (a.email?.split("@")[1] ?? "") !== userDomain);
+    if (!hasExternal) { console.log(logPrefix, "skipped — no external attendee"); skipped++; continue; }
+
+    const userAttendee = attendees.find((a) => a.self === true || a.email === userEmail);
+    if (!userAttendee || userAttendee.responseStatus !== "accepted") {
+      console.log(logPrefix, "skipped — user not accepted:", userAttendee?.responseStatus ?? "not found");
+      skipped++; continue;
+    }
+
+    if ((event.bots ?? []).length > 0) { console.log(logPrefix, "skipped — bot already scheduled"); skipped++; continue; }
+
+    console.log(logPrefix, "scheduling bot for", event.start_time, event.meeting_url);
+    try {
+      const botRes = await fetch(`${RECALL_API_V2}/calendar-events/${event.id}/bot/`, {
+        method: "POST",
+        headers: { Authorization: `Token ${key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ deduplication_key: event.id, bot_config: {} }),
+      });
+      if (botRes.ok) {
+        console.log(logPrefix, "bot scheduled ✓");
+        scheduled++;
+      } else {
+        console.log(logPrefix, "bot scheduling failed:", botRes.status, await botRes.text());
+        skipped++;
+      }
+    } catch (err) {
+      console.log(logPrefix, "bot scheduling threw:", err instanceof Error ? err.message : String(err));
+      skipped++;
+    }
+  }
+
+  return { checked: events.length, scheduled, skipped };
+}
+
 export async function getRecallStatus(): Promise<{ ok: boolean; status: number }> {
   try {
     const res = await fetch(`${RECALL_BASE_URL}/bot/`, {

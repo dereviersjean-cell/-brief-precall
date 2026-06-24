@@ -19,6 +19,15 @@ export async function upsertUser(
   return data as { id: string } | null;
 }
 
+export async function getAllUsersWithRecallCalendar(): Promise<{ id: string; email: string; recall_calendar_id: string }[]> {
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("id, email, recall_calendar_id")
+    .not("recall_calendar_id", "is", null);
+  if (error) throw error;
+  return (data ?? []) as { id: string; email: string; recall_calendar_id: string }[];
+}
+
 export async function saveRecallCalendarId(userId: string, calendarId: string): Promise<void> {
   const { error } = await supabaseAdmin
     .from("users")
