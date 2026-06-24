@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { createRecallCalendarV2 } from "@/lib/recall";
+import { saveRecallCalendarId } from "@/lib/db";
 
 const SUCCESS_URL = "https://brief-precall.vercel.app/settings?recall=connected";
 const ERROR_URL = "https://brief-precall.vercel.app/settings?recall=error";
@@ -72,6 +73,8 @@ export async function GET(request: NextRequest) {
   try {
     const calendar = await createRecallCalendarV2(userId, refreshToken);
     console.log("[recall oauth callback] Calendar created, id:", calendar.id);
+    await saveRecallCalendarId(userId, calendar.id);
+    console.log("[recall oauth callback] recall_calendar_id saved to DB");
     return NextResponse.redirect(SUCCESS_URL);
   } catch (err) {
     console.log("[recall oauth callback] createRecallCalendarV2 failed:", err instanceof Error ? err.message : String(err));

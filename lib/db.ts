@@ -19,6 +19,24 @@ export async function upsertUser(
   return data as { id: string } | null;
 }
 
+export async function saveRecallCalendarId(userId: string, calendarId: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("users")
+    .update({ recall_calendar_id: calendarId })
+    .eq("id", userId);
+  if (error) throw error;
+}
+
+export async function getRecallCalendarId(userId: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("recall_calendar_id")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as { recall_calendar_id: string | null } | null)?.recall_calendar_id ?? null;
+}
+
 export async function saveBrief(
   userId: string,
   companyName: string,
