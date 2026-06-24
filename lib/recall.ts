@@ -160,6 +160,30 @@ export async function syncAndScheduleForUser(
   return { checked: events.length, scheduled, skipped };
 }
 
+export async function createAsyncTranscript(recordingId: string): Promise<Record<string, unknown>> {
+  const key = process.env.RECALL_API_KEY;
+  if (!key) throw new Error("RECALL_API_KEY is not set");
+
+  const res = await fetch(
+    `${RECALL_BASE_URL}/recording/${recordingId}/create_transcript/`,
+    {
+      method: "POST",
+      headers: recallHeaders(),
+      body: JSON.stringify({
+        provider: { recallai_async: { language_code: "auto" } },
+        diarization: { use_separate_streams_when_available: true },
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Recall.AI create_transcript failed (${res.status}): ${body}`);
+  }
+
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
 export async function getRecallStatus(): Promise<{ ok: boolean; status: number }> {
   try {
     const res = await fetch(`${RECALL_BASE_URL}/bot/`, {
