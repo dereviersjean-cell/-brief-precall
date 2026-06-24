@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   const calendarId = request.nextUrl.searchParams.get("calendarId");
+  const search = request.nextUrl.searchParams.get("search");
   if (!calendarId) {
     return NextResponse.json({ error: "calendarId requis." }, { status: 400 });
   }
@@ -28,7 +29,17 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await res.json() as { results?: Record<string, unknown>[] };
-    const events = (data.results ?? []).map((event) => ({
+    let results = data.results ?? [];
+
+    if (search) {
+      const needle = search.toLowerCase();
+      results = results.filter((event) => {
+        const summary = ((event.raw as Record<string, unknown>)?.summary as string) ?? "";
+        return summary.toLowerCase().includes(needle);
+      });
+    }
+
+    const events = results.map((event) => ({
       id: event.id,
       start_time: event.start_time,
       meeting_url: event.meeting_url,
