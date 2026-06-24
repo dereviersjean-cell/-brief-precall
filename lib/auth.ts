@@ -56,6 +56,7 @@ export const authOptions: AuthOptions = {
     },
     async session({ session, token }) {
       session.accessToken = token.accessToken as string | undefined;
+      session.refreshToken = token.refreshToken as string | undefined;
       session.supabaseUserId = token.supabaseUserId as string | undefined;
       session.provider = token.provider as string | undefined;
       return session;
