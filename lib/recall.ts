@@ -148,12 +148,13 @@ export async function syncAndScheduleForUser(
         headers: { Authorization: `Token ${key}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           deduplication_key: event.id,
-          bot_config: {},
-          metadata: {
-            userId,
-            calendarEventId: googleEventId,
-            contactEmail,
-            companyName: null,
+          bot_config: {
+            metadata: {
+              userId,
+              calendarEventId: googleEventId,
+              contactEmail,
+              companyName: null,
+            },
           },
         }),
       });
