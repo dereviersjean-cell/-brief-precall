@@ -17,7 +17,6 @@ export const authOptions: AuthOptions = {
             "https://www.googleapis.com/auth/calendar.readonly",
           ].join(" "),
           access_type: "offline",
-          prompt: "consent",
         },
       },
     }),
