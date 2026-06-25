@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAsyncTranscript, getTranscriptContent, transcriptToText, getBotInfo } from "@/lib/recall";
-import { getBriefByCalendarEventIdGlobal, createCall } from "@/lib/db";
+import { createAsyncTranscript, getTranscriptContent, transcriptToText } from "@/lib/recall";
+import { createCall } from "@/lib/db";
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,11 +34,18 @@ export async function POST(request: NextRequest) {
       const transcriptId = (data?.transcript as Record<string, unknown> | undefined)?.id as string | undefined;
       const recordingId = (data?.recording as Record<string, unknown> | undefined)?.id as string | undefined;
       const botId = (data?.bot as Record<string, unknown> | undefined)?.id as string | undefined;
+      const metadata = (data?.bot as Record<string, unknown> | undefined)?.metadata as Record<string, unknown> | undefined;
 
-      console.log("[bot-webhook] transcript.done — transcriptId:", transcriptId, "recordingId:", recordingId, "botId:", botId);
+      const userId = metadata?.userId as string | undefined;
+      const calendarEventId = metadata?.calendarEventId as string | null ?? null;
+      const contactEmail = metadata?.contactEmail as string | null ?? null;
+      const companyName = metadata?.companyName as string | null ?? null;
 
-      if (!transcriptId || !botId) {
-        console.log("[bot-webhook] missing transcriptId or botId, skipping");
+      console.log("[bot-webhook] transcript.done — transcriptId:", transcriptId, "botId:", botId);
+      console.log("[bot-webhook] metadata — userId:", userId, "calendarEventId:", calendarEventId, "contactEmail:", contactEmail);
+
+      if (!transcriptId || !userId) {
+        console.log("[bot-webhook] missing transcriptId or userId, skipping");
       } else {
         try {
           // Step 1 — fetch transcript content
@@ -46,60 +53,20 @@ export async function POST(request: NextRequest) {
           const transcriptText = transcriptToText(content);
           console.log("[bot-webhook] transcript text length:", transcriptText.length, "| preview:", transcriptText.slice(0, 200));
 
-          // Step 2 — fetch bot info for calendar_meetings and meeting_url
-          const bot = await getBotInfo(botId);
-          console.log("[bot-webhook] bot info:", JSON.stringify({
-            meeting_url: bot.meeting_url,
-            calendar_meetings: bot.calendar_meetings,
-          }));
-
-          const calendarMeetings = (bot.calendar_meetings as Record<string, unknown>[] | undefined) ?? [];
-          const firstMeeting = calendarMeetings[0] as Record<string, unknown> | undefined;
-
-          // Try multiple paths to find the calendar event id
-          const calendarEventId =
-            (firstMeeting?.calendar_event as Record<string, unknown> | undefined)?.external_id as string
-            ?? (firstMeeting?.calendar_event as Record<string, unknown> | undefined)?.id as string
-            ?? firstMeeting?.id as string
-            ?? null;
-
-          console.log("[bot-webhook] calendarEventId:", calendarEventId);
-
-          // Step 3 — find brief to get user context
-          let userId: string | null = null;
-          let companyName: string | null = null;
-          let contactEmail: string | null = null;
-
-          if (calendarEventId) {
-            const brief = await getBriefByCalendarEventIdGlobal(calendarEventId);
-            if (brief) {
-              userId = brief.user_id;
-              companyName = brief.company_name;
-              contactEmail = brief.contact_email;
-              console.log("[bot-webhook] brief found — userId:", userId, "company:", companyName);
-            } else {
-              console.log("[bot-webhook] no brief found for calendarEventId:", calendarEventId);
-            }
-          }
-
-          if (!userId) {
-            console.log("[bot-webhook] no userId resolved, skipping call creation");
-          } else {
-            // Step 4 — save call
-            const call = await createCall({
-              user_id: userId,
-              calendar_event_id: calendarEventId,
-              contact_email: contactEmail,
-              company_name: companyName,
-              transcript: transcriptText,
-              status: "done",
-              duration_seconds: null,
-              recall_bot_id: botId,
-              recording_id: recordingId ?? null,
-              transcript_id: transcriptId,
-            });
-            console.log("[bot-webhook] call created:", call.id);
-          }
+          // Step 2 — save call
+          const call = await createCall({
+            user_id: userId,
+            calendar_event_id: calendarEventId,
+            contact_email: contactEmail,
+            company_name: companyName,
+            transcript: transcriptText,
+            status: "done",
+            duration_seconds: null,
+            recall_bot_id: botId ?? null,
+            recording_id: recordingId ?? null,
+            transcript_id: transcriptId,
+          });
+          console.log("[bot-webhook] call created:", call.id);
         } catch (err) {
           console.log("[bot-webhook] transcript.done pipeline failed:", err instanceof Error ? err.message : String(err));
         }

@@ -137,12 +137,25 @@ export async function syncAndScheduleForUser(
 
     if ((event.bots ?? []).length > 0) { console.log(logPrefix, "skipped — bot already scheduled"); skipped++; continue; }
 
-    console.log(logPrefix, "scheduling bot for", event.start_time, event.meeting_url);
+    const externalAttendee = attendees.find((a) => (a.email?.split("@")[1] ?? "") !== userDomain);
+    const contactEmail = externalAttendee?.email ?? null;
+    const googleEventId = (event.raw?.raw as Record<string, unknown> | undefined)?.id as string | null ?? null;
+
+    console.log(logPrefix, "scheduling bot for", event.start_time, event.meeting_url, "| contactEmail:", contactEmail, "| googleEventId:", googleEventId);
     try {
       const botRes = await fetch(`${RECALL_API_V2}/calendar-events/${event.id}/bot/`, {
         method: "POST",
         headers: { Authorization: `Token ${key}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ deduplication_key: event.id, bot_config: {} }),
+        body: JSON.stringify({
+          deduplication_key: event.id,
+          bot_config: {},
+          metadata: {
+            userId,
+            calendarEventId: googleEventId,
+            contactEmail,
+            companyName: null,
+          },
+        }),
       });
       if (botRes.ok) {
         console.log(logPrefix, "bot scheduled ✓");
