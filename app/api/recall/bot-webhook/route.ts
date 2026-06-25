@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     if (body.event === "recording.done") {
       console.log("[bot-webhook] recording.done full body:", JSON.stringify(body));
       const data = body.data as Record<string, unknown> | undefined;
-      const recordingId = ((data?.data as Record<string, unknown> | undefined)?.recording as Record<string, unknown> | undefined)?.id as string | undefined;
+      const recordingId = (data?.recording as Record<string, unknown> | undefined)?.id as string | undefined;
       console.log("[bot-webhook] recording done, recordingId:", recordingId);
 
       if (recordingId) {
