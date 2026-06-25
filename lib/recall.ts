@@ -194,7 +194,7 @@ export function transcriptToText(content: unknown): string {
 }
 
 export async function getBotInfo(botId: string): Promise<Record<string, unknown>> {
-  const res = await fetch(`https://eu-central-1.recall.ai/api/v2/bot/${botId}/`, {
+  const res = await fetch(`${RECALL_BASE_URL}/bot/${botId}/`, {
     headers: recallHeaders(),
   });
   if (!res.ok) throw new Error(`Recall.AI bot info failed (${res.status})`);
