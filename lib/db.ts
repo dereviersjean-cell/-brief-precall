@@ -335,3 +335,30 @@ export async function getLatestImportJob(userId: string): Promise<ImportJob | nu
   if (error) throw error;
   return data as ImportJob | null;
 }
+
+export async function saveCallAnalysis(
+  callId: string,
+  analysis: import("./call-analysis").CallAnalysis
+): Promise<void> {
+  const globalScore = analysis.global_score ?? 0;
+  const sentiment =
+    globalScore >= 4 ? "positif" : globalScore >= 2.5 ? "neutre" : "négatif";
+
+  const { error } = await supabaseAdmin.from("call_analysis").insert({
+    call_id: callId,
+    strengths: analysis.strengths,
+    weaknesses: analysis.weaknesses,
+    objections: analysis.objections,
+    next_steps: analysis.next_steps,
+    summary: analysis.coaching_summary,
+    sentiment,
+    scores: {
+      global_score: analysis.global_score,
+      opening_framing: analysis.opening_framing,
+      pain_point: analysis.pain_point,
+      pitch_demo: analysis.pitch_demo,
+      next_step: analysis.next_step,
+    },
+  });
+  if (error) throw error;
+}

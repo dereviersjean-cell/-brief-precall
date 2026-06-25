@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAsyncTranscript, getTranscriptContent, transcriptToText } from "@/lib/recall";
-import { createCall } from "@/lib/db";
+import { createCall, getUserProfile, saveCallAnalysis } from "@/lib/db";
+import { analyzeCall } from "@/lib/call-analysis";
 
 export async function POST(request: NextRequest) {
   try {
@@ -67,6 +68,23 @@ export async function POST(request: NextRequest) {
             transcript_id: transcriptId,
           });
           console.log("[bot-webhook] call created:", call.id);
+
+          // Step 3 — analyze call with Claude
+          try {
+            const profile = await getUserProfile(userId);
+            const meetingDate = new Date().toISOString().split("T")[0] ?? "";
+            const analysis = await analyzeCall(transcriptText, {
+              clientName: profile?.company_name ?? "",
+              clientWebsite: "",
+              prospectName: companyName ?? "",
+              prospectWebsite: contactEmail ? contactEmail.split("@")[1] ?? "" : "",
+              meetingDate,
+            });
+            await saveCallAnalysis(call.id, analysis);
+            console.log("[bot-webhook] call analysis saved, global_score:", analysis.global_score);
+          } catch (analysisErr) {
+            console.log("[bot-webhook] analyzeCall failed (non-blocking):", analysisErr instanceof Error ? analysisErr.message : String(analysisErr));
+          }
         } catch (err) {
           console.log("[bot-webhook] transcript.done pipeline failed:", err instanceof Error ? err.message : String(err));
         }
