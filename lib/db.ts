@@ -336,6 +336,87 @@ export async function getLatestImportJob(userId: string): Promise<ImportJob | nu
   return data as ImportJob | null;
 }
 
+export type AnalysisScores = {
+  global_score: number;
+  opening_framing: { score: number; description: string };
+  pain_point: { score: number; description: string };
+  pitch_demo: { score: number; description: string };
+  next_step: { score: number; description: string };
+};
+
+export type CallAnalysisRow = {
+  id: string;
+  scores: AnalysisScores | null;
+  strengths: string[] | null;
+  weaknesses: string[] | null;
+  objections: string[] | null;
+  next_steps: string[] | null;
+  summary: string | null;
+  sentiment: string | null;
+};
+
+export type CallWithAnalysis = {
+  id: string;
+  contact_email: string | null;
+  company_name: string | null;
+  created_at: string;
+  status: string;
+  duration_seconds: number | null;
+  analysis: CallAnalysisRow | null;
+};
+
+export async function getCallsWithAnalysis(userId: string): Promise<CallWithAnalysis[]> {
+  const { data, error } = await supabaseAdmin
+    .from("calls")
+    .select(
+      "id, contact_email, company_name, created_at, status, duration_seconds, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment)"
+    )
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  return ((data ?? []) as Record<string, unknown>[]).map((row) => {
+    const analyses = row.call_analysis as CallAnalysisRow[] | null;
+    return {
+      id: row.id as string,
+      contact_email: row.contact_email as string | null,
+      company_name: row.company_name as string | null,
+      created_at: row.created_at as string,
+      status: row.status as string,
+      duration_seconds: row.duration_seconds as number | null,
+      analysis: analyses?.[0] ?? null,
+    };
+  });
+}
+
+export async function getCallWithAnalysis(
+  callId: string,
+  userId: string
+): Promise<CallWithAnalysis | null> {
+  const { data, error } = await supabaseAdmin
+    .from("calls")
+    .select(
+      "id, contact_email, company_name, created_at, status, duration_seconds, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment)"
+    )
+    .eq("id", callId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+
+  const row = data as Record<string, unknown>;
+  const analyses = row.call_analysis as CallAnalysisRow[] | null;
+  return {
+    id: row.id as string,
+    contact_email: row.contact_email as string | null,
+    company_name: row.company_name as string | null,
+    created_at: row.created_at as string,
+    status: row.status as string,
+    duration_seconds: row.duration_seconds as number | null,
+    analysis: analyses?.[0] ?? null,
+  };
+}
+
 export async function saveCallAnalysis(
   callId: string,
   analysis: import("./call-analysis").CallAnalysis
