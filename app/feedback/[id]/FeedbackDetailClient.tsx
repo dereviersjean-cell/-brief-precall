@@ -68,7 +68,7 @@ export default function FeedbackDetailClient({ call }: { call: CallWithAnalysis 
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 ml-60">
+    <div className="min-h-screen bg-slate-50">
       <div className="max-w-3xl mx-auto px-6 py-10">
         {/* Back */}
         <Link

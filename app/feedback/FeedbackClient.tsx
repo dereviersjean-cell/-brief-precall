@@ -41,7 +41,7 @@ function SentimentBadge({ sentiment }: { sentiment: string | null }) {
 
 export default function FeedbackClient({ calls }: { calls: CallWithAnalysis[] }) {
   return (
-    <div className="min-h-screen bg-slate-50 ml-60">
+    <div className="min-h-screen bg-slate-50">
       <div className="max-w-4xl mx-auto px-6 py-10">
         {/* Header */}
         <div className="mb-8">
