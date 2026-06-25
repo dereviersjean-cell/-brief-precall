@@ -1,7 +1,7 @@
 import { type AuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import AzureADProvider from "next-auth/providers/azure-ad";
-import { upsertUser } from "./db";
+import { upsertUser, saveGoogleTokens } from "./db";
 
 export const authOptions: AuthOptions = {
   providers: [
@@ -15,6 +15,7 @@ export const authOptions: AuthOptions = {
             "email",
             "profile",
             "https://www.googleapis.com/auth/calendar.readonly",
+            "https://www.googleapis.com/auth/gmail.readonly",
           ].join(" "),
           access_type: "offline",
         },
@@ -46,6 +47,13 @@ export const authOptions: AuthOptions = {
               user.image ?? null
             );
             token.supabaseUserId = dbUser?.id;
+            if (account.provider === "google" && dbUser?.id && account.access_token) {
+              try {
+                await saveGoogleTokens(dbUser.id, account.access_token, account.refresh_token);
+              } catch (err) {
+                console.error("[auth] saveGoogleTokens failed:", err);
+              }
+            }
           } catch (err) {
             console.error("[auth] upsertUser failed:", err);
           }

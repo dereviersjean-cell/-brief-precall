@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAsyncTranscript, getTranscriptContent, transcriptToText } from "@/lib/recall";
-import { createCall, getUserProfile, saveCallAnalysis } from "@/lib/db";
+import { createCall, getUserProfile, saveCallAnalysis, getGoogleTokens, updateCallFollowUp } from "@/lib/db";
 import { analyzeCall } from "@/lib/call-analysis";
+import { refreshGoogleAccessToken, getEmailHistory } from "@/lib/gmail";
+import { generateFollowUpEmail } from "@/lib/email-followup";
 
 export async function POST(request: NextRequest) {
   try {
@@ -69,21 +71,48 @@ export async function POST(request: NextRequest) {
           });
           console.log("[bot-webhook] call created:", call.id);
 
-          // Step 3 — analyze call with Claude
+          // Step 3 — analyze call with Claude (non-blocking, result shared with step 4)
+          let savedAnalysis: Awaited<ReturnType<typeof analyzeCall>> | null = null;
           try {
             const profile = await getUserProfile(userId);
             const meetingDate = new Date().toISOString().split("T")[0] ?? "";
-            const analysis = await analyzeCall(transcriptText, {
+            savedAnalysis = await analyzeCall(transcriptText, {
               clientName: profile?.company_name ?? "",
               clientWebsite: "",
               prospectName: companyName ?? "",
               prospectWebsite: contactEmail ? contactEmail.split("@")[1] ?? "" : "",
               meetingDate,
             });
-            await saveCallAnalysis(call.id, analysis);
-            console.log("[bot-webhook] call analysis saved, global_score:", analysis.global_score);
+            await saveCallAnalysis(call.id, savedAnalysis);
+            console.log("[bot-webhook] call analysis saved, global_score:", savedAnalysis.global_score);
           } catch (analysisErr) {
             console.log("[bot-webhook] analyzeCall failed (non-blocking):", analysisErr instanceof Error ? analysisErr.message : String(analysisErr));
+          }
+
+          // Step 4 — generate follow-up email (non-blocking)
+          try {
+            if (!contactEmail) {
+              console.log("[bot-webhook] no contactEmail, skipping follow-up email");
+            } else {
+              const { refreshToken } = await getGoogleTokens(userId);
+              if (!refreshToken) {
+                console.log("[bot-webhook] no Google refresh token for user, skipping follow-up email");
+              } else {
+                const freshAccessToken = await refreshGoogleAccessToken(refreshToken);
+                const emailHistory = await getEmailHistory(freshAccessToken, contactEmail);
+                console.log("[bot-webhook] email history fetched:", emailHistory.length, "messages");
+                const followUp = await generateFollowUpEmail(
+                  transcriptText,
+                  emailHistory,
+                  savedAnalysis?.next_steps ?? [],
+                  contactEmail
+                );
+                await updateCallFollowUp(call.id, followUp);
+                console.log("[bot-webhook] follow-up email saved, subject:", followUp.subject);
+              }
+            }
+          } catch (followUpErr) {
+            console.log("[bot-webhook] follow-up email failed (non-blocking):", followUpErr instanceof Error ? followUpErr.message : String(followUpErr));
           }
         } catch (err) {
           console.log("[bot-webhook] transcript.done pipeline failed:", err instanceof Error ? err.message : String(err));

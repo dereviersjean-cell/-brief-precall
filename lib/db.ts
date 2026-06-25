@@ -19,6 +19,33 @@ export async function upsertUser(
   return data as { id: string } | null;
 }
 
+export async function saveGoogleTokens(
+  userId: string,
+  accessToken: string,
+  refreshToken: string | null | undefined
+): Promise<void> {
+  const patch: Record<string, string> = { google_access_token: accessToken };
+  if (refreshToken) patch.google_refresh_token = refreshToken;
+  const { error } = await supabaseAdmin.from("users").update(patch).eq("id", userId);
+  if (error) throw error;
+}
+
+export async function getGoogleTokens(
+  userId: string
+): Promise<{ accessToken: string | null; refreshToken: string | null }> {
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("google_access_token, google_refresh_token")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  const row = data as { google_access_token: string | null; google_refresh_token: string | null } | null;
+  return {
+    accessToken: row?.google_access_token ?? null,
+    refreshToken: row?.google_refresh_token ?? null,
+  };
+}
+
 export async function getAllUsersWithRecallCalendar(): Promise<{ id: string; email: string; recall_calendar_id: string }[]> {
   const { data, error } = await supabaseAdmin
     .from("users")
@@ -415,6 +442,17 @@ export async function getCallWithAnalysis(
     duration_seconds: row.duration_seconds as number | null,
     analysis: analyses?.[0] ?? null,
   };
+}
+
+export async function updateCallFollowUp(
+  callId: string,
+  followUpEmail: { subject: string; body: string }
+): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("calls")
+    .update({ follow_up_email: followUpEmail })
+    .eq("id", callId);
+  if (error) throw error;
 }
 
 export async function saveCallAnalysis(
