@@ -48,11 +48,15 @@ function formatCompanyName(name: string | null): string {
     .join(" ");
 }
 
-function getCompanyFromDomain(event: CalendarEvent): string | null {
-  const hit = event.attendees.find((a) => {
+function getExternalAttendee(event: CalendarEvent): { email: string } | null {
+  return event.attendees.find((a) => {
     const domain = a.email.split("@")[1] ?? "";
     return !GENERIC_DOMAINS.has(domain);
-  });
+  }) ?? null;
+}
+
+function getCompanyFromDomain(event: CalendarEvent): string | null {
+  const hit = getExternalAttendee(event);
   if (!hit) return null;
   return domainToCompany(hit.email.split("@")[1] ?? "");
 }
@@ -334,8 +338,10 @@ export default function DashboardClient() {
 
   function handlePrepare(event: CalendarEvent) {
     const company = getCompanyFromDomain(event);
+    const contactEmail = getExternalAttendee(event)?.email ?? null;
+    const emailParam = contactEmail ? `&contactEmail=${encodeURIComponent(contactEmail)}` : "";
     if (company) {
-      router.push(`/brief/${event.id}?company=${encodeURIComponent(company)}`);
+      router.push(`/brief/${event.id}?company=${encodeURIComponent(company)}${emailParam}`);
     } else {
       setModalDefaultCompany("");
       setModalEvent(event);
@@ -343,8 +349,10 @@ export default function DashboardClient() {
   }
 
   function handleModalConfirm(eventId: string, company: string) {
+    const contactEmail = modalEvent ? getExternalAttendee(modalEvent)?.email ?? null : null;
+    const emailParam = contactEmail ? `&contactEmail=${encodeURIComponent(contactEmail)}` : "";
     setModalEvent(null);
-    router.push(`/brief/${eventId}?company=${encodeURIComponent(company)}`);
+    router.push(`/brief/${eventId}?company=${encodeURIComponent(company)}${emailParam}`);
   }
 
   useEffect(() => {

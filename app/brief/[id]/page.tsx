@@ -32,10 +32,11 @@ export default async function BriefPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ company?: string; cached?: string }>;
+  searchParams: Promise<{ company?: string; cached?: string; contactEmail?: string }>;
 }) {
   const { id } = await params;
-  const { company, cached } = await searchParams;
+  const { company, cached, contactEmail } = await searchParams;
+  const decodedContactEmail = contactEmail ? decodeURIComponent(contactEmail) : null;
 
   // Mock data takes priority
   const meeting = getMeetingById(id);
@@ -47,7 +48,8 @@ export default async function BriefPage({
     notFound();
   }
 
-  const decodedCompany = decodeURIComponent(company);
+  const decodedCompany = decodeURIComponent(company!);
+
 
   // cached=true : charger le brief depuis Supabase avant de passer à Claude
   if (cached === "true") {
@@ -101,5 +103,5 @@ export default async function BriefPage({
     contacts: [],
     status: "upcoming",
   };
-  return <BriefClient meeting={synthetic} autoGenerate />;
+  return <BriefClient meeting={synthetic} autoGenerate contactEmail={decodedContactEmail} />;
 }

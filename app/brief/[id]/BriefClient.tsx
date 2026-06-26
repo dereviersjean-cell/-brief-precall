@@ -222,9 +222,11 @@ function formatNewsDate(iso: string | null): string | null {
 export default function BriefClient({
   meeting,
   autoGenerate = false,
+  contactEmail = null,
 }: {
   meeting: Meeting;
   autoGenerate?: boolean;
+  contactEmail?: string | null;
 }) {
   const [brief, setBrief] = useState<Brief | null>(meeting.brief ?? null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -240,7 +242,11 @@ export default function BriefClient({
       const res = await fetch("/api/generate-brief", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ company: meeting.company }),
+        body: JSON.stringify({
+          company: meeting.company,
+          calendarEventId: meeting.id,
+          contactEmail: contactEmail ?? null,
+        }),
       });
       const data = await res.json();
       if (res.status === 429) {
@@ -258,7 +264,7 @@ export default function BriefClient({
     } finally {
       setIsGenerating(false);
     }
-  }, [meeting.company]);
+  }, [meeting.company, meeting.id, contactEmail]);
 
   useEffect(() => {
     if (autoGenerate && !meeting.brief) {
