@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import type { CallWithAnalysis, AnalysisScores } from "@/lib/db";
 
 function formatDate(iso: string) {
@@ -48,6 +49,7 @@ function List({ items, icon, color }: { items: string[]; icon: string; color: st
 }
 
 export default function FeedbackDetailClient({ call }: { call: CallWithAnalysis }) {
+  const [copied, setCopied] = useState(false);
   const a = call.analysis;
   const scores = a?.scores as AnalysisScores | null;
   const globalScore = scores?.global_score ?? null;
@@ -180,6 +182,37 @@ export default function FeedbackDetailClient({ call }: { call: CallWithAnalysis 
                 <List items={a.next_steps ?? []} icon="→" color="text-indigo-400" />
               </div>
             )}
+
+            {/* Email de suivi */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Email de suivi suggéré</h2>
+                {call.follow_up_email && (
+                  <button
+                    onClick={() => {
+                      const text = `Objet : ${call.follow_up_email!.subject}\n\n${call.follow_up_email!.body}`;
+                      navigator.clipboard.writeText(text).then(() => {
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      });
+                    }}
+                    className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors px-2.5 py-1 rounded-lg border border-indigo-200 hover:bg-indigo-50"
+                  >
+                    {copied ? "Copié !" : "Copier"}
+                  </button>
+                )}
+              </div>
+              {call.follow_up_email ? (
+                <>
+                  <p className="font-semibold text-slate-800 text-sm mb-3">{call.follow_up_email.subject}</p>
+                  <p className="text-sm text-slate-600 bg-gray-50 rounded-lg p-4 whitespace-pre-wrap leading-relaxed">
+                    {call.follow_up_email.body}
+                  </p>
+                </>
+              ) : (
+                <p className="text-slate-400 text-sm italic">Email de suivi en cours de génération…</p>
+              )}
+            </div>
           </div>
         )}
       </div>
