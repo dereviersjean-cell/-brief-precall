@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { AdminConfig } from "./admin-config";
 import type { NewsArticle } from "./news";
 import { findSimilarReferences, SimilarReference } from "./embeddings";
+import { getContact } from "./db";
 
 const client = new Anthropic();
 
@@ -40,7 +41,8 @@ function buildUserPrompt(
   newsContext: string,
   config: AdminConfig,
   userContext: UserContext,
-  similarRefs: SimilarReference[] = []
+  similarRefs: SimilarReference[] = [],
+  relationalHistoryBlock = ""
 ): string {
   const overviewDesc = OVERVIEW_LENGTH[config.overviewLength];
   const toneDesc = TONE_INSTRUCTION[config.tone];
@@ -87,8 +89,16 @@ function buildUserPrompt(
     ? `\n- Sélectionne les 3 actualités les plus pertinentes parmi celles fournies et retourne-les dans "actualites" en copiant exactement les valeurs titre, description, url, source et date`
     : "";
 
+  const relationalSchema = relationalHistoryBlock
+    ? `  "historique_relationnel": "Synthèse courte de ce qu'il faut retenir de l'historique pour ce nouveau call",\n`
+    : "";
+
+  const relationalConstraint = relationalHistoryBlock
+    ? `\n- Remplis "historique_relationnel" avec une synthèse de 1-2 phrases de ce qu'il faut retenir de l'historique pour aborder ce nouveau call`
+    : "";
+
   return `Génère un brief pré-call complet pour un commercial B2B qui s'apprête à appeler ${company}.
-${legalContext}${newsContext}${contextBlock}${referencesBlock}
+${legalContext}${newsContext}${contextBlock}${referencesBlock}${relationalHistoryBlock}
 ${toneDesc}
 Retourne ce JSON (structure stricte, aucun texte autour) :
 
@@ -102,7 +112,7 @@ Retourne ce JSON (structure stricte, aucun texte autour) :
     { "title": "Titre de l'argument commercial", "detail": "Bénéfice concret chiffré si possible" }
   ],
   "vocabulaire": ["mot-clé-1", "mot-clé-2"],
-${referencesSchema}${actualitesSchema}}
+${referencesSchema}${actualitesSchema}${relationalSchema}}
 
 Contraintes :
 - Exactement ${config.painPointsCount} pain_points
@@ -113,7 +123,7 @@ Contraintes :
     userContext?.product_description
       ? `\n- Les arguments doivent montrer comment "${userContext.product_description}" répond aux besoins de ${company}`
       : ""
-  }${referencesConstraint}${actualitesConstraint}`;
+  }${referencesConstraint}${actualitesConstraint}${relationalConstraint}`;
 }
 
 export async function generateBrief(
@@ -122,7 +132,8 @@ export async function generateBrief(
   userContext: UserContext = null,
   pappersData?: unknown,
   newsArticles?: NewsArticle[],
-  userId?: string
+  userId?: string,
+  contactEmail?: string | null
 ): Promise<unknown> {
   const legalContext = pappersData
     ? `\nVoici les données légales officielles de l'entreprise (source : registre français officiel) :\n${JSON.stringify(pappersData, null, 2)}\n\nBase-toi sur ces faits réels pour le brief. Ne les contredis pas.\n`
@@ -154,6 +165,18 @@ export async function generateBrief(
     }
   }
 
+  let relationalHistoryBlock = "";
+  if (userId && contactEmail) {
+    try {
+      const contact = await getContact(userId, contactEmail);
+      if (contact && contact.total_calls > 0 && contact.last_call_summary) {
+        relationalHistoryBlock = `\n# HISTORIQUE RELATIONNEL AVEC CE CONTACT\n\nVous avez déjà eu ${contact.total_calls} échange(s) avec ce contact. Voici un résumé de votre dernier call :\n\n${contact.last_call_summary}\n\nUtilise cet historique pour enrichir le brief — mentionne les engagements pris précédemment, le contexte déjà établi, et adapte l'approche en conséquence. Ajoute un champ "historique_relationnel" dans le JSON de sortie avec une synthèse courte de ce qu'il faut retenir de cet historique pour ce nouveau call.\n`;
+      }
+    } catch (err) {
+      console.warn("[brief-generator] getContact failed:", err);
+    }
+  }
+
   const message = await client.messages.create({
     model: config.model,
     max_tokens: 6000,
@@ -167,7 +190,8 @@ export async function generateBrief(
           newsContext,
           config,
           userContext,
-          similarRefs
+          similarRefs,
+          relationalHistoryBlock
         ),
       },
     ],

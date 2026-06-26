@@ -45,4 +45,5 @@ export type Brief = {
   keywords?: string[];
   actualites?: NewsItem[];
   references?: Array<{ client_name: string; relevance: string; pitch: string }>;
+  historiqueRelationnel?: string;
 };
