@@ -108,6 +108,7 @@ export async function POST(request: NextRequest) {
       fetchRecentNews(trimmed, contactDomain),
     ]);
 
+    console.log('[generate-brief] contactEmail:', contactEmail, '| userId:', userId);
     const brief = await generateBrief(trimmed, config, userContext, pappersData, newsArticles, userId ?? undefined, contactEmail);
 
     if (userId) {
