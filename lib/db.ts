@@ -458,6 +458,67 @@ export async function updateCallFollowUp(
   if (error) throw error;
 }
 
+export type Contact = {
+  id: string;
+  user_id: string;
+  email: string;
+  company_name: string | null;
+  total_calls: number;
+  last_call_summary: string | null;
+  relationship_stage: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function getContact(
+  userId: string,
+  email: string
+): Promise<Contact | null> {
+  const { data, error } = await supabaseAdmin
+    .from("contacts")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("email", email)
+    .maybeSingle();
+  if (error) throw error;
+  return data as Contact | null;
+}
+
+export async function createContact(data: {
+  user_id: string;
+  email: string;
+  company_name: string | null;
+  total_calls: number;
+  last_call_summary: string | null;
+  relationship_stage: string;
+}): Promise<{ id: string }> {
+  const { data: row, error } = await supabaseAdmin
+    .from("contacts")
+    .insert(data)
+    .select("id")
+    .single();
+  if (error) throw error;
+  return row as { id: string };
+}
+
+export async function updateContact(
+  userId: string,
+  email: string,
+  patch: {
+    total_calls?: number;
+    last_call_summary?: string;
+    company_name?: string | null;
+    relationship_stage?: string;
+  }
+): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("contacts")
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .eq("email", email);
+  if (error) throw error;
+}
+
 export async function saveCallAnalysis(
   callId: string,
   analysis: import("./call-analysis").CallAnalysis

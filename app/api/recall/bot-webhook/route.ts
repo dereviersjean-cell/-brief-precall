@@ -1,9 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAsyncTranscript, getTranscriptContent, transcriptToText } from "@/lib/recall";
-import { createCall, getUserProfile, saveCallAnalysis, getGoogleTokens, updateCallFollowUp } from "@/lib/db";
+import { createCall, getUserProfile, saveCallAnalysis, getGoogleTokens, updateCallFollowUp, getContact, createContact, updateContact } from "@/lib/db";
 import { analyzeCall } from "@/lib/call-analysis";
 import { refreshGoogleAccessToken, getEmailHistory } from "@/lib/gmail";
 import { generateFollowUpEmail } from "@/lib/email-followup";
+import Anthropic from "@anthropic-ai/sdk";
+
+async function mergeSummaries(existing: string, newSummary: string): Promise<string> {
+  const client = new Anthropic();
+  const msg = await client.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 200,
+    messages: [{
+      role: "user",
+      content: `Fusionne ces deux résumés de relation commerciale en 2-3 phrases concises qui capturent l'essentiel de l'historique et des derniers échanges :\n\nHistorique : ${existing}\n\nDernier call : ${newSummary}`,
+    }],
+  });
+  const block = msg.content.find((b) => b.type === "text");
+  return block?.type === "text" ? block.text.trim() : newSummary;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -89,7 +104,38 @@ export async function POST(request: NextRequest) {
             console.log("[bot-webhook] analyzeCall failed (non-blocking):", analysisErr instanceof Error ? analysisErr.message : String(analysisErr));
           }
 
-          // Step 4 — generate follow-up email (non-blocking)
+          // Step 4 — upsert contact (non-blocking)
+          try {
+            if (contactEmail && savedAnalysis?.coaching_summary) {
+              const newSummary = savedAnalysis.coaching_summary;
+              const existing = await getContact(userId, contactEmail);
+              if (existing) {
+                const mergedSummary = existing.last_call_summary
+                  ? await mergeSummaries(existing.last_call_summary, newSummary)
+                  : newSummary;
+                await updateContact(userId, contactEmail, {
+                  total_calls: existing.total_calls + 1,
+                  last_call_summary: mergedSummary,
+                  ...(companyName ? { company_name: companyName } : {}),
+                });
+                console.log("[bot-webhook] contact updated, total_calls:", existing.total_calls + 1);
+              } else {
+                await createContact({
+                  user_id: userId,
+                  email: contactEmail,
+                  company_name: companyName,
+                  total_calls: 1,
+                  last_call_summary: newSummary,
+                  relationship_stage: "prospect",
+                });
+                console.log("[bot-webhook] contact created for:", contactEmail);
+              }
+            }
+          } catch (contactErr) {
+            console.log("[bot-webhook] contact upsert failed (non-blocking):", contactErr instanceof Error ? contactErr.message : String(contactErr));
+          }
+
+          // Step 5 — generate follow-up email (non-blocking)
           try {
             if (!contactEmail) {
               console.log("[bot-webhook] no contactEmail, skipping follow-up email");
