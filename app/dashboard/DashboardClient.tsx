@@ -351,6 +351,7 @@ export default function DashboardClient() {
   function handleModalConfirm(eventId: string, company: string) {
     const contactEmail = modalEvent ? getExternalAttendee(modalEvent)?.email ?? null : null;
     const emailParam = contactEmail ? `&contactEmail=${encodeURIComponent(contactEmail)}` : "";
+    console.log('[handleModalConfirm] contactEmail extrait:', emailParam);
     setModalEvent(null);
     router.push(`/brief/${eventId}?company=${encodeURIComponent(company)}${emailParam}`);
   }
