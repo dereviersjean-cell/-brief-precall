@@ -150,6 +150,7 @@ export async function syncAndScheduleForUser(
         body: JSON.stringify({
           deduplication_key: event.id,
           bot_config: {
+            bot_name: "Brief Notetaker",
             metadata: {
               userId,
               calendarEventId: googleEventId ?? "",
