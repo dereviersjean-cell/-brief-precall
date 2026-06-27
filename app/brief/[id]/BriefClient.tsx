@@ -234,7 +234,7 @@ export default function BriefClient({
   const [isAiGenerated, setIsAiGenerated] = useState(false);
   const [rateLimited, setRateLimited] = useState<{ message: string; retryAfterMs: number } | null>(null);
 
-  const generateBrief = useCallback(async () => {
+  const generateBrief = useCallback(async (force = false) => {
     setIsGenerating(true);
     setError(null);
     setRateLimited(null);
@@ -246,6 +246,7 @@ export default function BriefClient({
           company: meeting.company,
           calendarEventId: meeting.id,
           contactEmail: contactEmail ?? null,
+          force,
         }),
       });
       const data = await res.json();
@@ -360,7 +361,7 @@ export default function BriefClient({
               <p className="text-sm text-red-700">{error}</p>
             </div>
             <button
-              onClick={generateBrief}
+              onClick={() => generateBrief()}
               disabled={isGenerating}
               className="text-sm font-medium text-red-700 border border-red-300 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors shrink-0 disabled:opacity-50"
             >
@@ -381,7 +382,7 @@ export default function BriefClient({
               </p>
             </div>
             <button
-              onClick={generateBrief}
+              onClick={() => generateBrief()}
               disabled={isGenerating}
               className="flex items-center gap-2 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors shrink-0 disabled:opacity-60"
             >
@@ -625,7 +626,7 @@ export default function BriefClient({
 
                 {/* Regenerate button */}
                 <button
-                  onClick={generateBrief}
+                  onClick={() => generateBrief(true)}
                   disabled={isGenerating}
                   className="w-full flex items-center justify-center gap-2 text-sm text-slate-500 border border-dashed border-slate-300 rounded-xl py-3 hover:border-indigo-300 hover:text-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -661,7 +662,7 @@ export default function BriefClient({
               Générez un brief IA personnalisé pour {meeting.company}.
             </p>
             <button
-              onClick={generateBrief}
+              onClick={() => generateBrief()}
               className="flex items-center gap-2 bg-indigo-600 text-white text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

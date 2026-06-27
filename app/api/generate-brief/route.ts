@@ -25,12 +25,14 @@ export async function POST(request: NextRequest) {
   let company: string;
   let calendarEventId: string | null = null;
   let contactEmail: string | null = null;
+  let force = false;
 
   try {
     const body = await request.json();
     company = body?.company;
     calendarEventId = body?.calendarEventId ?? null;
     contactEmail = body?.contactEmail ?? null;
+    force = body?.force === true;
   } catch {
     return NextResponse.json({ error: "Corps de la requête invalide." }, { status: 400 });
   }
@@ -69,11 +71,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Cache : retourner le brief existant sans rappeler le modèle
-  if (userId && calendarEventId) {
+  // Cache : retourner le brief existant sans rappeler le modèle (ignoré si force=true)
+  if (!force && userId && calendarEventId) {
     try {
       const cached = await getBriefByEventId(userId, calendarEventId);
       if (cached?.content) {
+        console.log("[generate-brief] cache hit for calendarEventId:", calendarEventId);
         return NextResponse.json(cached.content);
       }
     } catch (err) {
