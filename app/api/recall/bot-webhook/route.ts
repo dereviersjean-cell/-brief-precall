@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Webhook } from "svix";
 import { createAsyncTranscript, getTranscriptContent, transcriptToText } from "@/lib/recall";
 import { createCall, getUserProfile, saveCallAnalysis, getGoogleTokens, updateCallFollowUp, getContact, createContact, updateContact } from "@/lib/db";
 import { analyzeCall } from "@/lib/call-analysis";
@@ -21,8 +22,26 @@ async function mergeSummaries(existing: string, newSummary: string): Promise<str
 }
 
 export async function POST(request: NextRequest) {
+  const rawBody = await request.text();
+
+  const secret = process.env.RECALL_BOT_WEBHOOK_SECRET;
+  if (secret) {
+    const svixId = request.headers.get("svix-id") ?? "";
+    const svixTimestamp = request.headers.get("svix-timestamp") ?? "";
+    const svixSignature = request.headers.get("svix-signature") ?? "";
+    try {
+      new Webhook(secret).verify(rawBody, {
+        "svix-id": svixId,
+        "svix-timestamp": svixTimestamp,
+        "svix-signature": svixSignature,
+      });
+    } catch {
+      return NextResponse.json({ error: "invalid signature" }, { status: 401 });
+    }
+  }
+
   try {
-    const body = await request.json() as Record<string, unknown>;
+    const body = JSON.parse(rawBody) as Record<string, unknown>;
     console.log("[bot-webhook] received:", JSON.stringify(body));
 
     if (body.event === "bot.done") {
