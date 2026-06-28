@@ -153,7 +153,7 @@ export async function generateBrief(
   if (userId) {
     try {
       const sectorFromPappers =
-        (pappersData as Record<string, unknown>)?.libelle_naf ??
+        (pappersData as Record<string, unknown>)?.libelle_code_naf ??
         (pappersData as Record<string, unknown>)?.code_naf ??
         "";
       const prospectContext = [company, sectorFromPappers, userContext?.sector]
@@ -201,8 +201,6 @@ export async function generateBrief(
   if (!textBlock || textBlock.type !== "text") {
     throw new Error("Réponse inattendue de l'API.");
   }
-
-  console.log("[brief-generator] raw response:", textBlock.text);
 
   try {
     return extractJSON(textBlock.text);

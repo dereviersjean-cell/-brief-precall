@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { createRecallCalendarV2 } from "@/lib/recall";
@@ -10,6 +11,17 @@ const ERROR_URL = "https://brief-precall.vercel.app/settings?recall=error";
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   const error = request.nextUrl.searchParams.get("error");
+  const stateParam = request.nextUrl.searchParams.get("state");
+
+  const cookieStore = await cookies();
+  const stateCookie = cookieStore.get("recall_oauth_state")?.value;
+
+  if (!stateCookie || stateParam !== stateCookie) {
+    console.log("[recall oauth callback] State mismatch — possible CSRF");
+    return NextResponse.redirect(ERROR_URL);
+  }
+
+  cookieStore.delete("recall_oauth_state");
 
   if (error) {
     console.log("[recall oauth callback] Google returned error:", error);

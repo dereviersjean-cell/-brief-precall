@@ -81,7 +81,7 @@ Réponds UNIQUEMENT avec ce JSON valide, sans markdown, sans commentaire :
 
     return JSON.parse(cleaned) as CallAnalysis;
   } catch (err) {
-    console.log("[call-analysis] analyzeCall failed:", err instanceof Error ? err.message : String(err));
+    console.error("[call-analysis] analyzeCall failed:", err instanceof Error ? err.message : String(err));
     return {
       ...DEFAULT_ANALYSIS,
       coaching_summary: `Analyse indisponible : ${err instanceof Error ? err.message : String(err)}`,

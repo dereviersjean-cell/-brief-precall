@@ -13,7 +13,7 @@ export async function GET() {
 
   try {
     const briefs = await getBriefsByUser(userId);
-    console.log("[briefs] userId:", userId, "— count:", briefs?.length ?? 0, "— raw:", JSON.stringify(briefs));
+    console.log("[briefs] userId:", userId, "— count:", briefs?.length ?? 0);
     return NextResponse.json(briefs ?? []);
   } catch (err) {
     console.error("[briefs] getBriefsByUser failed:", err);

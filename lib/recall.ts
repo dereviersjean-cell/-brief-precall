@@ -141,8 +141,7 @@ export async function syncAndScheduleForUser(
     const contactEmail = externalAttendee?.email ?? "";
     const googleEventId = (event.raw?.raw as Record<string, unknown> | undefined)?.id as string | null ?? "";
 
-    console.log(logPrefix, "scheduling bot for", event.start_time, event.meeting_url, "| contactEmail:", contactEmail, "| googleEventId:", googleEventId);
-    console.log("[sync] event raw structure:", JSON.stringify(event.raw));
+    console.log(logPrefix, "scheduling bot for", event.start_time, "| contactEmail:", contactEmail, "| googleEventId:", googleEventId);
     try {
       const botRes = await fetch(`${RECALL_API_V2}/calendar-events/${event.id}/bot/`, {
         method: "POST",

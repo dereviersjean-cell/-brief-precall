@@ -62,8 +62,6 @@ function extractJSON(raw: string): Record<string, unknown>[] {
   const start = cleaned.indexOf("[");
   const end = cleaned.lastIndexOf("]");
   if (start === -1 || end <= start) return [];
-  console.log("[inngest] cleaned tail:", cleaned.slice(-50));
-  console.log("[inngest] start index:", start, "| end index:", end);
   try {
     return JSON.parse(cleaned.slice(start, end + 1)) as Record<string, unknown>[];
   } catch {
@@ -102,14 +100,8 @@ async function extractRefsFromChunk(
   });
   const textBlock = message.content.find((b) => b.type === "text");
   const raw = textBlock?.type === "text" ? textBlock.text : "";
-  console.log("[inngest] raw length:", raw.length, "| starts with:", raw.slice(0, 30), "| ends with:", raw.slice(-30));
-  console.log(
-    `[inngest] chunk ${chunkIdx + 1}/${totalChunks} — length: ${raw.length} | tail:`,
-    raw.slice(-80)
-  );
-  console.log("[inngest] chunk response:", raw.slice(0, 300));
   const parsed = extractJSON(raw);
-  console.log("[inngest] parsed count:", parsed.length);
+  console.log(`[inngest] chunk ${chunkIdx + 1}/${totalChunks} — parsed count: ${parsed.length}`);
   return parsed.map((r) => ({
     client_name: (r.client_name as string) ?? null,
     sector: (r.sector as string) ?? null,
