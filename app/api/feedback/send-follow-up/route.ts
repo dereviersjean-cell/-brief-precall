@@ -3,10 +3,17 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { getCallWithAnalysis, updateCallFollowUp, updateFollowUpSentAt } from "@/lib/db";
 
+function encodeMimeSubject(subject: string): string {
+  if (/[^\x00-\x7F]/.test(subject)) {
+    return `=?UTF-8?B?${Buffer.from(subject, "utf-8").toString("base64")}?=`;
+  }
+  return subject;
+}
+
 function buildRfc2822(to: string, subject: string, body: string): string {
   return [
     `To: ${to}`,
-    `Subject: ${subject}`,
+    `Subject: ${encodeMimeSubject(subject)}`,
     "Content-Type: text/plain; charset=utf-8",
     "",
     body,
