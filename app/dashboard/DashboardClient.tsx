@@ -17,6 +17,7 @@ interface CalendarEvent {
 interface StoredBrief {
   id: string;
   company_name: string | null;
+  contact_email: string | null;
   calendar_event_id: string | null;
   model_used: string | null;
   created_at: string;
