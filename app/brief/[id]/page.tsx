@@ -59,7 +59,6 @@ export default async function BriefPage({
   if (cached === "true") {
     try {
       if (userId) {
-      if (userId) {
         // 1st attempt : lookup by calendar_event_id
         const byEvent = await getBriefByEventId(userId, id);
         if (byEvent?.content) {
