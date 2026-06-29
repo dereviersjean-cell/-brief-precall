@@ -83,14 +83,14 @@ export async function saveBrief(
 ): Promise<{ id: string } | null> {
   const { data, error } = await supabaseAdmin
     .from("briefs")
-    .insert({
+    .upsert({
       user_id: userId,
       company_name: companyName,
       contact_email: contactEmail,
       calendar_event_id: calendarEventId,
       content,
       model_used: modelUsed,
-    })
+    }, { onConflict: "user_id,calendar_event_id" })
     .select("id")
     .single();
 
