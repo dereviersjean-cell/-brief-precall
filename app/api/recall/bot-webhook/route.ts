@@ -35,7 +35,11 @@ export async function POST(request: NextRequest) {
         "svix-timestamp": svixTimestamp,
         "svix-signature": svixSignature,
       });
-    } catch {
+    } catch (err) {
+      console.log("[bot-webhook] svix verification failed:", err instanceof Error ? err.message : String(err));
+      console.log("[bot-webhook] svix headers present — svix-id:", request.headers.has("svix-id"), "svix-timestamp:", request.headers.has("svix-timestamp"), "svix-signature:", request.headers.has("svix-signature"));
+      console.log("[bot-webhook] webhook headers present — webhook-id:", request.headers.has("webhook-id"), "webhook-timestamp:", request.headers.has("webhook-timestamp"), "webhook-signature:", request.headers.has("webhook-signature"));
+      console.log("[bot-webhook] RECALL_BOT_WEBHOOK_SECRET length:", process.env.RECALL_BOT_WEBHOOK_SECRET?.length ?? 0);
       return NextResponse.json({ error: "invalid signature" }, { status: 401 });
     }
   }
