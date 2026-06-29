@@ -504,7 +504,7 @@ export default function DashboardClient() {
                     Brief IA
                   </span>
                   <Link
-                    href={`/brief/${brief.calendar_event_id ?? brief.id}?company=${encodeURIComponent(brief.company_name ?? "")}&cached=true`}
+                    href={`/brief/${brief.calendar_event_id ?? brief.id}?company=${encodeURIComponent(brief.company_name ?? "")}&cached=true&contactEmail=${encodeURIComponent(brief.contact_email ?? "")}`}
                     className="flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 shrink-0 transition-colors"
                   >
                     Revoir

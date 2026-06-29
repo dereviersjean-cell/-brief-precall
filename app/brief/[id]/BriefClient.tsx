@@ -231,7 +231,7 @@ function callScoreCls(score: number) {
 }
 
 function formatCallDate(iso: string) {
-  return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 }
 
 export default function BriefClient({

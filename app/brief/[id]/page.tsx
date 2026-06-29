@@ -91,7 +91,8 @@ export default async function BriefPage({
           return <BriefClient meeting={synthetic} callHistory={callHistory} />;
         }
       }
-    } catch {
+    } catch (err) {
+      console.error("[BriefPage] cached lookup failed:", err);
       // Fall through to normal generation
     }
   }
