@@ -4,13 +4,11 @@ import Link from "next/link";
 import { useState } from "react";
 import type { CallWithAnalysis, AnalysisScores } from "@/lib/db";
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("fr-FR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  const date = d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const time = d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  return `${date} à ${time}`;
 }
 
 function formatDuration(seconds: number): string {
@@ -117,7 +115,7 @@ export default function FeedbackDetailClient({ call }: { call: CallWithAnalysis 
                 <p className="text-slate-400 text-sm mt-0.5">{call.contact_email}</p>
               )}
               <p className="text-slate-400 text-sm mt-1 flex items-center gap-3 flex-wrap">
-                <span>{formatDate(call.created_at)}</span>
+                <span>{formatDateTime(call.started_at ?? call.created_at)}</span>
                 {call.duration_seconds !== null && (
                   <span className="flex items-center gap-1">
                     <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
