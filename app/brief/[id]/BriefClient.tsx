@@ -248,7 +248,7 @@ export default function BriefClient({
   const [brief, setBrief] = useState<Brief | null>(meeting.brief ?? null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isAiGenerated, setIsAiGenerated] = useState(false);
+  const [isAiGenerated, setIsAiGenerated] = useState(!!meeting.brief);
   const [rateLimited, setRateLimited] = useState<{ message: string; retryAfterMs: number } | null>(null);
 
   const generateBrief = useCallback(async (force = false) => {
