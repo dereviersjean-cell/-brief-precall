@@ -11,12 +11,13 @@ function encodeMimeSubject(subject: string): string {
 }
 
 function buildRfc2822(to: string, subject: string, body: string): string {
+  const normalizedBody = body.replace(/(?<!\n)\n(?!\n)/g, " ");
   return [
     `To: ${to}`,
     `Subject: ${encodeMimeSubject(subject)}`,
     "Content-Type: text/plain; charset=utf-8",
     "",
-    body,
+    normalizedBody,
   ].join("\r\n");
 }
 
