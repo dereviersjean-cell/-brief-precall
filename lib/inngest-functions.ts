@@ -222,7 +222,7 @@ export const processReferencesImport = inngest.createFunction(
 export const syncRecallCalendars = inngest.createFunction(
   {
     id: "sync-recall-calendars",
-    triggers: [{ cron: "*/15 * * * *" }],
+    triggers: [{ cron: "*/5 * * * *" }],
   },
   async ({ step }) => {
     const users = (await step.run("get-users-with-recall", async () => {
