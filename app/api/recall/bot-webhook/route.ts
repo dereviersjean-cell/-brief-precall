@@ -9,12 +9,12 @@ import Anthropic from "@anthropic-ai/sdk";
 
 type StatusChange = { code: string; created_at: string };
 
-function extractCallTiming(botInfo: Record<string, unknown>): {
+async function extractCallTiming(botInfo: Record<string, unknown>): Promise<{
   started_at: string | null;
   ended_at: string | null;
   duration_seconds: number | null;
   participant_count: number | null;
-} {
+}> {
   const changes = (botInfo.status_changes as StatusChange[] | null) ?? [];
   const started_at = changes.find((s) => s.code === "in_call_recording")?.created_at ?? null;
   const ended_at = changes.find((s) => s.code === "call_ended")?.created_at ?? null;
@@ -25,8 +25,23 @@ function extractCallTiming(botInfo: Record<string, unknown>): {
     if (ms > 0) duration_seconds = Math.round(ms / 1000);
   }
 
-  const participants = botInfo.meeting_participants as unknown[] | null;
-  const participant_count = Array.isArray(participants) ? participants.length : null;
+  let participant_count: number | null = null;
+  try {
+    const recordings = botInfo.recordings as Array<Record<string, unknown>> | undefined;
+    const participantEventsData = (recordings?.[0]?.media_shortcuts as Record<string, unknown> | undefined)
+      ?.participant_events as Record<string, unknown> | undefined;
+    const participantsUrl = (participantEventsData?.data as Record<string, unknown> | undefined)
+      ?.participants_download_url as string | undefined;
+    if (participantsUrl) {
+      const res = await fetch(participantsUrl);
+      if (res.ok) {
+        const participants = await res.json() as unknown[];
+        if (Array.isArray(participants)) participant_count = participants.length;
+      }
+    }
+  } catch (err) {
+    console.error("[bot-webhook] participant_count fetch failed (non-blocking):", err instanceof Error ? err.message : String(err));
+  }
 
   return { started_at, ended_at, duration_seconds, participant_count };
 }
@@ -118,7 +133,7 @@ export async function POST(request: NextRequest) {
           if (botId) {
             try {
               const botInfo = await getBotInfo(botId);
-              timing = extractCallTiming(botInfo);
+              timing = await extractCallTiming(botInfo);
               console.log("[bot-webhook] timing — started_at:", timing.started_at, "ended_at:", timing.ended_at, "duration_seconds:", timing.duration_seconds, "participant_count:", timing.participant_count);
             } catch (err) {
               console.error("[bot-webhook] getBotInfo failed (non-blocking):", err instanceof Error ? err.message : String(err));

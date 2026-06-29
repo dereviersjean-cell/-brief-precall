@@ -91,10 +91,15 @@ export default function FeedbackClient({ calls }: { calls: CallWithAnalysis[] })
                       <p className="text-slate-400 text-xs mt-1 flex items-center gap-2">
                         <span>{formatDate(call.created_at)}</span>
                         {call.duration_seconds !== null && (
-                          <span>{formatDuration(call.duration_seconds)}</span>
+                          <span className="flex items-center gap-1">
+                            <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
+                            </svg>
+                            {formatDuration(call.duration_seconds)}
+                          </span>
                         )}
                         {call.participant_count !== null && (
-                          <span>{call.participant_count} participants</span>
+                          <span>{call.participant_count} {call.participant_count === 1 ? "participant" : "participants"}</span>
                         )}
                       </p>
                     </div>
