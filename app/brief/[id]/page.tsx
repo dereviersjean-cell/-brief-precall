@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth/next";
-import { getBriefByEventId, getBriefById } from "@/lib/db";
+import { getBriefByEventId, getBriefById, getRecentCallsForContact, CallHistoryItem } from "@/lib/db";
 import { authOptions } from "@/lib/auth";
 import { Meeting, Brief, NewsItem } from "@/lib/types";
 import BriefClient from "./BriefClient";
@@ -43,12 +43,22 @@ export default async function BriefPage({
 
   const decodedCompany = decodeURIComponent(company!);
 
+  const session = await getServerSession(authOptions);
+  const userId = session?.supabaseUserId ?? null;
+
+  let callHistory: CallHistoryItem[] = [];
+  if (userId && decodedContactEmail) {
+    try {
+      callHistory = await getRecentCallsForContact(userId, decodedContactEmail);
+    } catch {
+      // non-blocking
+    }
+  }
 
   // cached=true : charger le brief depuis Supabase avant de passer à Claude
   if (cached === "true") {
     try {
-      const session = await getServerSession(authOptions);
-      const userId = session?.supabaseUserId;
+      if (userId) {
       if (userId) {
         // 1st attempt : lookup by calendar_event_id
         const byEvent = await getBriefByEventId(userId, id);
@@ -63,7 +73,7 @@ export default async function BriefPage({
             status: "upcoming",
             brief: adaptCachedContent(byEvent.content),
           };
-          return <BriefClient meeting={synthetic} />;
+          return <BriefClient meeting={synthetic} callHistory={callHistory} />;
         }
 
         // 2nd attempt : lookup by Supabase brief UUID
@@ -79,7 +89,7 @@ export default async function BriefPage({
             status: "upcoming",
             brief: adaptCachedContent(byId.content),
           };
-          return <BriefClient meeting={synthetic} />;
+          return <BriefClient meeting={synthetic} callHistory={callHistory} />;
         }
       }
     } catch {
@@ -96,5 +106,5 @@ export default async function BriefPage({
     contacts: [],
     status: "upcoming",
   };
-  return <BriefClient meeting={synthetic} autoGenerate contactEmail={decodedContactEmail} />;
+  return <BriefClient meeting={synthetic} autoGenerate contactEmail={decodedContactEmail} callHistory={callHistory} />;
 }

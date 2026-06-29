@@ -462,6 +462,42 @@ export async function getCallWithAnalysis(
   };
 }
 
+export type CallHistoryItem = {
+  id: string;
+  date: string;
+  global_score: number | null;
+  sentiment: string | null;
+  follow_up_sent_at: string | null;
+};
+
+export async function getRecentCallsForContact(
+  userId: string,
+  contactEmail: string,
+  limit = 5
+): Promise<CallHistoryItem[]> {
+  const { data, error } = await supabaseAdmin
+    .from("calls")
+    .select("id, started_at, created_at, follow_up_sent_at, call_analysis(scores, sentiment)")
+    .eq("user_id", userId)
+    .eq("contact_email", contactEmail)
+    .order("started_at", { ascending: false, nullsFirst: false })
+    .limit(limit);
+  if (error) throw error;
+
+  return ((data ?? []) as Record<string, unknown>[]).map((row) => {
+    const analyses = row.call_analysis as Array<{ scores: unknown; sentiment: string | null }> | null;
+    const analysis = analyses?.[0] ?? null;
+    const scores = analysis?.scores as { global_score?: number } | null;
+    return {
+      id: row.id as string,
+      date: ((row.started_at ?? row.created_at) as string),
+      global_score: scores?.global_score ?? null,
+      sentiment: analysis?.sentiment ?? null,
+      follow_up_sent_at: row.follow_up_sent_at as string | null,
+    };
+  });
+}
+
 export async function updateCallFollowUp(
   callId: string,
   followUpEmail: { subject: string; body: string }
