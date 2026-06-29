@@ -100,7 +100,7 @@ function buildUserPrompt(
   return `Génère un brief pré-call complet pour un commercial B2B qui s'apprête à appeler ${company}.
 ${legalContext}${newsContext}${contextBlock}${referencesBlock}${relationalHistoryBlock}
 ${toneDesc}
-Retourne ce JSON (structure stricte, aucun texte autour) :
+Retourne ce JSON (structure stricte, aucun texte autour). Même si tu as utilisé la recherche web, ta réponse finale doit être UNIQUEMENT le JSON ci-dessous, sans phrase d'introduction, citation, ni texte additionnel :
 
 {
   "overview": "Vue d'ensemble en ${overviewDesc} : secteur, modèle économique, taille et positionnement marché",
@@ -181,6 +181,7 @@ export async function generateBrief(
     model: config.model,
     max_tokens: 6000,
     system: config.systemPrompt,
+    tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }],
     messages: [
       {
         role: "user",
@@ -197,7 +198,7 @@ export async function generateBrief(
     ],
   });
 
-  const textBlock = message.content.find((b) => b.type === "text");
+  const textBlock = message.content.filter((b) => b.type === "text").pop();
   if (!textBlock || textBlock.type !== "text") {
     throw new Error("Réponse inattendue de l'API.");
   }
