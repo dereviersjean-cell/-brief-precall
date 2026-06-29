@@ -216,6 +216,16 @@ export async function getBotInfo(botId: string): Promise<Record<string, unknown>
   return res.json() as Promise<Record<string, unknown>>;
 }
 
+export async function getVideoUrl(botId: string): Promise<string | null> {
+  const botInfo = await getBotInfo(botId);
+  const recordings = botInfo.recordings as Array<Record<string, unknown>> | undefined;
+  const first = recordings?.[0];
+  const shortcuts = first?.media_shortcuts as Record<string, unknown> | undefined;
+  const videoMixed = shortcuts?.video_mixed as Record<string, unknown> | undefined;
+  const data = videoMixed?.data as Record<string, unknown> | undefined;
+  return (data?.download_url as string) ?? null;
+}
+
 export async function createAsyncTranscript(recordingId: string): Promise<Record<string, unknown>> {
   const key = process.env.RECALL_API_KEY;
   if (!key) throw new Error("RECALL_API_KEY is not set");
