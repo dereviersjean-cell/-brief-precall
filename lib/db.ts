@@ -390,6 +390,7 @@ export type CallWithAnalysis = {
   status: string;
   duration_seconds: number | null;
   follow_up_email: { subject: string; body: string } | null;
+  follow_up_sent_at: string | null;
   analysis: CallAnalysisRow | null;
 };
 
@@ -397,7 +398,7 @@ export async function getCallsWithAnalysis(userId: string): Promise<CallWithAnal
   const { data, error } = await supabaseAdmin
     .from("calls")
     .select(
-      "id, contact_email, company_name, created_at, status, duration_seconds, follow_up_email, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment)"
+      "id, contact_email, company_name, created_at, status, duration_seconds, follow_up_email, follow_up_sent_at, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment)"
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
@@ -413,6 +414,7 @@ export async function getCallsWithAnalysis(userId: string): Promise<CallWithAnal
       status: row.status as string,
       duration_seconds: row.duration_seconds as number | null,
       follow_up_email: row.follow_up_email as { subject: string; body: string } | null,
+      follow_up_sent_at: row.follow_up_sent_at as string | null,
       analysis: analyses?.[0] ?? null,
     };
   });
@@ -425,7 +427,7 @@ export async function getCallWithAnalysis(
   const { data, error } = await supabaseAdmin
     .from("calls")
     .select(
-      "id, contact_email, company_name, created_at, status, duration_seconds, follow_up_email, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment)"
+      "id, contact_email, company_name, created_at, status, duration_seconds, follow_up_email, follow_up_sent_at, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment)"
     )
     .eq("id", callId)
     .eq("user_id", userId)

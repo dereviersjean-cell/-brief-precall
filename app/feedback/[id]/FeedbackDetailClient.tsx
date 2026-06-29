@@ -48,8 +48,22 @@ function List({ items, icon, color }: { items: string[]; icon: string; color: st
   );
 }
 
+type SendStatus = "idle" | "sending" | "sent" | "error" | "auth-error";
+
+function formatSentAt(iso: string) {
+  const d = new Date(iso);
+  const date = d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const time = d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  return `${date} à ${time}`;
+}
+
 export default function FeedbackDetailClient({ call }: { call: CallWithAnalysis }) {
   const [copied, setCopied] = useState(false);
+  const [subject, setSubject] = useState(call.follow_up_email?.subject ?? "");
+  const [body, setBody] = useState(call.follow_up_email?.body ?? "");
+  const [sendStatus, setSendStatus] = useState<SendStatus>("idle");
+  const [sentAt, setSentAt] = useState<string | null>(call.follow_up_sent_at ?? null);
+
   const a = call.analysis;
   const scores = a?.scores as AnalysisScores | null;
   const globalScore = scores?.global_score ?? null;
@@ -187,27 +201,87 @@ export default function FeedbackDetailClient({ call }: { call: CallWithAnalysis 
             <div className="bg-white rounded-2xl border border-slate-200 p-5">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Email de suivi suggéré</h2>
-                {call.follow_up_email && (
-                  <button
-                    onClick={() => {
-                      const text = `Objet : ${call.follow_up_email!.subject}\n\n${call.follow_up_email!.body}`;
-                      navigator.clipboard.writeText(text).then(() => {
-                        setCopied(true);
-                        setTimeout(() => setCopied(false), 2000);
-                      });
-                    }}
-                    className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors px-2.5 py-1 rounded-lg border border-indigo-200 hover:bg-indigo-50"
-                  >
-                    {copied ? "Copié !" : "Copier"}
-                  </button>
+                {call.follow_up_email && !sentAt && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        const text = `Objet : ${subject}\n\n${body}`;
+                        navigator.clipboard.writeText(text).then(() => {
+                          setCopied(true);
+                          setTimeout(() => setCopied(false), 2000);
+                        });
+                      }}
+                      className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors px-2.5 py-1 rounded-lg border border-indigo-200 hover:bg-indigo-50"
+                    >
+                      {copied ? "Copié !" : "Copier"}
+                    </button>
+                    <button
+                      disabled={sendStatus === "sending"}
+                      onClick={async () => {
+                        const to = call.contact_email ?? "ce contact";
+                        if (!window.confirm(`Envoyer cet email à ${to} ?`)) return;
+                        setSendStatus("sending");
+                        try {
+                          const res = await fetch("/api/feedback/send-follow-up", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ callId: call.id, subject, body }),
+                          });
+                          if (res.status === 401 || res.status === 403) {
+                            setSendStatus("auth-error");
+                            return;
+                          }
+                          if (!res.ok) {
+                            setSendStatus("error");
+                            return;
+                          }
+                          const now = new Date().toISOString();
+                          setSentAt(now);
+                          setSendStatus("sent");
+                        } catch {
+                          setSendStatus("error");
+                        }
+                      }}
+                      className="text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors px-2.5 py-1 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {sendStatus === "sending" ? "Envoi…" : "Envoyer"}
+                    </button>
+                  </div>
+                )}
+                {sentAt && (
+                  <span className="text-xs text-emerald-600 font-medium">
+                    Envoyé le {formatSentAt(sentAt)}
+                  </span>
                 )}
               </div>
+
+              {sendStatus === "auth-error" && (
+                <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700">
+                  Reconnecte-toi à Google pour envoyer cet email.{" "}
+                  <a href="/api/auth/signout" className="font-medium underline hover:text-amber-900">
+                    Se déconnecter
+                  </a>
+                </div>
+              )}
+              {sendStatus === "error" && (
+                <p className="mb-4 text-sm text-red-600">Erreur lors de l&apos;envoi, réessaie.</p>
+              )}
+
               {call.follow_up_email ? (
                 <>
-                  <p className="font-semibold text-slate-800 text-sm mb-3">{call.follow_up_email.subject}</p>
-                  <p className="text-sm text-slate-600 bg-gray-50 rounded-lg p-4 whitespace-pre-wrap leading-relaxed">
-                    {call.follow_up_email.body}
-                  </p>
+                  <input
+                    type="text"
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-3"
+                    placeholder="Objet"
+                  />
+                  <textarea
+                    value={body}
+                    onChange={(e) => setBody(e.target.value)}
+                    rows={8}
+                    className="w-full px-3 py-3 border border-slate-200 rounded-lg text-sm text-slate-600 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none leading-relaxed"
+                  />
                 </>
               ) : (
                 <p className="text-slate-400 text-sm italic">Email de suivi en cours de génération…</p>

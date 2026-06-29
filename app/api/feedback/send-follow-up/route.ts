@@ -29,8 +29,10 @@ export async function POST(request: NextRequest) {
   }
 
   let callId: string;
+  let editedSubject: string | undefined;
+  let editedBody: string | undefined;
   try {
-    ({ callId } = await request.json());
+    ({ callId, subject: editedSubject, body: editedBody } = await request.json());
   } catch {
     return NextResponse.json({ error: "Corps invalide." }, { status: 400 });
   }
@@ -52,7 +54,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Call introuvable." }, { status: 403 });
   }
 
-  if (!call.follow_up_email?.subject || !call.follow_up_email?.body) {
+  const finalSubject = editedSubject?.trim() || call.follow_up_email?.subject;
+  const finalBody = editedBody?.trim() || call.follow_up_email?.body;
+
+  if (!finalSubject || !finalBody) {
     return NextResponse.json({ error: "Aucun email de suivi généré pour ce call." }, { status: 400 });
   }
 
@@ -65,9 +70,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Token d'accès Google manquant. Reconnectez-vous." }, { status: 401 });
   }
 
+  // Persist edited content before sending so history reflects what was actually sent
+  if (
+    (editedSubject !== undefined || editedBody !== undefined) &&
+    (finalSubject !== call.follow_up_email?.subject || finalBody !== call.follow_up_email?.body)
+  ) {
+    try {
+      await updateCallFollowUp(callId, { subject: finalSubject, body: finalBody });
+    } catch (err) {
+      console.error("[send-follow-up] updateCallFollowUp failed:", err);
+    }
+  }
+
   // Build and send email via Gmail API
   const raw = toBase64Url(
-    buildRfc2822(call.contact_email, call.follow_up_email.subject, call.follow_up_email.body)
+    buildRfc2822(call.contact_email, finalSubject, finalBody)
   );
 
   let gmailRes: Response;
