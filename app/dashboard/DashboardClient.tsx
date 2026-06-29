@@ -143,10 +143,12 @@ function CalendarEventCard({
   event,
   onPrepare,
   provider = "google",
+  existingBrief,
 }: {
   event: CalendarEvent;
   onPrepare: (event: CalendarEvent) => void;
   provider?: string;
+  existingBrief?: StoredBrief;
 }) {
   const start = eventStartDate(event);
   const duration = eventDuration(event);
@@ -177,13 +179,23 @@ function CalendarEventCard({
         </p>
       </div>
       <div className="shrink-0">
-        <button
-          onClick={() => onPrepare(event)}
-          className="flex items-center gap-2 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
-        >
-          Préparer le brief
-          <span className="text-indigo-300">→</span>
-        </button>
+        {existingBrief ? (
+          <Link
+            href={`/brief/${existingBrief.calendar_event_id ?? existingBrief.id}?company=${encodeURIComponent(existingBrief.company_name ?? "")}&cached=true&contactEmail=${encodeURIComponent(existingBrief.contact_email ?? "")}`}
+            className="flex items-center gap-2 text-sm font-medium text-indigo-600 border border-indigo-200 bg-white px-4 py-2 rounded-lg hover:bg-indigo-50 transition-colors"
+          >
+            Revoir
+            <span>→</span>
+          </Link>
+        ) : (
+          <button
+            onClick={() => onPrepare(event)}
+            className="flex items-center gap-2 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            Préparer le brief
+            <span className="text-indigo-300">→</span>
+          </button>
+        )}
       </div>
     </div>
   );
@@ -447,7 +459,7 @@ export default function DashboardClient() {
                   <DayDivider label={dayLabel(eventStartDate(events[0]))} />
                   <div className="space-y-3">
                     {events.map((e) => (
-                      <CalendarEventCard key={e.id} event={e} onPrepare={handlePrepare} provider={provider} />
+                      <CalendarEventCard key={e.id} event={e} onPrepare={handlePrepare} provider={provider} existingBrief={recentBriefs.find((b) => b.calendar_event_id === e.id)} />
                     ))}
                   </div>
                 </div>
