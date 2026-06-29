@@ -26,20 +26,16 @@ export async function POST(request: NextRequest) {
 
   const secret = process.env.RECALL_BOT_WEBHOOK_SECRET;
   if (secret) {
-    const svixId = request.headers.get("svix-id") ?? "";
-    const svixTimestamp = request.headers.get("svix-timestamp") ?? "";
-    const svixSignature = request.headers.get("svix-signature") ?? "";
+    const msgId = request.headers.get("webhook-id") ?? request.headers.get("svix-id") ?? "";
+    const msgTimestamp = request.headers.get("webhook-timestamp") ?? request.headers.get("svix-timestamp") ?? "";
+    const msgSignature = request.headers.get("webhook-signature") ?? request.headers.get("svix-signature") ?? "";
     try {
       new Webhook(secret).verify(rawBody, {
-        "svix-id": svixId,
-        "svix-timestamp": svixTimestamp,
-        "svix-signature": svixSignature,
+        "svix-id": msgId,
+        "svix-timestamp": msgTimestamp,
+        "svix-signature": msgSignature,
       });
-    } catch (err) {
-      console.log("[bot-webhook] svix verification failed:", err instanceof Error ? err.message : String(err));
-      console.log("[bot-webhook] svix headers present — svix-id:", request.headers.has("svix-id"), "svix-timestamp:", request.headers.has("svix-timestamp"), "svix-signature:", request.headers.has("svix-signature"));
-      console.log("[bot-webhook] webhook headers present — webhook-id:", request.headers.has("webhook-id"), "webhook-timestamp:", request.headers.has("webhook-timestamp"), "webhook-signature:", request.headers.has("webhook-signature"));
-      console.log("[bot-webhook] RECALL_BOT_WEBHOOK_SECRET length:", process.env.RECALL_BOT_WEBHOOK_SECRET?.length ?? 0);
+    } catch {
       return NextResponse.json({ error: "invalid signature" }, { status: 401 });
     }
   }
