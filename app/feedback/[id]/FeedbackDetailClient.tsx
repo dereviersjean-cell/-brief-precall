@@ -49,6 +49,7 @@ function List({ items, icon, color }: { items: string[]; icon: string; color: st
 }
 
 type SendStatus = "idle" | "sending" | "sent" | "error" | "auth-error";
+type VideoStatus = "idle" | "loading" | "ready" | "unavailable";
 
 function formatSentAt(iso: string) {
   const d = new Date(iso);
@@ -63,6 +64,8 @@ export default function FeedbackDetailClient({ call }: { call: CallWithAnalysis 
   const [body, setBody] = useState(call.follow_up_email?.body ?? "");
   const [sendStatus, setSendStatus] = useState<SendStatus>("idle");
   const [sentAt, setSentAt] = useState<string | null>(call.follow_up_sent_at ?? null);
+  const [videoStatus, setVideoStatus] = useState<VideoStatus>("idle");
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
 
   const a = call.analysis;
   const scores = a?.scores as AnalysisScores | null;
@@ -135,6 +138,51 @@ export default function FeedbackDetailClient({ call }: { call: CallWithAnalysis 
               <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
                 <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wider mb-2">Synthèse coaching</p>
                 <p className="text-slate-700 text-sm leading-relaxed">{a.summary}</p>
+              </div>
+            )}
+
+            {/* Enregistrement vidéo */}
+            {call.recall_bot_id && (
+              <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Enregistrement</h2>
+                  {videoStatus === "idle" && (
+                    <button
+                      onClick={async () => {
+                        setVideoStatus("loading");
+                        try {
+                          const res = await fetch(`/api/recall/video-url?callId=${call.id}`);
+                          if (!res.ok) { setVideoStatus("unavailable"); return; }
+                          const { videoUrl: url } = await res.json() as { videoUrl: string };
+                          setVideoUrl(url);
+                          setVideoStatus("ready");
+                        } catch {
+                          setVideoStatus("unavailable");
+                        }
+                      }}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors px-2.5 py-1 rounded-lg border border-indigo-200 hover:bg-indigo-50"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                      Voir l&apos;enregistrement
+                    </button>
+                  )}
+                  {videoStatus === "loading" && (
+                    <span className="text-xs text-slate-400">Chargement…</span>
+                  )}
+                </div>
+                {videoStatus === "ready" && videoUrl && (
+                  <video
+                    controls
+                    src={videoUrl}
+                    className="w-full rounded-xl bg-black"
+                    style={{ maxHeight: "360px" }}
+                  />
+                )}
+                {videoStatus === "unavailable" && (
+                  <p className="text-sm text-slate-400 italic">Enregistrement non disponible.</p>
+                )}
               </div>
             )}
 
