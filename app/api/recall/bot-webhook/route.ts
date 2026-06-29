@@ -1,11 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Webhook } from "svix";
-import { createAsyncTranscript, getTranscriptContent, transcriptToText } from "@/lib/recall";
+import { createAsyncTranscript, getBotInfo, getTranscriptContent, transcriptToText } from "@/lib/recall";
 import { createCall, getUserProfile, saveCallAnalysis, getGoogleTokens, updateCallFollowUp, getContact, createContact, updateContact } from "@/lib/db";
 import { analyzeCall } from "@/lib/call-analysis";
 import { refreshGoogleAccessToken, getEmailHistory } from "@/lib/gmail";
 import { generateFollowUpEmail } from "@/lib/email-followup";
 import Anthropic from "@anthropic-ai/sdk";
+
+type StatusChange = { code: string; created_at: string };
+
+function extractCallTiming(botInfo: Record<string, unknown>): {
+  started_at: string | null;
+  ended_at: string | null;
+  duration_seconds: number | null;
+} {
+  const changes = (botInfo.status_changes as StatusChange[] | null) ?? [];
+  const started_at = changes.find((s) => s.code === "in_call_recording")?.created_at ?? null;
+  const ended_at = changes.find((s) => s.code === "call_ended")?.created_at ?? null;
+
+  let duration_seconds: number | null = null;
+  if (started_at && ended_at) {
+    const ms = new Date(ended_at).getTime() - new Date(started_at).getTime();
+    if (ms > 0) duration_seconds = Math.round(ms / 1000);
+  }
+
+  return { started_at, ended_at, duration_seconds };
+}
 
 async function mergeSummaries(existing: string, newSummary: string): Promise<string> {
   const client = new Anthropic();
@@ -88,6 +108,19 @@ export async function POST(request: NextRequest) {
           const transcriptText = transcriptToText(content);
           console.log("[bot-webhook] transcript text length:", transcriptText.length, "| preview:", transcriptText.slice(0, 200));
 
+          // Step 1b — fetch bot info for timing
+          let timing: { started_at: string | null; ended_at: string | null; duration_seconds: number | null } =
+            { started_at: null, ended_at: null, duration_seconds: null };
+          if (botId) {
+            try {
+              const botInfo = await getBotInfo(botId);
+              timing = extractCallTiming(botInfo);
+              console.log("[bot-webhook] timing — started_at:", timing.started_at, "ended_at:", timing.ended_at, "duration_seconds:", timing.duration_seconds);
+            } catch (err) {
+              console.error("[bot-webhook] getBotInfo failed (non-blocking):", err instanceof Error ? err.message : String(err));
+            }
+          }
+
           // Step 2 — save call
           const call = await createCall({
             user_id: userId,
@@ -96,7 +129,9 @@ export async function POST(request: NextRequest) {
             company_name: companyName,
             transcript: transcriptText,
             status: "done",
-            duration_seconds: null,
+            duration_seconds: timing.duration_seconds,
+            started_at: timing.started_at,
+            ended_at: timing.ended_at,
             recall_bot_id: botId ?? null,
             recording_id: recordingId ?? null,
             transcript_id: transcriptId,

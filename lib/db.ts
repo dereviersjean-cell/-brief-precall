@@ -146,6 +146,8 @@ export type CallData = {
   transcript: string;
   status: string;
   duration_seconds: number | null;
+  started_at?: string | null;
+  ended_at?: string | null;
   recall_bot_id: string | null;
   recording_id: string | null;
   transcript_id: string | null;
