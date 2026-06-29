@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth/next";
-import { getMeetingById } from "@/lib/mock-data";
 import { getBriefByEventId, getBriefById } from "@/lib/db";
 import { authOptions } from "@/lib/auth";
 import { Meeting, Brief, NewsItem } from "@/lib/types";
@@ -37,12 +36,6 @@ export default async function BriefPage({
   const { id } = await params;
   const { company, cached, contactEmail } = await searchParams;
   const decodedContactEmail = contactEmail ? decodeURIComponent(contactEmail) : null;
-
-  // Mock data takes priority
-  const meeting = getMeetingById(id);
-  if (meeting) {
-    return <BriefClient meeting={meeting} />;
-  }
 
   if (!company) {
     notFound();

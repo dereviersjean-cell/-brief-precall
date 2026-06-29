@@ -5,7 +5,6 @@ import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Meeting } from "@/lib/types";
-import { getUpcomingMeetings, mockMeetings } from "@/lib/mock-data";
 
 interface CalendarEvent {
   id: string;
@@ -135,50 +134,6 @@ function DayDivider({ label }: { label: string }) {
         {label}
       </h2>
       <div className="flex-1 h-px bg-slate-200" />
-    </div>
-  );
-}
-
-function MeetingCard({ meeting }: { meeting: Meeting }) {
-  const hasBrief = !!meeting.brief;
-  return (
-    <div className="bg-white border border-slate-200 rounded-xl p-5 flex items-center gap-5 hover:border-indigo-200 hover:shadow-sm transition-all">
-      <div className="text-center w-16 shrink-0">
-        <p className="text-lg font-bold text-slate-900">{formatTime(meeting.date)}</p>
-        <p className="text-xs text-slate-400">{meeting.duration} min</p>
-      </div>
-      <div className="w-px h-10 bg-slate-200 shrink-0" />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <div className="w-7 h-7 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-            <span className="text-xs font-bold text-slate-500">
-              {meeting.company.charAt(0)}
-            </span>
-          </div>
-          <h3 className="font-semibold text-slate-900 truncate">{meeting.company}</h3>
-          <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full font-medium shrink-0">
-            {meeting.industry}
-          </span>
-        </div>
-        <p className="text-sm text-slate-500 truncate">
-          {meeting.contacts.map((c) => `${c.name} (${c.title})`).join(", ")}
-        </p>
-      </div>
-      <div className="shrink-0">
-        {hasBrief ? (
-          <Link
-            href={`/brief/${meeting.id}`}
-            className="flex items-center gap-2 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            Voir le brief
-            <span className="text-indigo-300">→</span>
-          </Link>
-        ) : (
-          <span className="text-sm font-medium px-4 py-2 rounded-lg bg-slate-100 text-slate-400">
-            À générer
-          </span>
-        )}
-      </div>
     </div>
   );
 }
@@ -384,19 +339,8 @@ export default function DashboardClient() {
   const isAuthenticated = status === "authenticated";
   const showCalendar = isAuthenticated && calendarEvents !== null && !calendarError;
 
-  const mockUpcoming = getUpcomingMeetings();
-  const mockCompleted = mockMeetings.filter((m) => m.status === "completed");
-
-  const calendarGroups = showCalendar
-    ? groupByDay(calendarEvents, eventStartDate)
-    : [];
-  const mockGroups = groupByDay(mockUpcoming, (m) => m.date);
-
-  const upcomingCount = showCalendar ? calendarEvents.length : mockUpcoming.length;
-  const briefsReady = showCalendar ? 0 : mockUpcoming.filter((m) => m.brief).length;
-  const prepRate = showCalendar
-    ? "—"
-    : `${Math.round((briefsReady / Math.max(mockUpcoming.length, 1)) * 100)}%`;
+  const calendarGroups = showCalendar ? groupByDay(calendarEvents, eventStartDate) : [];
+  const upcomingCount = calendarEvents?.length ?? 0;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -407,7 +351,7 @@ export default function DashboardClient() {
             <h1 className="text-2xl font-bold text-slate-900">Vos rendez-vous</h1>
             <p className="text-slate-500 text-sm mt-1">
               {upcomingCount} RDV à venir
-              {showCalendar ? ` · ${provider === "azure-ad" ? "Microsoft Calendar" : "Google Calendar"}` : ` · ${mockCompleted.length} complétés`}
+              {showCalendar && ` · ${provider === "azure-ad" ? "Microsoft Calendar" : "Google Calendar"}`}
             </p>
           </div>
           <button className="flex items-center gap-2 text-sm font-medium text-slate-600 border border-slate-200 bg-white px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
@@ -456,12 +400,12 @@ export default function DashboardClient() {
           {[
             { label: "RDV à venir", value: String(upcomingCount) },
             {
-              label: showCalendar ? "Avec participants externes" : "Briefs générés",
+              label: showCalendar ? "Avec participants externes" : "Briefs enregistrés",
               value: showCalendar
                 ? String(calendarEvents?.reduce((n, e) => n + e.attendees.length, 0) ?? 0)
-                : String(briefsReady),
+                : String(recentBriefs.length),
             },
-            { label: "Taux de préparation", value: prepRate },
+            { label: "Taux de préparation", value: "—" },
           ].map((stat) => (
             <div key={stat.label} className="bg-white rounded-xl border border-slate-200 p-4">
               <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
@@ -511,63 +455,17 @@ export default function DashboardClient() {
           </div>
         )}
 
-        {/* Mock data (not authenticated or calendar error) */}
-        {!showCalendar && !calendarLoading && (
-          <>
-            <div className="space-y-8">
-              {mockGroups.map(([dayKey, meetings]) => (
-                <div key={dayKey}>
-                  <DayDivider label={dayLabel(meetings[0].date)} />
-                  <div className="space-y-3">
-                    {meetings.map((m) => (
-                      <MeetingCard key={m.id} meeting={m} />
-                    ))}
-                  </div>
-                </div>
-              ))}
+        {/* Empty state — not authenticated */}
+        {!isAuthenticated && !calendarLoading && status !== "loading" && (
+          <div className="text-center py-16">
+            <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <svg className="w-7 h-7 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+              </svg>
             </div>
-
-            {mockCompleted.length > 0 && (
-              <div className="mt-10">
-                <div className="flex items-center gap-3 mb-3">
-                  <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
-                    Complétés
-                  </h2>
-                  <div className="flex-1 h-px bg-slate-200" />
-                </div>
-                <div className="space-y-3">
-                  {mockCompleted.map((m) => (
-                    <div
-                      key={m.id}
-                      className="bg-white border border-slate-200 rounded-xl p-5 flex items-center gap-5 opacity-60"
-                    >
-                      <div className="text-center w-16 shrink-0">
-                        <p className="text-base font-bold text-slate-700">{formatTime(m.date)}</p>
-                        <p className="text-xs text-slate-400">{formatDate(m.date)}</p>
-                      </div>
-                      <div className="w-px h-10 bg-slate-200 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                            <span className="text-xs font-bold text-slate-400">
-                              {m.company.charAt(0)}
-                            </span>
-                          </div>
-                          <h3 className="font-semibold text-slate-700 truncate">{m.company}</h3>
-                          <span className="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full font-medium">
-                            Complété
-                          </span>
-                        </div>
-                        <p className="text-sm text-slate-400 truncate">
-                          {m.contacts.map((c) => c.name).join(", ")}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
+            <p className="text-slate-700 font-semibold mb-1">Connectez votre agenda pour commencer</p>
+            <p className="text-slate-500 text-sm">Brief se synchronise avec Google Calendar ou Microsoft pour afficher vos prochains rendez-vous et préparer vos briefs automatiquement.</p>
+          </div>
         )}
         {/* Briefs récents */}
         {recentBriefs.length > 0 && (
