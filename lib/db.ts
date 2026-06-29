@@ -458,6 +458,14 @@ export async function updateCallFollowUp(
   if (error) throw error;
 }
 
+export async function updateFollowUpSentAt(callId: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("calls")
+    .update({ follow_up_sent_at: new Date().toISOString() })
+    .eq("id", callId);
+  if (error) throw error;
+}
+
 export type Contact = {
   id: string;
   user_id: string;
