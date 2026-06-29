@@ -450,6 +450,7 @@ export async function getCallWithAnalysis(
     duration_seconds: row.duration_seconds as number | null,
     follow_up_email: row.follow_up_email as { subject: string; body: string } | null,
     follow_up_sent_at: row.follow_up_sent_at as string | null,
+    recall_bot_id: row.recall_bot_id as string | null,
     analysis: analyses?.[0] ?? null,
   };
 }
