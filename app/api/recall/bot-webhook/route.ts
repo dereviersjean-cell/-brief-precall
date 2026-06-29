@@ -170,8 +170,10 @@ export async function POST(request: NextRequest) {
                   savedAnalysis?.next_steps ?? [],
                   contactEmail
                 );
-                await updateCallFollowUp(call.id, followUp);
-                console.log("[bot-webhook] follow-up email saved, subject:", followUp.subject);
+                if (followUp) {
+                  await updateCallFollowUp(call.id, followUp);
+                  console.log("[bot-webhook] follow-up email saved, subject:", followUp.subject);
+                }
               }
             }
           } catch (followUpErr) {

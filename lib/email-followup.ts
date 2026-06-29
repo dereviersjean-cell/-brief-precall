@@ -20,7 +20,7 @@ export async function generateFollowUpEmail(
   emailHistory: GmailMessage[],
   analysisNextSteps: string[],
   contactEmail: string
-): Promise<FollowUpEmail> {
+): Promise<FollowUpEmail | null> {
   const client = new Anthropic();
 
   const historySection =
@@ -58,14 +58,20 @@ FORMAT DE SORTIE
 Réponds uniquement en JSON valide, sur une seule ligne, sans markdown :
 {"subject":"","body":""}`;
 
-  const message = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 1500,
-    messages: [{ role: "user", content: prompt }],
-  });
+  let raw: string;
+  try {
+    const message = await client.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 1500,
+      messages: [{ role: "user", content: prompt }],
+    });
+    const textBlock = message.content.find((b) => b.type === "text");
+    raw = textBlock?.type === "text" ? textBlock.text : "";
+  } catch (err) {
+    console.error("[email-followup] Claude API call failed:", err);
+    return null;
+  }
 
-  const textBlock = message.content.find((b) => b.type === "text");
-  const raw = textBlock?.type === "text" ? textBlock.text : "";
   const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
 
   try {

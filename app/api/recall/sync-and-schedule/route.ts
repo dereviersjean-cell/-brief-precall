@@ -16,9 +16,7 @@ export async function POST() {
     const result = await syncAndScheduleForUser(userId, userEmail);
     return NextResponse.json(result);
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : String(err) },
-      { status: 500 }
-    );
+    console.error("[sync-and-schedule] syncAndScheduleForUser failed:", err);
+    return NextResponse.json({ error: "Erreur lors de la synchronisation." }, { status: 500 });
   }
 }

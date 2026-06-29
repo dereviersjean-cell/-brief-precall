@@ -27,9 +27,7 @@ export async function POST() {
       status: (calendar as Record<string, unknown>).status ?? null,
     });
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : String(err) },
-      { status: 500 }
-    );
+    console.error("[create-calendar-v2] createRecallCalendarV2 failed:", err);
+    return NextResponse.json({ error: "Erreur lors de la création du calendrier." }, { status: 500 });
   }
 }

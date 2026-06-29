@@ -11,10 +11,16 @@ export async function GET() {
     return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
   }
 
-  const [job, refCount] = await Promise.all([
-    getLatestImportJob(userId),
-    getClientReferencesCount(userId),
-  ]);
+  let job, refCount;
+  try {
+    [job, refCount] = await Promise.all([
+      getLatestImportJob(userId),
+      getClientReferencesCount(userId),
+    ]);
+  } catch (err) {
+    console.error("[import-status] Promise.all failed:", err);
+    return NextResponse.json({ error: "Erreur lors de la récupération du statut." }, { status: 500 });
+  }
 
   if (!job) {
     return NextResponse.json({ status: null, ref_count: refCount });
