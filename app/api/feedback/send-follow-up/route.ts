@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { getCallWithAnalysis, updateFollowUpSentAt } from "@/lib/db";
+import { getCallWithAnalysis, updateCallFollowUp, updateFollowUpSentAt } from "@/lib/db";
 
 function buildRfc2822(to: string, subject: string, body: string): string {
   return [
