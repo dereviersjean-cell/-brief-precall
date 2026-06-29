@@ -13,6 +13,12 @@ function formatDate(iso: string) {
   });
 }
 
+function formatDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 function ScoreBar({ score, label, description }: { score: number; label: string; description?: string }) {
   const pct = Math.round((score / 5) * 100);
   const color =
@@ -110,7 +116,15 @@ export default function FeedbackDetailClient({ call }: { call: CallWithAnalysis 
               {call.company_name && call.contact_email && (
                 <p className="text-slate-400 text-sm mt-0.5">{call.contact_email}</p>
               )}
-              <p className="text-slate-400 text-sm mt-1">{formatDate(call.created_at)}</p>
+              <p className="text-slate-400 text-sm mt-1 flex items-center gap-3 flex-wrap">
+                <span>{formatDate(call.created_at)}</span>
+                {call.duration_seconds !== null && (
+                  <span>{formatDuration(call.duration_seconds)}</span>
+                )}
+                {call.participant_count !== null && (
+                  <span>{call.participant_count} participants</span>
+                )}
+              </p>
             </div>
             <div className="text-right shrink-0">
               {globalScore !== null && (

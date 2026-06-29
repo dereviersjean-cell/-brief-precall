@@ -13,6 +13,7 @@ function extractCallTiming(botInfo: Record<string, unknown>): {
   started_at: string | null;
   ended_at: string | null;
   duration_seconds: number | null;
+  participant_count: number | null;
 } {
   const changes = (botInfo.status_changes as StatusChange[] | null) ?? [];
   const started_at = changes.find((s) => s.code === "in_call_recording")?.created_at ?? null;
@@ -24,7 +25,10 @@ function extractCallTiming(botInfo: Record<string, unknown>): {
     if (ms > 0) duration_seconds = Math.round(ms / 1000);
   }
 
-  return { started_at, ended_at, duration_seconds };
+  const participants = botInfo.meeting_participants as unknown[] | null;
+  const participant_count = Array.isArray(participants) ? participants.length : null;
+
+  return { started_at, ended_at, duration_seconds, participant_count };
 }
 
 async function mergeSummaries(existing: string, newSummary: string): Promise<string> {
@@ -109,13 +113,13 @@ export async function POST(request: NextRequest) {
           console.log("[bot-webhook] transcript text length:", transcriptText.length, "| preview:", transcriptText.slice(0, 200));
 
           // Step 1b — fetch bot info for timing
-          let timing: { started_at: string | null; ended_at: string | null; duration_seconds: number | null } =
-            { started_at: null, ended_at: null, duration_seconds: null };
+          let timing: { started_at: string | null; ended_at: string | null; duration_seconds: number | null; participant_count: number | null } =
+            { started_at: null, ended_at: null, duration_seconds: null, participant_count: null };
           if (botId) {
             try {
               const botInfo = await getBotInfo(botId);
               timing = extractCallTiming(botInfo);
-              console.log("[bot-webhook] timing — started_at:", timing.started_at, "ended_at:", timing.ended_at, "duration_seconds:", timing.duration_seconds);
+              console.log("[bot-webhook] timing — started_at:", timing.started_at, "ended_at:", timing.ended_at, "duration_seconds:", timing.duration_seconds, "participant_count:", timing.participant_count);
             } catch (err) {
               console.error("[bot-webhook] getBotInfo failed (non-blocking):", err instanceof Error ? err.message : String(err));
             }
@@ -132,6 +136,7 @@ export async function POST(request: NextRequest) {
             duration_seconds: timing.duration_seconds,
             started_at: timing.started_at,
             ended_at: timing.ended_at,
+            participant_count: timing.participant_count,
             recall_bot_id: botId ?? null,
             recording_id: recordingId ?? null,
             transcript_id: transcriptId,

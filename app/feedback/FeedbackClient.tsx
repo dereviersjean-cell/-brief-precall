@@ -11,6 +11,12 @@ function formatDate(iso: string) {
   });
 }
 
+function formatDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 function ScoreBadge({ score }: { score: number }) {
   const cls =
     score >= 4
@@ -82,7 +88,15 @@ export default function FeedbackClient({ calls }: { calls: CallWithAnalysis[] })
                       {call.company_name && call.contact_email && (
                         <p className="text-slate-400 text-xs mt-0.5 truncate">{call.contact_email}</p>
                       )}
-                      <p className="text-slate-400 text-xs mt-1">{formatDate(call.created_at)}</p>
+                      <p className="text-slate-400 text-xs mt-1 flex items-center gap-2">
+                        <span>{formatDate(call.created_at)}</span>
+                        {call.duration_seconds !== null && (
+                          <span>{formatDuration(call.duration_seconds)}</span>
+                        )}
+                        {call.participant_count !== null && (
+                          <span>{call.participant_count} participants</span>
+                        )}
+                      </p>
                     </div>
 
                     {/* Right — email badge + score + sentiment */}
