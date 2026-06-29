@@ -1,17 +1,20 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 
 type Props = {
   initialProductDescription: string;
   initialIcp: string;
   initialCompanyName: string;
+  recallConnected: boolean;
 };
 
 export default function SettingsClient({
   initialProductDescription,
   initialIcp,
   initialCompanyName,
+  recallConnected,
 }: Props) {
   const [productDescription, setProductDescription] = useState(initialProductDescription);
   const [icp, setIcp] = useState(initialIcp);
@@ -22,6 +25,23 @@ export default function SettingsClient({
     setIcp(initialIcp);
     setCompanyName(initialCompanyName);
   }, [initialProductDescription, initialIcp, initialCompanyName]);
+
+  const searchParams = useSearchParams();
+  const [recallToast, setRecallToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  useEffect(() => {
+    const recall = searchParams.get("recall");
+    if (recall === "connected") {
+      setRecallToast({ type: "success", message: "Calendrier connecté avec succès." });
+      const t = setTimeout(() => setRecallToast(null), 5000);
+      return () => clearTimeout(t);
+    }
+    if (recall === "error") {
+      setRecallToast({ type: "error", message: "La connexion au calendrier a échoué, réessayez." });
+      const t = setTimeout(() => setRecallToast(null), 5000);
+      return () => clearTimeout(t);
+    }
+  }, [searchParams]);
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -152,6 +172,22 @@ export default function SettingsClient({
           Ces informations personnalisent vos briefs pré-call.
         </p>
       </div>
+
+      {recallToast && (
+        <div className={`mb-6 rounded-xl border px-4 py-3 flex items-center justify-between gap-4 ${
+          recallToast.type === "success" ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"
+        }`}>
+          <p className={`text-sm font-medium ${recallToast.type === "success" ? "text-emerald-700" : "text-red-700"}`}>
+            {recallToast.message}
+          </p>
+          <button
+            onClick={() => setRecallToast(null)}
+            className={`shrink-0 text-lg leading-none ${recallToast.type === "success" ? "text-emerald-400 hover:text-emerald-600" : "text-red-400 hover:text-red-600"}`}
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm divide-y divide-slate-100">
         {/* Section profil commercial */}
@@ -367,6 +403,31 @@ export default function SettingsClient({
                 )}
               </div>
             </>
+          )}
+        </div>
+      </div>
+
+      {/* Section Calendrier Recall */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mt-6">
+        <div className="px-6 py-5">
+          <h2 className="text-sm font-semibold text-slate-900 mb-1">Calendrier Recall</h2>
+          <p className="text-sm text-slate-500 mb-4">
+            Permet l&apos;enregistrement et l&apos;analyse automatique de vos appels avec des prospects.
+          </p>
+          {recallConnected ? (
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full">
+              <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-sm font-medium text-emerald-700">Calendrier connecté</span>
+            </div>
+          ) : (
+            <a
+              href="/api/recall/google-oauth/start"
+              className="inline-flex items-center gap-2 bg-indigo-600 text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              Connecter mon calendrier
+            </a>
           )}
         </div>
       </div>
