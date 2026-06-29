@@ -171,6 +171,11 @@ function CalendarEventCard({
           <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full font-medium shrink-0">
             {provider === "azure-ad" ? "Microsoft Calendar" : "Google Calendar"}
           </span>
+          {existingBrief && (
+            <span className="text-xs bg-violet-50 text-violet-700 border border-violet-100 px-2 py-0.5 rounded-full font-medium shrink-0">
+              Brief généré
+            </span>
+          )}
         </div>
         <p className="text-sm text-slate-500 truncate">
           {event.attendees.length > 0
