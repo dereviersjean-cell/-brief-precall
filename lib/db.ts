@@ -540,6 +540,31 @@ export async function updateFollowUpSentAt(callId: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function updateGmailThreadId(callId: string, threadId: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("calls")
+    .update({ gmail_thread_id: threadId })
+    .eq("id", callId);
+  if (error) throw error;
+}
+
+export type CallReplyInfo = {
+  gmail_thread_id: string | null;
+  follow_up_sent_at: string | null;
+  contact_email: string | null;
+};
+
+export async function getCallReplyInfo(callId: string, userId: string): Promise<CallReplyInfo | null> {
+  const { data, error } = await supabaseAdmin
+    .from("calls")
+    .select("gmail_thread_id, follow_up_sent_at, contact_email")
+    .eq("id", callId)
+    .eq("user_id", userId)
+    .single();
+  if (error) return null;
+  return data as CallReplyInfo;
+}
+
 export type Contact = {
   id: string;
   user_id: string;

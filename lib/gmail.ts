@@ -54,6 +54,59 @@ function getHeader(headers: { name: string; value: string }[], name: string): st
   return headers.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value ?? "";
 }
 
+type GmailThreadMessage = {
+  payload: {
+    headers: { name: string; value: string }[];
+    body?: { data?: string };
+    parts?: GmailPart[];
+    mimeType: string;
+  };
+  internalDate?: string;
+};
+
+export type ThreadReplyResult =
+  | { replied: true; repliedAt: string; body: string }
+  | { replied: false };
+
+export async function checkThreadReply(
+  accessToken: string,
+  threadId: string,
+  contactEmail: string,
+  sentAfter: string
+): Promise<ThreadReplyResult> {
+  const res = await fetch(
+    `https://gmail.googleapis.com/gmail/v1/users/me/threads/${threadId}?format=full`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+
+  if (!res.ok) {
+    throw new Error(`Gmail get thread failed (${res.status}): ${await res.text()}`);
+  }
+
+  const thread = await res.json() as { messages?: GmailThreadMessage[] };
+  const messages = thread.messages ?? [];
+  const sentAfterMs = new Date(sentAfter).getTime();
+
+  // Find the last message from contactEmail after sentAfter
+  let found: { repliedAt: string; body: string } | null = null;
+  for (const msg of messages) {
+    const headers = msg.payload.headers;
+    const from = getHeader(headers, "From");
+    if (!from.toLowerCase().includes(contactEmail.toLowerCase())) continue;
+
+    const dateHeader = getHeader(headers, "Date");
+    const dateMs = dateHeader ? new Date(dateHeader).getTime() : (msg.internalDate ? parseInt(msg.internalDate) : 0);
+    if (dateMs <= sentAfterMs) continue;
+
+    const body = extractTextBody(msg.payload as GmailPart).trim();
+    const repliedAt = dateHeader || new Date(dateMs).toISOString();
+    found = { repliedAt, body };
+  }
+
+  if (!found) return { replied: false };
+  return { replied: true, repliedAt: found.repliedAt, body: found.body };
+}
+
 export async function getEmailHistory(
   accessToken: string,
   contactEmail: string

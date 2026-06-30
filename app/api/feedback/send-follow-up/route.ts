@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { getCallWithAnalysis, updateCallFollowUp, updateFollowUpSentAt } from "@/lib/db";
+import { getCallWithAnalysis, updateCallFollowUp, updateFollowUpSentAt, updateGmailThreadId } from "@/lib/db";
 
 function encodeMimeSubject(subject: string): string {
   if (/[^\x00-\x7F]/.test(subject)) {
@@ -124,12 +124,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Erreur lors de l'envoi de l'email." }, { status: 500 });
   }
 
+  // Parse threadId from Gmail response
+  let threadId: string | null = null;
+  try {
+    const gmailData = await gmailRes.json() as { threadId?: string };
+    threadId = gmailData.threadId ?? null;
+  } catch {
+    // non-blocking
+  }
+
   // Mark as sent
   try {
     await updateFollowUpSentAt(callId);
   } catch (err) {
     console.error("[send-follow-up] updateFollowUpSentAt failed:", err);
     // Non-blocking — email was sent, just the timestamp update failed
+  }
+
+  if (threadId) {
+    try {
+      await updateGmailThreadId(callId, threadId);
+    } catch (err) {
+      console.error("[send-follow-up] updateGmailThreadId failed:", err);
+    }
   }
 
   return NextResponse.json({ ok: true });
