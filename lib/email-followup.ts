@@ -15,6 +15,54 @@ function formatEmailHistory(emails: GmailMessage[]): string {
     .join("\n\n---\n\n");
 }
 
+export async function generateReplyToProspect(
+  prospectReply: string,
+  originalEmail: { subject: string; body: string },
+  transcript?: string
+): Promise<string | null> {
+  const client = new Anthropic();
+
+  const transcriptSection = transcript
+    ? `\nCONTEXTE DU CALL INITIAL\n\n${transcript.slice(0, 2000)}${transcript.length > 2000 ? "\n[transcript tronqué]" : ""}\n`
+    : "";
+
+  const prompt = `Tu es un assistant commercial qui aide à rédiger des réponses à des emails de prospects.
+
+EMAIL DE SUIVI ENVOYÉ AU PROSPECT
+
+Sujet : ${originalEmail.subject}
+
+${originalEmail.body}
+${transcriptSection}
+RÉPONSE DU PROSPECT
+
+${prospectReply}
+
+TA MISSION
+
+Rédige une réponse naturelle et professionnelle à cet email qui :
+- S'inscrit dans le fil de la conversation (pas une nouvelle accroche commerciale)
+- Répond directement aux questions ou objections soulevées par le prospect
+- Garde le même ton et niveau de formalité que l'email original
+- Propose une prochaine étape concrète si pertinent
+- Reste concis (5-8 lignes maximum)
+
+Réponds uniquement avec le corps du message (pas de sujet, pas de balises, pas de markdown). Texte brut uniquement.`;
+
+  try {
+    const message = await client.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 1000,
+      messages: [{ role: "user", content: prompt }],
+    });
+    const textBlock = message.content.find((b) => b.type === "text");
+    return textBlock?.type === "text" ? textBlock.text.trim() : null;
+  } catch (err) {
+    console.error("[email-followup] generateReplyToProspect Claude API failed:", err);
+    return null;
+  }
+}
+
 export async function generateFollowUpEmail(
   transcript: string,
   emailHistory: GmailMessage[],

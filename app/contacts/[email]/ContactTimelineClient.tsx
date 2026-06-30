@@ -60,6 +60,8 @@ function ReplyEntry({ item }: { item: ContactTimelineItem }) {
   const [replyText, setReplyText] = useState("");
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [sendStatus, setSendStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [generatingAI, setGeneratingAI] = useState(false);
+  const [successToast, setSuccessToast] = useState(false);
 
   if (!item.replied_at) return null;
 
@@ -124,6 +126,14 @@ function ReplyEntry({ item }: { item: ContactTimelineItem }) {
           </div>
         </div>
 
+        {/* Success toast */}
+        {successToast && (
+          <div className="mx-4 mt-3 rounded-xl border px-4 py-2.5 flex items-center justify-between gap-4 bg-emerald-50 border-emerald-200">
+            <p className="text-sm font-medium text-emerald-700">Email envoyé avec succès.</p>
+            <button onClick={() => setSuccessToast(false)} className="text-emerald-400 hover:text-emerald-600 text-lg leading-none shrink-0">×</button>
+          </div>
+        )}
+
         {/* Inline reply form — shown before body content */}
         {open && showReplyForm && (
           <div className="px-4 pt-3 pb-3 border-t border-blue-100">
@@ -134,7 +144,7 @@ function ReplyEntry({ item }: { item: ContactTimelineItem }) {
               placeholder="Votre message de relance…"
               className="w-full px-3 py-2.5 border border-blue-200 rounded-lg text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none leading-relaxed"
             />
-            <div className="flex items-center gap-2 mt-2">
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
               <button
                 disabled={sendStatus === "sending" || !replyText.trim()}
                 onClick={async () => {
@@ -151,14 +161,39 @@ function ReplyEntry({ item }: { item: ContactTimelineItem }) {
                     }
                     setSendStatus("sent");
                     setReplyText("");
-                    setTimeout(() => { setShowReplyForm(false); setSendStatus("idle"); }, 2000);
+                    setShowReplyForm(false);
+                    setSendStatus("idle");
+                    setSuccessToast(true);
+                    setTimeout(() => setSuccessToast(false), 3000);
                   } catch {
                     setSendStatus("error");
                   }
                 }}
                 className="text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors px-3 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {sendStatus === "sending" ? "Envoi…" : sendStatus === "sent" ? "Envoyé ✓" : "Envoyer"}
+                {sendStatus === "sending" ? "Envoi…" : "Envoyer"}
+              </button>
+              <button
+                disabled={generatingAI}
+                onClick={async () => {
+                  setGeneratingAI(true);
+                  try {
+                    const res = await fetch("/api/feedback/generate-reply-suggestion", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ callId: item.id }),
+                    });
+                    const data = await res.json() as { suggestion?: string };
+                    if (data.suggestion) setReplyText(data.suggestion);
+                  } catch {
+                    // silent
+                  } finally {
+                    setGeneratingAI(false);
+                  }
+                }}
+                className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors px-3 py-1.5 rounded-lg border border-indigo-200 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {generatingAI ? "Génération…" : "Générer avec l'IA"}
               </button>
               <button
                 onClick={() => { setShowReplyForm(false); setSendStatus("idle"); }}
