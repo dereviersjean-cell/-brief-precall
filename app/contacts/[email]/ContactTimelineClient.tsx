@@ -53,6 +53,67 @@ function SentimentBadge({ sentiment }: { sentiment: string | null }) {
   );
 }
 
+function ReplyEntry({ item }: { item: ContactTimelineItem }) {
+  const [body, setBody] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  if (!item.replied_at) return null;
+
+  return (
+    <div className="mt-3 ml-4 relative pl-8">
+      {/* Sub-dot — blue */}
+      <div className="absolute left-0 top-2.5 w-3 h-3 rounded-full bg-white border-2 border-blue-400 flex items-center justify-center">
+        <div className="w-1 h-1 rounded-full bg-blue-400" />
+      </div>
+
+      <div className="bg-blue-50 border border-blue-100 rounded-xl overflow-hidden">
+        <div className="flex items-center gap-2 px-4 py-3">
+          {/* Reply icon */}
+          <svg className="w-4 h-4 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+          </svg>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-slate-700">Le prospect a répondu</p>
+            <p className="text-xs text-slate-400 mt-0.5">{formatDateTime(item.replied_at)}</p>
+          </div>
+          {body === null && (
+            <button
+              disabled={loading}
+              onClick={async () => {
+                setLoading(true);
+                try {
+                  const res = await fetch(`/api/feedback/check-reply?callId=${item.id}&force=true`);
+                  const data = await res.json() as { replied: boolean; body?: string | null };
+                  setBody(data.body ?? "");
+                } catch {
+                  setBody("");
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors px-2.5 py-1 rounded-lg border border-blue-200 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+            >
+              {loading ? "Chargement…" : "Voir la réponse"}
+            </button>
+          )}
+        </div>
+
+        {body !== null && body !== "" && (
+          <div className="px-4 pb-4 border-t border-blue-100">
+            <pre className="mt-3 text-sm text-slate-600 leading-relaxed whitespace-pre-wrap bg-white rounded-lg px-3 py-3 border border-blue-100 font-sans">
+              {body}
+            </pre>
+          </div>
+        )}
+        {body === "" && (
+          <div className="px-4 pb-3 border-t border-blue-100">
+            <p className="mt-3 text-sm text-slate-400 italic">Contenu de la réponse non disponible.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function FollowUpEntry({ item }: { item: ContactTimelineItem }) {
   const [open, setOpen] = useState(false);
   if (!item.follow_up_email) return null;
@@ -232,6 +293,7 @@ export default function ContactTimelineClient({ contactEmail, timeline }: Props)
                     </Link>
 
                     <FollowUpEntry item={item} />
+                    <ReplyEntry item={item} />
                   </div>
                 );
               })}
