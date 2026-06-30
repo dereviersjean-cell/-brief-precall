@@ -124,64 +124,64 @@ function ReplyEntry({ item }: { item: ContactTimelineItem }) {
           </div>
         </div>
 
+        {/* Inline reply form — shown before body content */}
+        {open && showReplyForm && (
+          <div className="px-4 pt-3 pb-3 border-t border-blue-100">
+            <textarea
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              rows={5}
+              placeholder="Votre message de relance…"
+              className="w-full px-3 py-2.5 border border-blue-200 rounded-lg text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none leading-relaxed"
+            />
+            <div className="flex items-center gap-2 mt-2">
+              <button
+                disabled={sendStatus === "sending" || !replyText.trim()}
+                onClick={async () => {
+                  setSendStatus("sending");
+                  try {
+                    const res = await fetch("/api/feedback/send-reply", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ callId: item.id, body: replyText }),
+                    });
+                    if (!res.ok) {
+                      setSendStatus("error");
+                      return;
+                    }
+                    setSendStatus("sent");
+                    setReplyText("");
+                    setTimeout(() => { setShowReplyForm(false); setSendStatus("idle"); }, 2000);
+                  } catch {
+                    setSendStatus("error");
+                  }
+                }}
+                className="text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors px-3 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {sendStatus === "sending" ? "Envoi…" : sendStatus === "sent" ? "Envoyé ✓" : "Envoyer"}
+              </button>
+              <button
+                onClick={() => { setShowReplyForm(false); setSendStatus("idle"); }}
+                className="text-xs text-slate-400 hover:text-slate-600 transition-colors px-2 py-1.5"
+              >
+                Annuler
+              </button>
+              {sendStatus === "error" && (
+                <p className="text-xs text-red-500">Erreur lors de l&apos;envoi, réessaie.</p>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Body */}
         {open && body !== null && (
-          <div className="px-4 pb-4 border-t border-blue-100">
+          <div className={`px-4 pb-4 ${showReplyForm ? "" : "border-t border-blue-100"}`}>
             {body !== "" ? (
               <pre className="mt-3 text-sm text-slate-600 leading-relaxed whitespace-pre-wrap bg-white rounded-lg px-3 py-3 border border-blue-100 font-sans">
                 {body}
               </pre>
             ) : (
               <p className="mt-3 text-sm text-slate-400 italic">Contenu de la réponse non disponible.</p>
-            )}
-
-            {/* Inline reply form */}
-            {showReplyForm && (
-              <div className="mt-3">
-                <textarea
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  rows={5}
-                  placeholder="Votre message de relance…"
-                  className="w-full px-3 py-2.5 border border-blue-200 rounded-lg text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none leading-relaxed"
-                />
-                <div className="flex items-center gap-2 mt-2">
-                  <button
-                    disabled={sendStatus === "sending" || !replyText.trim()}
-                    onClick={async () => {
-                      setSendStatus("sending");
-                      try {
-                        const res = await fetch("/api/feedback/send-reply", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ callId: item.id, body: replyText }),
-                        });
-                        if (!res.ok) {
-                          setSendStatus("error");
-                          return;
-                        }
-                        setSendStatus("sent");
-                        setReplyText("");
-                        setTimeout(() => { setShowReplyForm(false); setSendStatus("idle"); }, 2000);
-                      } catch {
-                        setSendStatus("error");
-                      }
-                    }}
-                    className="text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors px-3 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {sendStatus === "sending" ? "Envoi…" : sendStatus === "sent" ? "Envoyé ✓" : "Envoyer"}
-                  </button>
-                  <button
-                    onClick={() => { setShowReplyForm(false); setSendStatus("idle"); }}
-                    className="text-xs text-slate-400 hover:text-slate-600 transition-colors px-2 py-1.5"
-                  >
-                    Annuler
-                  </button>
-                  {sendStatus === "error" && (
-                    <p className="text-xs text-red-500">Erreur lors de l&apos;envoi, réessaie.</p>
-                  )}
-                </div>
-              </div>
             )}
           </div>
         )}
