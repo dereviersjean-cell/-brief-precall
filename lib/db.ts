@@ -552,17 +552,26 @@ export type CallReplyInfo = {
   gmail_thread_id: string | null;
   follow_up_sent_at: string | null;
   contact_email: string | null;
+  replied_at: string | null;
 };
 
 export async function getCallReplyInfo(callId: string, userId: string): Promise<CallReplyInfo | null> {
   const { data, error } = await supabaseAdmin
     .from("calls")
-    .select("gmail_thread_id, follow_up_sent_at, contact_email")
+    .select("gmail_thread_id, follow_up_sent_at, contact_email, replied_at")
     .eq("id", callId)
     .eq("user_id", userId)
     .single();
   if (error) return null;
   return data as CallReplyInfo;
+}
+
+export async function updateRepliedAt(callId: string, repliedAt: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("calls")
+    .update({ replied_at: repliedAt })
+    .eq("id", callId);
+  if (error) throw error;
 }
 
 export type Contact = {
@@ -632,12 +641,13 @@ export type ContactOverviewItem = {
   last_contact_at: string;
   video_call_count: number;
   emails_sent_count: number;
+  replies_count: number;
 };
 
 export async function getContactsOverview(userId: string): Promise<ContactOverviewItem[]> {
   const { data, error } = await supabaseAdmin
     .from("calls")
-    .select("contact_email, company_name, started_at, created_at, follow_up_sent_at")
+    .select("contact_email, company_name, started_at, created_at, follow_up_sent_at, replied_at")
     .eq("user_id", userId)
     .not("contact_email", "is", null);
   if (error) throw error;
@@ -646,6 +656,7 @@ export async function getContactsOverview(userId: string): Promise<ContactOvervi
     company_name: string | null;
     dates: string[];
     emails_sent_count: number;
+    replies_count: number;
   }>();
 
   for (const row of (data ?? []) as Array<{
@@ -654,6 +665,7 @@ export async function getContactsOverview(userId: string): Promise<ContactOvervi
     started_at: string | null;
     created_at: string;
     follow_up_sent_at: string | null;
+    replied_at: string | null;
   }>) {
     const email = row.contact_email;
     const date = row.started_at ?? row.created_at;
@@ -663,10 +675,12 @@ export async function getContactsOverview(userId: string): Promise<ContactOvervi
         company_name: row.company_name,
         dates: [date],
         emails_sent_count: row.follow_up_sent_at ? 1 : 0,
+        replies_count: row.replied_at ? 1 : 0,
       });
     } else {
       existing.dates.push(date);
       if (row.follow_up_sent_at) existing.emails_sent_count++;
+      if (row.replied_at) existing.replies_count++;
       // keep most recent company_name (dates are unsorted, update when this row is newer)
       if (date > existing.dates[existing.dates.length - 1]) {
         existing.company_name = row.company_name;
@@ -682,6 +696,7 @@ export async function getContactsOverview(userId: string): Promise<ContactOvervi
       last_contact_at: sorted[sorted.length - 1],
       video_call_count: g.dates.length,
       emails_sent_count: g.emails_sent_count,
+      replies_count: g.replies_count,
     };
   }).sort((a, b) => b.last_contact_at.localeCompare(a.last_contact_at));
 }
@@ -694,6 +709,7 @@ export type ContactTimelineItem = {
   recall_bot_id: string | null;
   follow_up_email: { subject: string; body: string } | null;
   follow_up_sent_at: string | null;
+  replied_at: string | null;
   analysis: {
     global_score: number | null;
     sentiment: string | null;
@@ -708,7 +724,7 @@ export async function getContactTimeline(
   const { data, error } = await supabaseAdmin
     .from("calls")
     .select(
-      "id, started_at, created_at, company_name, duration_seconds, recall_bot_id, follow_up_email, follow_up_sent_at, call_analysis(scores, sentiment, summary)"
+      "id, started_at, created_at, company_name, duration_seconds, recall_bot_id, follow_up_email, follow_up_sent_at, replied_at, call_analysis(scores, sentiment, summary)"
     )
     .eq("user_id", userId)
     .eq("contact_email", contactEmail)
@@ -727,6 +743,7 @@ export async function getContactTimeline(
       recall_bot_id: row.recall_bot_id as string | null,
       follow_up_email: row.follow_up_email as { subject: string; body: string } | null,
       follow_up_sent_at: row.follow_up_sent_at as string | null,
+      replied_at: row.replied_at as string | null,
       analysis: analysis
         ? {
             global_score: scores?.global_score ?? null,

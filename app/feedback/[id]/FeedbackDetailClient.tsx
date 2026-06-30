@@ -57,7 +57,7 @@ type VideoStatus = "idle" | "loading" | "ready" | "unavailable";
 type ReplyState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "replied"; repliedAt: string; body: string; open: boolean }
+  | { status: "replied"; repliedAt: string; body: string | null; open: boolean; loadingBody: boolean }
   | { status: "none" };
 
 function formatSentAt(iso: string) {
@@ -82,9 +82,9 @@ export default function FeedbackDetailClient({ call }: { call: CallWithAnalysis 
     setReply({ status: "loading" });
     fetch(`/api/feedback/check-reply?callId=${call.id}`)
       .then((r) => r.json())
-      .then((data: { replied: boolean; repliedAt?: string; body?: string }) => {
-        if (data.replied && data.repliedAt && data.body !== undefined) {
-          setReply({ status: "replied", repliedAt: data.repliedAt, body: data.body, open: false });
+      .then((data: { replied: boolean; repliedAt?: string; body?: string | null }) => {
+        if (data.replied && data.repliedAt) {
+          setReply({ status: "replied", repliedAt: data.repliedAt, body: data.body ?? null, open: false, loadingBody: false });
         } else {
           setReply({ status: "none" });
         }
@@ -381,9 +381,35 @@ export default function FeedbackDetailClient({ call }: { call: CallWithAnalysis 
                   <p className="text-xs font-semibold text-green-600 uppercase tracking-wider mb-1.5">
                     Réponse du prospect — {formatSentAt(reply.repliedAt)}
                   </p>
-                  <pre className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-sans">
-                    {reply.body}
-                  </pre>
+                  {reply.body !== null ? (
+                    <pre className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-sans">
+                      {reply.body}
+                    </pre>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <p className="text-sm text-slate-500 italic">Contenu non chargé.</p>
+                      <button
+                        disabled={reply.loadingBody}
+                        onClick={async () => {
+                          setReply((r) => r.status === "replied" ? { ...r, loadingBody: true } : r);
+                          try {
+                            const res = await fetch(`/api/feedback/check-reply?callId=${call.id}&force=true`);
+                            const data = await res.json() as { replied: boolean; repliedAt?: string; body?: string | null };
+                            setReply((r) =>
+                              r.status === "replied"
+                                ? { ...r, body: data.body ?? null, loadingBody: false }
+                                : r
+                            );
+                          } catch {
+                            setReply((r) => r.status === "replied" ? { ...r, loadingBody: false } : r);
+                          }
+                        }}
+                        className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors px-2 py-1 rounded border border-indigo-200 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {reply.loadingBody ? "Chargement…" : "Charger le contenu"}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { getCallReplyInfo } from "@/lib/db";
+import { getCallReplyInfo, updateRepliedAt } from "@/lib/db";
 import { checkThreadReply } from "@/lib/gmail";
 
 export async function GET(request: NextRequest) {
@@ -16,9 +16,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "callId requis." }, { status: 400 });
   }
 
+  const force = request.nextUrl.searchParams.get("force") === "true";
+
   const info = await getCallReplyInfo(callId, userId);
   if (!info) {
     return NextResponse.json({ error: "Call introuvable." }, { status: 403 });
+  }
+
+  // Cache hit — already know they replied, no need to call Gmail
+  if (!force && info.replied_at) {
+    return NextResponse.json({ replied: true, repliedAt: info.replied_at, body: null });
   }
 
   if (!info.gmail_thread_id) {
@@ -37,6 +44,15 @@ export async function GET(request: NextRequest) {
       info.contact_email ?? "",
       info.follow_up_sent_at ?? new Date(0).toISOString()
     );
+
+    if (result.replied) {
+      try {
+        await updateRepliedAt(callId, result.repliedAt);
+      } catch (err) {
+        console.error("[check-reply] updateRepliedAt failed:", err instanceof Error ? err.message : String(err));
+      }
+    }
+
     return NextResponse.json(result);
   } catch (err) {
     console.error("[check-reply] checkThreadReply failed:", err instanceof Error ? err.message : String(err));

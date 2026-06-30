@@ -117,6 +117,7 @@ export default function ContactTimelineClient({ contactEmail, timeline }: Props)
   const displayName = timeline[0]?.company_name || contactEmail;
   const videoCallCount = timeline.length;
   const emailsSentCount = timeline.filter((i) => !!i.follow_up_sent_at).length;
+  const repliesCount = timeline.filter((i) => !!i.replied_at).length;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -149,6 +150,14 @@ export default function ContactTimelineClient({ contactEmail, timeline }: Props)
                   <path d="M22.5 6.908V6.75a3 3 0 00-3-3h-15a3 3 0 00-3 3v.158l9.714 5.978a1.5 1.5 0 001.572 0L22.5 6.908z" />
                 </svg>
                 {emailsSentCount} {emailsSentCount === 1 ? "email envoyé" : "emails envoyés"}
+              </span>
+            )}
+            {repliesCount > 0 && (
+              <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+                <svg className="w-3 h-3 text-blue-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414L8.414 15l-4.121-4.121a1 1 0 011.414-1.414L8.414 12.172l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                {repliesCount} {repliesCount === 1 ? "réponse" : "réponses"}
               </span>
             )}
           </div>
