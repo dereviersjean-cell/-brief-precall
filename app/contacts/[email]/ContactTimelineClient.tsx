@@ -115,6 +115,8 @@ type Props = {
 
 export default function ContactTimelineClient({ contactEmail, timeline }: Props) {
   const displayName = timeline[0]?.company_name || contactEmail;
+  const videoCallCount = timeline.length;
+  const emailsSentCount = timeline.filter((i) => !!i.follow_up_sent_at).length;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -131,9 +133,25 @@ export default function ContactTimelineClient({ contactEmail, timeline }: Props)
           {timeline[0]?.company_name && (
             <p className="text-slate-400 text-sm mt-0.5">{contactEmail}</p>
           )}
-          <p className="text-slate-500 text-sm mt-1">
-            {timeline.length} {timeline.length === 1 ? "call enregistré" : "calls enregistrés"}
-          </p>
+          <div className="flex items-center gap-3 mt-2 flex-wrap">
+            {videoCallCount > 0 && (
+              <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+                <svg className="w-3.5 h-3.5 text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
+                </svg>
+                {videoCallCount} {videoCallCount === 1 ? "visio enregistrée" : "visios enregistrées"}
+              </span>
+            )}
+            {emailsSentCount > 0 && (
+              <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+                <svg className="w-3.5 h-3.5 text-emerald-500 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M1.5 8.67v8.58a3 3 0 003 3h15a3 3 0 003-3V8.67l-8.928 5.493a3 3 0 01-3.144 0L1.5 8.67z" />
+                  <path d="M22.5 6.908V6.75a3 3 0 00-3-3h-15a3 3 0 00-3 3v.158l9.714 5.978a1.5 1.5 0 001.572 0L22.5 6.908z" />
+                </svg>
+                {emailsSentCount} {emailsSentCount === 1 ? "email envoyé" : "emails envoyés"}
+              </span>
+            )}
+          </div>
         </div>
 
         {timeline.length === 0 ? (

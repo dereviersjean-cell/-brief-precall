@@ -589,9 +589,9 @@ export async function updateContact(
 export type ContactOverviewItem = {
   contact_email: string;
   company_name: string | null;
-  call_count: number;
   last_contact_at: string;
-  has_follow_up: boolean;
+  video_call_count: number;
+  emails_sent_count: number;
 };
 
 export async function getContactsOverview(userId: string): Promise<ContactOverviewItem[]> {
@@ -605,7 +605,7 @@ export async function getContactsOverview(userId: string): Promise<ContactOvervi
   const grouped = new Map<string, {
     company_name: string | null;
     dates: string[];
-    has_follow_up: boolean;
+    emails_sent_count: number;
   }>();
 
   for (const row of (data ?? []) as Array<{
@@ -622,11 +622,11 @@ export async function getContactsOverview(userId: string): Promise<ContactOvervi
       grouped.set(email, {
         company_name: row.company_name,
         dates: [date],
-        has_follow_up: !!row.follow_up_sent_at,
+        emails_sent_count: row.follow_up_sent_at ? 1 : 0,
       });
     } else {
       existing.dates.push(date);
-      if (row.follow_up_sent_at) existing.has_follow_up = true;
+      if (row.follow_up_sent_at) existing.emails_sent_count++;
       // keep most recent company_name (dates are unsorted, update when this row is newer)
       if (date > existing.dates[existing.dates.length - 1]) {
         existing.company_name = row.company_name;
@@ -639,9 +639,9 @@ export async function getContactsOverview(userId: string): Promise<ContactOvervi
     return {
       contact_email: email,
       company_name: g.company_name,
-      call_count: g.dates.length,
       last_contact_at: sorted[sorted.length - 1],
-      has_follow_up: g.has_follow_up,
+      video_call_count: g.dates.length,
+      emails_sent_count: g.emails_sent_count,
     };
   }).sort((a, b) => b.last_contact_at.localeCompare(a.last_contact_at));
 }
