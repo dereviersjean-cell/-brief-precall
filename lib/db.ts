@@ -1,6 +1,21 @@
 import { supabaseAdmin } from "./supabase";
 import { generateEmbedding } from "./embeddings";
 
+export async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 500): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      if (attempt < retries) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs * 2 ** attempt));
+      }
+    }
+  }
+  throw lastError;
+}
+
 export async function upsertUser(
   email: string,
   name: string | null,

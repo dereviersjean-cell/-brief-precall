@@ -6,7 +6,7 @@ import { readConfig } from "@/lib/admin-config";
 import { generateBrief } from "@/lib/brief-generator";
 import { enrichWithPappers } from "@/lib/pappers";
 import { fetchRecentNews } from "@/lib/news";
-import { getBriefByEventId, saveBrief, getUserProfile } from "@/lib/db";
+import { getBriefByEventId, saveBrief, getUserProfile, withRetry } from "@/lib/db";
 import { checkRateLimit, retryAfterMinutes } from "@/lib/rate-limit";
 
 const DOMAIN_TLDS = /\.(com|fr|ai|io|co|net|org|eu|be|app|tech|dev|uk|de|es|it|nl|ch|ca|au|me|biz|info|saas)$/i;
@@ -115,8 +115,8 @@ export async function POST(request: NextRequest) {
     const brief = await generateBrief(trimmed, config, userContext, pappersData, newsArticles, userId ?? undefined, contactEmail);
 
     if (userId) {
-      saveBrief(userId, trimmed, contactEmail, calendarEventId, brief, config.model).catch(
-        (err) => console.error("[generate-brief] saveBrief failed:", err)
+      withRetry(() => saveBrief(userId, trimmed, contactEmail, calendarEventId, brief, config.model)).catch(
+        (err) => console.error("[generate-brief] saveBrief failed after retries:", err)
       );
     }
 
