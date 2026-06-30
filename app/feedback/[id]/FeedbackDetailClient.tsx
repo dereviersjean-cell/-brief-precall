@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { CallWithAnalysis, AnalysisScores } from "@/lib/db";
 
 function formatDateTime(iso: string): string {
@@ -54,6 +54,11 @@ function List({ items, icon, color }: { items: string[]; icon: string; color: st
 
 type SendStatus = "idle" | "sending" | "sent" | "error" | "auth-error";
 type VideoStatus = "idle" | "loading" | "ready" | "unavailable";
+type ReplyState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "replied"; repliedAt: string; body: string; open: boolean }
+  | { status: "none" };
 
 function formatSentAt(iso: string) {
   const d = new Date(iso);
@@ -70,6 +75,22 @@ export default function FeedbackDetailClient({ call }: { call: CallWithAnalysis 
   const [sentAt, setSentAt] = useState<string | null>(call.follow_up_sent_at ?? null);
   const [videoStatus, setVideoStatus] = useState<VideoStatus>("idle");
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [reply, setReply] = useState<ReplyState>({ status: "idle" });
+
+  useEffect(() => {
+    if (!call.follow_up_sent_at) return;
+    setReply({ status: "loading" });
+    fetch(`/api/feedback/check-reply?callId=${call.id}`)
+      .then((r) => r.json())
+      .then((data: { replied: boolean; repliedAt?: string; body?: string }) => {
+        if (data.replied && data.repliedAt && data.body !== undefined) {
+          setReply({ status: "replied", repliedAt: data.repliedAt, body: data.body, open: false });
+        } else {
+          setReply({ status: "none" });
+        }
+      })
+      .catch(() => setReply({ status: "none" }));
+  }, [call.id, call.follow_up_sent_at]);
 
   const a = call.analysis;
   const scores = a?.scores as AnalysisScores | null;
@@ -314,9 +335,32 @@ export default function FeedbackDetailClient({ call }: { call: CallWithAnalysis 
                   </div>
                 )}
                 {sentAt && (
-                  <span className="text-xs text-emerald-600 font-medium">
-                    Envoyé le {formatSentAt(sentAt)}
-                  </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-emerald-600 font-medium">
+                      Envoyé le {formatSentAt(sentAt)}
+                    </span>
+                    {reply.status === "replied" && (
+                      <button
+                        onClick={() =>
+                          setReply((r) =>
+                            r.status === "replied" ? { ...r, open: !r.open } : r
+                          )
+                        }
+                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
+                      >
+                        <svg className="w-3 h-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414L8.414 15l-4.121-4.121a1 1 0 011.414-1.414L8.414 12.172l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        Le prospect a répondu
+                        <svg
+                          className={`w-3 h-3 shrink-0 transition-transform ${reply.open ? "rotate-180" : ""}`}
+                          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -330,6 +374,17 @@ export default function FeedbackDetailClient({ call }: { call: CallWithAnalysis 
               )}
               {sendStatus === "error" && (
                 <p className="mb-4 text-sm text-red-600">Erreur lors de l&apos;envoi, réessaie.</p>
+              )}
+
+              {reply.status === "replied" && reply.open && (
+                <div className="mb-4 rounded-xl bg-green-50 border border-green-200 px-4 py-3">
+                  <p className="text-xs font-semibold text-green-600 uppercase tracking-wider mb-1.5">
+                    Réponse du prospect — {formatSentAt(reply.repliedAt)}
+                  </p>
+                  <pre className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-sans">
+                    {reply.body}
+                  </pre>
+                </div>
               )}
 
               {call.follow_up_email ? (
