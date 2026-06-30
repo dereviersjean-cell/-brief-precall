@@ -65,7 +65,7 @@ type GmailThreadMessage = {
 };
 
 export type ThreadReplyResult =
-  | { replied: true; repliedAt: string; body: string }
+  | { replied: true; repliedAt: string; body: string; messageId: string }
   | { replied: false };
 
 export async function checkThreadReply(
@@ -88,7 +88,7 @@ export async function checkThreadReply(
   const sentAfterMs = new Date(sentAfter).getTime();
 
   // Find the last message from contactEmail after sentAfter
-  let found: { repliedAt: string; body: string } | null = null;
+  let found: { repliedAt: string; body: string; messageId: string } | null = null;
   for (const msg of messages) {
     const headers = msg.payload.headers;
     const from = getHeader(headers, "From");
@@ -100,11 +100,12 @@ export async function checkThreadReply(
 
     const body = extractTextBody(msg.payload as GmailPart).trim();
     const repliedAt = dateHeader || new Date(dateMs).toISOString();
-    found = { repliedAt, body };
+    const messageId = getHeader(headers, "Message-Id") || getHeader(headers, "Message-ID");
+    found = { repliedAt, body, messageId };
   }
 
   if (!found) return { replied: false };
-  return { replied: true, repliedAt: found.repliedAt, body: found.body };
+  return { replied: true, repliedAt: found.repliedAt, body: found.body, messageId: found.messageId };
 }
 
 export async function getEmailHistory(

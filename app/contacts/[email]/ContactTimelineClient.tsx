@@ -55,8 +55,28 @@ function SentimentBadge({ sentiment }: { sentiment: string | null }) {
 
 function ReplyEntry({ item }: { item: ContactTimelineItem }) {
   const [body, setBody] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [showReplyForm, setShowReplyForm] = useState(false);
+  const [sendStatus, setSendStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+
   if (!item.replied_at) return null;
+
+  const loadBody = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/feedback/check-reply?callId=${item.id}&force=true`);
+      const data = await res.json() as { replied: boolean; body?: string | null };
+      setBody(data.body ?? "");
+      setOpen(true);
+    } catch {
+      setBody("");
+      setOpen(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="mt-3 ml-4 relative pl-8">
@@ -66,8 +86,8 @@ function ReplyEntry({ item }: { item: ContactTimelineItem }) {
       </div>
 
       <div className="bg-blue-50 border border-blue-100 rounded-xl overflow-hidden">
+        {/* Header */}
         <div className="flex items-center gap-2 px-4 py-3">
-          {/* Reply icon */}
           <svg className="w-4 h-4 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
           </svg>
@@ -75,38 +95,94 @@ function ReplyEntry({ item }: { item: ContactTimelineItem }) {
             <p className="text-sm font-medium text-slate-700">Le prospect a répondu</p>
             <p className="text-xs text-slate-400 mt-0.5">{formatDateTime(item.replied_at)}</p>
           </div>
-          {body === null && (
-            <button
-              disabled={loading}
-              onClick={async () => {
-                setLoading(true);
-                try {
-                  const res = await fetch(`/api/feedback/check-reply?callId=${item.id}&force=true`);
-                  const data = await res.json() as { replied: boolean; body?: string | null };
-                  setBody(data.body ?? "");
-                } catch {
-                  setBody("");
-                } finally {
-                  setLoading(false);
-                }
-              }}
-              className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors px-2.5 py-1 rounded-lg border border-blue-200 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-            >
-              {loading ? "Chargement…" : "Voir la réponse"}
-            </button>
-          )}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {body === null && !open && (
+              <button
+                disabled={loading}
+                onClick={loadBody}
+                className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors px-2.5 py-1 rounded-lg border border-blue-200 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? "Chargement…" : "Voir la réponse"}
+              </button>
+            )}
+            {open && (
+              <>
+                <button
+                  onClick={() => { setShowReplyForm((v) => !v); setSendStatus("idle"); }}
+                  className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors px-2.5 py-1 rounded-lg border border-blue-200 hover:bg-blue-100"
+                >
+                  Répondre
+                </button>
+                <button
+                  onClick={() => setOpen(false)}
+                  className="text-xs text-slate-400 hover:text-slate-600 transition-colors px-2 py-1 rounded-lg hover:bg-blue-100"
+                >
+                  Refermer
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
-        {body !== null && body !== "" && (
+        {/* Body */}
+        {open && body !== null && (
           <div className="px-4 pb-4 border-t border-blue-100">
-            <pre className="mt-3 text-sm text-slate-600 leading-relaxed whitespace-pre-wrap bg-white rounded-lg px-3 py-3 border border-blue-100 font-sans">
-              {body}
-            </pre>
-          </div>
-        )}
-        {body === "" && (
-          <div className="px-4 pb-3 border-t border-blue-100">
-            <p className="mt-3 text-sm text-slate-400 italic">Contenu de la réponse non disponible.</p>
+            {body !== "" ? (
+              <pre className="mt-3 text-sm text-slate-600 leading-relaxed whitespace-pre-wrap bg-white rounded-lg px-3 py-3 border border-blue-100 font-sans">
+                {body}
+              </pre>
+            ) : (
+              <p className="mt-3 text-sm text-slate-400 italic">Contenu de la réponse non disponible.</p>
+            )}
+
+            {/* Inline reply form */}
+            {showReplyForm && (
+              <div className="mt-3">
+                <textarea
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  rows={5}
+                  placeholder="Votre message de relance…"
+                  className="w-full px-3 py-2.5 border border-blue-200 rounded-lg text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none leading-relaxed"
+                />
+                <div className="flex items-center gap-2 mt-2">
+                  <button
+                    disabled={sendStatus === "sending" || !replyText.trim()}
+                    onClick={async () => {
+                      setSendStatus("sending");
+                      try {
+                        const res = await fetch("/api/feedback/send-reply", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ callId: item.id, body: replyText }),
+                        });
+                        if (!res.ok) {
+                          setSendStatus("error");
+                          return;
+                        }
+                        setSendStatus("sent");
+                        setReplyText("");
+                        setTimeout(() => { setShowReplyForm(false); setSendStatus("idle"); }, 2000);
+                      } catch {
+                        setSendStatus("error");
+                      }
+                    }}
+                    className="text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors px-3 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {sendStatus === "sending" ? "Envoi…" : sendStatus === "sent" ? "Envoyé ✓" : "Envoyer"}
+                  </button>
+                  <button
+                    onClick={() => { setShowReplyForm(false); setSendStatus("idle"); }}
+                    className="text-xs text-slate-400 hover:text-slate-600 transition-colors px-2 py-1.5"
+                  >
+                    Annuler
+                  </button>
+                  {sendStatus === "error" && (
+                    <p className="text-xs text-red-500">Erreur lors de l&apos;envoi, réessaie.</p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

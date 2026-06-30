@@ -551,14 +551,16 @@ export async function updateGmailThreadId(callId: string, threadId: string): Pro
 export type CallReplyInfo = {
   gmail_thread_id: string | null;
   follow_up_sent_at: string | null;
+  follow_up_email: { subject: string; body: string } | null;
   contact_email: string | null;
   replied_at: string | null;
+  reply_message_id: string | null;
 };
 
 export async function getCallReplyInfo(callId: string, userId: string): Promise<CallReplyInfo | null> {
   const { data, error } = await supabaseAdmin
     .from("calls")
-    .select("gmail_thread_id, follow_up_sent_at, contact_email, replied_at")
+    .select("gmail_thread_id, follow_up_sent_at, follow_up_email, contact_email, replied_at, reply_message_id")
     .eq("id", callId)
     .eq("user_id", userId)
     .single();
@@ -566,10 +568,10 @@ export async function getCallReplyInfo(callId: string, userId: string): Promise<
   return data as CallReplyInfo;
 }
 
-export async function updateRepliedAt(callId: string, repliedAt: string): Promise<void> {
+export async function updateReplyInfo(callId: string, repliedAt: string, messageId: string): Promise<void> {
   const { error } = await supabaseAdmin
     .from("calls")
-    .update({ replied_at: repliedAt })
+    .update({ replied_at: repliedAt, reply_message_id: messageId })
     .eq("id", callId);
   if (error) throw error;
 }
@@ -710,6 +712,7 @@ export type ContactTimelineItem = {
   follow_up_email: { subject: string; body: string } | null;
   follow_up_sent_at: string | null;
   replied_at: string | null;
+  reply_message_id: string | null;
   analysis: {
     global_score: number | null;
     sentiment: string | null;
@@ -724,7 +727,7 @@ export async function getContactTimeline(
   const { data, error } = await supabaseAdmin
     .from("calls")
     .select(
-      "id, started_at, created_at, company_name, duration_seconds, recall_bot_id, follow_up_email, follow_up_sent_at, replied_at, call_analysis(scores, sentiment, summary)"
+      "id, started_at, created_at, company_name, duration_seconds, recall_bot_id, follow_up_email, follow_up_sent_at, replied_at, reply_message_id, call_analysis(scores, sentiment, summary)"
     )
     .eq("user_id", userId)
     .eq("contact_email", contactEmail)
@@ -744,6 +747,7 @@ export async function getContactTimeline(
       follow_up_email: row.follow_up_email as { subject: string; body: string } | null,
       follow_up_sent_at: row.follow_up_sent_at as string | null,
       replied_at: row.replied_at as string | null,
+      reply_message_id: row.reply_message_id as string | null,
       analysis: analysis
         ? {
             global_score: scores?.global_score ?? null,

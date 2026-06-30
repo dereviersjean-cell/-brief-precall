@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { getCallReplyInfo, updateRepliedAt } from "@/lib/db";
+import { getCallReplyInfo, updateReplyInfo } from "@/lib/db";
 import { checkThreadReply } from "@/lib/gmail";
 
 export async function GET(request: NextRequest) {
@@ -47,9 +47,9 @@ export async function GET(request: NextRequest) {
 
     if (result.replied) {
       try {
-        await updateRepliedAt(callId, result.repliedAt);
+        await updateReplyInfo(callId, result.repliedAt, result.messageId);
       } catch (err) {
-        console.error("[check-reply] updateRepliedAt failed:", err instanceof Error ? err.message : String(err));
+        console.error("[check-reply] updateReplyInfo failed:", err instanceof Error ? err.message : String(err));
       }
     }
 
