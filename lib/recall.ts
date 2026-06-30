@@ -38,22 +38,25 @@ export type RecallCalendarV2 = {
   [key: string]: unknown;
 };
 
-export async function createRecallCalendarV2(
+async function createRecallCalendarV2Generic(
   userId: string,
-  refreshToken: string
+  refreshToken: string,
+  platform: "google_calendar" | "microsoft_outlook"
 ): Promise<RecallCalendarV2> {
-  const oauthClientId = process.env.RECALL_GOOGLE_CLIENT_ID;
-  const oauthClientSecret = process.env.RECALL_GOOGLE_CLIENT_SECRET;
+  const [oauthClientId, oauthClientSecret] =
+    platform === "google_calendar"
+      ? [process.env.RECALL_GOOGLE_CLIENT_ID, process.env.RECALL_GOOGLE_CLIENT_SECRET]
+      : [process.env.RECALL_MICROSOFT_CLIENT_ID, process.env.RECALL_MICROSOFT_CLIENT_SECRET];
 
   if (!oauthClientId || !oauthClientSecret) {
-    throw new Error("RECALL_GOOGLE_CLIENT_ID or RECALL_GOOGLE_CLIENT_SECRET is not set.");
+    throw new Error(`RECALL_${platform === "google_calendar" ? "GOOGLE" : "MICROSOFT"}_CLIENT_ID or _CLIENT_SECRET is not set.`);
   }
 
   const res = await fetch("https://eu-central-1.recall.ai/api/v2/calendars/", {
     method: "POST",
     headers: recallHeaders(),
     body: JSON.stringify({
-      platform: "google_calendar",
+      platform,
       oauth_client_id: oauthClientId,
       oauth_client_secret: oauthClientSecret,
       oauth_refresh_token: refreshToken,
@@ -68,6 +71,20 @@ export async function createRecallCalendarV2(
   }
 
   return res.json() as Promise<RecallCalendarV2>;
+}
+
+export async function createRecallCalendarV2(
+  userId: string,
+  refreshToken: string
+): Promise<RecallCalendarV2> {
+  return createRecallCalendarV2Generic(userId, refreshToken, "google_calendar");
+}
+
+export async function createRecallCalendarV2Microsoft(
+  userId: string,
+  refreshToken: string
+): Promise<RecallCalendarV2> {
+  return createRecallCalendarV2Generic(userId, refreshToken, "microsoft_outlook");
 }
 
 const RECALL_API_V2 = "https://eu-central-1.recall.ai/api/v2";
