@@ -586,6 +586,118 @@ export async function updateContact(
   if (error) throw error;
 }
 
+export type ContactOverviewItem = {
+  contact_email: string;
+  company_name: string | null;
+  call_count: number;
+  last_contact_at: string;
+  has_follow_up: boolean;
+};
+
+export async function getContactsOverview(userId: string): Promise<ContactOverviewItem[]> {
+  const { data, error } = await supabaseAdmin
+    .from("calls")
+    .select("contact_email, company_name, started_at, created_at, follow_up_sent_at")
+    .eq("user_id", userId)
+    .not("contact_email", "is", null);
+  if (error) throw error;
+
+  const grouped = new Map<string, {
+    company_name: string | null;
+    dates: string[];
+    has_follow_up: boolean;
+  }>();
+
+  for (const row of (data ?? []) as Array<{
+    contact_email: string;
+    company_name: string | null;
+    started_at: string | null;
+    created_at: string;
+    follow_up_sent_at: string | null;
+  }>) {
+    const email = row.contact_email;
+    const date = row.started_at ?? row.created_at;
+    const existing = grouped.get(email);
+    if (!existing) {
+      grouped.set(email, {
+        company_name: row.company_name,
+        dates: [date],
+        has_follow_up: !!row.follow_up_sent_at,
+      });
+    } else {
+      existing.dates.push(date);
+      if (row.follow_up_sent_at) existing.has_follow_up = true;
+      // keep most recent company_name (dates are unsorted, update when this row is newer)
+      if (date > existing.dates[existing.dates.length - 1]) {
+        existing.company_name = row.company_name;
+      }
+    }
+  }
+
+  return Array.from(grouped.entries()).map(([email, g]) => {
+    const sorted = [...g.dates].sort();
+    return {
+      contact_email: email,
+      company_name: g.company_name,
+      call_count: g.dates.length,
+      last_contact_at: sorted[sorted.length - 1],
+      has_follow_up: g.has_follow_up,
+    };
+  }).sort((a, b) => b.last_contact_at.localeCompare(a.last_contact_at));
+}
+
+export type ContactTimelineItem = {
+  id: string;
+  date: string;
+  company_name: string | null;
+  duration_seconds: number | null;
+  recall_bot_id: string | null;
+  follow_up_email: { subject: string; body: string } | null;
+  follow_up_sent_at: string | null;
+  analysis: {
+    global_score: number | null;
+    sentiment: string | null;
+    summary: string | null;
+  } | null;
+};
+
+export async function getContactTimeline(
+  userId: string,
+  contactEmail: string
+): Promise<ContactTimelineItem[]> {
+  const { data, error } = await supabaseAdmin
+    .from("calls")
+    .select(
+      "id, started_at, created_at, company_name, duration_seconds, recall_bot_id, follow_up_email, follow_up_sent_at, call_analysis(scores, sentiment, summary)"
+    )
+    .eq("user_id", userId)
+    .eq("contact_email", contactEmail)
+    .order("started_at", { ascending: true, nullsFirst: true });
+  if (error) throw error;
+
+  return ((data ?? []) as Record<string, unknown>[]).map((row) => {
+    const analyses = row.call_analysis as Array<{ scores: unknown; sentiment: string | null; summary: string | null }> | null;
+    const analysis = analyses?.[0] ?? null;
+    const scores = analysis?.scores as { global_score?: number } | null;
+    return {
+      id: row.id as string,
+      date: ((row.started_at ?? row.created_at) as string),
+      company_name: row.company_name as string | null,
+      duration_seconds: row.duration_seconds as number | null,
+      recall_bot_id: row.recall_bot_id as string | null,
+      follow_up_email: row.follow_up_email as { subject: string; body: string } | null,
+      follow_up_sent_at: row.follow_up_sent_at as string | null,
+      analysis: analysis
+        ? {
+            global_score: scores?.global_score ?? null,
+            sentiment: analysis.sentiment,
+            summary: analysis.summary,
+          }
+        : null,
+    };
+  });
+}
+
 export async function saveCallAnalysis(
   callId: string,
   analysis: import("./call-analysis").CallAnalysis
