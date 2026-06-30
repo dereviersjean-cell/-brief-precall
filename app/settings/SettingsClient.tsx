@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 type Props = {
   initialProductDescription: string;
@@ -16,9 +17,11 @@ export default function SettingsClient({
   initialCompanyName,
   recallConnected,
 }: Props) {
+  const router = useRouter();
   const [productDescription, setProductDescription] = useState(initialProductDescription);
   const [icp, setIcp] = useState(initialIcp);
   const [companyName, setCompanyName] = useState(initialCompanyName);
+  const [disconnecting, setDisconnecting] = useState(false);
 
   useEffect(() => {
     setProductDescription(initialProductDescription);
@@ -415,11 +418,29 @@ export default function SettingsClient({
             Permet l&apos;enregistrement et l&apos;analyse automatique de vos appels avec des prospects.
           </p>
           {recallConnected ? (
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full">
-              <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="text-sm font-medium text-emerald-700">Calendrier connecté</span>
+            <div className="flex items-center gap-3">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full">
+                <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-sm font-medium text-emerald-700">Calendrier connecté</span>
+              </div>
+              <button
+                disabled={disconnecting}
+                onClick={async () => {
+                  if (!window.confirm("Déconnecter le calendrier ? L'enregistrement automatique de vos calls sera désactivé.")) return;
+                  setDisconnecting(true);
+                  try {
+                    await fetch("/api/recall/disconnect", { method: "POST" });
+                    router.refresh();
+                  } finally {
+                    setDisconnecting(false);
+                  }
+                }}
+                className="text-sm text-slate-400 hover:text-red-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {disconnecting ? "Déconnexion…" : "Déconnecter"}
+              </button>
             </div>
           ) : (
             <div className="flex items-center gap-3 flex-wrap">

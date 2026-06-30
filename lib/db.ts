@@ -63,6 +63,14 @@ export async function saveRecallCalendarId(userId: string, calendarId: string): 
   if (error) throw error;
 }
 
+export async function clearRecallCalendarId(userId: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("users")
+    .update({ recall_calendar_id: null })
+    .eq("id", userId);
+  if (error) throw error;
+}
+
 export async function getRecallCalendarId(userId: string): Promise<string | null> {
   const { data, error } = await supabaseAdmin
     .from("users")

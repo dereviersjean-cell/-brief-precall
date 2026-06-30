@@ -233,6 +233,17 @@ export async function getBotInfo(botId: string): Promise<Record<string, unknown>
   return res.json() as Promise<Record<string, unknown>>;
 }
 
+export async function deleteRecallCalendar(calendarId: string): Promise<void> {
+  const res = await fetch(`${RECALL_API_V2}/calendars/${calendarId}/`, {
+    method: "DELETE",
+    headers: recallHeaders(),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Recall.AI delete calendar failed (${res.status}): ${body}`);
+  }
+}
+
 export async function getVideoUrl(botId: string): Promise<string | null> {
   const botInfo = await getBotInfo(botId);
   const recordings = botInfo.recordings as Array<Record<string, unknown>> | undefined;
