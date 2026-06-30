@@ -96,10 +96,10 @@ function ReplyEntry({ item }: { item: ContactTimelineItem }) {
             <p className="text-xs text-slate-400 mt-0.5">{formatDateTime(item.replied_at)}</p>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
-            {body === null && !open && (
+            {!open && (
               <button
                 disabled={loading}
-                onClick={loadBody}
+                onClick={() => body !== null ? setOpen(true) : loadBody()}
                 className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors px-2.5 py-1 rounded-lg border border-blue-200 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? "Chargement…" : "Voir la réponse"}
