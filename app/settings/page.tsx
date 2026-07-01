@@ -25,8 +25,6 @@ export default async function SettingsPage() {
     hubspotConnected = hubspotTokens !== null;
   }
 
-  console.log('[settings] pipedriveConnected:', pipedriveConnected, 'hubspotConnected:', hubspotConnected);
-
   return (
     <Suspense>
       <SettingsClient
