@@ -100,7 +100,9 @@ export async function getWonDeals(
     sort: "won_time DESC",
   });
 
-  const res = await fetch(`https://${apiDomain}/v1/deals?${params.toString()}`, {
+  const url = `https://${apiDomain}/v1/deals?${params.toString()}`;
+  console.log("[getWonDeals] fetching:", url);
+  const res = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 
