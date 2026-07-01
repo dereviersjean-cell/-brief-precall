@@ -11,16 +11,21 @@ export default async function SettingsPage() {
   let profile = null;
   let recallConnected = false;
   let pipedriveConnected = false;
+  let hubspotConnected = false;
   if (userId) {
-    const [p, recallCalendarId, pipedriveTokens] = await Promise.all([
+    const [p, recallCalendarId, pipedriveTokens, hubspotTokens] = await Promise.all([
       getUserProfile(userId),
       getRecallCalendarId(userId),
       getCrmTokens(userId, "pipedrive"),
+      getCrmTokens(userId, "hubspot"),
     ]);
     profile = p;
     recallConnected = recallCalendarId !== null;
     pipedriveConnected = pipedriveTokens !== null;
+    hubspotConnected = hubspotTokens !== null;
   }
+
+  console.log('[settings] pipedriveConnected:', pipedriveConnected, 'hubspotConnected:', hubspotConnected);
 
   return (
     <Suspense>
@@ -30,6 +35,7 @@ export default async function SettingsPage() {
         initialCompanyName={profile?.company_name ?? ""}
         recallConnected={recallConnected}
         pipedriveConnected={pipedriveConnected}
+        hubspotConnected={hubspotConnected}
       />
     </Suspense>
   );
