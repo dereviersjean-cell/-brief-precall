@@ -70,7 +70,7 @@ export async function enrichFromCRM(
     try {
       results = await doSearch(newTokens.access_token);
     } catch (retryErr) {
-      console.warn("[enrichFromCRM] searchCompany retry failed:", retryErr instanceof Error ? retryErr.message : String(retryErr));
+      console.warn("[enrichFromCRM] searchCompany retry failed:", retryErr instanceof Error ? retryErr.message : String(retryErr), retryErr instanceof Error && retryErr.cause ? retryErr.cause : "");
       return null;
     }
   }

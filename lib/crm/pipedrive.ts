@@ -60,11 +60,14 @@ export async function refreshPipedriveToken(refreshToken: string): Promise<Piped
     body: new URLSearchParams({
       grant_type: "refresh_token",
       refresh_token: refreshToken,
+      client_id: process.env.PIPEDRIVE_CLIENT_ID!,
+      client_secret: process.env.PIPEDRIVE_CLIENT_SECRET!,
     }),
   });
 
   const data = (await res.json()) as Record<string, unknown>;
   if (!res.ok) {
+    console.error("[refreshPipedriveToken] status:", res.status, "body:", JSON.stringify(data));
     throw new Error(`Pipedrive token refresh failed: ${data.error ?? res.status}`);
   }
 
