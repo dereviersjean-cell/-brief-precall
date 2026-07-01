@@ -800,6 +800,15 @@ export async function getCrmTokens(
   return data as CrmTokens;
 }
 
+export async function deleteCrmTokens(userId: string, provider: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("crm_connections")
+    .delete()
+    .eq("user_id", userId)
+    .eq("provider", provider);
+  if (error) throw error;
+}
+
 export async function saveCallAnalysis(
   callId: string,
   analysis: import("./call-analysis").CallAnalysis

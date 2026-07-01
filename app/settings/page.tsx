@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { getUserProfile, getRecallCalendarId } from "@/lib/db";
+import { getUserProfile, getRecallCalendarId, getCrmTokens } from "@/lib/db";
 import SettingsClient from "./SettingsClient";
 
 export default async function SettingsPage() {
@@ -10,13 +10,16 @@ export default async function SettingsPage() {
 
   let profile = null;
   let recallConnected = false;
+  let pipedriveConnected = false;
   if (userId) {
-    const [p, recallCalendarId] = await Promise.all([
+    const [p, recallCalendarId, pipedriveTokens] = await Promise.all([
       getUserProfile(userId),
       getRecallCalendarId(userId),
+      getCrmTokens(userId, "pipedrive"),
     ]);
     profile = p;
     recallConnected = recallCalendarId !== null;
+    pipedriveConnected = pipedriveTokens !== null;
   }
 
   return (
@@ -26,6 +29,7 @@ export default async function SettingsPage() {
         initialIcp={profile?.icp ?? ""}
         initialCompanyName={profile?.company_name ?? ""}
         recallConnected={recallConnected}
+        pipedriveConnected={pipedriveConnected}
       />
     </Suspense>
   );
