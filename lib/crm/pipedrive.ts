@@ -100,9 +100,7 @@ export async function getWonDeals(
     sort: "won_time DESC",
   });
 
-  const url = `https://${apiDomain}/v1/deals?${params.toString()}`;
-  console.log("[getWonDeals] fetching:", url);
-  const res = await fetch(url, {
+  const res = await fetch(`${apiDomain}/api/v1/deals?${params.toString()}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 
@@ -125,7 +123,7 @@ export async function getDealDetails(
   apiDomain: string,
   dealId: number
 ): Promise<PipedriveDealDetail | null> {
-  const res = await fetch(`https://${apiDomain}/v1/deals/${dealId}`, {
+  const res = await fetch(`${apiDomain}/api/v1/deals/${dealId}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 
@@ -168,7 +166,7 @@ export async function searchCompany(
     limit: "10",
   });
 
-  const res = await fetch(`https://${apiDomain}/v1/itemSearch?${params.toString()}`, {
+  const res = await fetch(`${apiDomain}/api/v1/itemSearch?${params.toString()}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 

@@ -61,9 +61,6 @@ export async function POST() {
     const msg = err instanceof Error ? err.message : String(err);
     if (!msg.includes("401")) {
       console.error("[import-references] getWonDeals failed:", msg);
-      if (err instanceof Error && err.cause) {
-        console.error("[import-references] cause:", err.cause);
-      }
       return NextResponse.json({ error: "Erreur lors de la récupération des deals." }, { status: 500 });
     }
 
