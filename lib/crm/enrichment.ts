@@ -30,7 +30,10 @@ export async function enrichFromCRM(
   userId: string,
   companyName: string
 ): Promise<CrmEnrichment | null> {
+  console.log("[enrichFromCRM] searching for:", companyName);
+
   const tokens = await getCrmTokens(userId, "pipedrive");
+  console.log("[enrichFromCRM] tokens found:", tokens !== null);
   if (!tokens) return null;
 
   const apiDomain = tokens.api_domain ?? "api.pipedrive.com";
@@ -72,7 +75,14 @@ export async function enrichFromCRM(
     }
   }
 
-  if (results.length === 0) return null;
+  console.log("[enrichFromCRM] results count:", results.length);
 
-  return buildEnrichment(results[0]);
+  if (results.length === 0) {
+    console.log("[enrichFromCRM] returning null (no results)");
+    return null;
+  }
+
+  const enrichment = buildEnrichment(results[0]);
+  console.log("[enrichFromCRM] returning:", enrichment);
+  return enrichment;
 }
