@@ -175,6 +175,9 @@ export async function searchCompany(
     data: { items: { item: unknown }[] } | null;
   };
 
+  if (res.status === 401 || res.status === 403) {
+    throw new Error(`searchCompany auth failed: ${res.status}`);
+  }
   if (!res.ok || !data.success || !data.data) return [];
 
   return data.data.items.map((i) => i.item as PipedriveOrg);

@@ -3,6 +3,7 @@ import { AdminConfig } from "./admin-config";
 import type { NewsArticle } from "./news";
 import { findSimilarReferences, SimilarReference } from "./embeddings";
 import { getContact } from "./db";
+import { enrichFromCRM, CrmEnrichment } from "./crm/enrichment";
 
 const client = new Anthropic();
 
@@ -35,6 +36,21 @@ export type UserContext = {
   sector: string | null;
 } | null;
 
+function buildCrmBlock(crm: CrmEnrichment | null): string {
+  if (!crm) return "";
+  const lines: string[] = [`- Entreprise trouvée dans votre CRM (${crm.source}) : ${crm.company_name}`];
+  if (crm.deals_count > 0) lines.push(`- Deals enregistrés : ${crm.deals_count}`);
+  if (crm.latest_deal_title) {
+    const valueStr = crm.latest_deal_value ? ` — ${crm.latest_deal_value}` : "";
+    lines.push(`- Dernier deal : ${crm.latest_deal_title}${valueStr}`);
+  }
+  if (crm.contact_name) {
+    const emailStr = crm.contact_email ? ` (${crm.contact_email})` : "";
+    lines.push(`- Interlocuteur connu : ${crm.contact_name}${emailStr}`);
+  }
+  return `\nDONNÉES CRM\n\n${lines.join("\n")}\n\nUtilise ces informations CRM pour personnaliser l'accroche et les arguments — mentionne la relation existante ou l'historique commercial si pertinent.\n`;
+}
+
 function buildUserPrompt(
   company: string,
   legalContext: string,
@@ -42,7 +58,8 @@ function buildUserPrompt(
   config: AdminConfig,
   userContext: UserContext,
   similarRefs: SimilarReference[] = [],
-  relationalHistoryBlock = ""
+  relationalHistoryBlock = "",
+  crmData: CrmEnrichment | null = null
 ): string {
   const overviewDesc = OVERVIEW_LENGTH[config.overviewLength];
   const toneDesc = TONE_INSTRUCTION[config.tone];
@@ -97,8 +114,10 @@ function buildUserPrompt(
     ? `\n- Remplis "historique_relationnel" avec une synthèse de 1-2 phrases de ce qu'il faut retenir de l'historique pour aborder ce nouveau call`
     : "";
 
+  const crmBlock = buildCrmBlock(crmData);
+
   return `Génère un brief pré-call complet pour un commercial B2B qui s'apprête à appeler ${company}.
-${legalContext}${newsContext}${contextBlock}${referencesBlock}${relationalHistoryBlock}
+${legalContext}${newsContext}${crmBlock}${contextBlock}${referencesBlock}${relationalHistoryBlock}
 ${toneDesc}
 Retourne ce JSON (structure stricte, aucun texte autour). Même si tu as utilisé la recherche web, ta réponse finale doit être UNIQUEMENT le JSON ci-dessous, sans phrase d'introduction, citation, ni texte additionnel :
 
@@ -149,32 +168,38 @@ export async function generateBrief(
           .join("\n")}\n`
       : "";
 
-  let similarRefs: SimilarReference[] = [];
-  if (userId) {
-    try {
-      const sectorFromPappers =
-        (pappersData as Record<string, unknown>)?.libelle_code_naf ??
-        (pappersData as Record<string, unknown>)?.code_naf ??
-        "";
-      const prospectContext = [company, sectorFromPappers, userContext?.sector]
-        .filter(Boolean)
-        .join(" ");
-      similarRefs = await findSimilarReferences(userId, prospectContext);
-    } catch (err) {
-      console.warn("[brief-generator] findSimilarReferences failed:", err);
-    }
-  }
+  const sectorFromPappers =
+    (pappersData as Record<string, unknown>)?.libelle_code_naf ??
+    (pappersData as Record<string, unknown>)?.code_naf ??
+    "";
+  const prospectContext = [company, sectorFromPappers, userContext?.sector]
+    .filter(Boolean)
+    .join(" ");
+
+  const [similarRefs, crmData, contactResult] = await Promise.all([
+    userId
+      ? findSimilarReferences(userId, prospectContext).catch((err) => {
+          console.warn("[brief-generator] findSimilarReferences failed:", err);
+          return [] as SimilarReference[];
+        })
+      : Promise.resolve([] as SimilarReference[]),
+    userId
+      ? enrichFromCRM(userId, company).catch((err) => {
+          console.warn("[brief-generator] enrichFromCRM failed:", err);
+          return null;
+        })
+      : Promise.resolve(null),
+    userId && contactEmail
+      ? getContact(userId, contactEmail).catch((err) => {
+          console.warn("[brief-generator] getContact failed:", err);
+          return null;
+        })
+      : Promise.resolve(null),
+  ]);
 
   let relationalHistoryBlock = "";
-  if (userId && contactEmail) {
-    try {
-      const contact = await getContact(userId, contactEmail);
-      if (contact && contact.total_calls > 0 && contact.last_call_summary) {
-        relationalHistoryBlock = `\n# HISTORIQUE RELATIONNEL AVEC CE CONTACT\n\nVous avez déjà eu ${contact.total_calls} échange(s) avec ce contact. Voici un résumé de votre dernier call :\n\n${contact.last_call_summary}\n\nUtilise cet historique pour enrichir le brief — mentionne les engagements pris précédemment, le contexte déjà établi, et adapte l'approche en conséquence. Ajoute un champ "historique_relationnel" dans le JSON de sortie avec une synthèse courte de ce qu'il faut retenir de cet historique pour ce nouveau call.\n`;
-      }
-    } catch (err) {
-      console.warn("[brief-generator] getContact failed:", err);
-    }
+  if (contactResult && contactResult.total_calls > 0 && contactResult.last_call_summary) {
+    relationalHistoryBlock = `\n# HISTORIQUE RELATIONNEL AVEC CE CONTACT\n\nVous avez déjà eu ${contactResult.total_calls} échange(s) avec ce contact. Voici un résumé de votre dernier call :\n\n${contactResult.last_call_summary}\n\nUtilise cet historique pour enrichir le brief — mentionne les engagements pris précédemment, le contexte déjà établi, et adapte l'approche en conséquence. Ajoute un champ "historique_relationnel" dans le JSON de sortie avec une synthèse courte de ce qu'il faut retenir de cet historique pour ce nouveau call.\n`;
   }
 
   const message = await client.messages.create({
@@ -192,7 +217,8 @@ export async function generateBrief(
           config,
           userContext,
           similarRefs,
-          relationalHistoryBlock
+          relationalHistoryBlock,
+          crmData
         ),
       },
     ],
