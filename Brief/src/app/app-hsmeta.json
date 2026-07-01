@@ -1,0 +1,36 @@
+{
+  "uid": "Brief_app",
+  "type": "app",
+  "config": {
+    "description": "Brief - Sales intelligence tool by Oliverlist",
+    "name": "Brief",
+    "distribution": "private",
+    "auth": {
+      "type": "oauth",
+      "redirectUrls": [
+        "https://brief-precall.vercel.app/api/crm/hubspot/callback"
+      ],
+      "requiredScopes": [
+        "oauth",
+        "crm.objects.deals.read",
+        "crm.objects.contacts.read",
+        "crm.objects.companies.read"
+      ],
+      "optionalScopes": [],
+      "conditionallyRequiredScopes": []
+    },
+    "permittedUrls": {
+      "fetch": [
+        "https://api.hubapi.com"
+      ],
+      "iframe": [],
+      "img": []
+    },
+    "support": {
+      "supportEmail": "jean.dereviers@oliverlist.com",
+      "documentationUrl": "https://brief-precall.vercel.app",
+      "supportUrl": "https://brief-precall.vercel.app",
+      "supportPhone": ""
+    }
+  }
+}
