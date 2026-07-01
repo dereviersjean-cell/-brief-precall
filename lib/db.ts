@@ -759,6 +759,47 @@ export async function getContactTimeline(
   });
 }
 
+export type CrmTokens = {
+  access_token: string;
+  refresh_token: string;
+  api_domain: string | null;
+};
+
+export async function saveCrmTokens(
+  userId: string,
+  provider: string,
+  accessToken: string,
+  refreshToken: string,
+  apiDomain?: string
+): Promise<void> {
+  const { error } = await supabaseAdmin.from("crm_connections").upsert(
+    {
+      user_id: userId,
+      provider,
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      api_domain: apiDomain ?? null,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id,provider" }
+  );
+  if (error) throw error;
+}
+
+export async function getCrmTokens(
+  userId: string,
+  provider: string
+): Promise<CrmTokens | null> {
+  const { data, error } = await supabaseAdmin
+    .from("crm_connections")
+    .select("access_token, refresh_token, api_domain")
+    .eq("user_id", userId)
+    .eq("provider", provider)
+    .single();
+  if (error || !data) return null;
+  return data as CrmTokens;
+}
+
 export async function saveCallAnalysis(
   callId: string,
   analysis: import("./call-analysis").CallAnalysis
