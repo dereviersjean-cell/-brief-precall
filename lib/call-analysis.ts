@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { readPromptConfig, DEFAULT_CALL_ANALYSIS_SYSTEM_PROMPT } from "./admin-config";
 
 export type CallAnalysis = {
   global_score: number;
@@ -40,32 +41,14 @@ export async function analyzeCall(
 ): Promise<CallAnalysis> {
   const client = new Anthropic();
 
-  const systemPrompt = `Tu es un expert en vente B2B et coach commercial senior. Ta mission est d'analyser des transcriptions d'appels de vente et de fournir un feedback structuré et actionnable.
+  const basePrompt = (await readPromptConfig("call_analysis_system_prompt")) ?? DEFAULT_CALL_ANALYSIS_SYSTEM_PROMPT;
+
+  const systemPrompt = `${basePrompt}
 
 Contexte de l'appel :
 - Date : ${context.meetingDate}
 - Société du commercial : ${context.clientName || "Non renseigné"}${context.clientWebsite ? ` (${context.clientWebsite})` : ""}
-- Société du prospect : ${context.prospectName || "Non renseigné"}${context.prospectWebsite ? ` (${context.prospectWebsite})` : ""}
-
-Tu dois évaluer 4 dimensions clés, chacune notée de 0 à 5 :
-1. **Ouverture & cadrage** (opening_framing) — Accroche, présentation, création de rapport, cadrage de l'appel
-2. **Découverte des besoins** (pain_point) — Qualité des questions, écoute active, identification des douleurs et enjeux
-3. **Argumentation & démo** (pitch_demo) — Pertinence des arguments, adaptation au contexte prospect, gestion des objections
-4. **Conclusion & suite** (next_step) — Engagement sur des prochaines étapes concrètes, closing, résumé des engagements
-
-Réponds UNIQUEMENT avec ce JSON valide, sans markdown, sans commentaire :
-{
-  "global_score": <moyenne des 4 scores arrondie à 1 décimale>,
-  "opening_framing": { "score": <0-5>, "description": "<observation précise en 1-2 phrases>" },
-  "pain_point": { "score": <0-5>, "description": "<observation précise en 1-2 phrases>" },
-  "pitch_demo": { "score": <0-5>, "description": "<observation précise en 1-2 phrases>" },
-  "next_step": { "score": <0-5>, "description": "<observation précise en 1-2 phrases>" },
-  "coaching_summary": "<synthèse coaching en 3-4 phrases : ce qui s'est bien passé, ce qui doit changer, conseil clé>",
-  "strengths": ["<point fort 1>", "<point fort 2>"],
-  "weaknesses": ["<axe d'amélioration 1>", "<axe d'amélioration 2>"],
-  "objections": ["<objection soulevée par le prospect>"],
-  "next_steps": ["<prochaine étape concrète convenue>"]
-}`;
+- Société du prospect : ${context.prospectName || "Non renseigné"}${context.prospectWebsite ? ` (${context.prospectWebsite})` : ""}`;
 
   try {
     const message = await client.messages.create({

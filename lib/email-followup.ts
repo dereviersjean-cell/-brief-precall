@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { GmailMessage } from "./gmail";
+import { readPromptConfig, DEFAULT_EMAIL_FOLLOWUP_PROMPT, DEFAULT_REPLY_SUGGESTION_PROMPT } from "./admin-config";
 
 export type FollowUpEmail = {
   subject: string;
@@ -22,6 +23,8 @@ export async function generateReplyToProspect(
 ): Promise<string | null> {
   const client = new Anthropic();
 
+  const missionInstructions = (await readPromptConfig("reply_suggestion_prompt")) ?? DEFAULT_REPLY_SUGGESTION_PROMPT;
+
   const transcriptSection = transcript
     ? `\nCONTEXTE DU CALL INITIAL\n\n${transcript.slice(0, 2000)}${transcript.length > 2000 ? "\n[transcript tronqué]" : ""}\n`
     : "";
@@ -38,16 +41,7 @@ RÉPONSE DU PROSPECT
 
 ${prospectReply}
 
-TA MISSION
-
-Rédige une réponse naturelle et professionnelle à cet email qui :
-- S'inscrit dans le fil de la conversation (pas une nouvelle accroche commerciale)
-- Répond directement aux questions ou objections soulevées par le prospect
-- Garde le même ton et niveau de formalité que l'email original
-- Propose une prochaine étape concrète si pertinent
-- Reste concis (5-8 lignes maximum)
-
-Réponds uniquement avec le corps du message (pas de sujet, pas de balises, pas de markdown). Texte brut uniquement.`;
+${missionInstructions}`;
 
   try {
     const message = await client.messages.create({
@@ -71,6 +65,8 @@ export async function generateFollowUpEmail(
 ): Promise<FollowUpEmail | null> {
   const client = new Anthropic();
 
+  const missionInstructions = (await readPromptConfig("email_followup_prompt")) ?? DEFAULT_EMAIL_FOLLOWUP_PROMPT;
+
   const historySection =
     emailHistory.length > 0
       ? `HISTORIQUE DES ÉCHANGES AVEC CE CONTACT\n\n${formatEmailHistory(emailHistory)}`
@@ -93,18 +89,11 @@ PROCHAINES ÉTAPES IDENTIFIÉES
 
 ${nextStepsSection}
 
-TA MISSION
+DESTINATAIRE
 
-Rédige un email de suivi à envoyer à ${contactEmail} qui :
-- Reprend le ton, le niveau de formalité et le style de signature observés dans l'historique des échanges (s'il y en a — sinon utilise un ton professionnel et chaleureux par défaut)
-- Mentionne brièvement 1-2 points clés discutés pendant le call
-- Propose clairement la prochaine étape identifiée
-- Reste concis (5-8 lignes maximum)
+${contactEmail}
 
-FORMAT DE SORTIE
-
-Réponds uniquement en JSON valide, sur une seule ligne, sans markdown :
-{"subject":"","body":""}`;
+${missionInstructions}`;
 
   let raw: string;
   try {
