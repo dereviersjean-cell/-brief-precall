@@ -103,6 +103,11 @@ export async function readPromptConfig(key: string): Promise<string | null> {
   }
 }
 
+export async function setPromptConfig(key: string, value: string): Promise<void> {
+  const { setAdminConfig } = await import("./db");
+  await setAdminConfig(key, value);
+}
+
 export async function initializePromptDefaults(): Promise<{ initialized: string[] }> {
   const { getAdminConfig, setAdminConfig } = await import("./db");
 
