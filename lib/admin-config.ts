@@ -1,4 +1,3 @@
-import { getAdminConfig, setAdminConfig } from "./db";
 
 export const DEFAULT_CALL_ANALYSIS_SYSTEM_PROMPT =
 `Tu es un expert en vente B2B et coach commercial senior. Ta mission est d'analyser des transcriptions d'appels de vente et de fournir un feedback structuré et actionnable.
@@ -77,6 +76,7 @@ export const DEFAULT_CONFIG: AdminConfig = {
 
 export async function readConfig(): Promise<AdminConfig> {
   try {
+    const { getAdminConfig, setAdminConfig } = await import("./db");
     const value = await getAdminConfig(SUPABASE_KEY);
     if (value !== null && typeof value === "object") {
       return { ...DEFAULT_CONFIG, ...(value as Partial<AdminConfig>) };
@@ -89,11 +89,13 @@ export async function readConfig(): Promise<AdminConfig> {
 }
 
 export async function writeConfig(config: AdminConfig): Promise<void> {
+  const { setAdminConfig } = await import("./db");
   await setAdminConfig(SUPABASE_KEY, config);
 }
 
 export async function readPromptConfig(key: string): Promise<string | null> {
   try {
+    const { getAdminConfig } = await import("./db");
     const value = await getAdminConfig(key);
     return typeof value === "string" ? value : null;
   } catch {
@@ -102,6 +104,8 @@ export async function readPromptConfig(key: string): Promise<string | null> {
 }
 
 export async function initializePromptDefaults(): Promise<{ initialized: string[] }> {
+  const { getAdminConfig, setAdminConfig } = await import("./db");
+
   const defaults: Record<string, string> = {
     call_analysis_system_prompt: DEFAULT_CALL_ANALYSIS_SYSTEM_PROMPT,
     email_followup_prompt: DEFAULT_EMAIL_FOLLOWUP_PROMPT,
