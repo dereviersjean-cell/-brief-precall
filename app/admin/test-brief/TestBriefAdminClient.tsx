@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import type { FormEvent } from "react";
+import { AdminNav } from "../AdminNav";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -418,18 +419,15 @@ export default function TestBriefAdminClient() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] py-10 px-6">
+    <div className="min-h-screen bg-[#F8F9FA]">
+      <AdminNav />
+      <div className="py-10 px-6">
       <div className="max-w-7xl mx-auto space-y-6">
 
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Test brief</h1>
-            <p className="text-sm text-slate-500 mt-0.5">Génère un brief et inspecte le raisonnement du modèle</p>
-          </div>
-          <a href="/admin" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
-            ← Config admin
-          </a>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Test brief</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Génère un brief et inspecte le raisonnement du modèle</p>
         </div>
 
         {/* Form */}
@@ -514,6 +512,7 @@ export default function TestBriefAdminClient() {
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

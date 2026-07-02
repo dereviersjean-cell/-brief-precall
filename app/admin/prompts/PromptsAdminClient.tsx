@@ -8,6 +8,7 @@ import {
   DEFAULT_EMAIL_FOLLOWUP_PROMPT,
   DEFAULT_REPLY_SUGGESTION_PROMPT,
 } from "@/lib/admin-config";
+import { AdminNav } from "../AdminNav";
 
 type PromptKey = "systemPrompt" | "call_analysis_system_prompt" | "email_followup_prompt" | "reply_suggestion_prompt";
 
@@ -273,19 +274,13 @@ export default function PromptsAdminClient() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] py-10 px-6">
+    <div className="min-h-screen bg-[#F8F9FA]">
+      <AdminNav />
+      <div className="py-10 px-6">
       <div className="max-w-3xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Gestion des prompts</h1>
-            <p className="text-sm text-slate-500 mt-0.5">Chaque prompt est sauvegardé indépendamment</p>
-          </div>
-          <a
-            href="/admin"
-            className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
-          >
-            ← Config admin
-          </a>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Gestion des prompts</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Chaque prompt est sauvegardé indépendamment</p>
         </div>
 
         {PROMPT_META.map(({ key, title, description }) => (
@@ -299,6 +294,7 @@ export default function PromptsAdminClient() {
             onChange={handleChange}
           />
         ))}
+      </div>
       </div>
     </div>
   );

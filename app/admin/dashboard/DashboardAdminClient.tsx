@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import type { FormEvent } from "react";
 import type { UserDashboardStat } from "@/lib/db";
+import { AdminNav } from "../AdminNav";
 
 type DashboardState = "loading" | "login" | "ready";
 
@@ -221,7 +222,9 @@ export default function DashboardAdminClient() {
   const totalEmails = stats.reduce((s, u) => s + u.emails_sent_count, 0);
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] py-10 px-6">
+    <div className="min-h-screen bg-[#F8F9FA]">
+      <AdminNav />
+      <div className="py-10 px-6">
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -229,12 +232,6 @@ export default function DashboardAdminClient() {
             <p className="text-sm text-slate-500 mt-0.5">{stats.length} utilisateur{stats.length > 1 ? "s" : ""}</p>
           </div>
           <div className="flex items-center gap-3">
-            <a
-              href="/admin"
-              className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
-            >
-              ← Config admin
-            </a>
             <button
               onClick={handleRefresh}
               disabled={refreshing}
@@ -262,6 +259,7 @@ export default function DashboardAdminClient() {
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
           <DashboardTable stats={stats} />
         </div>
+      </div>
       </div>
     </div>
   );

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import type { FormEvent } from "react";
 import type { CallAnalysis } from "@/lib/call-analysis";
+import { AdminNav } from "../AdminNav";
 
 type PageState = "loading" | "login" | "ready";
 
@@ -314,20 +315,17 @@ export default function TestAnalysisAdminClient() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] py-10 px-6">
+    <div className="min-h-screen bg-[#F8F9FA]">
+      <AdminNav />
+      <div className="py-10 px-6">
       <div className="max-w-3xl mx-auto space-y-6">
 
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Test analyse de call</h1>
-            <p className="text-sm text-slate-500 mt-0.5">
-              Contexte fixe : <span className="font-medium text-slate-700">Brief / Oliverlist</span> → Prospect test
-            </p>
-          </div>
-          <a href="/admin" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
-            ← Config admin
-          </a>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Test analyse de call</h1>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Contexte fixe : <span className="font-medium text-slate-700">Brief / Oliverlist</span> → Prospect test
+          </p>
         </div>
 
         {/* Form */}
@@ -371,6 +369,7 @@ export default function TestAnalysisAdminClient() {
             <PromptViewer prompt={result.prompt_used} />
           </>
         )}
+      </div>
       </div>
     </div>
   );

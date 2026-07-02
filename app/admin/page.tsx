@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import type { ReactNode, FormEvent } from "react";
 import { AdminConfig, DEFAULT_CONFIG } from "@/lib/admin-config";
+import { AdminNav } from "./AdminNav";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -521,13 +522,14 @@ function AdminPanel({ initialConfig }: { initialConfig: AdminConfig }) {
             </button>
           </div>
         </div>
+        <AdminNav />
       </header>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="grid grid-cols-5 gap-8 items-start">
 
           {/* ── Left column: config (40%) ── */}
-          <div className="col-span-2 space-y-5 sticky top-20">
+          <div className="col-span-2 space-y-5 sticky top-[90px]">
 
             {/* System prompt */}
             <Card>
