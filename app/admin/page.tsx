@@ -475,11 +475,6 @@ function AdminPanel({ initialConfig }: { initialConfig: AdminConfig }) {
     }
   }
 
-  async function handleLogout() {
-    await fetch("/api/admin/logout", { method: "POST" });
-    window.location.reload();
-  }
-
   function handleReset() {
     if (!confirm("Réinitialiser la configuration par défaut ?")) return;
     setConfig(DEFAULT_CONFIG);
@@ -492,44 +487,13 @@ function AdminPanel({ initialConfig }: { initialConfig: AdminConfig }) {
   const previousEntries = history.filter((h) => h.id !== displayEntry?.id).slice(0, 2);
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA]">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center shrink-0">
-              <span className="text-white text-xs font-bold">B</span>
-            </div>
-            <span className="font-semibold text-slate-900">Brief</span>
-            <span className="text-slate-300">/</span>
-            <span className="text-sm font-medium text-slate-500">Administration</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <button
-              onClick={handleReset}
-              className="text-sm text-slate-400 hover:text-slate-600 transition-colors"
-            >
-              Réinitialiser
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 text-sm text-slate-600 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
-              </svg>
-              Déconnexion
-            </button>
-          </div>
-        </div>
-        <AdminNav />
-      </header>
-
+    <div className="min-h-screen bg-[#F8F9FA] ml-48">
+      <AdminNav />
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="grid grid-cols-5 gap-8 items-start">
 
           {/* ── Left column: config (40%) ── */}
-          <div className="col-span-2 space-y-5 sticky top-[90px]">
+          <div className="col-span-2 space-y-5 sticky top-8">
 
             {/* System prompt */}
             <Card>
@@ -610,6 +574,7 @@ function AdminPanel({ initialConfig }: { initialConfig: AdminConfig }) {
                 disabled={saving}
                 className="flex items-center gap-2 bg-indigo-600 text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
               >
+
                 {saving && <Spinner />}
                 {saving ? "Sauvegarde…" : "Sauvegarder"}
               </button>
@@ -630,6 +595,12 @@ function AdminPanel({ initialConfig }: { initialConfig: AdminConfig }) {
               {saveStatus === "error" && (
                 <span className="text-sm text-red-600">Erreur lors de la sauvegarde.</span>
               )}
+              <button
+                onClick={handleReset}
+                className="ml-auto text-sm text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                Réinitialiser
+              </button>
             </div>
           </div>
 

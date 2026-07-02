@@ -315,7 +315,7 @@ export default function TestAnalysisAdminClient() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA]">
+    <div className="min-h-screen bg-[#F8F9FA] ml-48">
       <AdminNav />
       <div className="py-10 px-6">
       <div className="max-w-3xl mx-auto space-y-6">
