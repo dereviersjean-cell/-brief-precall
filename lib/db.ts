@@ -809,6 +809,52 @@ export async function deleteCrmTokens(userId: string, provider: string): Promise
   if (error) throw error;
 }
 
+export type UserDashboardStat = {
+  id: string;
+  email: string;
+  created_at: string;
+  briefs_count: number;
+  calls_count: number;
+  emails_sent_count: number;
+  last_activity_at: string | null;
+  recall_connected: boolean;
+  crm_connected: string[];
+};
+
+export async function getAdminDashboardStats(): Promise<UserDashboardStat[]> {
+  const [usersRes, briefsRes, callsRes, crmRes] = await Promise.all([
+    supabaseAdmin.from("users").select("id, email, created_at, recall_calendar_id").order("created_at", { ascending: false }),
+    supabaseAdmin.from("briefs").select("user_id, created_at"),
+    supabaseAdmin.from("calls").select("user_id, created_at, follow_up_sent_at"),
+    supabaseAdmin.from("crm_connections").select("user_id, provider"),
+  ]);
+
+  const users = (usersRes.data ?? []) as { id: string; email: string; created_at: string; recall_calendar_id: string | null }[];
+  const briefs = (briefsRes.data ?? []) as { user_id: string; created_at: string }[];
+  const calls = (callsRes.data ?? []) as { user_id: string; created_at: string; follow_up_sent_at: string | null }[];
+  const crm = (crmRes.data ?? []) as { user_id: string; provider: string }[];
+
+  return users.map((user) => {
+    const userBriefs = briefs.filter((b) => b.user_id === user.id);
+    const userCalls = calls.filter((c) => c.user_id === user.id);
+    const allDates = [...userBriefs.map((b) => b.created_at), ...userCalls.map((c) => c.created_at)]
+      .filter(Boolean)
+      .sort()
+      .reverse();
+    return {
+      id: user.id,
+      email: user.email,
+      created_at: user.created_at,
+      briefs_count: userBriefs.length,
+      calls_count: userCalls.length,
+      emails_sent_count: userCalls.filter((c) => c.follow_up_sent_at != null).length,
+      last_activity_at: allDates[0] ?? null,
+      recall_connected: user.recall_calendar_id != null,
+      crm_connected: crm.filter((c) => c.user_id === user.id).map((c) => c.provider),
+    };
+  });
+}
+
 export async function saveCallAnalysis(
   callId: string,
   analysis: import("./call-analysis").CallAnalysis
