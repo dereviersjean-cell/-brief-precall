@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { getCallWithAnalysis } from "@/lib/db";
+import { getCallWithAnalysis, getCallWithAnalysisForManager, getUserRole } from "@/lib/db";
 import { getVideoUrl } from "@/lib/recall";
 
 export async function GET(request: NextRequest) {
@@ -18,7 +18,14 @@ export async function GET(request: NextRequest) {
 
   let call;
   try {
+    // Owner first — covers the common case without an extra role lookup.
     call = await getCallWithAnalysis(callId, userId);
+    if (!call) {
+      const role = await getUserRole(userId);
+      if (role === "manager") {
+        call = await getCallWithAnalysisForManager(callId, userId);
+      }
+    }
   } catch (err) {
     console.error("[video-url] getCallWithAnalysis failed:", err);
     return NextResponse.json({ error: "Erreur lors de la récupération du call." }, { status: 500 });

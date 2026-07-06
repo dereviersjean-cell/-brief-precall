@@ -68,12 +68,13 @@ function formatSentAt(iso: string) {
   return `${date} à ${time}`;
 }
 
+// Only rendered when recall_bot_id + recording_id aren't both present — see the
+// call site, which shows the real video player instead once both exist (the
+// manager-facing video-url API now authorizes a manager rattaché au propriétaire).
 function ReadOnlyVideoStatus({ call }: { call: CallWithAnalysis }) {
   const message = !call.recall_bot_id
     ? "Aucun bot n'a été programmé pour cet appel."
-    : !call.recording_id
-    ? "L'enregistrement n'a pas pu être récupéré (bot refusé ou échec technique)."
-    : "Enregistrement disponible — visible uniquement par le propriétaire de l'appel.";
+    : "L'enregistrement n'a pas pu être récupéré (bot refusé ou échec technique).";
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-5">
@@ -226,11 +227,9 @@ export default function FeedbackDetailClient({
               </div>
             )}
 
-            {/* Enregistrement vidéo — /api/recall/video-url filtre par propriétaire du call, donc en lecture seule
-                manager on affiche un statut informatif plutôt que de tenter (et échouer) le chargement de la vidéo */}
-            {readOnly ? (
-              <ReadOnlyVideoStatus call={call} />
-            ) : call.recall_bot_id && (
+            {/* Enregistrement vidéo — /api/recall/video-url autorise le propriétaire et un manager rattaché ;
+                si le bot/l'enregistrement n'existe pas du tout, on affiche un statut informatif à la place */}
+            {call.recall_bot_id && call.recording_id ? (
               <div className="bg-white rounded-2xl border border-slate-200 p-5">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Enregistrement</h2>
@@ -272,6 +271,8 @@ export default function FeedbackDetailClient({
                   <p className="text-sm text-slate-400 italic">Enregistrement non disponible.</p>
                 )}
               </div>
+            ) : (
+              readOnly && <ReadOnlyVideoStatus call={call} />
             )}
 
             {/* Scores par dimension */}
