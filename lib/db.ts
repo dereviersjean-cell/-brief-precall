@@ -936,6 +936,186 @@ export async function unlinkManagerFromCommercial(managerId: string, commercialI
   if (error) throw error;
 }
 
+export type TeamOverviewItem = {
+  user_id: string;
+  name: string | null;
+  email: string;
+  briefs_count: number;
+  calls_count: number;
+  emails_sent_count: number;
+  avg_score: number | null;
+  last_activity_at: string | null;
+};
+
+export async function getTeamOverview(managerId: string): Promise<TeamOverviewItem[]> {
+  const commercials = await getCommercialsForManager(managerId);
+  if (commercials.length === 0) return [];
+  const commercialIds = commercials.map((c) => c.id);
+
+  const [briefsRes, callsRes] = await Promise.all([
+    supabaseAdmin.from("briefs").select("user_id, created_at").in("user_id", commercialIds),
+    supabaseAdmin
+      .from("calls")
+      .select("user_id, created_at, follow_up_sent_at, call_analysis(scores)")
+      .in("user_id", commercialIds),
+  ]);
+  if (briefsRes.error) throw briefsRes.error;
+  if (callsRes.error) throw callsRes.error;
+
+  const briefs = (briefsRes.data ?? []) as { user_id: string; created_at: string }[];
+  const calls = (callsRes.data ?? []) as Array<{
+    user_id: string;
+    created_at: string;
+    follow_up_sent_at: string | null;
+    call_analysis: { scores: AnalysisScores | null }[] | null;
+  }>;
+
+  return commercials.map((c) => {
+    const userBriefs = briefs.filter((b) => b.user_id === c.id);
+    const userCalls = calls.filter((call) => call.user_id === c.id);
+    const globalScores = userCalls
+      .map((call) => call.call_analysis?.[0]?.scores?.global_score)
+      .filter((s): s is number => typeof s === "number");
+    const avgScore = globalScores.length > 0
+      ? globalScores.reduce((a, b) => a + b, 0) / globalScores.length
+      : null;
+    const allDates = [...userBriefs.map((b) => b.created_at), ...userCalls.map((call) => call.created_at)]
+      .filter(Boolean)
+      .sort()
+      .reverse();
+
+    return {
+      user_id: c.id,
+      name: c.name,
+      email: c.email,
+      briefs_count: userBriefs.length,
+      calls_count: userCalls.length,
+      emails_sent_count: userCalls.filter((call) => call.follow_up_sent_at != null).length,
+      avg_score: avgScore,
+      last_activity_at: allDates[0] ?? null,
+    };
+  });
+}
+
+export type TeamAverageScores = {
+  global_score: number | null;
+  opening_framing: number | null;
+  pain_point: number | null;
+  pitch_demo: number | null;
+  next_step: number | null;
+  calls_analyzed_count: number;
+};
+
+export async function getTeamAverageScores(managerId: string): Promise<TeamAverageScores> {
+  const empty: TeamAverageScores = {
+    global_score: null,
+    opening_framing: null,
+    pain_point: null,
+    pitch_demo: null,
+    next_step: null,
+    calls_analyzed_count: 0,
+  };
+
+  const commercials = await getCommercialsForManager(managerId);
+  if (commercials.length === 0) return empty;
+  const commercialIds = commercials.map((c) => c.id);
+
+  const { data, error } = await supabaseAdmin
+    .from("calls")
+    .select("call_analysis(scores)")
+    .in("user_id", commercialIds);
+  if (error) throw error;
+
+  const allScores = ((data ?? []) as Array<{ call_analysis: { scores: AnalysisScores | null }[] | null }>)
+    .map((row) => row.call_analysis?.[0]?.scores)
+    .filter((s): s is AnalysisScores => s != null);
+
+  if (allScores.length === 0) return empty;
+
+  const avg = (values: number[]): number | null =>
+    values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : null;
+  const dimension = (key: "opening_framing" | "pain_point" | "pitch_demo" | "next_step") =>
+    avg(allScores.map((s) => s[key]?.score).filter((v): v is number => typeof v === "number"));
+
+  return {
+    global_score: avg(allScores.map((s) => s.global_score)),
+    opening_framing: dimension("opening_framing"),
+    pain_point: dimension("pain_point"),
+    pitch_demo: dimension("pitch_demo"),
+    next_step: dimension("next_step"),
+    calls_analyzed_count: allScores.length,
+  };
+}
+
+export type CommercialDetailForManager = {
+  user_id: string;
+  name: string | null;
+  email: string;
+  calls: CallWithAnalysis[];
+  briefs: Awaited<ReturnType<typeof getBriefsByUser>>;
+  trend: {
+    recent_avg_score: number | null;
+    previous_avg_score: number | null;
+  } | null;
+};
+
+export async function getCommercialDetailForManager(
+  managerId: string,
+  commercialId: string
+): Promise<CommercialDetailForManager | null> {
+  const { data: link, error: linkError } = await supabaseAdmin
+    .from("manager_commercial_links")
+    .select("id")
+    .eq("manager_id", managerId)
+    .eq("commercial_id", commercialId)
+    .maybeSingle();
+  if (linkError) throw linkError;
+  if (!link) return null;
+
+  const { data: user, error: userError } = await supabaseAdmin
+    .from("users")
+    .select("id, name, email")
+    .eq("id", commercialId)
+    .maybeSingle();
+  if (userError) throw userError;
+  if (!user) return null;
+
+  const [calls, briefs] = await Promise.all([
+    getCallsWithAnalysis(commercialId),
+    getBriefsByUser(commercialId),
+  ]);
+
+  // getCallsWithAnalysis orders most-recent-first, so the first 5/next 5 map directly to recent/previous
+  const recentGlobalScores = calls
+    .slice(0, 5)
+    .map((c) => c.analysis?.scores?.global_score)
+    .filter((s): s is number => typeof s === "number");
+  const previousGlobalScores = calls
+    .slice(5, 10)
+    .map((c) => c.analysis?.scores?.global_score)
+    .filter((s): s is number => typeof s === "number");
+
+  const avg = (values: number[]): number | null =>
+    values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : null;
+
+  const trend =
+    recentGlobalScores.length > 0
+      ? {
+          recent_avg_score: avg(recentGlobalScores),
+          previous_avg_score: previousGlobalScores.length > 0 ? avg(previousGlobalScores) : null,
+        }
+      : null;
+
+  return {
+    user_id: (user as { id: string }).id,
+    name: (user as { name: string | null }).name,
+    email: (user as { email: string }).email,
+    calls,
+    briefs,
+    trend,
+  };
+}
+
 export async function saveCallAnalysis(
   callId: string,
   analysis: import("./call-analysis").CallAnalysis
