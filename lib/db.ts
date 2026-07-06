@@ -1251,6 +1251,7 @@ export async function getUpcomingScheduledMeetings(limit = 100): Promise<Upcomin
     .from("scheduled_meetings")
     .select("id, user_id, event_title, event_start_at, bot_scheduled, ineligibility_reason")
     .gte("event_start_at", now)
+    .eq("bot_scheduled", true)
     .order("event_start_at", { ascending: true })
     .limit(limit);
   if (error) throw error;
