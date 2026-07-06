@@ -420,6 +420,7 @@ export type CallWithAnalysis = {
   follow_up_email: { subject: string; body: string } | null;
   follow_up_sent_at: string | null;
   recall_bot_id: string | null;
+  recording_id: string | null;
   analysis: CallAnalysisRow | null;
 };
 
@@ -427,7 +428,7 @@ export async function getCallsWithAnalysis(userId: string): Promise<CallWithAnal
   const { data, error } = await supabaseAdmin
     .from("calls")
     .select(
-      "id, contact_email, company_name, created_at, started_at, status, duration_seconds, participant_count, follow_up_email, follow_up_sent_at, recall_bot_id, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment)"
+      "id, contact_email, company_name, created_at, started_at, status, duration_seconds, participant_count, follow_up_email, follow_up_sent_at, recall_bot_id, recording_id, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment)"
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
@@ -447,6 +448,7 @@ export async function getCallsWithAnalysis(userId: string): Promise<CallWithAnal
       follow_up_email: row.follow_up_email as { subject: string; body: string } | null,
       follow_up_sent_at: row.follow_up_sent_at as string | null,
       recall_bot_id: row.recall_bot_id as string | null,
+      recording_id: row.recording_id as string | null,
       analysis: analyses?.[0] ?? null,
     };
   });
@@ -459,7 +461,7 @@ export async function getCallWithAnalysis(
   const { data, error } = await supabaseAdmin
     .from("calls")
     .select(
-      "id, contact_email, company_name, created_at, started_at, status, duration_seconds, participant_count, follow_up_email, follow_up_sent_at, recall_bot_id, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment)"
+      "id, contact_email, company_name, created_at, started_at, status, duration_seconds, participant_count, follow_up_email, follow_up_sent_at, recall_bot_id, recording_id, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment)"
     )
     .eq("id", callId)
     .eq("user_id", userId)
@@ -481,6 +483,7 @@ export async function getCallWithAnalysis(
     follow_up_email: row.follow_up_email as { subject: string; body: string } | null,
     follow_up_sent_at: row.follow_up_sent_at as string | null,
     recall_bot_id: row.recall_bot_id as string | null,
+    recording_id: row.recording_id as string | null,
     analysis: analyses?.[0] ?? null,
   };
 }
