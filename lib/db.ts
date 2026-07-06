@@ -855,6 +855,87 @@ export async function getAdminDashboardStats(): Promise<UserDashboardStat[]> {
   });
 }
 
+export type UserRole = "commercial" | "manager";
+
+export async function getUserRole(userId: string): Promise<UserRole | null> {
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("role")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as { role: UserRole | null } | null)?.role ?? null;
+}
+
+export async function setUserRole(userId: string, role: UserRole): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("users")
+    .update({ role })
+    .eq("id", userId);
+  if (error) throw error;
+}
+
+export type LinkedUser = {
+  id: string;
+  name: string | null;
+  email: string;
+};
+
+export async function getCommercialsForManager(managerId: string): Promise<LinkedUser[]> {
+  const { data: links, error: linksError } = await supabaseAdmin
+    .from("manager_commercial_links")
+    .select("commercial_id")
+    .eq("manager_id", managerId);
+  if (linksError) throw linksError;
+
+  const commercialIds = (links ?? []).map((l) => (l as { commercial_id: string }).commercial_id);
+  if (commercialIds.length === 0) return [];
+
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("id, name, email")
+    .in("id", commercialIds);
+  if (error) throw error;
+  return (data ?? []) as LinkedUser[];
+}
+
+export async function getManagersForCommercial(commercialId: string): Promise<LinkedUser[]> {
+  const { data: links, error: linksError } = await supabaseAdmin
+    .from("manager_commercial_links")
+    .select("manager_id")
+    .eq("commercial_id", commercialId);
+  if (linksError) throw linksError;
+
+  const managerIds = (links ?? []).map((l) => (l as { manager_id: string }).manager_id);
+  if (managerIds.length === 0) return [];
+
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("id, name, email")
+    .in("id", managerIds);
+  if (error) throw error;
+  return (data ?? []) as LinkedUser[];
+}
+
+export async function linkManagerToCommercial(managerId: string, commercialId: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("manager_commercial_links")
+    .upsert(
+      { manager_id: managerId, commercial_id: commercialId },
+      { onConflict: "manager_id,commercial_id", ignoreDuplicates: true }
+    );
+  if (error) throw error;
+}
+
+export async function unlinkManagerFromCommercial(managerId: string, commercialId: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("manager_commercial_links")
+    .delete()
+    .eq("manager_id", managerId)
+    .eq("commercial_id", commercialId);
+  if (error) throw error;
+}
+
 export async function saveCallAnalysis(
   callId: string,
   analysis: import("./call-analysis").CallAnalysis
