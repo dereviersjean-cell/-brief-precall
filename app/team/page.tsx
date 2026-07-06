@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { getUserRole, getTeamOverview, getTeamAverageScores } from "@/lib/db";
+import { getUserRole, getTeamOverview, getTeamAverageScores, getOrganizationForUser } from "@/lib/db";
 import TeamClient from "./TeamClient";
 
 export default async function TeamPage() {
@@ -13,10 +13,11 @@ export default async function TeamPage() {
     redirect("/dashboard");
   }
 
-  const [overview, averages] = await Promise.all([
+  const [overview, averages, organization] = await Promise.all([
     getTeamOverview(userId!),
     getTeamAverageScores(userId!),
+    getOrganizationForUser(userId!),
   ]);
 
-  return <TeamClient overview={overview} averages={averages} />;
+  return <TeamClient overview={overview} averages={averages} hasOrganization={organization !== null} />;
 }
