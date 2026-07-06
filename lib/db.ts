@@ -960,13 +960,101 @@ export async function setUserRole(userId: string, role: UserRole): Promise<void>
   if (error) throw error;
 }
 
+export type Organization = {
+  id: string;
+  name: string;
+  created_at: string;
+};
+
+export async function getOrganization(orgId: string): Promise<Organization | null> {
+  const { data, error } = await supabaseAdmin
+    .from("organizations")
+    .select("id, name, created_at")
+    .eq("id", orgId)
+    .maybeSingle();
+  if (error) throw error;
+  return data as Organization | null;
+}
+
+export async function listOrganizations(): Promise<Organization[]> {
+  const { data, error } = await supabaseAdmin
+    .from("organizations")
+    .select("id, name, created_at")
+    .order("name", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as Organization[];
+}
+
+export async function createOrganization(name: string): Promise<string> {
+  const { data, error } = await supabaseAdmin
+    .from("organizations")
+    .insert({ name })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return (data as { id: string }).id;
+}
+
+export async function updateOrganizationName(orgId: string, name: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("organizations")
+    .update({ name })
+    .eq("id", orgId);
+  if (error) throw error;
+}
+
+export async function setUserOrganization(userId: string, orgId: string | null): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("users")
+    .update({ organization_id: orgId })
+    .eq("id", userId);
+  if (error) throw error;
+}
+
+export type OrganizationMember = {
+  id: string;
+  name: string | null;
+  email: string;
+  role: UserRole | null;
+};
+
+export async function getUsersInOrganization(orgId: string): Promise<OrganizationMember[]> {
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("id, name, email, role")
+    .eq("organization_id", orgId);
+  if (error) throw error;
+  return (data ?? []) as OrganizationMember[];
+}
+
+async function getUserOrganizationId(userId: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("organization_id")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as { organization_id: string | null } | null)?.organization_id ?? null;
+}
+
+export async function getOrganizationForUser(userId: string): Promise<Organization | null> {
+  const orgId = await getUserOrganizationId(userId);
+  if (!orgId) return null;
+  return getOrganization(orgId);
+}
+
 export type LinkedUser = {
   id: string;
   name: string | null;
   email: string;
 };
 
+// A manager only ever sees commercials sharing their organization — if the
+// manager isn't in an org yet, there's nothing valid to return.
 export async function getCommercialsForManager(managerId: string): Promise<LinkedUser[]> {
+  const managerOrgId = await getUserOrganizationId(managerId);
+  if (!managerOrgId) return [];
+
   const { data: links, error: linksError } = await supabaseAdmin
     .from("manager_commercial_links")
     .select("commercial_id")
@@ -979,12 +1067,17 @@ export async function getCommercialsForManager(managerId: string): Promise<Linke
   const { data, error } = await supabaseAdmin
     .from("users")
     .select("id, name, email")
-    .in("id", commercialIds);
+    .in("id", commercialIds)
+    .eq("organization_id", managerOrgId);
   if (error) throw error;
   return (data ?? []) as LinkedUser[];
 }
 
+// Symmetric to getCommercialsForManager — same-organization constraint.
 export async function getManagersForCommercial(commercialId: string): Promise<LinkedUser[]> {
+  const commercialOrgId = await getUserOrganizationId(commercialId);
+  if (!commercialOrgId) return [];
+
   const { data: links, error: linksError } = await supabaseAdmin
     .from("manager_commercial_links")
     .select("manager_id")
@@ -997,19 +1090,45 @@ export async function getManagersForCommercial(commercialId: string): Promise<Li
   const { data, error } = await supabaseAdmin
     .from("users")
     .select("id, name, email")
-    .in("id", managerIds);
+    .in("id", managerIds)
+    .eq("organization_id", commercialOrgId);
   if (error) throw error;
   return (data ?? []) as LinkedUser[];
 }
 
 export async function linkManagerToCommercial(managerId: string, commercialId: string): Promise<void> {
-  const { error } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("id, role, organization_id")
+    .in("id", [managerId, commercialId]);
+  if (error) throw error;
+
+  const users = (data ?? []) as { id: string; role: UserRole | null; organization_id: string | null }[];
+  const manager = users.find((u) => u.id === managerId);
+  const commercial = users.find((u) => u.id === commercialId);
+
+  if (!manager) throw new Error(`linkManagerToCommercial: utilisateur manager ${managerId} introuvable.`);
+  if (!commercial) throw new Error(`linkManagerToCommercial: utilisateur commercial ${commercialId} introuvable.`);
+  if (manager.role !== "manager") {
+    throw new Error(`linkManagerToCommercial: l'utilisateur ${managerId} n'a pas le rôle 'manager'.`);
+  }
+  if (commercial.role !== "commercial") {
+    throw new Error(`linkManagerToCommercial: l'utilisateur ${commercialId} n'a pas le rôle 'commercial'.`);
+  }
+  if (!manager.organization_id || !commercial.organization_id) {
+    throw new Error("linkManagerToCommercial: le manager et le commercial doivent tous les deux appartenir à une organisation.");
+  }
+  if (manager.organization_id !== commercial.organization_id) {
+    throw new Error("linkManagerToCommercial: le manager et le commercial doivent appartenir à la même organisation.");
+  }
+
+  const { error: upsertError } = await supabaseAdmin
     .from("manager_commercial_links")
     .upsert(
       { manager_id: managerId, commercial_id: commercialId },
       { onConflict: "manager_id,commercial_id", ignoreDuplicates: true }
     );
-  if (error) throw error;
+  if (upsertError) throw upsertError;
 }
 
 export async function unlinkManagerFromCommercial(managerId: string, commercialId: string): Promise<void> {
