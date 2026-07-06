@@ -88,6 +88,35 @@ export default function OrganizationsAdminClient({
   organizations: OrganizationWithCounts[];
 }) {
   const router = useRouter();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteErrors, setDeleteErrors] = useState<Record<string, string>>({});
+
+  async function handleDelete(org: OrganizationWithCounts) {
+    if (!window.confirm(`Supprimer l'organisation "${org.name}" ?`)) return;
+
+    setDeletingId(org.id);
+    setDeleteErrors((prev) => {
+      const next = { ...prev };
+      delete next[org.id];
+      return next;
+    });
+
+    try {
+      const res = await fetch(`/api/admin/organizations/${org.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error ?? "Erreur lors de la suppression.");
+      }
+      router.refresh();
+    } catch (err) {
+      setDeleteErrors((prev) => ({
+        ...prev,
+        [org.id]: err instanceof Error ? err.message : "Erreur lors de la suppression.",
+      }));
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] ml-48">
@@ -115,7 +144,8 @@ export default function OrganizationsAdminClient({
                       <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Nom</th>
                       <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Managers</th>
                       <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Commerciaux</th>
-                      <th className="py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Total</th>
+                      <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Total</th>
+                      <th className="py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -128,7 +158,25 @@ export default function OrganizationsAdminClient({
                         <td className="py-3 pr-4 text-slate-800 font-medium">{org.name}</td>
                         <td className="py-3 pr-4 text-slate-700 text-right font-mono">{org.managers_count}</td>
                         <td className="py-3 pr-4 text-slate-700 text-right font-mono">{org.commercials_count}</td>
-                        <td className="py-3 text-slate-700 text-right font-mono">{org.total_count}</td>
+                        <td className="py-3 pr-4 text-slate-700 text-right font-mono">{org.total_count}</td>
+                        <td className="py-3 text-right">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(org);
+                            }}
+                            disabled={deletingId === org.id}
+                            title="Supprimer l'organisation"
+                            className="text-slate-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                          >
+                            🗑️
+                          </button>
+                          {deleteErrors[org.id] && (
+                            <p className="text-xs text-red-600 mt-1 max-w-[180px] ml-auto text-left">
+                              {deleteErrors[org.id]}
+                            </p>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

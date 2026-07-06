@@ -1003,6 +1003,20 @@ export async function updateOrganizationName(orgId: string, name: string): Promi
   if (error) throw error;
 }
 
+export async function deleteOrganization(orgId: string): Promise<void> {
+  const { count, error: countError } = await supabaseAdmin
+    .from("users")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", orgId);
+  if (countError) throw countError;
+  if ((count ?? 0) > 0) {
+    throw new Error("Impossible de supprimer une organisation contenant des membres. Retirez d'abord tous les membres.");
+  }
+
+  const { error } = await supabaseAdmin.from("organizations").delete().eq("id", orgId);
+  if (error) throw error;
+}
+
 export async function setUserOrganization(userId: string, orgId: string | null): Promise<void> {
   const { error } = await supabaseAdmin
     .from("users")

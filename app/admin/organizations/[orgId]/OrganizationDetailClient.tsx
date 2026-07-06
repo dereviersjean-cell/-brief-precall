@@ -154,6 +154,28 @@ export default function OrganizationDetailClient({
     }
   }
 
+  const [deleteOrgLoading, setDeleteOrgLoading] = useState(false);
+  const [deleteOrgError, setDeleteOrgError] = useState<string | null>(null);
+
+  async function handleDeleteOrganization() {
+    if (members.length > 0) return;
+    if (!window.confirm(`Supprimer l'organisation "${organization.name}" ?`)) return;
+
+    setDeleteOrgLoading(true);
+    setDeleteOrgError(null);
+    try {
+      const res = await fetch(`/api/admin/organizations/${organization.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error ?? "Erreur lors de la suppression.");
+      }
+      router.push("/admin/organizations");
+    } catch (err) {
+      setDeleteOrgError(err instanceof Error ? err.message : "Erreur lors de la suppression.");
+      setDeleteOrgLoading(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#F8F9FA] ml-48">
       <AdminNav />
@@ -308,6 +330,26 @@ export default function OrganizationDetailClient({
               </div>
             )}
             {addError && <p className="text-xs text-red-600 mt-2">{addError}</p>}
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+            <h2 className="text-sm font-semibold text-slate-900 mb-1">Zone dangereuse</h2>
+            <p className="text-xs text-slate-400 mb-4">
+              La suppression est définitive et impossible tant que l&apos;organisation a des membres.
+            </p>
+            <button
+              onClick={handleDeleteOrganization}
+              disabled={members.length > 0 || deleteOrgLoading}
+              title={
+                members.length > 0
+                  ? "Retirez d'abord tous les membres de l'organisation pour pouvoir la supprimer."
+                  : undefined
+              }
+              className="px-4 py-2 border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+            >
+              Supprimer l&apos;organisation
+            </button>
+            {deleteOrgError && <p className="text-xs text-red-600 mt-2">{deleteOrgError}</p>}
           </div>
         </div>
       </div>
