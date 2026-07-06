@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import type { FormEvent } from "react";
 import type { UserDashboardStat, UserRole } from "@/lib/db";
 import { AdminNav } from "../AdminNav";
+import RecallStatusSection from "./RecallStatusSection";
 
 type RoleFilter = "all" | UserRole;
 
@@ -317,6 +318,8 @@ export default function DashboardAdminClient() {
           <RoleFilterBar value={roleFilter} onChange={setRoleFilter} counts={roleCounts} />
           <DashboardTable stats={filteredStats} />
         </div>
+
+        <RecallStatusSection />
       </div>
       </div>
     </div>

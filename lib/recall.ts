@@ -105,11 +105,55 @@ type CalendarEvent = {
 
 export type SyncResult = { checked: number; scheduled: number; skipped: number };
 
+// Shared eligibility check — an event is worth a bot if it has a meeting link,
+// at least one external attendee, and the user has accepted it. Returns the skip
+// reason (for logging) or null when eligible. Reused by the read-only listing
+// below so both places agree on what counts as "eligible for a bot".
+function getIneligibilityReason(
+  event: CalendarEvent,
+  userEmail: string,
+  userDomain: string
+): string | null {
+  if (!event.meeting_url) return "no meeting_url";
+
+  const attendees: Attendee[] = event.raw?.attendees ?? [];
+
+  const hasExternal = attendees.some((a) => (a.email?.split("@")[1] ?? "") !== userDomain);
+  if (!hasExternal) return "no external attendee";
+
+  const userAttendee = attendees.find((a) => a.self === true || a.email === userEmail);
+  if (!userAttendee || userAttendee.responseStatus !== "accepted") {
+    return `user not accepted: ${userAttendee?.responseStatus ?? "not found"}`;
+  }
+
+  return null;
+}
+
+async function fetchUpcomingCalendarEvents(calendarId: string): Promise<CalendarEvent[]> {
+  const key = process.env.RECALL_API_KEY;
+  if (!key) throw new Error("RECALL_API_KEY is not set");
+
+  const now = new Date().toISOString();
+  const eventsRes = await fetch(
+    `${RECALL_API_V2}/calendar-events/?calendar_id=${calendarId}&start_time__gte=${encodeURIComponent(now)}`,
+    { headers: { Authorization: `Token ${key}`, "Content-Type": "application/json" } }
+  );
+  if (!eventsRes.ok) throw new Error(`Recall.AI calendar-events error (${eventsRes.status})`);
+
+  const eventsData = await eventsRes.json() as { results?: CalendarEvent[] };
+  return eventsData.results ?? [];
+}
+
+function eventTitleOf(event: CalendarEvent): string {
+  const raw = event.raw as Record<string, unknown> | undefined;
+  return (raw?.summary as string | undefined) ?? (raw?.subject as string | undefined) ?? "Sans titre";
+}
+
 export async function syncAndScheduleForUser(
   userId: string,
   userEmail: string
 ): Promise<SyncResult> {
-  const { getRecallCalendarId } = await import("./db");
+  const { getRecallCalendarId, upsertScheduledMeetings, pruneScheduledMeetings } = await import("./db");
 
   const key = process.env.RECALL_API_KEY;
   if (!key) throw new Error("RECALL_API_KEY is not set");
@@ -121,16 +165,8 @@ export async function syncAndScheduleForUser(
   }
 
   const userDomain = userEmail.split("@")[1] ?? "";
-  const now = new Date().toISOString();
 
-  const eventsRes = await fetch(
-    `${RECALL_API_V2}/calendar-events/?calendar_id=${calendarId}&start_time__gte=${encodeURIComponent(now)}`,
-    { headers: { Authorization: `Token ${key}`, "Content-Type": "application/json" } }
-  );
-  if (!eventsRes.ok) throw new Error(`Recall.AI calendar-events error (${eventsRes.status})`);
-
-  const eventsData = await eventsRes.json() as { results?: CalendarEvent[] };
-  const events = eventsData.results ?? [];
+  const events = await fetchUpcomingCalendarEvents(calendarId);
   console.log(`[sync] userId ${userId} — ${events.length} upcoming events`);
 
   let scheduled = 0;
@@ -139,18 +175,10 @@ export async function syncAndScheduleForUser(
   for (const event of events) {
     const logPrefix = `[sync] event ${event.id}`;
 
-    if (!event.meeting_url) { console.log(logPrefix, "skipped — no meeting_url"); skipped++; continue; }
+    const ineligibleReason = getIneligibilityReason(event, userEmail, userDomain);
+    if (ineligibleReason) { console.log(logPrefix, "skipped —", ineligibleReason); skipped++; continue; }
 
     const attendees: Attendee[] = event.raw?.attendees ?? [];
-
-    const hasExternal = attendees.some((a) => (a.email?.split("@")[1] ?? "") !== userDomain);
-    if (!hasExternal) { console.log(logPrefix, "skipped — no external attendee"); skipped++; continue; }
-
-    const userAttendee = attendees.find((a) => a.self === true || a.email === userEmail);
-    if (!userAttendee || userAttendee.responseStatus !== "accepted") {
-      console.log(logPrefix, "skipped — user not accepted:", userAttendee?.responseStatus ?? "not found");
-      skipped++; continue;
-    }
 
     if ((event.bots ?? []).length > 0) { console.log(logPrefix, "skipped — bot already scheduled"); skipped++; continue; }
 
@@ -187,6 +215,22 @@ export async function syncAndScheduleForUser(
       console.log(logPrefix, "bot scheduling threw:", err instanceof Error ? err.message : String(err));
       skipped++;
     }
+  }
+
+  // Mirror this sync's snapshot into scheduled_meetings for the admin dashboard —
+  // reuses the events response already fetched above, no extra Recall calls.
+  try {
+    const snapshot = events.map((event) => ({
+      calendar_event_id: event.id,
+      event_title: eventTitleOf(event),
+      event_start_at: event.start_time,
+      bot_scheduled: (event.bots ?? []).length > 0,
+      ineligibility_reason: getIneligibilityReason(event, userEmail, userDomain),
+    }));
+    await upsertScheduledMeetings(userId, snapshot);
+    await pruneScheduledMeetings(userId, events.map((event) => event.id));
+  } catch (err) {
+    console.error(`[sync] scheduled_meetings snapshot failed for user ${userId} (non-blocking):`, err instanceof Error ? err.message : String(err));
   }
 
   return { checked: events.length, scheduled, skipped };

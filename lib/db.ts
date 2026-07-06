@@ -1172,3 +1172,189 @@ export async function saveCallAnalysis(
   });
   if (error) throw error;
 }
+
+export type ScheduledMeetingUpsert = {
+  calendar_event_id: string;
+  event_title: string;
+  event_start_at: string | null;
+  bot_scheduled: boolean;
+  ineligibility_reason: string | null;
+};
+
+// Bulk upsert of one user's Recall calendar-events snapshot, called from the
+// syncRecallCalendars cron (lib/recall.ts) right after it fetches events for
+// its own bot-scheduling pass — no extra Recall API call here.
+export async function upsertScheduledMeetings(
+  userId: string,
+  meetings: ScheduledMeetingUpsert[]
+): Promise<void> {
+  if (meetings.length === 0) return;
+  const now = new Date().toISOString();
+
+  const { error } = await supabaseAdmin.from("scheduled_meetings").upsert(
+    meetings.map((m) => ({
+      user_id: userId,
+      calendar_event_id: m.calendar_event_id,
+      event_title: m.event_title,
+      event_start_at: m.event_start_at,
+      bot_scheduled: m.bot_scheduled,
+      ineligibility_reason: m.ineligibility_reason,
+      last_synced_at: now,
+    })),
+    { onConflict: "user_id,calendar_event_id" }
+  );
+  if (error) throw error;
+}
+
+// Deletes rows that are no longer relevant: events now in the past, or events
+// Recall no longer returns for this user (cancelled on the calendar side).
+export async function pruneScheduledMeetings(
+  userId: string,
+  activeCalendarEventIds: string[]
+): Promise<void> {
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+  const { data, error } = await supabaseAdmin
+    .from("scheduled_meetings")
+    .select("id, calendar_event_id, event_start_at")
+    .eq("user_id", userId);
+  if (error) throw error;
+
+  const activeSet = new Set(activeCalendarEventIds);
+  const staleIds = ((data ?? []) as { id: string; calendar_event_id: string; event_start_at: string | null }[])
+    .filter((row) => (row.event_start_at !== null && row.event_start_at < cutoff) || !activeSet.has(row.calendar_event_id))
+    .map((row) => row.id);
+  if (staleIds.length === 0) return;
+
+  const { error: deleteError } = await supabaseAdmin
+    .from("scheduled_meetings")
+    .delete()
+    .in("id", staleIds);
+  if (deleteError) throw deleteError;
+}
+
+export type UpcomingScheduledMeeting = {
+  id: string;
+  user_email: string;
+  user_name: string | null;
+  event_title: string;
+  event_start_at: string | null;
+  bot_scheduled: boolean;
+  ineligibility_reason: string | null;
+};
+
+// Reads the scheduled_meetings snapshot maintained by the cron — 0 Recall API calls.
+export async function getUpcomingScheduledMeetings(limit = 100): Promise<UpcomingScheduledMeeting[]> {
+  const now = new Date().toISOString();
+
+  const { data, error } = await supabaseAdmin
+    .from("scheduled_meetings")
+    .select("id, user_id, event_title, event_start_at, bot_scheduled, ineligibility_reason")
+    .gte("event_start_at", now)
+    .order("event_start_at", { ascending: true })
+    .limit(limit);
+  if (error) throw error;
+
+  const rows = (data ?? []) as {
+    id: string;
+    user_id: string;
+    event_title: string;
+    event_start_at: string | null;
+    bot_scheduled: boolean;
+    ineligibility_reason: string | null;
+  }[];
+  if (rows.length === 0) return [];
+
+  const userIds = [...new Set(rows.map((r) => r.user_id))];
+  const { data: usersData, error: usersError } = await supabaseAdmin
+    .from("users")
+    .select("id, name, email")
+    .in("id", userIds);
+  if (usersError) throw usersError;
+
+  const userById = new Map(
+    ((usersData ?? []) as { id: string; name: string | null; email: string }[]).map((u) => [u.id, u])
+  );
+
+  return rows.map((r) => ({
+    id: r.id,
+    user_email: userById.get(r.user_id)?.email ?? "",
+    user_name: userById.get(r.user_id)?.name ?? null,
+    event_title: r.event_title,
+    event_start_at: r.event_start_at,
+    bot_scheduled: r.bot_scheduled,
+    ineligibility_reason: r.ineligibility_reason,
+  }));
+}
+
+export type SuspiciousRecentCall = {
+  id: string;
+  user_id: string;
+  user_email: string;
+  company_name: string | null;
+  contact_email: string | null;
+  recall_bot_id: string;
+  created_at: string;
+  recall_bot_status: string | null;
+  recall_bot_status_fetched_at: string | null;
+};
+
+// Pure DB query, no Recall API call — flags calls from the last 7 days where a
+// bot was scheduled (recall_bot_id set) but no recording ever came back
+// (recording_id null), a likely sign of a rejected or failed bot.
+export async function getSuspiciousRecentCalls(limit = 20): Promise<SuspiciousRecentCall[]> {
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const { data, error } = await supabaseAdmin
+    .from("calls")
+    .select("id, user_id, company_name, contact_email, recall_bot_id, created_at, recall_bot_status, recall_bot_status_fetched_at")
+    .gte("created_at", sevenDaysAgo)
+    .not("recall_bot_id", "is", null)
+    .is("recording_id", null)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+
+  const calls = (data ?? []) as {
+    id: string;
+    user_id: string;
+    company_name: string | null;
+    contact_email: string | null;
+    recall_bot_id: string;
+    created_at: string;
+    recall_bot_status: string | null;
+    recall_bot_status_fetched_at: string | null;
+  }[];
+  if (calls.length === 0) return [];
+
+  const userIds = [...new Set(calls.map((c) => c.user_id))];
+  const { data: usersData, error: usersError } = await supabaseAdmin
+    .from("users")
+    .select("id, email")
+    .in("id", userIds);
+  if (usersError) throw usersError;
+
+  const emailById = new Map(
+    ((usersData ?? []) as { id: string; email: string }[]).map((u) => [u.id, u.email])
+  );
+
+  return calls.map((c) => ({
+    id: c.id,
+    user_id: c.user_id,
+    user_email: emailById.get(c.user_id) ?? "",
+    company_name: c.company_name,
+    contact_email: c.contact_email,
+    recall_bot_id: c.recall_bot_id,
+    created_at: c.created_at,
+    recall_bot_status: c.recall_bot_status,
+    recall_bot_status_fetched_at: c.recall_bot_status_fetched_at,
+  }));
+}
+
+export async function updateCallRecallBotStatus(callId: string, status: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("calls")
+    .update({ recall_bot_status: status, recall_bot_status_fetched_at: new Date().toISOString() })
+    .eq("id", callId);
+  if (error) throw error;
+}
