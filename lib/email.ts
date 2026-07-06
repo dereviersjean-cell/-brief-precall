@@ -5,8 +5,8 @@ import { Resend } from "resend";
 const APP_URL = "https://brief-precall.vercel.app";
 
 const ROLE_LABELS: Record<"manager" | "commercial", string> = {
-  manager: "manager",
-  commercial: "commercial",
+  manager: "Manager",
+  commercial: "Commercial",
 };
 
 function buildInvitationHtml(params: {

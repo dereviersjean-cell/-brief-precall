@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
-import { createInvitedUser, getOrganization, type UserRole } from "@/lib/db";
+import { createInvitedUser, getOrganization, getUserForInvitation, type UserRole } from "@/lib/db";
 import { sendInvitationEmail } from "@/lib/email";
 
-// The admin backoffice has no per-admin identity (shared password auth, no
-// users row for "the admin") — invited_by is left null and the email just
-// credits a generic inviter.
+// The admin backoffice itself has no identity (shared password auth) — but
+// the person operating it may also be logged into the app via NextAuth (e.g.
+// a manager with admin access). When that's the case we credit them as the
+// inviter; otherwise invited_by stays null and the email uses a generic name.
 const FALLBACK_INVITER_NAME = "L'équipe Brief";
 
 export async function POST(request: NextRequest) {
@@ -27,6 +30,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Rôle invalide." }, { status: 400 });
   }
 
+  const session = await getServerSession(authOptions);
+  const invitedBy = session?.supabaseUserId ?? null;
+
   let userId: string;
   try {
     userId = await createInvitedUser({
@@ -34,7 +40,7 @@ export async function POST(request: NextRequest) {
       name: name?.trim() || null,
       role,
       organizationId,
-      invitedBy: null,
+      invitedBy,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erreur lors de la création.";
@@ -45,9 +51,12 @@ export async function POST(request: NextRequest) {
   // logged but never rolls it back, so the admin can resend later.
   try {
     const organization = await getOrganization(organizationId);
+    const inviter = invitedBy ? await getUserForInvitation(invitedBy) : null;
+    const invitedByName = inviter ? inviter.name || inviter.email : FALLBACK_INVITER_NAME;
+
     await sendInvitationEmail({
       to: email,
-      invitedByName: FALLBACK_INVITER_NAME,
+      invitedByName,
       organizationName: organization?.name ?? "votre organisation",
       role,
     });
