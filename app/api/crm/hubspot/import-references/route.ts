@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { requireActiveUser } from "@/lib/api-auth";
 import { getCrmTokens, saveCrmTokens, saveClientReferences } from "@/lib/db";
 import { getWonDeals, refreshHubspotToken } from "@/lib/crm/hubspot";
 import type { HubspotDeal } from "@/lib/crm/hubspot";
@@ -35,10 +36,9 @@ function buildReference(deal: HubspotDeal): Omit<ClientReference, "id" | "user_i
 
 export async function POST() {
   const session = await getServerSession(authOptions);
-  const userId = session?.supabaseUserId;
-  if (!userId) {
-    return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
-  }
+  const auth = await requireActiveUser(session);
+  if (!auth.ok) return auth.response;
+  const userId = auth.userId;
 
   const tokens = await getCrmTokens(userId, "hubspot");
   if (!tokens) {

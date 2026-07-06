@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { requireActiveUser } from "@/lib/api-auth";
 import { getUserRole, linkManagerToCommercial } from "@/lib/db";
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
-  const userId = (session as { supabaseUserId?: string } | null)?.supabaseUserId;
-  if (!userId) {
-    return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
-  }
+  const auth = await requireActiveUser(session);
+  if (!auth.ok) return auth.response;
+  const userId = auth.userId;
 
   const role = await getUserRole(userId);
   if (role !== "manager") {

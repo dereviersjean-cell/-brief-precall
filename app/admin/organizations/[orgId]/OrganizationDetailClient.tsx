@@ -154,6 +154,46 @@ export default function OrganizationDetailClient({
     }
   }
 
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteName, setInviteName] = useState("");
+  const [inviteRole, setInviteRole] = useState<UserRole>("commercial");
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
+
+  async function handleInvite() {
+    const email = inviteEmail.trim();
+    if (!email) return;
+    setInviteLoading(true);
+    setInviteError(null);
+    setInviteSuccess(null);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          name: inviteName.trim() || undefined,
+          role: inviteRole,
+          organizationId: organization.id,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error ?? "Erreur lors de la création.");
+      }
+      setInviteSuccess(`Invitation envoyée à ${email}`);
+      setInviteEmail("");
+      setInviteName("");
+      setInviteRole("commercial");
+      router.refresh();
+    } catch (err) {
+      setInviteError(err instanceof Error ? err.message : "Erreur lors de la création.");
+    } finally {
+      setInviteLoading(false);
+    }
+  }
+
   const [deleteOrgLoading, setDeleteOrgLoading] = useState(false);
   const [deleteOrgError, setDeleteOrgError] = useState<string | null>(null);
 
@@ -330,6 +370,43 @@ export default function OrganizationDetailClient({
               </div>
             )}
             {addError && <p className="text-xs text-red-600 mt-2">{addError}</p>}
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+            <h2 className="text-sm font-semibold text-slate-900 mb-4">Créer et inviter un nouveau membre</h2>
+            <div className="flex items-center gap-2 flex-wrap">
+              <input
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="email@entreprise.com"
+                className="text-sm border border-slate-200 rounded-lg px-3 py-2 min-w-[220px] text-slate-700"
+              />
+              <input
+                type="text"
+                value={inviteName}
+                onChange={(e) => setInviteName(e.target.value)}
+                placeholder="Nom (optionnel)"
+                className="text-sm border border-slate-200 rounded-lg px-3 py-2 min-w-[180px] text-slate-700"
+              />
+              <select
+                value={inviteRole}
+                onChange={(e) => setInviteRole(e.target.value as UserRole)}
+                className="text-sm border border-slate-200 rounded-lg px-3 py-2 text-slate-700"
+              >
+                <option value="commercial">Commercial</option>
+                <option value="manager">Manager</option>
+              </select>
+              <button
+                onClick={handleInvite}
+                disabled={!inviteEmail.trim() || inviteLoading}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50"
+              >
+                Créer et envoyer l&apos;invitation
+              </button>
+            </div>
+            {inviteError && <p className="text-xs text-red-600 mt-2">{inviteError}</p>}
+            {inviteSuccess && <p className="text-xs text-emerald-600 mt-2">{inviteSuccess}</p>}
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">

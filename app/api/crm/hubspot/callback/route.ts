@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { requireActiveUser } from "@/lib/api-auth";
 import { exchangeHubspotCode } from "@/lib/crm/hubspot";
 import { saveCrmTokens } from "@/lib/db";
 
@@ -34,11 +35,12 @@ export async function GET(request: NextRequest) {
   }
 
   const session = await getServerSession(authOptions);
-  const userId = session?.supabaseUserId;
-  if (!userId) {
-    console.log("[hubspot callback] No authenticated user session");
+  const auth = await requireActiveUser(session);
+  if (!auth.ok) {
+    console.log("[hubspot callback] No authenticated (or disabled) user session");
     return NextResponse.redirect(ERROR_URL);
   }
+  const userId = auth.userId;
 
   let tokens: Awaited<ReturnType<typeof exchangeHubspotCode>>;
   try {

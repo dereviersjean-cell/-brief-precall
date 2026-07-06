@@ -2,7 +2,19 @@ import Link from "next/link";
 import { GoogleSignInButton } from "./GoogleSignInButton";
 import { MicrosoftSignInButton } from "./MicrosoftSignInButton";
 
-export default function LoginPage() {
+const ERROR_MESSAGES: Record<string, string> = {
+  AccountDisabled: "Votre compte a été désactivé.",
+  AccessDenied: "Connexion refusée. Contactez votre administrateur si vous pensez qu'il s'agit d'une erreur.",
+};
+
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
+  const errorMessage = error ? ERROR_MESSAGES[error] ?? null : null;
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Nav */}
@@ -28,6 +40,12 @@ export default function LoginPage() {
               Accédez à vos briefs pré-call
             </p>
           </div>
+
+          {errorMessage && (
+            <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+              {errorMessage}
+            </div>
+          )}
 
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
             <form action="/dashboard" method="get" className="space-y-5">

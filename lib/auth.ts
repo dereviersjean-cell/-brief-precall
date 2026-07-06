@@ -1,8 +1,14 @@
 import { type AuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import AzureADProvider from "next-auth/providers/azure-ad";
-import { upsertUser, saveGoogleTokens, getUserRole } from "./db";
+import { resolveUserForLogin, saveGoogleTokens, type AuthProvider } from "./db";
 import { refreshGoogleAccessToken } from "./gmail";
+
+function toAuthProvider(nextAuthProvider: string): AuthProvider | null {
+  if (nextAuthProvider === "google") return "google";
+  if (nextAuthProvider === "azure-ad") return "microsoft";
+  return null;
+}
 
 export const authOptions: AuthOptions = {
   providers: [
@@ -36,6 +42,37 @@ export const authOptions: AuthOptions = {
   ],
   session: { strategy: "jwt" },
   callbacks: {
+    // Runs before jwt() — the only place that can actually refuse a sign-in
+    // (returning false here prevents a session from ever being created).
+    async signIn({ user, account }) {
+      if (!account || !user?.email || !user?.id) return false;
+      const provider = toAuthProvider(account.provider);
+      if (!provider) return false;
+
+      try {
+        const resolution = await resolveUserForLogin({
+          email: user.email,
+          name: user.name ?? null,
+          avatarUrl: user.image ?? null,
+          provider,
+          providerId: user.id,
+        });
+
+        if (resolution.status === "disabled") {
+          console.error(`[auth] signIn refused — account disabled for ${user.email}`);
+          return false;
+        }
+        if (resolution.status === "conflict") {
+          console.error(`[auth] signIn refused — ${user.email} is already linked to a different ${provider} account`);
+          return false;
+        }
+        return true;
+      } catch (err) {
+        console.error("[auth] signIn resolveUserForLogin failed:", err);
+        return false;
+      }
+    },
+
     async jwt({ token, account, user }) {
       // First login — account is present
       if (account) {
@@ -49,30 +86,33 @@ export const authOptions: AuthOptions = {
           token.accessTokenExpires = Date.now() + (account.expires_in as number) * 1000;
         }
 
-        if (user?.email) {
+        // signIn() already resolved (and possibly created/linked) this row —
+        // this re-matches the same row to read back id/role for the token.
+        const provider = toAuthProvider(account.provider);
+        if (provider && user?.email && user?.id) {
           try {
-            const dbUser = await upsertUser(
-              user.email,
-              user.name ?? null,
-              user.image ?? null
-            );
-            token.supabaseUserId = dbUser?.id;
-            if (dbUser?.id) {
-              try {
-                token.role = (await getUserRole(dbUser.id)) ?? undefined;
-              } catch (err) {
-                console.error("[auth] getUserRole failed:", err);
-              }
-            }
-            if (account.provider === "google" && dbUser?.id && account.access_token) {
-              try {
-                await saveGoogleTokens(dbUser.id, account.access_token, account.refresh_token);
-              } catch (err) {
-                console.error("[auth] saveGoogleTokens failed:", err);
+            const resolution = await resolveUserForLogin({
+              email: user.email,
+              name: user.name ?? null,
+              avatarUrl: user.image ?? null,
+              provider,
+              providerId: user.id,
+            });
+
+            if (resolution.status === "ok") {
+              token.supabaseUserId = resolution.userId;
+              token.role = resolution.role ?? undefined;
+
+              if (provider === "google" && account.access_token) {
+                try {
+                  await saveGoogleTokens(resolution.userId, account.access_token, account.refresh_token);
+                } catch (err) {
+                  console.error("[auth] saveGoogleTokens failed:", err);
+                }
               }
             }
           } catch (err) {
-            console.error("[auth] upsertUser failed:", err);
+            console.error("[auth] jwt resolveUserForLogin failed:", err);
           }
         }
 
@@ -114,5 +154,6 @@ export const authOptions: AuthOptions = {
   },
   pages: {
     signIn: "/login",
+    error: "/login",
   },
 };

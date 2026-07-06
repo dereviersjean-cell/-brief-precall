@@ -3,13 +3,15 @@ import { cookies } from "next/headers";
 import { randomBytes } from "crypto";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { requireActiveUser } from "@/lib/api-auth";
 import { getHubspotAuthUrl } from "@/lib/crm/hubspot";
 
 const ERROR_URL = "https://brief-precall.vercel.app/settings?crm=error";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
-  if (!session?.supabaseUserId) {
+  const auth = await requireActiveUser(session);
+  if (!auth.ok) {
     return NextResponse.redirect(ERROR_URL);
   }
 

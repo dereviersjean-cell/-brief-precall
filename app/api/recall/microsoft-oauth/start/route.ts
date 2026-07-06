@@ -3,12 +3,12 @@ import { cookies } from "next/headers";
 import { randomBytes } from "crypto";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { requireActiveUser } from "@/lib/api-auth";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
-  if (!session?.supabaseUserId) {
-    return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
-  }
+  const auth = await requireActiveUser(session);
+  if (!auth.ok) return auth.response;
 
   const clientId = process.env.RECALL_MICROSOFT_CLIENT_ID;
   if (!clientId) {

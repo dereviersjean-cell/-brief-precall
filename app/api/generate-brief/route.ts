@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import Anthropic from "@anthropic-ai/sdk";
 import { authOptions } from "@/lib/auth";
+import { requireActiveUser } from "@/lib/api-auth";
 import { readConfig } from "@/lib/admin-config";
 import { generateBrief } from "@/lib/brief-generator";
 import { enrichWithPappers } from "@/lib/pappers";
@@ -46,9 +47,10 @@ export async function POST(request: NextRequest) {
   let userId: string | null = null;
   try {
     const session = await getServerSession(authOptions);
-    userId = session?.supabaseUserId ?? null;
+    const auth = await requireActiveUser(session);
+    if (auth.ok) userId = auth.userId;
   } catch {
-    // Session non disponible — on continue sans cache ni persistance
+    // Session/compte non disponible ou désactivé — on continue sans cache ni persistance
   }
 
   // Rate limiting

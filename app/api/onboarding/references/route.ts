@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { requireActiveUser } from "@/lib/api-auth";
 import { createImportJob } from "@/lib/db";
 import { inngest } from "@/lib/inngest";
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
-  const userId = session?.supabaseUserId;
-
-  if (!userId) {
-    return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
-  }
+  const auth = await requireActiveUser(session);
+  if (!auth.ok) return auth.response;
+  const userId = auth.userId;
 
   let body: { file?: string; fileType?: string; text?: string; source?: string };
   try {

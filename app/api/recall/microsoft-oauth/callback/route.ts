@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { requireActiveUser } from "@/lib/api-auth";
 import { createRecallCalendarV2Microsoft } from "@/lib/recall";
 import { saveRecallCalendarId } from "@/lib/db";
 
@@ -72,12 +73,13 @@ export async function GET(request: NextRequest) {
 
   // Step 2 — get authenticated user
   const session = await getServerSession(authOptions);
-  const userId = session?.supabaseUserId;
+  const auth = await requireActiveUser(session);
 
-  if (!userId) {
-    console.log("[ms oauth callback] No authenticated user session");
+  if (!auth.ok) {
+    console.log("[ms oauth callback] No authenticated (or disabled) user session");
     return NextResponse.redirect(ERROR_URL);
   }
+  const userId = auth.userId;
 
   // Step 3 — create Recall calendar
   try {

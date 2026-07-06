@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { requireActiveUser } from "@/lib/api-auth";
 import { getCallReplyInfo } from "@/lib/db";
 
 function encodeMimeSubject(subject: string): string {
@@ -38,10 +39,9 @@ function buildReplyRfc2822(
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
-  const userId = session?.supabaseUserId;
-  if (!userId) {
-    return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
-  }
+  const auth = await requireActiveUser(session);
+  if (!auth.ok) return auth.response;
+  const userId = auth.userId;
 
   let callId: string;
   let body: string;
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Informations du thread manquantes." }, { status: 400 });
   }
 
-  const accessToken = session.accessToken;
+  const accessToken = session?.accessToken;
   if (!accessToken) {
     return NextResponse.json({ error: "Token d'accès Google manquant. Reconnectez-vous." }, { status: 401 });
   }

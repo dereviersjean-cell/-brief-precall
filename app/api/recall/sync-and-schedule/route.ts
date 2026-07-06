@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { requireActiveUser } from "@/lib/api-auth";
 import { syncAndScheduleForUser } from "@/lib/recall";
 
 export async function POST() {
   const session = await getServerSession(authOptions);
-  const userId = session?.supabaseUserId;
+  const auth = await requireActiveUser(session);
+  if (!auth.ok) return auth.response;
+  const userId = auth.userId;
   const userEmail = session?.user?.email ?? "";
 
-  if (!userId || !userEmail) {
+  if (!userEmail) {
     return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
   }
 

@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { requireActiveUser } from "@/lib/api-auth";
 import { getUserProfile, upsertUserProfile } from "@/lib/db";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
-  const userId = session?.supabaseUserId;
+  const auth = await requireActiveUser(session);
 
-  if (!userId) {
-    // Non authentifié — on laisse le dashboard gérer la redirection login
+  if (!auth.ok) {
+    // Non authentifié ou désactivé — on laisse le dashboard gérer la redirection login
     return NextResponse.json({ hasProfile: true, profile: null });
   }
+  const userId = auth.userId;
 
   try {
     const profile = await getUserProfile(userId);
@@ -22,11 +24,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
-  const userId = session?.supabaseUserId;
-
-  if (!userId) {
-    return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
-  }
+  const auth = await requireActiveUser(session);
+  if (!auth.ok) return auth.response;
+  const userId = auth.userId;
 
   try {
     const { company_name, product_description, icp, sector } = await request.json();

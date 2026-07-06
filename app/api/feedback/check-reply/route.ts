@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { requireActiveUser } from "@/lib/api-auth";
 import { getCallReplyInfo, updateReplyInfo } from "@/lib/db";
 import { checkThreadReply } from "@/lib/gmail";
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
-  const userId = session?.supabaseUserId;
-  if (!userId) {
-    return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
-  }
+  const auth = await requireActiveUser(session);
+  if (!auth.ok) return auth.response;
+  const userId = auth.userId;
 
   const callId = request.nextUrl.searchParams.get("callId");
   if (!callId) {
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ replied: false });
   }
 
-  const accessToken = session.accessToken;
+  const accessToken = session?.accessToken;
   if (!accessToken) {
     return NextResponse.json({ error: "Token d'accès Google manquant. Reconnectez-vous." }, { status: 401 });
   }

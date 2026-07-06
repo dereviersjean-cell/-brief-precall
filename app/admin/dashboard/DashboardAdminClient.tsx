@@ -126,7 +126,124 @@ function RoleFilterBar({
   );
 }
 
-function DashboardTable({ stats }: { stats: UserDashboardStat[] }) {
+function DisabledBadge({ disabled }: { disabled: boolean }) {
+  if (!disabled) return null;
+  return (
+    <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-slate-200 text-slate-600">
+      Désactivé
+    </span>
+  );
+}
+
+function UserActionsMenu({ user, onChanged }: { user: UserDashboardStat; onChanged: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function runAction(action: () => Promise<Response>) {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await action();
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error ?? "Erreur.");
+      }
+      setOpen(false);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleDisable() {
+    runAction(() => fetch(`/api/admin/users/${user.id}?mode=soft`, { method: "DELETE" }));
+  }
+
+  function handleRestore() {
+    runAction(() => fetch(`/api/admin/users/${user.id}/restore`, { method: "POST" }));
+  }
+
+  function handleResendInvitation() {
+    runAction(() => fetch(`/api/admin/users/${user.id}/resend-invitation`, { method: "POST" }));
+  }
+
+  function handleHardDelete() {
+    if (
+      !window.confirm(
+        `Supprimer définitivement ${user.email} ? Cette action efface aussi tout son historique (briefs, appels, analyses...) et est irréversible.`
+      )
+    ) {
+      return;
+    }
+    if (
+      !window.confirm(
+        `Dernière confirmation : es-tu sûr(e) de vouloir supprimer définitivement ${user.email} ? Il n'y a aucun moyen de revenir en arrière.`
+      )
+    ) {
+      return;
+    }
+    runAction(() => fetch(`/api/admin/users/${user.id}?mode=hard`, { method: "DELETE" }));
+  }
+
+  const canResendInvitation = user.invited_at != null && !user.sso_linked;
+
+  return (
+    <div className="relative inline-block text-left" onClick={(e) => e.stopPropagation()}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="px-2 py-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+      >
+        ⋯
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 mt-1 w-56 bg-white border border-slate-200 rounded-lg shadow-lg z-20 py-1">
+            {user.disabled_at ? (
+              <button
+                onClick={handleRestore}
+                disabled={loading}
+                className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Réactiver
+              </button>
+            ) : (
+              <button
+                onClick={handleDisable}
+                disabled={loading}
+                className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Désactiver
+              </button>
+            )}
+            {canResendInvitation && (
+              <button
+                onClick={handleResendInvitation}
+                disabled={loading}
+                className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Renvoyer l&apos;invitation
+              </button>
+            )}
+            <button
+              onClick={handleHardDelete}
+              disabled={loading}
+              className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+            >
+              Supprimer définitivement
+            </button>
+            {error && <p className="px-3 py-1.5 text-xs text-red-600">{error}</p>}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function DashboardTable({ stats, onChanged }: { stats: UserDashboardStat[]; onChanged: () => void }) {
   const router = useRouter();
   const sorted = [...stats].sort((a, b) => {
     const da = a.last_activity_at ?? a.created_at ?? "";
@@ -147,7 +264,8 @@ function DashboardTable({ stats }: { stats: UserDashboardStat[] }) {
             <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Emails</th>
             <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Dernière activité</th>
             <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Recall</th>
-            <th className="py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">CRM</th>
+            <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">CRM</th>
+            <th className="py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right"></th>
           </tr>
         </thead>
         <tbody>
@@ -158,7 +276,12 @@ function DashboardTable({ stats }: { stats: UserDashboardStat[] }) {
               className="border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer"
             >
               <td className="py-3 pr-4 text-slate-800 font-medium max-w-[200px] truncate">{u.email}</td>
-              <td className="py-3 pr-4"><RoleBadge role={u.role} /></td>
+              <td className="py-3 pr-4">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <RoleBadge role={u.role} />
+                  <DisabledBadge disabled={u.disabled_at != null} />
+                </div>
+              </td>
               <td className="py-3 pr-4 text-slate-500 whitespace-nowrap">{formatAdminDate(u.created_at)}</td>
               <td className="py-3 pr-4 text-slate-700 text-right font-mono">{u.briefs_count}</td>
               <td className="py-3 pr-4 text-slate-700 text-right font-mono">{u.calls_count}</td>
@@ -171,7 +294,7 @@ function DashboardTable({ stats }: { stats: UserDashboardStat[] }) {
                   <span className="text-slate-300 text-xs">—</span>
                 )}
               </td>
-              <td className="py-3">
+              <td className="py-3 pr-4">
                 {u.crm_connected.length > 0 ? (
                   <div className="flex flex-wrap gap-1">
                     {u.crm_connected.map((p) => (
@@ -182,11 +305,14 @@ function DashboardTable({ stats }: { stats: UserDashboardStat[] }) {
                   <span className="text-slate-300 text-xs">—</span>
                 )}
               </td>
+              <td className="py-3 text-right">
+                <UserActionsMenu user={u} onChanged={onChanged} />
+              </td>
             </tr>
           ))}
           {sorted.length === 0 && (
             <tr>
-              <td colSpan={9} className="py-12 text-center text-slate-400 text-sm">
+              <td colSpan={10} className="py-12 text-center text-slate-400 text-sm">
                 Aucun utilisateur
               </td>
             </tr>
@@ -292,7 +418,7 @@ export default function DashboardAdminClient() {
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
           <RoleFilterBar value={roleFilter} onChange={setRoleFilter} counts={roleCounts} />
-          <DashboardTable stats={filteredStats} />
+          <DashboardTable stats={filteredStats} onChanged={fetchStats} />
         </div>
 
         <RecallStatusSection />

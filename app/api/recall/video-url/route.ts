@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { requireActiveUser } from "@/lib/api-auth";
 import { getCallWithAnalysis, getCallWithAnalysisForManager, getUserRole } from "@/lib/db";
 import { getVideoUrl } from "@/lib/recall";
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
-  const userId = session?.supabaseUserId;
-  if (!userId) {
-    return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
-  }
+  const auth = await requireActiveUser(session);
+  if (!auth.ok) return auth.response;
+  const userId = auth.userId;
 
   const callId = request.nextUrl.searchParams.get("callId");
   if (!callId) {

@@ -16,22 +16,84 @@ export async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 
   throw lastError;
 }
 
-export async function upsertUser(
-  email: string,
-  name: string | null,
-  avatarUrl: string | null
-): Promise<{ id: string } | null> {
-  const { data, error } = await supabaseAdmin
-    .from("users")
-    .upsert(
-      { email, name, avatar_url: avatarUrl },
-      { onConflict: "email" }
-    )
-    .select("id")
-    .single();
+export type AuthProvider = "google" | "microsoft";
 
-  if (error) throw error;
-  return data as { id: string } | null;
+export type LoginResolution =
+  | { status: "ok"; userId: string; role: UserRole | null }
+  | { status: "disabled" }
+  | { status: "conflict" };
+
+type AuthUserRow = {
+  id: string;
+  disabled_at: string | null;
+  role: UserRole | null;
+  google_id: string | null;
+  microsoft_id: string | null;
+};
+
+// Resolves (and creates/links as needed) the users row for a Google/Microsoft
+// sign-in. Idempotent — safe to call once from the `signIn` callback (to
+// decide whether to allow the login) and again from `jwt` (to read back the
+// resolved id/role), since the second call just re-matches the same row.
+export async function resolveUserForLogin(params: {
+  email: string;
+  name: string | null;
+  avatarUrl: string | null;
+  provider: AuthProvider;
+  providerId: string;
+}): Promise<LoginResolution> {
+  const { email, name, avatarUrl, provider, providerId } = params;
+  const column = provider === "google" ? "google_id" : "microsoft_id";
+
+  const { data: byProviderIdData, error: byProviderIdError } = await supabaseAdmin
+    .from("users")
+    .select("id, disabled_at, role, google_id, microsoft_id")
+    .eq(column, providerId)
+    .maybeSingle();
+  if (byProviderIdError) throw byProviderIdError;
+  const byProviderId = byProviderIdData as AuthUserRow | null;
+
+  if (byProviderId) {
+    if (byProviderId.disabled_at) return { status: "disabled" };
+    const { error } = await supabaseAdmin
+      .from("users")
+      .update({ name, avatar_url: avatarUrl })
+      .eq("id", byProviderId.id);
+    if (error) throw error;
+    return { status: "ok", userId: byProviderId.id, role: byProviderId.role };
+  }
+
+  const { data: byEmailData, error: byEmailError } = await supabaseAdmin
+    .from("users")
+    .select("id, disabled_at, role, google_id, microsoft_id")
+    .eq("email", email)
+    .maybeSingle();
+  if (byEmailError) throw byEmailError;
+  const byEmail = byEmailData as AuthUserRow | null;
+
+  if (byEmail) {
+    const existingProviderId = provider === "google" ? byEmail.google_id : byEmail.microsoft_id;
+    if (existingProviderId && existingProviderId !== providerId) {
+      return { status: "conflict" };
+    }
+    if (byEmail.disabled_at) return { status: "disabled" };
+
+    const { error } = await supabaseAdmin
+      .from("users")
+      .update({ [column]: providerId, name, avatar_url: avatarUrl })
+      .eq("id", byEmail.id);
+    if (error) throw error;
+    return { status: "ok", userId: byEmail.id, role: byEmail.role };
+  }
+
+  const { data: created, error: createError } = await supabaseAdmin
+    .from("users")
+    .insert({ email, name, avatar_url: avatarUrl, [column]: providerId })
+    .select("id, role")
+    .single();
+  if (createError) throw createError;
+  const createdRow = created as { id: string; role: UserRole | null };
+  return { status: "ok", userId: createdRow.id, role: createdRow.role };
 }
 
 export async function saveGoogleTokens(
@@ -842,6 +904,11 @@ export type UserDashboardStat = {
   email: string;
   created_at: string;
   role: UserRole | null;
+  disabled_at: string | null;
+  invited_at: string | null;
+  // Whether this user has ever completed a Google/Microsoft login (as opposed
+  // to still being a pending invitation) — derived from google_id/microsoft_id.
+  sso_linked: boolean;
   briefs_count: number;
   calls_count: number;
   emails_sent_count: number;
@@ -852,13 +919,26 @@ export type UserDashboardStat = {
 
 export async function getAdminDashboardStats(): Promise<UserDashboardStat[]> {
   const [usersRes, briefsRes, callsRes, crmRes] = await Promise.all([
-    supabaseAdmin.from("users").select("id, email, created_at, role, recall_calendar_id").order("created_at", { ascending: false }),
+    supabaseAdmin
+      .from("users")
+      .select("id, email, created_at, role, recall_calendar_id, disabled_at, invited_at, google_id, microsoft_id")
+      .order("created_at", { ascending: false }),
     supabaseAdmin.from("briefs").select("user_id, created_at"),
     supabaseAdmin.from("calls").select("user_id, created_at, follow_up_sent_at"),
     supabaseAdmin.from("crm_connections").select("user_id, provider"),
   ]);
 
-  const users = (usersRes.data ?? []) as { id: string; email: string; created_at: string; role: UserRole | null; recall_calendar_id: string | null }[];
+  const users = (usersRes.data ?? []) as {
+    id: string;
+    email: string;
+    created_at: string;
+    role: UserRole | null;
+    recall_calendar_id: string | null;
+    disabled_at: string | null;
+    invited_at: string | null;
+    google_id: string | null;
+    microsoft_id: string | null;
+  }[];
   const briefs = (briefsRes.data ?? []) as { user_id: string; created_at: string }[];
   const calls = (callsRes.data ?? []) as { user_id: string; created_at: string; follow_up_sent_at: string | null }[];
   const crm = (crmRes.data ?? []) as { user_id: string; provider: string }[];
@@ -875,6 +955,9 @@ export async function getAdminDashboardStats(): Promise<UserDashboardStat[]> {
       email: user.email,
       created_at: user.created_at,
       role: user.role,
+      disabled_at: user.disabled_at,
+      invited_at: user.invited_at,
+      sso_linked: user.google_id != null || user.microsoft_id != null,
       briefs_count: userBriefs.length,
       calls_count: userCalls.length,
       emails_sent_count: userCalls.filter((c) => c.follow_up_sent_at != null).length,
@@ -892,7 +975,7 @@ export type UserDetailForAdmin = UserDashboardStat & { name: string | null };
 export async function getUserDetailForAdmin(userId: string): Promise<UserDetailForAdmin | null> {
   const { data: userData, error: userError } = await supabaseAdmin
     .from("users")
-    .select("id, email, name, created_at, role, recall_calendar_id")
+    .select("id, email, name, created_at, role, recall_calendar_id, disabled_at, invited_at, google_id, microsoft_id")
     .eq("id", userId)
     .maybeSingle();
   if (userError) throw userError;
@@ -905,6 +988,10 @@ export async function getUserDetailForAdmin(userId: string): Promise<UserDetailF
     created_at: string;
     role: UserRole | null;
     recall_calendar_id: string | null;
+    disabled_at: string | null;
+    invited_at: string | null;
+    google_id: string | null;
+    microsoft_id: string | null;
   };
 
   const [briefsRes, callsRes, crmRes] = await Promise.all([
@@ -931,6 +1018,9 @@ export async function getUserDetailForAdmin(userId: string): Promise<UserDetailF
     name: user.name,
     created_at: user.created_at,
     role: user.role,
+    disabled_at: user.disabled_at,
+    invited_at: user.invited_at,
+    sso_linked: user.google_id != null || user.microsoft_id != null,
     briefs_count: briefs.length,
     calls_count: calls.length,
     emails_sent_count: calls.filter((c) => c.follow_up_sent_at != null).length,
@@ -956,6 +1046,76 @@ export async function setUserRole(userId: string, role: UserRole): Promise<void>
   const { error } = await supabaseAdmin
     .from("users")
     .update({ role })
+    .eq("id", userId);
+  if (error) throw error;
+}
+
+export async function createInvitedUser(params: {
+  email: string;
+  name: string | null;
+  role: UserRole;
+  organizationId: string;
+  invitedBy: string | null;
+}): Promise<string> {
+  const { email, name, role, organizationId, invitedBy } = params;
+
+  const { data: existing, error: existingError } = await supabaseAdmin
+    .from("users")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle();
+  if (existingError) throw existingError;
+  if (existing) {
+    throw new Error(`Un utilisateur avec l'email ${email} existe déjà.`);
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .insert({
+      email,
+      name,
+      role,
+      organization_id: organizationId,
+      invited_at: new Date().toISOString(),
+      invited_by: invitedBy,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return (data as { id: string }).id;
+}
+
+export type UserForInvitation = {
+  id: string;
+  email: string;
+  name: string | null;
+  role: UserRole | null;
+  organization_id: string | null;
+  invited_by: string | null;
+};
+
+export async function getUserForInvitation(userId: string): Promise<UserForInvitation | null> {
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("id, email, name, role, organization_id, invited_by")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data as UserForInvitation | null;
+}
+
+export async function softDeleteUser(userId: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("users")
+    .update({ disabled_at: new Date().toISOString() })
+    .eq("id", userId);
+  if (error) throw error;
+}
+
+export async function restoreUser(userId: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("users")
+    .update({ disabled_at: null })
     .eq("id", userId);
   if (error) throw error;
 }
@@ -1153,6 +1313,64 @@ export async function removeAllLinksForUser(userId: string): Promise<void> {
     .delete()
     .eq("commercial_id", userId);
   if (asCommercialError) throw asCommercialError;
+}
+
+// Explicit cleanup of every table referencing users.id before the row itself
+// is deleted. Not relying on DB-level ON DELETE CASCADE here — it couldn't be
+// verified via Supabase's REST/PostgREST API (no SQL introspection access in
+// this environment), so this guarantees a clean delete regardless of what the
+// actual FK constraints turn out to be.
+export async function hardDeleteUser(userId: string): Promise<void> {
+  const { data: userCalls, error: userCallsError } = await supabaseAdmin
+    .from("calls")
+    .select("id")
+    .eq("user_id", userId);
+  if (userCallsError) throw userCallsError;
+
+  const callIds = ((userCalls ?? []) as { id: string }[]).map((c) => c.id);
+  if (callIds.length > 0) {
+    const { error: callAnalysisError } = await supabaseAdmin
+      .from("call_analysis")
+      .delete()
+      .in("call_id", callIds);
+    if (callAnalysisError) throw callAnalysisError;
+  }
+
+  const { error: callsError } = await supabaseAdmin.from("calls").delete().eq("user_id", userId);
+  if (callsError) throw callsError;
+
+  const { error: briefsError } = await supabaseAdmin.from("briefs").delete().eq("user_id", userId);
+  if (briefsError) throw briefsError;
+
+  const { error: contactsError } = await supabaseAdmin.from("contacts").delete().eq("user_id", userId);
+  if (contactsError) throw contactsError;
+
+  const { error: crmError } = await supabaseAdmin.from("crm_connections").delete().eq("user_id", userId);
+  if (crmError) throw crmError;
+
+  const { error: profileError } = await supabaseAdmin.from("user_profiles").delete().eq("user_id", userId);
+  if (profileError) throw profileError;
+
+  const { error: referencesError } = await supabaseAdmin.from("client_references").delete().eq("user_id", userId);
+  if (referencesError) throw referencesError;
+
+  const { error: importJobsError } = await supabaseAdmin.from("import_jobs").delete().eq("user_id", userId);
+  if (importJobsError) throw importJobsError;
+
+  const { error: scheduledMeetingsError } = await supabaseAdmin.from("scheduled_meetings").delete().eq("user_id", userId);
+  if (scheduledMeetingsError) throw scheduledMeetingsError;
+
+  await removeAllLinksForUser(userId);
+
+  // Other users this one invited keep their row — just drop the now-dangling reference.
+  const { error: invitedByError } = await supabaseAdmin
+    .from("users")
+    .update({ invited_by: null })
+    .eq("invited_by", userId);
+  if (invitedByError) throw invitedByError;
+
+  const { error: deleteError } = await supabaseAdmin.from("users").delete().eq("id", userId);
+  if (deleteError) throw deleteError;
 }
 
 export type LinkedUser = {
