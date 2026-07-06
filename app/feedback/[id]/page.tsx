@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { getCallWithAnalysis } from "@/lib/db";
+import { getCallWithAnalysis, getCallWithAnalysisForManager, getUserRole } from "@/lib/db";
 import { notFound } from "next/navigation";
 import FeedbackDetailClient from "./FeedbackDetailClient";
 
@@ -15,7 +15,16 @@ export default async function FeedbackDetailPage({
 
   if (!userId) notFound();
 
-  const call = await getCallWithAnalysis(id, userId);
+  // Owner first — covers the common case without an extra role lookup.
+  let call = await getCallWithAnalysis(id, userId);
+
+  if (!call) {
+    const role = await getUserRole(userId);
+    if (role === "manager") {
+      call = await getCallWithAnalysisForManager(id, userId);
+    }
+  }
+
   if (!call) notFound();
 
   return <FeedbackDetailClient call={call} />;

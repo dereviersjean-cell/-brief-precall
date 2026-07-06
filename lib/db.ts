@@ -485,6 +485,31 @@ export async function getCallWithAnalysis(
   };
 }
 
+export async function getCallWithAnalysisForManager(
+  callId: string,
+  managerId: string
+): Promise<CallWithAnalysis | null> {
+  const { data: call, error: callError } = await supabaseAdmin
+    .from("calls")
+    .select("user_id")
+    .eq("id", callId)
+    .maybeSingle();
+  if (callError) throw callError;
+  if (!call) return null;
+  const ownerId = (call as { user_id: string }).user_id;
+
+  const { data: link, error: linkError } = await supabaseAdmin
+    .from("manager_commercial_links")
+    .select("id")
+    .eq("manager_id", managerId)
+    .eq("commercial_id", ownerId)
+    .maybeSingle();
+  if (linkError) throw linkError;
+  if (!link) return null;
+
+  return getCallWithAnalysis(callId, ownerId);
+}
+
 export type CallHistoryItem = {
   id: string;
   date: string;
