@@ -1096,6 +1096,48 @@ export async function getManagersForCommercial(commercialId: string): Promise<Li
   return (data ?? []) as LinkedUser[];
 }
 
+export type OrganizationCommercial = {
+  id: string;
+  name: string | null;
+  email: string;
+  is_linked: boolean;
+};
+
+// All commercials in the manager's own organization, each flagged with
+// whether they're currently linked to this manager — feeds the "manage my
+// team" picker so a manager can link/unlink without knowing IDs upfront.
+export async function getOrganizationCommercialsForManager(
+  managerId: string
+): Promise<OrganizationCommercial[]> {
+  const managerOrgId = await getUserOrganizationId(managerId);
+  if (!managerOrgId) return [];
+
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("id, name, email")
+    .eq("organization_id", managerOrgId)
+    .eq("role", "commercial");
+  if (error) throw error;
+
+  const commercials = (data ?? []) as { id: string; name: string | null; email: string }[];
+  if (commercials.length === 0) return [];
+
+  const { data: links, error: linksError } = await supabaseAdmin
+    .from("manager_commercial_links")
+    .select("commercial_id")
+    .eq("manager_id", managerId);
+  if (linksError) throw linksError;
+
+  const linkedIds = new Set((links ?? []).map((l) => (l as { commercial_id: string }).commercial_id));
+
+  return commercials.map((c) => ({
+    id: c.id,
+    name: c.name,
+    email: c.email,
+    is_linked: linkedIds.has(c.id),
+  }));
+}
+
 export async function linkManagerToCommercial(managerId: string, commercialId: string): Promise<void> {
   const { data, error } = await supabaseAdmin
     .from("users")
