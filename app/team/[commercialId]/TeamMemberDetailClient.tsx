@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { CommercialDetailForManager } from "@/lib/db";
+import { formatContactDisplayName } from "@/lib/format";
 
 type BriefSummary = {
   id: string;
@@ -154,13 +155,13 @@ export default function TeamMemberDetailClient({ detail }: { detail: CommercialD
                 return (
                   <Link
                     key={call.id}
-                    href={`/feedback/${call.id}`}
+                    href={`/team/${detail.user_id}/calls/${call.id}`}
                     className="block bg-white rounded-2xl border border-slate-200 p-5 hover:shadow-md hover:border-indigo-200 transition-all"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
                         <p className="font-semibold text-slate-900 text-sm truncate">
-                          {call.company_name || call.contact_email || "Contact inconnu"}
+                          {formatContactDisplayName(call.company_name, call.contact_email)}
                         </p>
                         <p className="text-slate-400 text-xs mt-1 flex items-center gap-2 flex-wrap">
                           <span>{formatDateTime(call.started_at ?? call.created_at)}</span>

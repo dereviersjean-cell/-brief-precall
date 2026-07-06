@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import type { CallWithAnalysis, AnalysisScores } from "@/lib/db";
+import { formatContactDisplayName } from "@/lib/format";
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -67,7 +68,38 @@ function formatSentAt(iso: string) {
   return `${date} à ${time}`;
 }
 
-export default function FeedbackDetailClient({ call }: { call: CallWithAnalysis }) {
+function ReadOnlyEmailBlock({ call }: { call: CallWithAnalysis }) {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Email de suivi</h2>
+        {call.follow_up_sent_at && (
+          <span className="text-xs text-emerald-600 font-medium">Envoyé le {formatSentAt(call.follow_up_sent_at)}</span>
+        )}
+      </div>
+      {call.follow_up_email ? (
+        <>
+          <p className="text-sm font-semibold text-slate-800 mb-2">{call.follow_up_email.subject}</p>
+          <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">{call.follow_up_email.body}</p>
+        </>
+      ) : (
+        <p className="text-slate-400 text-sm italic">Aucun email de suivi généré.</p>
+      )}
+    </div>
+  );
+}
+
+export default function FeedbackDetailClient({
+  call,
+  readOnly = false,
+  backHref = "/feedback",
+  backLabel = "Retour aux feedbacks",
+}: {
+  call: CallWithAnalysis;
+  readOnly?: boolean;
+  backHref?: string;
+  backLabel?: string;
+}) {
   const [copied, setCopied] = useState(false);
   const [subject, setSubject] = useState(call.follow_up_email?.subject ?? "");
   const [body, setBody] = useState(call.follow_up_email?.body ?? "");
@@ -78,6 +110,7 @@ export default function FeedbackDetailClient({ call }: { call: CallWithAnalysis 
   const [reply, setReply] = useState<ReplyState>({ status: "idle" });
 
   useEffect(() => {
+    if (readOnly) return;
     if (!call.follow_up_sent_at) return;
     setReply({ status: "loading" });
     fetch(`/api/feedback/check-reply?callId=${call.id}`)
@@ -90,11 +123,12 @@ export default function FeedbackDetailClient({ call }: { call: CallWithAnalysis 
         }
       })
       .catch(() => setReply({ status: "none" }));
-  }, [call.id, call.follow_up_sent_at]);
+  }, [call.id, call.follow_up_sent_at, readOnly]);
 
   const a = call.analysis;
   const scores = a?.scores as AnalysisScores | null;
   const globalScore = scores?.global_score ?? null;
+  const displayName = formatContactDisplayName(call.company_name, call.contact_email);
 
   const globalColor =
     globalScore === null
@@ -116,23 +150,21 @@ export default function FeedbackDetailClient({ call }: { call: CallWithAnalysis 
       <div className="max-w-3xl mx-auto px-6 py-10">
         {/* Back */}
         <Link
-          href="/feedback"
+          href={backHref}
           className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 transition-colors mb-6"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
           </svg>
-          Retour aux feedbacks
+          {backLabel}
         </Link>
 
         {/* Header */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-xl font-bold text-slate-900">
-                {call.company_name || call.contact_email || "Call sans titre"}
-              </h1>
-              {call.company_name && call.contact_email && (
+              <h1 className="text-xl font-bold text-slate-900">{displayName}</h1>
+              {call.contact_email && call.contact_email !== displayName && (
                 <p className="text-slate-400 text-sm mt-0.5">{call.contact_email}</p>
               )}
               <p className="text-slate-400 text-sm mt-1 flex items-center gap-3 flex-wrap">
@@ -179,8 +211,8 @@ export default function FeedbackDetailClient({ call }: { call: CallWithAnalysis 
               </div>
             )}
 
-            {/* Enregistrement vidéo */}
-            {call.recall_bot_id && (
+            {/* Enregistrement vidéo — l'API filtre par propriétaire du call, indisponible en lecture seule manager */}
+            {call.recall_bot_id && !readOnly && (
               <div className="bg-white rounded-2xl border border-slate-200 p-5">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Enregistrement</h2>
@@ -284,6 +316,9 @@ export default function FeedbackDetailClient({ call }: { call: CallWithAnalysis 
             )}
 
             {/* Email de suivi */}
+            {readOnly ? (
+              <ReadOnlyEmailBlock call={call} />
+            ) : (
             <div className="bg-white rounded-2xl border border-slate-200 p-5">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Email de suivi suggéré</h2>
@@ -433,6 +468,7 @@ export default function FeedbackDetailClient({ call }: { call: CallWithAnalysis 
                 <p className="text-slate-400 text-sm italic">Email de suivi en cours de génération…</p>
               )}
             </div>
+            )}
           </div>
         )}
       </div>

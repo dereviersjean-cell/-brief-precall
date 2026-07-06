@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { CallWithAnalysis } from "@/lib/db";
+import { formatContactDisplayName } from "@/lib/format";
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -72,6 +73,8 @@ export default function FeedbackClient({ calls }: { calls: CallWithAnalysis[] })
           <div className="space-y-4">
             {calls.map((call) => {
               const score = call.analysis?.scores?.global_score ?? null;
+              const displayName = formatContactDisplayName(call.company_name, call.contact_email);
+              const showEmailLine = !!call.contact_email && call.contact_email !== displayName;
               return (
                 <Link
                   key={call.id}
@@ -82,9 +85,9 @@ export default function FeedbackClient({ calls }: { calls: CallWithAnalysis[] })
                     {/* Left — name + date */}
                     <div className="min-w-0">
                       <p className="font-semibold text-slate-900 text-sm truncate">
-                        {call.company_name || call.contact_email || "Contact inconnu"}
+                        {displayName}
                       </p>
-                      {call.company_name && call.contact_email && (
+                      {showEmailLine && (
                         <p className="text-slate-400 text-xs mt-0.5 truncate">{call.contact_email}</p>
                       )}
                       <p className="text-slate-400 text-xs mt-1 flex items-center gap-2 flex-wrap">
