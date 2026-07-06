@@ -1,7 +1,7 @@
 import { type AuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import AzureADProvider from "next-auth/providers/azure-ad";
-import { upsertUser, saveGoogleTokens } from "./db";
+import { upsertUser, saveGoogleTokens, getUserRole } from "./db";
 import { refreshGoogleAccessToken } from "./gmail";
 
 export const authOptions: AuthOptions = {
@@ -57,6 +57,13 @@ export const authOptions: AuthOptions = {
               user.image ?? null
             );
             token.supabaseUserId = dbUser?.id;
+            if (dbUser?.id) {
+              try {
+                token.role = (await getUserRole(dbUser.id)) ?? undefined;
+              } catch (err) {
+                console.error("[auth] getUserRole failed:", err);
+              }
+            }
             if (account.provider === "google" && dbUser?.id && account.access_token) {
               try {
                 await saveGoogleTokens(dbUser.id, account.access_token, account.refresh_token);
@@ -98,6 +105,7 @@ export const authOptions: AuthOptions = {
       session.refreshToken = token.refreshToken as string | undefined;
       session.supabaseUserId = token.supabaseUserId as string | undefined;
       session.provider = token.provider as string | undefined;
+      session.role = token.role;
       if (token.error) {
         session.error = token.error as string;
       }

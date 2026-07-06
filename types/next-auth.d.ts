@@ -7,6 +7,7 @@ declare module "next-auth" {
     refreshToken?: string;
     supabaseUserId?: string;
     provider?: string;
+    role?: "commercial" | "manager";
     error?: string;
   }
 }
@@ -17,6 +18,7 @@ declare module "next-auth/jwt" {
     refreshToken?: string;
     supabaseUserId?: string;
     provider?: string;
+    role?: "commercial" | "manager";
     accessTokenExpires?: number;
     error?: string;
   }
