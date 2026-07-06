@@ -841,6 +841,7 @@ export type UserDashboardStat = {
   id: string;
   email: string;
   created_at: string;
+  role: UserRole | null;
   briefs_count: number;
   calls_count: number;
   emails_sent_count: number;
@@ -851,13 +852,13 @@ export type UserDashboardStat = {
 
 export async function getAdminDashboardStats(): Promise<UserDashboardStat[]> {
   const [usersRes, briefsRes, callsRes, crmRes] = await Promise.all([
-    supabaseAdmin.from("users").select("id, email, created_at, recall_calendar_id").order("created_at", { ascending: false }),
+    supabaseAdmin.from("users").select("id, email, created_at, role, recall_calendar_id").order("created_at", { ascending: false }),
     supabaseAdmin.from("briefs").select("user_id, created_at"),
     supabaseAdmin.from("calls").select("user_id, created_at, follow_up_sent_at"),
     supabaseAdmin.from("crm_connections").select("user_id, provider"),
   ]);
 
-  const users = (usersRes.data ?? []) as { id: string; email: string; created_at: string; recall_calendar_id: string | null }[];
+  const users = (usersRes.data ?? []) as { id: string; email: string; created_at: string; role: UserRole | null; recall_calendar_id: string | null }[];
   const briefs = (briefsRes.data ?? []) as { user_id: string; created_at: string }[];
   const calls = (callsRes.data ?? []) as { user_id: string; created_at: string; follow_up_sent_at: string | null }[];
   const crm = (crmRes.data ?? []) as { user_id: string; provider: string }[];
@@ -873,6 +874,7 @@ export async function getAdminDashboardStats(): Promise<UserDashboardStat[]> {
       id: user.id,
       email: user.email,
       created_at: user.created_at,
+      role: user.role,
       briefs_count: userBriefs.length,
       calls_count: userCalls.length,
       emails_sent_count: userCalls.filter((c) => c.follow_up_sent_at != null).length,

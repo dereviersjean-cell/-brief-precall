@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useCallback } from "react";
 import type { FormEvent } from "react";
-import type { UserDashboardStat } from "@/lib/db";
+import type { UserDashboardStat, UserRole } from "@/lib/db";
 import { AdminNav } from "../AdminNav";
+
+type RoleFilter = "all" | UserRole;
 
 type DashboardState = "loading" | "login" | "ready";
 
@@ -107,6 +109,51 @@ function CrmBadge({ provider }: { provider: string }) {
   );
 }
 
+function RoleBadge({ role }: { role: UserRole | null }) {
+  if (!role) return <span className="text-slate-300 text-xs">—</span>;
+  const label = role === "manager" ? "Manager" : "Commercial";
+  const color = role === "manager" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700";
+  return (
+    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${color}`}>
+      {label}
+    </span>
+  );
+}
+
+const ROLE_FILTERS: { value: RoleFilter; label: string }[] = [
+  { value: "all", label: "Tous" },
+  { value: "manager", label: "Managers" },
+  { value: "commercial", label: "Commerciaux" },
+];
+
+function RoleFilterBar({
+  value,
+  onChange,
+  counts,
+}: {
+  value: RoleFilter;
+  onChange: (v: RoleFilter) => void;
+  counts: Record<RoleFilter, number>;
+}) {
+  return (
+    <div className="flex items-center gap-1.5 mb-4">
+      {ROLE_FILTERS.map((f) => (
+        <button
+          key={f.value}
+          onClick={() => onChange(f.value)}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+            value === f.value
+              ? "bg-indigo-600 text-white"
+              : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+          }`}
+        >
+          {f.label} ({counts[f.value]})
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function DashboardTable({ stats }: { stats: UserDashboardStat[] }) {
   const sorted = [...stats].sort((a, b) => {
     const da = a.last_activity_at ?? a.created_at ?? "";
@@ -120,6 +167,7 @@ function DashboardTable({ stats }: { stats: UserDashboardStat[] }) {
         <thead>
           <tr className="border-b border-slate-200">
             <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Email</th>
+            <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Rôle</th>
             <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Inscrit le</th>
             <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Briefs</th>
             <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Appels</th>
@@ -133,6 +181,7 @@ function DashboardTable({ stats }: { stats: UserDashboardStat[] }) {
           {sorted.map((u) => (
             <tr key={u.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
               <td className="py-3 pr-4 text-slate-800 font-medium max-w-[200px] truncate">{u.email}</td>
+              <td className="py-3 pr-4"><RoleBadge role={u.role} /></td>
               <td className="py-3 pr-4 text-slate-500 whitespace-nowrap">{formatDate(u.created_at)}</td>
               <td className="py-3 pr-4 text-slate-700 text-right font-mono">{u.briefs_count}</td>
               <td className="py-3 pr-4 text-slate-700 text-right font-mono">{u.calls_count}</td>
@@ -160,7 +209,7 @@ function DashboardTable({ stats }: { stats: UserDashboardStat[] }) {
           ))}
           {sorted.length === 0 && (
             <tr>
-              <td colSpan={8} className="py-12 text-center text-slate-400 text-sm">
+              <td colSpan={9} className="py-12 text-center text-slate-400 text-sm">
                 Aucun utilisateur
               </td>
             </tr>
@@ -175,6 +224,7 @@ export default function DashboardAdminClient() {
   const [state, setState] = useState<DashboardState>("loading");
   const [stats, setStats] = useState<UserDashboardStat[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
 
   const fetchStats = useCallback(async () => {
     try {
@@ -221,6 +271,13 @@ export default function DashboardAdminClient() {
   const totalCalls = stats.reduce((s, u) => s + u.calls_count, 0);
   const totalEmails = stats.reduce((s, u) => s + u.emails_sent_count, 0);
 
+  const roleCounts: Record<RoleFilter, number> = {
+    all: stats.length,
+    manager: stats.filter((u) => u.role === "manager").length,
+    commercial: stats.filter((u) => u.role === "commercial").length,
+  };
+  const filteredStats = roleFilter === "all" ? stats : stats.filter((u) => u.role === roleFilter);
+
   return (
     <div className="min-h-screen bg-[#F8F9FA] ml-48">
       <AdminNav />
@@ -257,7 +314,8 @@ export default function DashboardAdminClient() {
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-          <DashboardTable stats={stats} />
+          <RoleFilterBar value={roleFilter} onChange={setRoleFilter} counts={roleCounts} />
+          <DashboardTable stats={filteredStats} />
         </div>
       </div>
       </div>
