@@ -9,6 +9,7 @@ const TABS = [
   { label: "✉️ Test Email", href: "/admin/test-email" },
   { label: "✏️ Prompts", href: "/admin/prompts" },
   { label: "📊 Dashboard", href: "/admin/dashboard" },
+  { label: "🏢 Organisations", href: "/admin/organizations" },
 ] as const;
 
 export function AdminNav() {

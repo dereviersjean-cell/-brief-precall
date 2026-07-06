@@ -1016,6 +1016,10 @@ export type OrganizationMember = {
   name: string | null;
   email: string;
   role: UserRole | null;
+  // Number of manager_commercial_links rows this user appears in under their
+  // current role (as manager_id if role='manager', as commercial_id if
+  // role='commercial') — lets the admin UI warn before a role change wipes them.
+  links_count: number;
 };
 
 export async function getUsersInOrganization(orgId: string): Promise<OrganizationMember[]> {
@@ -1024,10 +1028,42 @@ export async function getUsersInOrganization(orgId: string): Promise<Organizatio
     .select("id, name, email, role")
     .eq("organization_id", orgId);
   if (error) throw error;
-  return (data ?? []) as OrganizationMember[];
+
+  const users = (data ?? []) as { id: string; name: string | null; email: string; role: UserRole | null }[];
+  if (users.length === 0) return [];
+
+  const userIds = users.map((u) => u.id);
+  const [managerLinksRes, commercialLinksRes] = await Promise.all([
+    supabaseAdmin.from("manager_commercial_links").select("manager_id").in("manager_id", userIds),
+    supabaseAdmin.from("manager_commercial_links").select("commercial_id").in("commercial_id", userIds),
+  ]);
+  if (managerLinksRes.error) throw managerLinksRes.error;
+  if (commercialLinksRes.error) throw commercialLinksRes.error;
+
+  const managerCounts = new Map<string, number>();
+  for (const row of (managerLinksRes.data ?? []) as { manager_id: string }[]) {
+    managerCounts.set(row.manager_id, (managerCounts.get(row.manager_id) ?? 0) + 1);
+  }
+  const commercialCounts = new Map<string, number>();
+  for (const row of (commercialLinksRes.data ?? []) as { commercial_id: string }[]) {
+    commercialCounts.set(row.commercial_id, (commercialCounts.get(row.commercial_id) ?? 0) + 1);
+  }
+
+  return users.map((u) => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    role: u.role,
+    links_count:
+      u.role === "manager"
+        ? managerCounts.get(u.id) ?? 0
+        : u.role === "commercial"
+        ? commercialCounts.get(u.id) ?? 0
+        : 0,
+  }));
 }
 
-async function getUserOrganizationId(userId: string): Promise<string | null> {
+export async function getUserOrganizationId(userId: string): Promise<string | null> {
   const { data, error } = await supabaseAdmin
     .from("users")
     .select("organization_id")
@@ -1041,6 +1077,68 @@ export async function getOrganizationForUser(userId: string): Promise<Organizati
   const orgId = await getUserOrganizationId(userId);
   if (!orgId) return null;
   return getOrganization(orgId);
+}
+
+export type OrganizationWithCounts = Organization & {
+  managers_count: number;
+  commercials_count: number;
+  total_count: number;
+};
+
+// One query for orgs + one query for all org-assigned users, aggregated in JS —
+// avoids an N+1 (one count query per org) for the admin organizations list.
+export async function listOrganizationsWithCounts(): Promise<OrganizationWithCounts[]> {
+  const [orgsRes, usersRes] = await Promise.all([
+    supabaseAdmin.from("organizations").select("id, name, created_at").order("name", { ascending: true }),
+    supabaseAdmin.from("users").select("organization_id, role").not("organization_id", "is", null),
+  ]);
+  if (orgsRes.error) throw orgsRes.error;
+  if (usersRes.error) throw usersRes.error;
+
+  const orgs = (orgsRes.data ?? []) as Organization[];
+  const users = (usersRes.data ?? []) as { organization_id: string; role: UserRole | null }[];
+
+  return orgs.map((org) => {
+    const members = users.filter((u) => u.organization_id === org.id);
+    return {
+      ...org,
+      managers_count: members.filter((m) => m.role === "manager").length,
+      commercials_count: members.filter((m) => m.role === "commercial").length,
+      total_count: members.length,
+    };
+  });
+}
+
+// links_count is always 0 here: a user without an org shouldn't have any
+// manager_commercial_links left (removeAllLinksForUser runs when a user
+// leaves an org), and this listing doesn't need the count anyway.
+export async function getUsersWithoutOrganization(): Promise<OrganizationMember[]> {
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("id, name, email, role")
+    .is("organization_id", null);
+  if (error) throw error;
+  return ((data ?? []) as { id: string; name: string | null; email: string; role: UserRole | null }[]).map((u) => ({
+    ...u,
+    links_count: 0,
+  }));
+}
+
+// Deletes every manager_commercial_links row involving this user, whichever
+// side they're on. Call this whenever a user leaves an organization (or moves
+// to a different one) — otherwise links can end up spanning two orgs.
+export async function removeAllLinksForUser(userId: string): Promise<void> {
+  const { error: asManagerError } = await supabaseAdmin
+    .from("manager_commercial_links")
+    .delete()
+    .eq("manager_id", userId);
+  if (asManagerError) throw asManagerError;
+
+  const { error: asCommercialError } = await supabaseAdmin
+    .from("manager_commercial_links")
+    .delete()
+    .eq("commercial_id", userId);
+  if (asCommercialError) throw asCommercialError;
 }
 
 export type LinkedUser = {
