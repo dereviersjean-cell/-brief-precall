@@ -885,6 +885,61 @@ export async function getAdminDashboardStats(): Promise<UserDashboardStat[]> {
   });
 }
 
+export type UserDetailForAdmin = UserDashboardStat & { name: string | null };
+
+// Same shape as getAdminDashboardStats' rows, but scoped to a single user at
+// the query level (not fetched-then-filtered) — fit for a per-user admin page.
+export async function getUserDetailForAdmin(userId: string): Promise<UserDetailForAdmin | null> {
+  const { data: userData, error: userError } = await supabaseAdmin
+    .from("users")
+    .select("id, email, name, created_at, role, recall_calendar_id")
+    .eq("id", userId)
+    .maybeSingle();
+  if (userError) throw userError;
+  if (!userData) return null;
+
+  const user = userData as {
+    id: string;
+    email: string;
+    name: string | null;
+    created_at: string;
+    role: UserRole | null;
+    recall_calendar_id: string | null;
+  };
+
+  const [briefsRes, callsRes, crmRes] = await Promise.all([
+    supabaseAdmin.from("briefs").select("created_at").eq("user_id", userId),
+    supabaseAdmin.from("calls").select("created_at, follow_up_sent_at").eq("user_id", userId),
+    supabaseAdmin.from("crm_connections").select("provider").eq("user_id", userId),
+  ]);
+  if (briefsRes.error) throw briefsRes.error;
+  if (callsRes.error) throw callsRes.error;
+  if (crmRes.error) throw crmRes.error;
+
+  const briefs = (briefsRes.data ?? []) as { created_at: string }[];
+  const calls = (callsRes.data ?? []) as { created_at: string; follow_up_sent_at: string | null }[];
+  const crm = (crmRes.data ?? []) as { provider: string }[];
+
+  const allDates = [...briefs.map((b) => b.created_at), ...calls.map((c) => c.created_at)]
+    .filter(Boolean)
+    .sort()
+    .reverse();
+
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    created_at: user.created_at,
+    role: user.role,
+    briefs_count: briefs.length,
+    calls_count: calls.length,
+    emails_sent_count: calls.filter((c) => c.follow_up_sent_at != null).length,
+    last_activity_at: allDates[0] ?? null,
+    recall_connected: user.recall_calendar_id != null,
+    crm_connected: crm.map((c) => c.provider),
+  };
+}
+
 export type UserRole = "commercial" | "manager";
 
 export async function getUserRole(userId: string): Promise<UserRole | null> {
@@ -1243,17 +1298,22 @@ export type UpcomingScheduledMeeting = {
   ineligibility_reason: string | null;
 };
 
-// Reads the scheduled_meetings snapshot maintained by the cron — 0 Recall API calls.
-export async function getUpcomingScheduledMeetings(limit = 100): Promise<UpcomingScheduledMeeting[]> {
+async function fetchUpcomingScheduledMeetings(
+  limit: number,
+  userId?: string
+): Promise<UpcomingScheduledMeeting[]> {
   const now = new Date().toISOString();
 
-  const { data, error } = await supabaseAdmin
+  let query = supabaseAdmin
     .from("scheduled_meetings")
     .select("id, user_id, event_title, event_start_at, bot_scheduled, ineligibility_reason")
     .gte("event_start_at", now)
     .eq("bot_scheduled", true)
     .order("event_start_at", { ascending: true })
     .limit(limit);
+  if (userId) query = query.eq("user_id", userId);
+
+  const { data, error } = await query;
   if (error) throw error;
 
   const rows = (data ?? []) as {
@@ -1288,6 +1348,18 @@ export async function getUpcomingScheduledMeetings(limit = 100): Promise<Upcomin
   }));
 }
 
+// Reads the scheduled_meetings snapshot maintained by the cron — 0 Recall API calls.
+export async function getUpcomingScheduledMeetings(limit = 100): Promise<UpcomingScheduledMeeting[]> {
+  return fetchUpcomingScheduledMeetings(limit);
+}
+
+export async function getUpcomingScheduledMeetingsForUser(
+  userId: string,
+  limit = 100
+): Promise<UpcomingScheduledMeeting[]> {
+  return fetchUpcomingScheduledMeetings(limit, userId);
+}
+
 export type SuspiciousRecentCall = {
   id: string;
   user_id: string;
@@ -1300,13 +1372,10 @@ export type SuspiciousRecentCall = {
   recall_bot_status_fetched_at: string | null;
 };
 
-// Pure DB query, no Recall API call — flags calls from the last 7 days where a
-// bot was scheduled (recall_bot_id set) but no recording ever came back
-// (recording_id null), a likely sign of a rejected or failed bot.
-export async function getSuspiciousRecentCalls(limit = 20): Promise<SuspiciousRecentCall[]> {
+async function fetchSuspiciousRecentCalls(limit: number, userId?: string): Promise<SuspiciousRecentCall[]> {
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const { data, error } = await supabaseAdmin
+  let query = supabaseAdmin
     .from("calls")
     .select("id, user_id, company_name, contact_email, recall_bot_id, created_at, recall_bot_status, recall_bot_status_fetched_at")
     .gte("created_at", sevenDaysAgo)
@@ -1314,6 +1383,9 @@ export async function getSuspiciousRecentCalls(limit = 20): Promise<SuspiciousRe
     .is("recording_id", null)
     .order("created_at", { ascending: false })
     .limit(limit);
+  if (userId) query = query.eq("user_id", userId);
+
+  const { data, error } = await query;
   if (error) throw error;
 
   const calls = (data ?? []) as {
@@ -1350,6 +1422,20 @@ export async function getSuspiciousRecentCalls(limit = 20): Promise<SuspiciousRe
     recall_bot_status: c.recall_bot_status,
     recall_bot_status_fetched_at: c.recall_bot_status_fetched_at,
   }));
+}
+
+// Pure DB query, no Recall API call — flags calls from the last 7 days where a
+// bot was scheduled (recall_bot_id set) but no recording ever came back
+// (recording_id null), a likely sign of a rejected or failed bot.
+export async function getSuspiciousRecentCalls(limit = 20): Promise<SuspiciousRecentCall[]> {
+  return fetchSuspiciousRecentCalls(limit);
+}
+
+export async function getSuspiciousRecentCallsForUser(
+  userId: string,
+  limit = 20
+): Promise<SuspiciousRecentCall[]> {
+  return fetchSuspiciousRecentCalls(limit, userId);
 }
 
 export async function updateCallRecallBotStatus(callId: string, status: string): Promise<void> {

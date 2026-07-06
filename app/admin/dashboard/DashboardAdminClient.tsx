@@ -2,9 +2,11 @@
 
 import { useEffect, useState, useCallback } from "react";
 import type { FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import type { UserDashboardStat, UserRole } from "@/lib/db";
 import { AdminNav } from "../AdminNav";
 import RecallStatusSection from "./RecallStatusSection";
+import { RoleBadge, CrmBadge, formatAdminDate } from "./AdminBadges";
 
 type RoleFilter = "all" | UserRole;
 
@@ -90,37 +92,6 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-function formatDate(iso: string | null) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
-}
-
-function CrmBadge({ provider }: { provider: string }) {
-  const label = provider === "pipedrive" ? "Pipedrive" : provider === "hubspot" ? "HubSpot" : provider;
-  const color =
-    provider === "pipedrive"
-      ? "bg-green-100 text-green-700"
-      : provider === "hubspot"
-      ? "bg-orange-100 text-orange-700"
-      : "bg-slate-100 text-slate-600";
-  return (
-    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${color}`}>
-      {label}
-    </span>
-  );
-}
-
-function RoleBadge({ role }: { role: UserRole | null }) {
-  if (!role) return <span className="text-slate-300 text-xs">—</span>;
-  const label = role === "manager" ? "Manager" : "Commercial";
-  const color = role === "manager" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700";
-  return (
-    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${color}`}>
-      {label}
-    </span>
-  );
-}
-
 const ROLE_FILTERS: { value: RoleFilter; label: string }[] = [
   { value: "all", label: "Tous" },
   { value: "manager", label: "Managers" },
@@ -156,6 +127,7 @@ function RoleFilterBar({
 }
 
 function DashboardTable({ stats }: { stats: UserDashboardStat[] }) {
+  const router = useRouter();
   const sorted = [...stats].sort((a, b) => {
     const da = a.last_activity_at ?? a.created_at ?? "";
     const db = b.last_activity_at ?? b.created_at ?? "";
@@ -180,14 +152,18 @@ function DashboardTable({ stats }: { stats: UserDashboardStat[] }) {
         </thead>
         <tbody>
           {sorted.map((u) => (
-            <tr key={u.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+            <tr
+              key={u.id}
+              onClick={() => router.push(`/admin/dashboard/users/${u.id}`)}
+              className="border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer"
+            >
               <td className="py-3 pr-4 text-slate-800 font-medium max-w-[200px] truncate">{u.email}</td>
               <td className="py-3 pr-4"><RoleBadge role={u.role} /></td>
-              <td className="py-3 pr-4 text-slate-500 whitespace-nowrap">{formatDate(u.created_at)}</td>
+              <td className="py-3 pr-4 text-slate-500 whitespace-nowrap">{formatAdminDate(u.created_at)}</td>
               <td className="py-3 pr-4 text-slate-700 text-right font-mono">{u.briefs_count}</td>
               <td className="py-3 pr-4 text-slate-700 text-right font-mono">{u.calls_count}</td>
               <td className="py-3 pr-4 text-slate-700 text-right font-mono">{u.emails_sent_count}</td>
-              <td className="py-3 pr-4 text-slate-500 whitespace-nowrap">{formatDate(u.last_activity_at)}</td>
+              <td className="py-3 pr-4 text-slate-500 whitespace-nowrap">{formatAdminDate(u.last_activity_at)}</td>
               <td className="py-3 pr-4">
                 {u.recall_connected ? (
                   <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700">Connecté</span>

@@ -1,6 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
-import { getUpcomingScheduledMeetings, getSuspiciousRecentCalls, updateCallRecallBotStatus } from "@/lib/db";
+import {
+  getUpcomingScheduledMeetings,
+  getUpcomingScheduledMeetingsForUser,
+  getSuspiciousRecentCalls,
+  getSuspiciousRecentCallsForUser,
+  updateCallRecallBotStatus,
+} from "@/lib/db";
 import { getBotInfo } from "@/lib/recall";
 
 const BOT_STATUS_CACHE_MS = 60 * 60 * 1000;
@@ -39,14 +45,19 @@ function describeBotStatus(botInfo: Record<string, unknown>): string {
   return CODE_LABELS[last.code] ?? last.code;
 }
 
-export async function GET() {
+// Also serves the per-user admin page (?userId=...) — same shape, same 1h
+// cache on getBotInfo, just scoped to one user's meetings/calls. Behavior is
+// unchanged when userId is absent.
+export async function GET(request: NextRequest) {
   if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
   }
 
+  const userId = request.nextUrl.searchParams.get("userId");
+
   const [upcomingMeetings, suspiciousCalls] = await Promise.all([
-    getUpcomingScheduledMeetings(),
-    getSuspiciousRecentCalls(20),
+    userId ? getUpcomingScheduledMeetingsForUser(userId) : getUpcomingScheduledMeetings(),
+    userId ? getSuspiciousRecentCallsForUser(userId, 20) : getSuspiciousRecentCalls(20),
   ]);
 
   // Only path in this route that can call the Recall API — capped at the 20
