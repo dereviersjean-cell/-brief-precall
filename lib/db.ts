@@ -2640,8 +2640,6 @@ export async function getCallContextForContact(
 export type ImpersonationLogItem = {
   id: string;
   target_user_id: string;
-  target_user_name: string | null;
-  target_user_email: string | null;
   admin_identifier: string;
   started_at: string;
   ended_at: string | null;
@@ -2649,45 +2647,16 @@ export type ImpersonationLogItem = {
   user_agent: string | null;
 };
 
-export async function listImpersonationLogs(limit = 20): Promise<ImpersonationLogItem[]> {
+export async function getImpersonationLogsForUser(
+  targetUserId: string,
+  limit = 10
+): Promise<ImpersonationLogItem[]> {
   const { data, error } = await supabaseAdmin
     .from("admin_impersonation_logs")
     .select("id, target_user_id, admin_identifier, started_at, ended_at, ip_address, user_agent")
+    .eq("target_user_id", targetUserId)
     .order("started_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
-
-  const logs = (data ?? []) as Array<{
-    id: string;
-    target_user_id: string;
-    admin_identifier: string;
-    started_at: string;
-    ended_at: string | null;
-    ip_address: string | null;
-    user_agent: string | null;
-  }>;
-  if (logs.length === 0) return [];
-
-  // Manual lookup rather than an embedded select — a logged target_user_id
-  // may point to a since hard-deleted user, and this must not blow up the
-  // whole audit page in that case.
-  const userIds = [...new Set(logs.map((l) => l.target_user_id))];
-  const { data: users, error: usersError } = await supabaseAdmin
-    .from("users")
-    .select("id, name, email")
-    .in("id", userIds);
-  if (usersError) throw usersError;
-
-  const userMap = new Map(
-    ((users ?? []) as Array<{ id: string; name: string | null; email: string }>).map((u) => [u.id, u])
-  );
-
-  return logs.map((l) => {
-    const user = userMap.get(l.target_user_id);
-    return {
-      ...l,
-      target_user_name: user?.name ?? null,
-      target_user_email: user?.email ?? null,
-    };
-  });
+  return (data ?? []) as ImpersonationLogItem[];
 }

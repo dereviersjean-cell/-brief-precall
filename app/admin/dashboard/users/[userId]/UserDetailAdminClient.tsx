@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, useCallback } from "react";
-import type { UserDetailForAdmin } from "@/lib/db";
+import type { UserDetailForAdmin, ImpersonationLogItem } from "@/lib/db";
 import { AdminNav } from "@/app/admin/AdminNav";
 import { RoleBadge, CrmBadge, formatAdminDate } from "@/app/admin/dashboard/AdminBadges";
 import { UpcomingMeetingsTable, FailedRecordingsTable } from "@/app/admin/dashboard/RecallStatusTables";
@@ -24,7 +24,13 @@ function Spinner({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-export default function UserDetailAdminClient({ user }: { user: UserDetailForAdmin }) {
+export default function UserDetailAdminClient({
+  user,
+  impersonationLogs,
+}: {
+  user: UserDetailForAdmin;
+  impersonationLogs: ImpersonationLogItem[];
+}) {
   const [state, setState] = useState<LoadState>("loading");
   const [data, setData] = useState<RecallStatusData | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -195,6 +201,55 @@ export default function UserDetailAdminClient({ user }: { user: UserDetailForAdm
                   <FailedRecordingsTable recordings={data.failedRecordings} showUserColumn={false} />
                 </div>
               </>
+            )}
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
+              Historique impersonations ({impersonationLogs.length})
+            </h3>
+            {impersonationLogs.length === 0 ? (
+              <p className="text-sm text-slate-400">Aucune impersonation enregistrée pour ce user.</p>
+            ) : (
+              <table className="w-full text-sm text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200">
+                    <th className="py-2 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                      Démarré le
+                    </th>
+                    <th className="py-2 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                      Terminé le
+                    </th>
+                    <th className="py-2 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">IP</th>
+                    <th className="py-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                      User agent
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {impersonationLogs.map((log) => (
+                    <tr key={log.id} className="border-b border-slate-100 last:border-0">
+                      <td className="py-2 pr-4 text-slate-600">{formatAdminDate(log.started_at)}</td>
+                      <td className="py-2 pr-4">
+                        {log.ended_at ? (
+                          <span className="text-slate-600">{formatAdminDate(log.ended_at)}</span>
+                        ) : (
+                          <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">
+                            En cours
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2 pr-4 text-slate-500 font-mono text-xs">{log.ip_address ?? "—"}</td>
+                      <td
+                        className="py-2 text-slate-500 text-xs max-w-xs truncate"
+                        title={log.user_agent ?? ""}
+                      >
+                        {log.user_agent ?? "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
           </div>
         </div>

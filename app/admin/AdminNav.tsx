@@ -10,7 +10,6 @@ const TABS = [
   { label: "✏️ Prompts", href: "/admin/prompts" },
   { label: "📊 Dashboard", href: "/admin/dashboard" },
   { label: "🏢 Organisations", href: "/admin/organizations" },
-  { label: "🔐 Impersonations", href: "/admin/impersonation-logs" },
 ] as const;
 
 export function AdminNav() {

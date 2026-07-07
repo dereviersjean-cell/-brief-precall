@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
-import { getUserDetailForAdmin } from "@/lib/db";
+import { getUserDetailForAdmin, getImpersonationLogsForUser } from "@/lib/db";
 import UserDetailAdminClient from "./UserDetailAdminClient";
 
 export default async function UserDetailAdminPage({
@@ -18,5 +18,7 @@ export default async function UserDetailAdminPage({
     redirect("/admin/dashboard");
   }
 
-  return <UserDetailAdminClient user={user} />;
+  const impersonationLogs = await getImpersonationLogsForUser(userId);
+
+  return <UserDetailAdminClient user={user} impersonationLogs={impersonationLogs} />;
 }
