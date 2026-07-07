@@ -142,6 +142,10 @@ export default function QuoteEditor({
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [generating, setGenerating] = useState(false);
+  const [generateInfo, setGenerateInfo] = useState<string | null>(null);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+
   const totals = computeQuoteTotals(lines.map(toLineInput));
 
   function updateLine(key: string, patch: Partial<EditorLine>) {
@@ -181,6 +185,75 @@ export default function QuoteEditor({
 
   function handleAddBlankLine() {
     setLines((prev) => [...prev, emptyLine(settings.default_vat_rate)]);
+  }
+
+  async function handleGenerate() {
+    if (!contactId) return;
+    if (lines.length > 0) {
+      const confirmed = window.confirm(
+        "Des lignes sont déjà présentes dans ce devis. Les remplacer par la proposition de Brief ?"
+      );
+      if (!confirmed) return;
+    }
+
+    setGenerating(true);
+    setGenerateInfo(null);
+    setGenerateError(null);
+    try {
+      const res = await fetch("/api/quotes/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contactId }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error ?? "La génération a échoué.");
+      }
+
+      const draft = (await res.json()) as {
+        lines: Array<{
+          offer_id: string | null;
+          name: string;
+          description: string | null;
+          quantity: number;
+          unit: string;
+          unit_price: number;
+          vat_rate: number;
+          discount_type: "percent" | "amount" | null;
+          discount_value: number;
+        }>;
+        notes: string;
+        validity_days: number;
+      };
+
+      if (draft.lines.length === 0) {
+        setGenerateInfo("Pas assez d'échanges pour proposer un pré-remplissage — remplis manuellement.");
+        return;
+      }
+
+      setLines(
+        draft.lines.map((l) => ({
+          key: makeKey(),
+          offer_id: l.offer_id,
+          name: l.name,
+          description: l.description ?? "",
+          quantity: l.quantity,
+          unit: l.unit,
+          unit_price: l.unit_price,
+          vat_rate: l.vat_rate,
+          discount_type: l.discount_type ?? "",
+          discount_value: l.discount_value,
+        }))
+      );
+      setNotes(draft.notes);
+      const validUntilDate = new Date();
+      validUntilDate.setDate(validUntilDate.getDate() + draft.validity_days);
+      setValidUntil(validUntilDate.toISOString().slice(0, 10));
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : "La génération a échoué.");
+    } finally {
+      setGenerating(false);
+    }
   }
 
   async function handleSave() {
@@ -311,7 +384,26 @@ export default function QuoteEditor({
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mb-6">
           <div className="px-6 py-5 flex items-center justify-between flex-wrap gap-3">
             <h2 className="text-sm font-semibold text-slate-900">Lignes</h2>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {contactId && (
+                <button
+                  onClick={handleGenerate}
+                  disabled={generating}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  {generating ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Génération…
+                    </>
+                  ) : (
+                    "✨ Générer avec Brief"
+                  )}
+                </button>
+              )}
               <select
                 value=""
                 onChange={(e) => handleAddFromCatalog(e.target.value)}
@@ -332,6 +424,17 @@ export default function QuoteEditor({
               </button>
             </div>
           </div>
+
+          {generateInfo && (
+            <div className="px-6 pb-4 -mt-2">
+              <p className="text-xs text-slate-500 italic">{generateInfo}</p>
+            </div>
+          )}
+          {generateError && (
+            <div className="px-6 pb-4 -mt-2">
+              <p className="text-xs text-red-600">{generateError}</p>
+            </div>
+          )}
 
           {lines.length === 0 ? (
             <div className="px-6 pb-8 text-center text-slate-400 text-sm">Aucune ligne pour l&apos;instant.</div>

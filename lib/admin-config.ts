@@ -48,6 +48,33 @@ Rédige une réponse naturelle et professionnelle à cet email qui :
 
 Réponds uniquement avec le corps du message (pas de sujet, pas de balises, pas de markdown). Texte brut uniquement.`;
 
+export const DEFAULT_QUOTE_GENERATION_PROMPT =
+`Tu es un assistant qui aide un commercial à préparer un devis pour un prospect avec qui il a échangé.
+
+Contexte fourni :
+- Infos entreprise du commercial
+- Infos contact/entreprise du prospect
+- Historique des calls analysés (résumé, points clés, objections, budget évoqué)
+- Historique des emails
+- Catalogue d'offres disponibles avec leurs IDs
+
+Tu dois retourner UNIQUEMENT un JSON strict, sans markdown, sans texte avant ou après, avec la structure suivante :
+{
+  "lines": [
+    {"offer_id": "uuid-ou-null", "name": "...", "description": "...", "quantity": 1, "unit": "unité", "unit_price": 500, "vat_rate": 20, "discount_type": "percent|amount|null", "discount_value": 0}
+  ],
+  "notes": "2-3 phrases contextuelles",
+  "validity_days": 30
+}
+
+Règles :
+- Privilégie les offres du catalogue quand elles matchent (utilise leur id exact dans offer_id, reprends leur nom/prix/unité/TVA)
+- N'utilise une ligne libre (offer_id: null) que si rien dans le catalogue ne correspond à ce qui a été discuté
+- Ne propose une réduction (discount_type / discount_value) QUE si le prospect a explicitement discuté du budget ou négocié
+- Si tu ne sais pas quoi proposer, retourne un tableau lines vide et explique dans notes pourquoi
+- Reste réaliste sur les quantités et prix
+- validity_days est un nombre entre 7 et 60`;
+
 export type AdminConfig = {
   systemPrompt: string;
   painPointsCount: number;
@@ -115,6 +142,7 @@ export async function initializePromptDefaults(): Promise<{ initialized: string[
     call_analysis_system_prompt: DEFAULT_CALL_ANALYSIS_SYSTEM_PROMPT,
     email_followup_prompt: DEFAULT_EMAIL_FOLLOWUP_PROMPT,
     reply_suggestion_prompt: DEFAULT_REPLY_SUGGESTION_PROMPT,
+    quote_generation_prompt: DEFAULT_QUOTE_GENERATION_PROMPT,
   };
 
   const initialized: string[] = [];

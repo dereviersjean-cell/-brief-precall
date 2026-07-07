@@ -2572,3 +2572,65 @@ export async function deleteQuote(quoteId: string, userId: string): Promise<void
   const { error } = await supabaseAdmin.from("quotes").delete().eq("id", quoteId);
   if (error) throw error;
 }
+
+// ─── Quotes module — AI pre-fill context (sous-étape D) ───────────────────────
+
+export async function getContactById(contactId: string, userId: string): Promise<Contact | null> {
+  const { data, error } = await supabaseAdmin
+    .from("contacts")
+    .select("*")
+    .eq("id", contactId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data as Contact | null;
+}
+
+export type QuoteGenerationCallContext = {
+  date: string;
+  summary: string | null;
+  strengths: string[];
+  weaknesses: string[];
+  objections: string[];
+  next_steps: string[];
+};
+
+// Richer than getRecentCallsForContact/getContactTimeline (which only expose
+// score/sentiment) — the quote-generation prompt needs the actual analysis
+// text (objections, budget mentions, next steps) to propose relevant lines.
+export async function getCallContextForContact(
+  userId: string,
+  contactEmail: string,
+  limit = 5
+): Promise<QuoteGenerationCallContext[]> {
+  const { data, error } = await supabaseAdmin
+    .from("calls")
+    .select("started_at, created_at, call_analysis(summary, strengths, weaknesses, objections, next_steps)")
+    .eq("user_id", userId)
+    .eq("contact_email", contactEmail)
+    .order("started_at", { ascending: false, nullsFirst: false })
+    .limit(limit);
+  if (error) throw error;
+
+  type Row = {
+    summary: string | null;
+    strengths: string[] | null;
+    weaknesses: string[] | null;
+    objections: string[] | null;
+    next_steps: string[] | null;
+  };
+
+  return ((data ?? []) as Record<string, unknown>[])
+    .map((row) => {
+      const analysis = normalizeCallAnalysis(row.call_analysis as Row | Row[] | null);
+      return {
+        date: (row.started_at ?? row.created_at) as string,
+        summary: analysis?.summary ?? null,
+        strengths: analysis?.strengths ?? [],
+        weaknesses: analysis?.weaknesses ?? [],
+        objections: analysis?.objections ?? [],
+        next_steps: analysis?.next_steps ?? [],
+      };
+    })
+    .filter((c) => c.summary !== null);
+}
