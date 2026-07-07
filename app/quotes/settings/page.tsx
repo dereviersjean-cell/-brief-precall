@@ -1,12 +1,10 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { getQuoteSettings, listQuoteOffers } from "@/lib/db";
+import { getEffectiveUserId } from "@/lib/session-user";
 import QuoteSettingsClient from "./QuoteSettingsClient";
 
 export default async function QuoteSettingsPage() {
-  const session = await getServerSession(authOptions);
-  const userId = (session as { supabaseUserId?: string } | null)?.supabaseUserId;
+  const userId = await getEffectiveUserId();
   if (!userId) {
     redirect("/login");
   }

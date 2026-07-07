@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { getUserRole, getCallWithAnalysisForManager } from "@/lib/db";
+import { getEffectiveUserId } from "@/lib/session-user";
 import CallDetailClient from "./CallDetailClient";
 
 export default async function TeamMemberCallDetailPage({
@@ -10,8 +9,7 @@ export default async function TeamMemberCallDetailPage({
   params: Promise<{ commercialId: string; callId: string }>;
 }) {
   const { commercialId, callId } = await params;
-  const session = await getServerSession(authOptions);
-  const userId = (session as { supabaseUserId?: string } | null)?.supabaseUserId;
+  const userId = await getEffectiveUserId();
 
   const role = userId ? await getUserRole(userId) : null;
   if (role !== "manager") {

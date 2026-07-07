@@ -1,6 +1,5 @@
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { getCallWithAnalysis, getCallWithAnalysisForManager, getUserRole } from "@/lib/db";
+import { getEffectiveUserId } from "@/lib/session-user";
 import { notFound } from "next/navigation";
 import FeedbackDetailClient from "./FeedbackDetailClient";
 
@@ -10,8 +9,7 @@ export default async function FeedbackDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const session = await getServerSession(authOptions);
-  const userId = (session as { supabaseUserId?: string } | null)?.supabaseUserId;
+  const userId = await getEffectiveUserId();
 
   if (!userId) notFound();
 

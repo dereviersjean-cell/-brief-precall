@@ -1,7 +1,6 @@
 import { redirect, notFound } from "next/navigation";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { getQuoteSettings, listQuoteOffers, listContactsForUser, getQuoteWithLines } from "@/lib/db";
+import { getEffectiveUserId } from "@/lib/session-user";
 import QuoteEditor from "../QuoteEditor";
 
 export default async function EditQuotePage({
@@ -9,8 +8,7 @@ export default async function EditQuotePage({
 }: {
   params: Promise<{ quoteId: string }>;
 }) {
-  const session = await getServerSession(authOptions);
-  const userId = (session as { supabaseUserId?: string } | null)?.supabaseUserId;
+  const userId = await getEffectiveUserId();
   if (!userId) {
     redirect("/login");
   }

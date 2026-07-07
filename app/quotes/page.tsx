@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { listQuotesForUser } from "@/lib/db";
+import { getEffectiveUserId } from "@/lib/session-user";
 import QuotesListClient from "./QuotesListClient";
 
 export default async function QuotesPage({
@@ -10,8 +9,7 @@ export default async function QuotesPage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  const session = await getServerSession(authOptions);
-  const userId = (session as { supabaseUserId?: string } | null)?.supabaseUserId;
+  const userId = await getEffectiveUserId();
   if (!userId) {
     redirect("/login");
   }

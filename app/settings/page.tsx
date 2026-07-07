@@ -1,12 +1,10 @@
 import { Suspense } from "react";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { getUserProfile, getRecallCalendarId, getCrmTokens } from "@/lib/db";
+import { getEffectiveUserId } from "@/lib/session-user";
 import SettingsClient from "./SettingsClient";
 
 export default async function SettingsPage() {
-  const session = await getServerSession(authOptions);
-  const userId = (session as { supabaseUserId?: string } | null)?.supabaseUserId;
+  const userId = await getEffectiveUserId();
 
   let profile = null;
   let recallConnected = false;

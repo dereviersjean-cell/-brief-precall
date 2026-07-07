@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
-import { getServerSession } from "next-auth/next";
 import { getBriefByEventId, getBriefById, getRecentCallsForContact, CallHistoryItem } from "@/lib/db";
-import { authOptions } from "@/lib/auth";
+import { getEffectiveUserId } from "@/lib/session-user";
 import { Meeting, Brief, NewsItem } from "@/lib/types";
 import BriefClient from "./BriefClient";
 
@@ -43,8 +42,7 @@ export default async function BriefPage({
 
   const decodedCompany = decodeURIComponent(company!);
 
-  const session = await getServerSession(authOptions);
-  const userId = session?.supabaseUserId ?? null;
+  const userId = await getEffectiveUserId();
 
   let callHistory: CallHistoryItem[] = [];
   if (userId && decodedContactEmail) {

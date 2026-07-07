@@ -28,6 +28,8 @@ export default function UserDetailAdminClient({ user }: { user: UserDetailForAdm
   const [state, setState] = useState<LoadState>("loading");
   const [data, setData] = useState<RecallStatusData | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [impersonating, setImpersonating] = useState(false);
+  const [impersonateError, setImpersonateError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -53,6 +55,31 @@ export default function UserDetailAdminClient({ user }: { user: UserDetailForAdm
     setRefreshing(false);
   }
 
+  async function handleImpersonate() {
+    const confirmed = window.confirm(
+      `Vous allez naviguer sur l'application dans la peau de ${user.name || user.email}. Continuer ?`
+    );
+    if (!confirmed) return;
+
+    setImpersonating(true);
+    setImpersonateError(null);
+    try {
+      const res = await fetch("/api/admin/impersonate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error ?? "Erreur lors de l'impersonation.");
+      }
+      window.location.href = "/dashboard";
+    } catch (err) {
+      setImpersonateError(err instanceof Error ? err.message : "Erreur lors de l'impersonation.");
+      setImpersonating(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#F8F9FA] ml-48">
       <AdminNav />
@@ -76,15 +103,32 @@ export default function UserDetailAdminClient({ user }: { user: UserDetailForAdm
               </h1>
               {user.name && <p className="text-sm text-slate-500 mt-0.5">{user.email}</p>}
             </div>
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
-            >
-              {refreshing && <Spinner />}
-              Actualiser
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleImpersonate}
+                disabled={impersonating || user.disabled_at != null}
+                title={user.disabled_at != null ? "Compte désactivé — impersonation impossible." : undefined}
+                className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-lg text-sm font-medium text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {impersonating && <Spinner className="w-4 h-4 text-red-700" />}
+                🔐 Se connecter en tant que ce user
+              </button>
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+              >
+                {refreshing && <Spinner />}
+                Actualiser
+              </button>
+            </div>
           </div>
+
+          {impersonateError && (
+            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+              {impersonateError}
+            </p>
+          )}
 
           <div className="grid grid-cols-3 gap-4">
             {[

@@ -1,11 +1,9 @@
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { getContactsOverview } from "@/lib/db";
+import { getEffectiveUserId } from "@/lib/session-user";
 import ContactsClient from "./ContactsClient";
 
 export default async function ContactsPage() {
-  const session = await getServerSession(authOptions);
-  const userId = (session as { supabaseUserId?: string } | null)?.supabaseUserId;
+  const userId = await getEffectiveUserId();
 
   const contacts = userId ? await getContactsOverview(userId) : [];
 

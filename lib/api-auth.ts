@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { Session } from "next-auth";
 import { supabaseAdmin } from "./supabase";
+import { getImpersonationTarget } from "./impersonation";
 
 export type RequireActiveUserResult =
   | { ok: true; userId: string }
@@ -10,7 +11,17 @@ export type RequireActiveUserResult =
 // revocation, so a user disabled mid-session would otherwise keep a valid
 // session until it naturally expires — this re-checks disabled_at against the
 // DB on every call. 401 when there's no session at all, 403 when disabled.
+//
+// The admin impersonation cookie is checked first — this only ever affects
+// business-logic routes that call requireActiveUser. /api/admin/* routes use
+// isAdminAuthenticated exclusively and never go through here, so an admin
+// impersonating a user can't lose (or gain) admin rights via this path.
 export async function requireActiveUser(session: Session | null): Promise<RequireActiveUserResult> {
+  const impersonationTarget = await getImpersonationTarget();
+  if (impersonationTarget) {
+    return { ok: true, userId: impersonationTarget.id };
+  }
+
   const userId = session?.supabaseUserId;
   if (!userId) {
     return { ok: false, response: NextResponse.json({ error: "Non authentifié." }, { status: 401 }) };
