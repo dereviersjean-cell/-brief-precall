@@ -2088,6 +2088,13 @@ export type FailedRecording = {
 // recording, and scheduled_meetings with no matching call at all — into one
 // list, sorted by date desc with a single global limit (not `limit` per
 // source).
+//
+// A meeting can still overlap with a call here even though
+// getMissedScheduledMeetings already excludes meetings matching *any* call:
+// its own match window is anchored on the call's created_at, which can drift
+// more than 3h from event_start_at (long meeting, delayed async transcript).
+// So we re-check proximity here too, on the same ±3h/same-user basis, and
+// keep the call side (it already has a known recall_bot_id).
 export async function getFailedRecordingsForAdmin(
   limit = 20,
   userId?: string
@@ -2097,21 +2104,32 @@ export async function getFailedRecordingsForAdmin(
     getMissedScheduledMeetings(limit, userId ?? null),
   ]);
 
-  const merged: FailedRecording[] = [
-    ...calls.map((c) => ({
-      id: `call:${c.id}`,
-      source: "call" as const,
-      user_id: c.user_id,
-      user_email: c.user_email,
-      user_name: c.user_name,
-      event_title: c.company_name || c.contact_email || "Contact inconnu",
-      event_start_at: c.created_at,
-      recall_bot_id: c.recall_bot_id,
-      recall_bot_status: c.recall_bot_status,
-      recall_bot_status_fetched_at: c.recall_bot_status_fetched_at,
-      calendar_event_id: null,
-    })),
-    ...meetings.map((m) => ({
+  const callEntries: FailedRecording[] = calls.map((c) => ({
+    id: `call:${c.id}`,
+    source: "call" as const,
+    user_id: c.user_id,
+    user_email: c.user_email,
+    user_name: c.user_name,
+    event_title: c.company_name || c.contact_email || "Contact inconnu",
+    event_start_at: c.created_at,
+    recall_bot_id: c.recall_bot_id,
+    recall_bot_status: c.recall_bot_status,
+    recall_bot_status_fetched_at: c.recall_bot_status_fetched_at,
+    calendar_event_id: null,
+  }));
+
+  const matchesACall = (meeting: MissedScheduledMeeting): boolean => {
+    const meetingTime = new Date(meeting.event_start_at).getTime();
+    return calls.some(
+      (c) =>
+        c.user_id === meeting.user_id &&
+        Math.abs(new Date(c.created_at).getTime() - meetingTime) <= MISSED_MEETING_MATCH_BUFFER_MS
+    );
+  };
+
+  const meetingEntries: FailedRecording[] = meetings
+    .filter((m) => !matchesACall(m))
+    .map((m) => ({
       id: `meeting:${m.id}`,
       source: "meeting" as const,
       user_id: m.user_id,
@@ -2123,8 +2141,9 @@ export async function getFailedRecordingsForAdmin(
       recall_bot_status: m.recall_bot_status,
       recall_bot_status_fetched_at: m.recall_bot_status_fetched_at,
       calendar_event_id: m.calendar_event_id,
-    })),
-  ];
+    }));
 
-  return merged.sort((a, b) => b.event_start_at.localeCompare(a.event_start_at)).slice(0, limit);
+  return [...callEntries, ...meetingEntries]
+    .sort((a, b) => b.event_start_at.localeCompare(a.event_start_at))
+    .slice(0, limit);
 }
