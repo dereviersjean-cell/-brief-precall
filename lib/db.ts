@@ -239,10 +239,17 @@ export type CallData = {
   participant_count?: number | null;
 };
 
+// Upsert, not a plain insert — the bot-webhook's transcript.done handler does
+// slow synchronous work (transcript fetch, Claude analysis, follow-up email)
+// before responding, so Recall can and does retry the same webhook delivery;
+// without a conflict target on recall_bot_id each retry created a brand-new
+// duplicate call row (and its own independent, non-deterministic analysis).
+// DO UPDATE (the default) rather than DO NOTHING, so `.select("id")` always
+// returns the existing row's id and callers downstream keep working normally.
 export async function createCall(data: CallData): Promise<{ id: string }> {
   const { data: row, error } = await supabaseAdmin
     .from("calls")
-    .insert(data)
+    .upsert(data, { onConflict: "recall_bot_id" })
     .select("id")
     .single();
   if (error) throw error;
@@ -1700,22 +1707,25 @@ export async function saveCallAnalysis(
   const sentiment =
     globalScore >= 4 ? "positif" : globalScore >= 2.5 ? "neutre" : "négatif";
 
-  const { error } = await supabaseAdmin.from("call_analysis").insert({
-    call_id: callId,
-    strengths: analysis.strengths,
-    weaknesses: analysis.weaknesses,
-    objections: analysis.objections,
-    next_steps: analysis.next_steps,
-    summary: analysis.coaching_summary,
-    sentiment,
-    scores: {
-      global_score: analysis.global_score,
-      opening_framing: analysis.opening_framing,
-      pain_point: analysis.pain_point,
-      pitch_demo: analysis.pitch_demo,
-      next_step: analysis.next_step,
+  const { error } = await supabaseAdmin.from("call_analysis").upsert(
+    {
+      call_id: callId,
+      strengths: analysis.strengths,
+      weaknesses: analysis.weaknesses,
+      objections: analysis.objections,
+      next_steps: analysis.next_steps,
+      summary: analysis.coaching_summary,
+      sentiment,
+      scores: {
+        global_score: analysis.global_score,
+        opening_framing: analysis.opening_framing,
+        pain_point: analysis.pain_point,
+        pitch_demo: analysis.pitch_demo,
+        next_step: analysis.next_step,
+      },
     },
-  });
+    { onConflict: "call_id" }
+  );
   if (error) throw error;
 }
 
