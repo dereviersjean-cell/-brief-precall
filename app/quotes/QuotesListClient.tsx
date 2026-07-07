@@ -108,7 +108,8 @@ export default function QuotesListClient({ quotes: initialQuotes }: { quotes: Qu
           {quotes.map((quote) => (
             <tr
               key={quote.id}
-              className={`border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors ${
+              onClick={() => router.push(`/quotes/${quote.id}`)}
+              className={`border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors cursor-pointer ${
                 deletingId === quote.id ? "opacity-40" : ""
               }`}
             >
@@ -123,31 +124,46 @@ export default function QuotesListClient({ quotes: initialQuotes }: { quotes: Qu
               </td>
               <td className="py-3 pr-4 text-slate-500">{formatDate(quote.issued_at ?? quote.created_at)}</td>
               <td className="py-3 pr-6 text-right relative">
-                <div className="flex items-center justify-end gap-3">
+                <div className="flex items-center justify-end gap-2">
                   {quote.status === "draft" && (
                     <button
-                      onClick={() => handleSend(quote)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSend(quote);
+                      }}
                       disabled={sendingId === quote.id}
-                      className="text-xs font-medium text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
+                      className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50"
                     >
                       {sendingId === quote.id ? "Envoi…" : "📤 Envoyer"}
                     </button>
                   )}
                   <button
-                    onClick={() => setOpenMenuId(openMenuId === quote.id ? null : quote.id)}
-                    className="text-slate-400 hover:text-slate-700 px-2 py-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenMenuId(openMenuId === quote.id ? null : quote.id);
+                    }}
+                    className="border border-gray-300 hover:bg-gray-100 rounded px-2 py-1 text-slate-600 transition-colors"
                   >
                     ⋯
                   </button>
                 </div>
                 {openMenuId === quote.id && (
                   <>
-                    <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenMenuId(null);
+                      }}
+                    />
                     <div className="absolute right-6 top-10 z-20 w-48 bg-white border border-slate-200 rounded-lg shadow-lg py-1 text-left">
                       <Link
                         href={`/quotes/${quote.id}`}
                         className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                        onClick={() => setOpenMenuId(null)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId(null);
+                        }}
                       >
                         {quote.status === "draft" ? "Modifier" : "Voir"}
                       </Link>
@@ -156,13 +172,19 @@ export default function QuotesListClient({ quotes: initialQuotes }: { quotes: Qu
                         target="_blank"
                         rel="noopener noreferrer"
                         className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                        onClick={() => setOpenMenuId(null)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId(null);
+                        }}
                       >
                         Télécharger PDF
                       </a>
                       {quote.status === "draft" && (
                         <button
-                          onClick={() => handleDelete(quote)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(quote);
+                          }}
                           className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                         >
                           Supprimer
