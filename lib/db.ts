@@ -1868,10 +1868,11 @@ export async function getUpcomingScheduledMeetingsForUser(
   return fetchUpcomingScheduledMeetings(limit, userId);
 }
 
-export type SuspiciousRecentCall = {
+type SuspiciousRecentCall = {
   id: string;
   user_id: string;
   user_email: string;
+  user_name: string | null;
   company_name: string | null;
   contact_email: string | null;
   recall_bot_id: string;
@@ -1880,6 +1881,9 @@ export type SuspiciousRecentCall = {
   recall_bot_status_fetched_at: string | null;
 };
 
+// Pure DB query, no Recall API call — flags calls from the last 7 days where a
+// bot was scheduled (recall_bot_id set) but no recording ever came back
+// (recording_id null), a likely sign of a rejected or failed bot.
 async function fetchSuspiciousRecentCalls(limit: number, userId?: string): Promise<SuspiciousRecentCall[]> {
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -1911,18 +1915,19 @@ async function fetchSuspiciousRecentCalls(limit: number, userId?: string): Promi
   const userIds = [...new Set(calls.map((c) => c.user_id))];
   const { data: usersData, error: usersError } = await supabaseAdmin
     .from("users")
-    .select("id, email")
+    .select("id, name, email")
     .in("id", userIds);
   if (usersError) throw usersError;
 
-  const emailById = new Map(
-    ((usersData ?? []) as { id: string; email: string }[]).map((u) => [u.id, u.email])
+  const userById = new Map(
+    ((usersData ?? []) as { id: string; name: string | null; email: string }[]).map((u) => [u.id, u])
   );
 
   return calls.map((c) => ({
     id: c.id,
     user_id: c.user_id,
-    user_email: emailById.get(c.user_id) ?? "",
+    user_email: userById.get(c.user_id)?.email ?? "",
+    user_name: userById.get(c.user_id)?.name ?? null,
     company_name: c.company_name,
     contact_email: c.contact_email,
     recall_bot_id: c.recall_bot_id,
@@ -1930,20 +1935,6 @@ async function fetchSuspiciousRecentCalls(limit: number, userId?: string): Promi
     recall_bot_status: c.recall_bot_status,
     recall_bot_status_fetched_at: c.recall_bot_status_fetched_at,
   }));
-}
-
-// Pure DB query, no Recall API call — flags calls from the last 7 days where a
-// bot was scheduled (recall_bot_id set) but no recording ever came back
-// (recording_id null), a likely sign of a rejected or failed bot.
-export async function getSuspiciousRecentCalls(limit = 20): Promise<SuspiciousRecentCall[]> {
-  return fetchSuspiciousRecentCalls(limit);
-}
-
-export async function getSuspiciousRecentCallsForUser(
-  userId: string,
-  limit = 20
-): Promise<SuspiciousRecentCall[]> {
-  return fetchSuspiciousRecentCalls(limit, userId);
 }
 
 export async function updateCallRecallBotStatus(callId: string, status: string): Promise<void> {
@@ -2075,4 +2066,65 @@ export async function updateScheduledMeetingBotStatus(
     })
     .eq("id", scheduledMeetingId);
   if (error) throw error;
+}
+
+export type FailedRecordingSource = "call" | "meeting";
+
+export type FailedRecording = {
+  id: string; // "call:<id>" or "meeting:<id>"
+  source: FailedRecordingSource;
+  user_id: string;
+  user_email: string;
+  user_name: string | null;
+  event_title: string;
+  event_start_at: string;
+  recall_bot_id: string | null;
+  recall_bot_status: string | null;
+  recall_bot_status_fetched_at: string | null;
+  calendar_event_id: string | null; // null for calls
+};
+
+// Merges the two "bot scheduled but no recording" sources — calls missing a
+// recording, and scheduled_meetings with no matching call at all — into one
+// list, sorted by date desc with a single global limit (not `limit` per
+// source).
+export async function getFailedRecordingsForAdmin(
+  limit = 20,
+  userId?: string
+): Promise<FailedRecording[]> {
+  const [calls, meetings] = await Promise.all([
+    fetchSuspiciousRecentCalls(limit, userId),
+    getMissedScheduledMeetings(limit, userId ?? null),
+  ]);
+
+  const merged: FailedRecording[] = [
+    ...calls.map((c) => ({
+      id: `call:${c.id}`,
+      source: "call" as const,
+      user_id: c.user_id,
+      user_email: c.user_email,
+      user_name: c.user_name,
+      event_title: c.company_name || c.contact_email || "Contact inconnu",
+      event_start_at: c.created_at,
+      recall_bot_id: c.recall_bot_id,
+      recall_bot_status: c.recall_bot_status,
+      recall_bot_status_fetched_at: c.recall_bot_status_fetched_at,
+      calendar_event_id: null,
+    })),
+    ...meetings.map((m) => ({
+      id: `meeting:${m.id}`,
+      source: "meeting" as const,
+      user_id: m.user_id,
+      user_email: m.user_email,
+      user_name: m.user_name,
+      event_title: m.event_title,
+      event_start_at: m.event_start_at,
+      recall_bot_id: m.recall_bot_id,
+      recall_bot_status: m.recall_bot_status,
+      recall_bot_status_fetched_at: m.recall_bot_status_fetched_at,
+      calendar_event_id: m.calendar_event_id,
+    })),
+  ];
+
+  return merged.sort((a, b) => b.event_start_at.localeCompare(a.event_start_at)).slice(0, limit);
 }

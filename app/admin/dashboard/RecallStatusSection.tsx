@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { UpcomingMeetingsTable, SuspiciousCallsTable, MissedMeetingsTable } from "./RecallStatusTables";
-import type { UpcomingMeeting, SuspiciousCall, MissedMeeting } from "./RecallStatusTables";
+import { UpcomingMeetingsTable, FailedRecordingsTable } from "./RecallStatusTables";
+import type { UpcomingMeeting, FailedRecording } from "./RecallStatusTables";
 
 type RecallStatusData = {
   upcomingMeetings: UpcomingMeeting[];
-  suspiciousCalls: SuspiciousCall[];
-  missedMeetings: MissedMeeting[];
+  failedRecordings: FailedRecording[];
 };
 
 type LoadState = "loading" | "error" | "ready";
@@ -87,22 +86,12 @@ export default function RecallStatusSection() {
 
           <div>
             <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
-              Bots suspects (transcript manquant) ({data.suspiciousCalls.length})
+              Rendez-vous sans enregistrement récupéré ({data.failedRecordings.length})
             </h3>
             <p className="text-xs text-slate-400 -mt-2 mb-3">
-              Calls des 7 derniers jours avec un bot programmé mais aucun enregistrement récupéré.
+              Bot programmé sur les 7 derniers jours mais enregistrement jamais récupéré — transcript manquant ou refus/no-show.
             </p>
-            <SuspiciousCallsTable calls={data.suspiciousCalls} />
-          </div>
-
-          <div>
-            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
-              Rendez-vous passés sans enregistrement ({data.missedMeetings.length})
-            </h3>
-            <p className="text-xs text-slate-400 -mt-2 mb-3">
-              Bot programmé sur un rendez-vous des 7 derniers jours, mais aucun call n&apos;a jamais été créé (refus, no-show…).
-            </p>
-            <MissedMeetingsTable meetings={data.missedMeetings} />
+            <FailedRecordingsTable recordings={data.failedRecordings} />
           </div>
         </>
       )}
