@@ -10,12 +10,6 @@ import { renderQuoteToPdfBuffer } from "@/lib/pdf/QuoteDocument";
 // Same hardcoded-origin convention as lib/email.ts / lib/recall.ts.
 const APP_URL = "https://brief-precall.vercel.app";
 
-function formatCurrency(n: number): string {
-  const [intPart, decPart] = Math.abs(n).toFixed(2).split(".");
-  const withThousands = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-  return `${n < 0 ? "-" : ""}${withThousands},${decPart} €`;
-}
-
 function encodeMimeSubject(subject: string): string {
   if (/[^\x00-\x7F]/.test(subject)) {
     return `=?UTF-8?B?${Buffer.from(subject, "utf-8").toString("base64")}?=`;
@@ -88,6 +82,22 @@ export async function POST(
     return NextResponse.json({ error: "Email du client manquant." }, { status: 400 });
   }
 
+  let requestBody: { subject?: unknown; body?: unknown };
+  try {
+    requestBody = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Corps invalide." }, { status: 400 });
+  }
+
+  const subject = typeof requestBody.subject === "string" ? requestBody.subject.trim() : "";
+  const bodyText = typeof requestBody.body === "string" ? requestBody.body.trim() : "";
+  if (!subject) {
+    return NextResponse.json({ error: "Le sujet de l'email est requis." }, { status: 400 });
+  }
+  if (!bodyText) {
+    return NextResponse.json({ error: "Le corps de l'email est requis." }, { status: 400 });
+  }
+
   // Refresh-token based (not session.accessToken) — this must also work when
   // an admin is impersonating the user (no real Google OAuth session then),
   // consistent with the rest of the quotes module.
@@ -102,16 +112,10 @@ export async function POST(
   const publicToken = randomUUID();
   const publicUrl = `${APP_URL}/q/${publicToken}`;
 
-  const subject = `Votre devis ${quote.quote_number}`;
-  const body = `Bonjour ${quote.client_name},
-
-Merci pour votre confiance. Vous trouverez ci-joint votre devis ${quote.quote_number} d'un montant de ${formatCurrency(quote.total_ttc)} TTC.
-
-Vous pouvez le consulter, l'accepter ou le refuser directement en ligne : ${publicUrl}
-
-Le PDF est également joint à cet email.
-
-Cordialement`;
+  // The signature link is appended server-side, after whatever the user
+  // wrote/edited — it must always be present and can't be accidentally
+  // stripped out of the editable body.
+  const finalBody = `${bodyText}\n\nConsultez et signez votre devis en ligne : ${publicUrl}`;
 
   let pdfBuffer: Buffer;
   try {
@@ -136,7 +140,7 @@ Cordialement`;
     buildRfc2822WithAttachment({
       to: quote.client_email,
       subject,
-      body,
+      body: finalBody,
       attachmentFilename: `${quote.quote_number}.pdf`,
       attachmentBuffer: pdfBuffer,
     })
@@ -161,7 +165,7 @@ Cordialement`;
   }
 
   try {
-    await markQuoteAsSent(quoteId, auth.userId, publicToken, subject, body);
+    await markQuoteAsSent(quoteId, auth.userId, publicToken, subject, finalBody);
   } catch (err) {
     console.error("[quotes/send] markQuoteAsSent failed:", err);
     return NextResponse.json(

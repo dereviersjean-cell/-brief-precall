@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { QuoteListItem } from "@/lib/db";
+import SendQuoteModal from "./SendQuoteModal";
 
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
   draft: { label: "Brouillon", className: "bg-slate-100 text-slate-600" },
@@ -44,28 +45,19 @@ export default function QuotesListClient({ quotes: initialQuotes }: { quotes: Qu
   const [quotes, setQuotes] = useState(initialQuotes);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [sendingId, setSendingId] = useState<string | null>(null);
+  const [sendModalQuote, setSendModalQuote] = useState<QuoteListItem | null>(null);
 
-  async function handleSend(quote: QuoteListItem) {
+  function handleSend(quote: QuoteListItem) {
     if (!quote.client_email) {
       alert("Ce devis n'a pas d'email client renseigné.");
       return;
     }
-    if (!window.confirm(`Envoyer le devis à ${quote.client_email} ?`)) return;
+    setSendModalQuote(quote);
+  }
 
-    setSendingId(quote.id);
-    try {
-      const res = await fetch(`/api/quotes/${quote.id}/send`, { method: "POST" });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error((data as { error?: string }).error ?? "Erreur lors de l'envoi.");
-      }
-      router.refresh();
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Erreur lors de l'envoi.");
-    } finally {
-      setSendingId(null);
-    }
+  function handleSent() {
+    setSendModalQuote(null);
+    router.refresh();
   }
 
   async function handleDelete(quote: QuoteListItem) {
@@ -88,6 +80,7 @@ export default function QuotesListClient({ quotes: initialQuotes }: { quotes: Qu
   }
 
   return (
+    <>
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
       <table className="w-full text-sm text-left border-collapse">
         <thead>
@@ -131,10 +124,9 @@ export default function QuotesListClient({ quotes: initialQuotes }: { quotes: Qu
                         e.stopPropagation();
                         handleSend(quote);
                       }}
-                      disabled={sendingId === quote.id}
-                      className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                      className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-md hover:bg-indigo-700 transition-colors"
                     >
-                      {sendingId === quote.id ? "Envoi…" : "📤 Envoyer"}
+                      📤 Envoyer
                     </button>
                   )}
                   <button
@@ -199,5 +191,15 @@ export default function QuotesListClient({ quotes: initialQuotes }: { quotes: Qu
         </tbody>
       </table>
     </div>
+    {sendModalQuote && (
+      <SendQuoteModal
+        quoteId={sendModalQuote.id}
+        quoteNumber={sendModalQuote.quote_number}
+        clientEmail={sendModalQuote.client_email ?? ""}
+        onClose={() => setSendModalQuote(null)}
+        onSent={handleSent}
+      />
+    )}
+    </>
   );
 }

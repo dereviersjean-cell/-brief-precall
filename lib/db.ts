@@ -2679,6 +2679,16 @@ export async function getUserEmail(userId: string): Promise<string | null> {
   return (data as { email: string } | null)?.email ?? null;
 }
 
+export async function getUserName(userId: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("name")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as { name: string | null } | null)?.name ?? null;
+}
+
 export async function markQuoteAsSent(
   quoteId: string,
   userId: string,

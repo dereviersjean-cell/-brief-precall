@@ -10,6 +10,7 @@ import {
   DEFAULT_EMAIL_FOLLOWUP_PROMPT,
   DEFAULT_REPLY_SUGGESTION_PROMPT,
   DEFAULT_QUOTE_GENERATION_PROMPT,
+  DEFAULT_QUOTE_EMAIL_PROMPT,
 } from "@/lib/admin-config";
 
 const PROMPT_KEYS = [
@@ -17,6 +18,7 @@ const PROMPT_KEYS = [
   "email_followup_prompt",
   "reply_suggestion_prompt",
   "quote_generation_prompt",
+  "quote_email_prompt",
 ] as const;
 
 export async function GET() {
@@ -24,12 +26,13 @@ export async function GET() {
     return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
   }
 
-  const [config, callAnalysis, emailFollowup, replyProspect, quoteGeneration] = await Promise.all([
+  const [config, callAnalysis, emailFollowup, replyProspect, quoteGeneration, quoteEmail] = await Promise.all([
     readConfig(),
     readPromptConfig("call_analysis_system_prompt"),
     readPromptConfig("email_followup_prompt"),
     readPromptConfig("reply_suggestion_prompt"),
     readPromptConfig("quote_generation_prompt"),
+    readPromptConfig("quote_email_prompt"),
   ]);
 
   return NextResponse.json({
@@ -38,6 +41,7 @@ export async function GET() {
     email_followup_prompt: emailFollowup ?? DEFAULT_EMAIL_FOLLOWUP_PROMPT,
     reply_suggestion_prompt: replyProspect ?? DEFAULT_REPLY_SUGGESTION_PROMPT,
     quote_generation_prompt: quoteGeneration ?? DEFAULT_QUOTE_GENERATION_PROMPT,
+    quote_email_prompt: quoteEmail ?? DEFAULT_QUOTE_EMAIL_PROMPT,
   });
 }
 
@@ -78,4 +82,5 @@ export const DEFAULTS = {
   email_followup_prompt: DEFAULT_EMAIL_FOLLOWUP_PROMPT,
   reply_suggestion_prompt: DEFAULT_REPLY_SUGGESTION_PROMPT,
   quote_generation_prompt: DEFAULT_QUOTE_GENERATION_PROMPT,
+  quote_email_prompt: DEFAULT_QUOTE_EMAIL_PROMPT,
 };

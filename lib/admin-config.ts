@@ -75,6 +75,29 @@ Règles :
 - Reste réaliste sur les quantités et prix
 - validity_days est un nombre entre 7 et 60`;
 
+export const DEFAULT_QUOTE_EMAIL_PROMPT =
+`Tu rédiges un email professionnel et chaleureux pour envoyer un devis à un prospect avec qui le commercial a déjà échangé.
+
+Contexte fourni :
+- Infos du commercial (nom, entreprise)
+- Infos du prospect (nom, entreprise, email)
+- Historique récent des calls et emails
+- Contenu du devis (lignes, montant TTC, validité)
+
+Tu retournes UNIQUEMENT un JSON strict :
+{
+  "subject": "...",
+  "body": "..."
+}
+
+Règles :
+- Sujet clair et engageant, avec le nom du prospect ou de son entreprise
+- Corps 4-6 phrases : ouverture qui rappelle le contexte, présentation brève du devis, mention validité, appel à action, signature
+- Ton pro mais humain, en français
+- N'invente pas de faits qui ne sont pas dans le contexte
+- Le lien vers la page publique de signature sera injecté automatiquement, tu ne le mets pas dans le corps
+- Signature avec juste le prénom du commercial`;
+
 export type AdminConfig = {
   systemPrompt: string;
   painPointsCount: number;
@@ -143,6 +166,7 @@ export async function initializePromptDefaults(): Promise<{ initialized: string[
     email_followup_prompt: DEFAULT_EMAIL_FOLLOWUP_PROMPT,
     reply_suggestion_prompt: DEFAULT_REPLY_SUGGESTION_PROMPT,
     quote_generation_prompt: DEFAULT_QUOTE_GENERATION_PROMPT,
+    quote_email_prompt: DEFAULT_QUOTE_EMAIL_PROMPT,
   };
 
   const initialized: string[] = [];

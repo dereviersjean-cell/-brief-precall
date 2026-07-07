@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { QuoteSettings, QuoteOffer, Contact, QuoteWithLines, QuoteDataInput } from "@/lib/db";
 import { computeQuoteTotals, computeLineTotals, type QuoteLineInput } from "@/lib/quote-calc";
 import { formatContactDisplayName } from "@/lib/format";
+import SendQuoteModal from "./SendQuoteModal";
 
 type EditorLine = {
   key: string;
@@ -166,6 +167,7 @@ export default function QuoteEditor({
   const [lines, setLines] = useState<EditorLine[]>(linesFromQuote(quote));
 
   const isReadOnly = quote != null && quote.status !== "draft";
+  const [showSendModal, setShowSendModal] = useState(false);
 
   const [notes, setNotes] = useState(quote?.notes ?? "");
   const [legalMentions, setLegalMentions] = useState(quote?.legal_mentions ?? settings.legal_mentions ?? "");
@@ -751,9 +753,30 @@ export default function QuoteEditor({
                 {saving ? "Enregistrement…" : "Enregistrer brouillon"}
               </button>
             )}
+            {mode === "edit" && quote && quote.status === "draft" && (
+              <button
+                onClick={() => setShowSendModal(true)}
+                className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors"
+              >
+                📤 Envoyer
+              </button>
+            )}
           </div>
         </div>
       </div>
+
+      {showSendModal && quote && (
+        <SendQuoteModal
+          quoteId={quote.id}
+          quoteNumber={quote.quote_number}
+          clientEmail={quote.client_email ?? ""}
+          onClose={() => setShowSendModal(false)}
+          onSent={() => {
+            setShowSendModal(false);
+            router.refresh();
+          }}
+        />
+      )}
     </div>
   );
 }

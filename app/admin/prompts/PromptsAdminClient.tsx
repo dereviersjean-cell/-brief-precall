@@ -8,6 +8,7 @@ import {
   DEFAULT_EMAIL_FOLLOWUP_PROMPT,
   DEFAULT_REPLY_SUGGESTION_PROMPT,
   DEFAULT_QUOTE_GENERATION_PROMPT,
+  DEFAULT_QUOTE_EMAIL_PROMPT,
 } from "@/lib/admin-config";
 import { AdminNav } from "../AdminNav";
 
@@ -16,7 +17,8 @@ type PromptKey =
   | "call_analysis_system_prompt"
   | "email_followup_prompt"
   | "reply_suggestion_prompt"
-  | "quote_generation_prompt";
+  | "quote_generation_prompt"
+  | "quote_email_prompt";
 
 type Prompts = Record<PromptKey, string>;
 
@@ -29,6 +31,7 @@ const DEFAULTS: Prompts = {
   email_followup_prompt: DEFAULT_EMAIL_FOLLOWUP_PROMPT,
   reply_suggestion_prompt: DEFAULT_REPLY_SUGGESTION_PROMPT,
   quote_generation_prompt: DEFAULT_QUOTE_GENERATION_PROMPT,
+  quote_email_prompt: DEFAULT_QUOTE_EMAIL_PROMPT,
 };
 
 const PROMPT_META: { key: PromptKey; title: string; description: string }[] = [
@@ -56,6 +59,11 @@ const PROMPT_META: { key: PromptKey; title: string; description: string }[] = [
     key: "quote_generation_prompt",
     title: "Prompt Génération de devis",
     description: "Instructions pour pré-remplir un devis (lignes, réduction argumentée, notes) à partir des calls analysés et emails échangés avec un contact.",
+  },
+  {
+    key: "quote_email_prompt",
+    title: "Prompt Email d'envoi de devis",
+    description: "Instructions pour rédiger le sujet et le corps de l'email d'envoi d'un devis, personnalisé selon l'historique des échanges avec le prospect.",
   },
 ];
 
