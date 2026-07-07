@@ -2168,3 +2168,132 @@ export async function getFailedRecordingsForAdmin(
     .sort((a, b) => b.event_start_at.localeCompare(a.event_start_at))
     .slice(0, limit);
 }
+
+// ─── Quotes module — settings, offer catalog, quote numbering ────────────────
+
+export type QuoteSettings = {
+  id: string;
+  user_id: string;
+  company_name: string | null;
+  company_siret: string | null;
+  company_vat_number: string | null;
+  company_address: string | null;
+  company_email: string | null;
+  company_phone: string | null;
+  company_website: string | null;
+  company_logo_url: string | null;
+  company_rib: string | null;
+  legal_mentions: string | null;
+  default_vat_rate: number;
+  payment_terms: string | null;
+  quote_number_prefix: string;
+  next_quote_number: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function getQuoteSettings(userId: string): Promise<QuoteSettings | null> {
+  const { data, error } = await supabaseAdmin
+    .from("quote_settings")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data as QuoteSettings | null;
+}
+
+export type QuoteSettingsInput = Partial<
+  Omit<QuoteSettings, "id" | "user_id" | "created_at" | "updated_at" | "next_quote_number">
+>;
+
+export async function upsertQuoteSettings(userId: string, data: QuoteSettingsInput): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("quote_settings")
+    .upsert({ user_id: userId, ...data, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+  if (error) throw error;
+}
+
+export type QuoteOffer = {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  unit_price: number;
+  unit: string;
+  vat_rate: number;
+  sort_order: number;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function listQuoteOffers(userId: string): Promise<QuoteOffer[]> {
+  const { data, error } = await supabaseAdmin
+    .from("quote_offers")
+    .select("*")
+    .eq("user_id", userId)
+    .is("archived_at", null)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as QuoteOffer[];
+}
+
+export type QuoteOfferInput = {
+  name: string;
+  description?: string | null;
+  unit_price: number;
+  unit?: string;
+  vat_rate?: number;
+  sort_order?: number;
+};
+
+export async function createQuoteOffer(userId: string, data: QuoteOfferInput): Promise<string> {
+  const { data: row, error } = await supabaseAdmin
+    .from("quote_offers")
+    .insert({ user_id: userId, ...data })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return (row as { id: string }).id;
+}
+
+export async function updateQuoteOffer(
+  offerId: string,
+  userId: string,
+  data: Partial<QuoteOfferInput>
+): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("quote_offers")
+    .update({ ...data, updated_at: new Date().toISOString() })
+    .eq("id", offerId)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
+export async function archiveQuoteOffer(offerId: string, userId: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("quote_offers")
+    .update({ archived_at: new Date().toISOString() })
+    .eq("id", offerId)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
+// Atomic increment-and-read via a Postgres function (see summary for the SQL
+// to create it) — a plain select-then-update from JS would race under
+// concurrent requests for the same user. Reused as-is in sous-étape C.
+export async function getNextQuoteNumber(userId: string): Promise<string> {
+  const { data, error } = await supabaseAdmin.rpc("increment_quote_number", { p_user_id: userId });
+  if (error) throw error;
+
+  const row = (Array.isArray(data) ? data[0] : data) as { number: number; prefix: string } | null;
+  if (!row) {
+    throw new Error(
+      "Aucun paramètre de devis trouvé pour cet utilisateur — configurez d'abord les paramètres devis."
+    );
+  }
+
+  const year = new Date().getFullYear();
+  return `${row.prefix}-${year}-${String(row.number).padStart(4, "0")}`;
+}

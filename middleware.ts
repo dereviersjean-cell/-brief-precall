@@ -8,6 +8,7 @@ export const config = {
     "/brief/:path*",
     "/feedback/:path*",
     "/contacts/:path*",
+    "/quotes/:path*",
     "/settings/:path*",
     "/team/:path*",
     "/onboarding/:path*",
