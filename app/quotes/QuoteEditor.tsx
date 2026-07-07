@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { QuoteSettings, QuoteOffer, Contact, QuoteWithLines, QuoteDataInput } from "@/lib/db";
 import { computeQuoteTotals, computeLineTotals, type QuoteLineInput } from "@/lib/quote-calc";
+import { formatContactDisplayName } from "@/lib/format";
 
 type EditorLine = {
   key: string;
@@ -172,7 +173,7 @@ export default function QuoteEditor({
     if (!id) return;
     const contact = contacts.find((c) => c.id === id);
     if (!contact) return;
-    setClientName(contact.company_name || contact.email);
+    setClientName(formatContactDisplayName(contact.company_name, contact.email));
     setClientEmail(contact.email);
   }
 

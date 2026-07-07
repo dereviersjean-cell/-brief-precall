@@ -45,8 +45,14 @@ const styles = StyleSheet.create({
   legalMentions: { marginTop: 4 },
 });
 
+// Intl.NumberFormat("fr-FR") uses a narrow no-break space (U+202F) as the
+// thousands separator — Helvetica has no glyph for it, so react-pdf renders
+// it as "/". Build the string manually with a plain space instead.
 function formatCurrency(n: number): string {
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(n);
+  const negative = n < 0;
+  const [intPart, decPart] = Math.abs(n).toFixed(2).split(".");
+  const withThousands = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return `${negative ? "-" : ""}${withThousands},${decPart} €`;
 }
 
 function formatDate(iso: string | null): string {
