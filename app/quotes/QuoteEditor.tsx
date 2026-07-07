@@ -288,7 +288,7 @@ export default function QuoteEditor({
                 onChange={(e) => handleContactChange(e.target.value)}
                 className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
-                <option value="">Saisie manuelle</option>
+                <option value="">— Nouveau client —</option>
                 {contacts.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.company_name || c.email}
@@ -337,21 +337,21 @@ export default function QuoteEditor({
             <div className="px-6 pb-8 text-center text-slate-400 text-sm">Aucune ligne pour l&apos;instant.</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left border-collapse min-w-[900px]">
+              <table className="w-full text-sm text-left border-collapse">
                 <thead>
                   <tr className="border-b border-slate-200">
-                    <th className="py-2 pl-6 pr-2 text-xs font-semibold text-slate-500 uppercase tracking-wide w-1/3">
+                    <th className="py-2 pl-6 pr-2 text-xs font-semibold text-slate-500 uppercase tracking-wide min-w-[200px]">
                       Désignation
                     </th>
-                    <th className="py-2 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">Qté</th>
-                    <th className="py-2 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">Unité</th>
-                    <th className="py-2 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">PU HT</th>
-                    <th className="py-2 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">Remise</th>
-                    <th className="py-2 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">TVA %</th>
-                    <th className="py-2 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">
+                    <th className="py-2 px-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Qté</th>
+                    <th className="py-2 px-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Unité</th>
+                    <th className="py-2 px-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">PU HT</th>
+                    <th className="py-2 px-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Remise</th>
+                    <th className="py-2 px-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">TVA %</th>
+                    <th className="py-2 px-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">
                       Total HT
                     </th>
-                    <th className="py-2 pr-6 pl-2 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">
+                    <th className="py-2 pr-6 pl-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">
                       &nbsp;
                     </th>
                   </tr>
@@ -377,40 +377,40 @@ export default function QuoteEditor({
                             className="w-full px-2 py-1 border border-slate-100 rounded-md text-xs text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                         </td>
-                        <td className="py-2 px-2 align-top">
+                        <td className="py-2 px-1.5 align-top">
                           <input
                             type="number"
                             step="0.01"
                             value={line.quantity}
                             onChange={(e) => updateLine(line.key, { quantity: parseFloat(e.target.value) || 0 })}
-                            className="w-16 px-2 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="w-14 px-1.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                         </td>
-                        <td className="py-2 px-2 align-top">
+                        <td className="py-2 px-1.5 align-top">
                           <input
                             type="text"
                             value={line.unit}
                             onChange={(e) => updateLine(line.key, { unit: e.target.value })}
-                            className="w-20 px-2 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="w-16 px-1.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                         </td>
-                        <td className="py-2 px-2 align-top">
+                        <td className="py-2 px-1.5 align-top">
                           <input
                             type="number"
                             step="0.01"
                             value={line.unit_price}
                             onChange={(e) => updateLine(line.key, { unit_price: parseFloat(e.target.value) || 0 })}
-                            className="w-24 px-2 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="w-20 px-1.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                         </td>
-                        <td className="py-2 px-2 align-top">
+                        <td className="py-2 px-1.5 align-top">
                           <div className="flex items-center gap-1">
                             <select
                               value={line.discount_type}
                               onChange={(e) =>
                                 updateLine(line.key, { discount_type: e.target.value as EditorLine["discount_type"] })
                               }
-                              className="px-1.5 py-1.5 border border-slate-200 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              className="px-1 py-1.5 border border-slate-200 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
                             >
                               <option value="">—</option>
                               <option value="percent">%</option>
@@ -424,24 +424,24 @@ export default function QuoteEditor({
                                 onChange={(e) =>
                                   updateLine(line.key, { discount_value: parseFloat(e.target.value) || 0 })
                                 }
-                                className="w-16 px-2 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-14 px-1.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                               />
                             )}
                           </div>
                         </td>
-                        <td className="py-2 px-2 align-top">
+                        <td className="py-2 px-1.5 align-top">
                           <input
                             type="number"
                             step="0.1"
                             value={line.vat_rate}
                             onChange={(e) => updateLine(line.key, { vat_rate: parseFloat(e.target.value) || 0 })}
-                            className="w-16 px-2 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="w-14 px-1.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                         </td>
-                        <td className="py-2 px-2 align-top text-right font-mono text-slate-700 pt-3.5">
+                        <td className="py-2 px-1.5 align-top text-right font-mono text-slate-700 pt-3.5">
                           {formatCurrency(computed.net_ht)}
                         </td>
-                        <td className="py-2 pr-6 pl-2 align-top">
+                        <td className="py-2 pr-6 pl-1.5 align-top">
                           <div className="flex items-center justify-end gap-1 pt-1.5">
                             <button
                               onClick={() => moveLine(line.key, "up")}

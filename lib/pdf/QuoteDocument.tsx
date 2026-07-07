@@ -3,7 +3,7 @@ import type { Quote, QuoteLine } from "@/lib/db";
 import { computeLineTotals, computeQuoteTotals } from "@/lib/quote-calc";
 
 const styles = StyleSheet.create({
-  page: { padding: 40, paddingBottom: 90, fontSize: 10, fontFamily: "Helvetica", color: "#1e293b" },
+  page: { padding: 40, fontSize: 10, fontFamily: "Helvetica", color: "#1e293b" },
   headerRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 24 },
   companyBlock: { maxWidth: 240 },
   logo: { width: 100, maxHeight: 60, objectFit: "contain", marginBottom: 8 },
@@ -14,16 +14,18 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: 700, marginBottom: 4 },
   metaRow: { flexDirection: "row", gap: 16, marginBottom: 20 },
   table: { marginTop: 10 },
-  tableHeader: { flexDirection: "row", borderBottom: "1px solid #cbd5e1", paddingBottom: 6, marginBottom: 4 },
-  tableRow: { flexDirection: "row", paddingVertical: 6, borderBottom: "1px solid #e2e8f0" },
+  tableHeader: { flexDirection: "row", gap: 8, borderBottom: "1px solid #cbd5e1", paddingBottom: 6, marginBottom: 4 },
+  tableRow: { flexDirection: "row", gap: 8, paddingVertical: 6, borderBottom: "1px solid #e2e8f0" },
   th: { fontSize: 8, fontWeight: 700, color: "#64748b", textTransform: "uppercase" },
-  colName: { flex: 3 },
-  colQty: { flex: 0.8, textAlign: "right" },
-  colUnit: { flex: 1, textAlign: "left" },
-  colPrice: { flex: 1.2, textAlign: "right" },
-  colDiscount: { flex: 1, textAlign: "right" },
-  colVat: { flex: 0.8, textAlign: "right" },
-  colTotal: { flex: 1.2, textAlign: "right" },
+  // Fixed widths (not flex ratios) so columns never visually collide —
+  // sum + gaps stays within the A4 content width (515pt after 40pt margins).
+  colName: { width: 187 },
+  colQty: { width: 30, textAlign: "right" },
+  colUnit: { width: 45 },
+  colPrice: { width: 60, textAlign: "right" },
+  colDiscount: { width: 50, textAlign: "right" },
+  colVat: { width: 35, textAlign: "right" },
+  colTotal: { width: 60, textAlign: "right" },
   totalsBlock: { marginTop: 16, alignSelf: "flex-end", width: 220 },
   totalsRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 2 },
   totalsLabel: { color: "#64748b" },
@@ -40,6 +42,7 @@ const styles = StyleSheet.create({
     borderTop: "1px solid #e2e8f0",
     paddingTop: 8,
   },
+  legalMentions: { marginTop: 4 },
 });
 
 function formatCurrency(n: number): string {
@@ -49,6 +52,13 @@ function formatCurrency(n: number): string {
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+// A pure number ("30") means "30 days" — anything already containing words
+// ("30 jours", "à réception") is shown as typed.
+function formatPaymentTerms(terms: string): string {
+  const trimmed = terms.trim();
+  return /^\d+$/.test(trimmed) ? `${trimmed} jours` : trimmed;
 }
 
 type CompanySnapshot = {
@@ -166,9 +176,17 @@ export function QuoteDocument({ quote, lines }: { quote: Quote; lines: QuoteLine
         )}
 
         <View style={styles.footer} fixed>
-          {quote.payment_terms && <Text>Conditions de paiement : {quote.payment_terms}</Text>}
+          {quote.payment_terms && <Text>Conditions de paiement : {formatPaymentTerms(quote.payment_terms)}</Text>}
           {company.company_rib && <Text>RIB : {company.company_rib}</Text>}
-          {quote.legal_mentions && <Text style={{ marginTop: 4 }}>{quote.legal_mentions}</Text>}
+          {quote.legal_mentions && (
+            <View style={styles.legalMentions}>
+              {quote.legal_mentions.split("\n").map((line, i) => (
+                <Text key={i} style={styles.smallText}>
+                  {line}
+                </Text>
+              ))}
+            </View>
+          )}
         </View>
       </Page>
     </Document>
