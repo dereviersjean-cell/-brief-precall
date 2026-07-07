@@ -477,6 +477,15 @@ export type CallAnalysisRow = {
   sentiment: string | null;
 };
 
+// PostgREST returns an embedded call_analysis(...) as a plain object now that
+// call_analysis.call_id has a UNIQUE constraint (it infers a 1:1 relation
+// instead of 1:many) — previously it was an array, and this repo has several
+// `?.[0]` reads left over from that. Handles both shapes defensively.
+function normalizeCallAnalysis<T>(raw: T | T[] | null | undefined): T | null {
+  if (!raw) return null;
+  return Array.isArray(raw) ? raw[0] ?? null : raw;
+}
+
 export type CallWithAnalysis = {
   id: string;
   contact_email: string | null;
@@ -504,7 +513,7 @@ export async function getCallsWithAnalysis(userId: string): Promise<CallWithAnal
   if (error) throw error;
 
   return ((data ?? []) as Record<string, unknown>[]).map((row) => {
-    const analyses = row.call_analysis as CallAnalysisRow[] | null;
+    const analysis = normalizeCallAnalysis(row.call_analysis as CallAnalysisRow | CallAnalysisRow[] | null);
     return {
       id: row.id as string,
       contact_email: row.contact_email as string | null,
@@ -518,7 +527,7 @@ export async function getCallsWithAnalysis(userId: string): Promise<CallWithAnal
       follow_up_sent_at: row.follow_up_sent_at as string | null,
       recall_bot_id: row.recall_bot_id as string | null,
       recording_id: row.recording_id as string | null,
-      analysis: analyses?.[0] ?? null,
+      analysis,
     };
   });
 }
@@ -539,7 +548,7 @@ export async function getCallWithAnalysis(
   if (!data) return null;
 
   const row = data as Record<string, unknown>;
-  const analyses = row.call_analysis as CallAnalysisRow[] | null;
+  const analysis = normalizeCallAnalysis(row.call_analysis as CallAnalysisRow | CallAnalysisRow[] | null);
   return {
     id: row.id as string,
     contact_email: row.contact_email as string | null,
@@ -553,7 +562,7 @@ export async function getCallWithAnalysis(
     follow_up_sent_at: row.follow_up_sent_at as string | null,
     recall_bot_id: row.recall_bot_id as string | null,
     recording_id: row.recording_id as string | null,
-    analysis: analyses?.[0] ?? null,
+    analysis,
   };
 }
 
@@ -605,8 +614,8 @@ export async function getRecentCallsForContact(
   if (error) throw error;
 
   return ((data ?? []) as Record<string, unknown>[]).map((row) => {
-    const analyses = row.call_analysis as Array<{ scores: unknown; sentiment: string | null }> | null;
-    const analysis = analyses?.[0] ?? null;
+    type Row = { scores: unknown; sentiment: string | null };
+    const analysis = normalizeCallAnalysis(row.call_analysis as Row | Row[] | null);
     const scores = analysis?.scores as { global_score?: number } | null;
     return {
       id: row.id as string,
@@ -832,8 +841,8 @@ export async function getContactTimeline(
   if (error) throw error;
 
   return ((data ?? []) as Record<string, unknown>[]).map((row) => {
-    const analyses = row.call_analysis as Array<{ scores: unknown; sentiment: string | null; summary: string | null }> | null;
-    const analysis = analyses?.[0] ?? null;
+    type Row = { scores: unknown; sentiment: string | null; summary: string | null };
+    const analysis = normalizeCallAnalysis(row.call_analysis as Row | Row[] | null);
     const scores = analysis?.scores as { global_score?: number } | null;
     return {
       id: row.id as string,
@@ -1550,14 +1559,14 @@ export async function getTeamOverview(managerId: string): Promise<TeamOverviewIt
     user_id: string;
     created_at: string;
     follow_up_sent_at: string | null;
-    call_analysis: { scores: AnalysisScores | null }[] | null;
+    call_analysis: { scores: AnalysisScores | null } | { scores: AnalysisScores | null }[] | null;
   }>;
 
   return commercials.map((c) => {
     const userBriefs = briefs.filter((b) => b.user_id === c.id);
     const userCalls = calls.filter((call) => call.user_id === c.id);
     const globalScores = userCalls
-      .map((call) => call.call_analysis?.[0]?.scores?.global_score)
+      .map((call) => normalizeCallAnalysis(call.call_analysis)?.scores?.global_score)
       .filter((s): s is number => typeof s === "number");
     const avgScore = globalScores.length > 0
       ? globalScores.reduce((a, b) => a + b, 0) / globalScores.length
@@ -1609,8 +1618,10 @@ export async function getTeamAverageScores(managerId: string): Promise<TeamAvera
     .in("user_id", commercialIds);
   if (error) throw error;
 
-  const allScores = ((data ?? []) as Array<{ call_analysis: { scores: AnalysisScores | null }[] | null }>)
-    .map((row) => row.call_analysis?.[0]?.scores)
+  const allScores = (
+    (data ?? []) as Array<{ call_analysis: { scores: AnalysisScores | null } | { scores: AnalysisScores | null }[] | null }>
+  )
+    .map((row) => normalizeCallAnalysis(row.call_analysis)?.scores)
     .filter((s): s is AnalysisScores => s != null);
 
   if (allScores.length === 0) return empty;
