@@ -1752,23 +1752,40 @@ export async function upsertScheduledMeetings(
   if (error) throw error;
 }
 
-// Deletes rows that are no longer relevant: events now in the past, or events
-// Recall no longer returns for this user (cancelled on the calendar side).
+// Deletes rows that are no longer relevant. bot_scheduled=true rows are kept
+// for the full 7-day window getMissedScheduledMeetings needs (regardless of
+// whether Recall still lists them as upcoming — pruning them as soon as they
+// leave the active list, like ineligible rows, would empty the table before
+// no-show detection ever had a chance to run). Ineligible rows have no
+// historical value and keep the previous fast-cleanup behavior.
 export async function pruneScheduledMeetings(
   userId: string,
   activeCalendarEventIds: string[]
 ): Promise<void> {
-  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const shortCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const longCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   const { data, error } = await supabaseAdmin
     .from("scheduled_meetings")
-    .select("id, calendar_event_id, event_start_at")
+    .select("id, calendar_event_id, event_start_at, bot_scheduled")
     .eq("user_id", userId);
   if (error) throw error;
 
   const activeSet = new Set(activeCalendarEventIds);
-  const staleIds = ((data ?? []) as { id: string; calendar_event_id: string; event_start_at: string | null }[])
-    .filter((row) => (row.event_start_at !== null && row.event_start_at < cutoff) || !activeSet.has(row.calendar_event_id))
+  const staleIds = (
+    (data ?? []) as {
+      id: string;
+      calendar_event_id: string;
+      event_start_at: string | null;
+      bot_scheduled: boolean;
+    }[]
+  )
+    .filter((row) => {
+      if (row.bot_scheduled) {
+        return row.event_start_at !== null && row.event_start_at < longCutoff;
+      }
+      return (row.event_start_at !== null && row.event_start_at < shortCutoff) || !activeSet.has(row.calendar_event_id);
+    })
     .map((row) => row.id);
   if (staleIds.length === 0) return;
 
@@ -1934,5 +1951,128 @@ export async function updateCallRecallBotStatus(callId: string, status: string):
     .from("calls")
     .update({ recall_bot_status: status, recall_bot_status_fetched_at: new Date().toISOString() })
     .eq("id", callId);
+  if (error) throw error;
+}
+
+export type MissedScheduledMeeting = {
+  id: string;
+  user_id: string;
+  user_email: string;
+  user_name: string | null;
+  event_title: string;
+  event_start_at: string;
+  calendar_event_id: string;
+  recall_bot_id: string | null;
+  recall_bot_status: string | null;
+  recall_bot_status_fetched_at: string | null;
+};
+
+const MISSED_MEETING_GRACE_MS = 30 * 60 * 1000;
+const MISSED_MEETING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+const MISSED_MEETING_MATCH_BUFFER_MS = 3 * 60 * 60 * 1000;
+
+// Pure DB query, no Recall API call — a scheduled_meetings row only ever
+// tells us a bot *was* scheduled, never whether it actually recorded
+// anything (calls rows only exist once transcript.done fires, so a rejected
+// bot / no-show never produces one). We flag a meeting as "missed" when it's
+// well past its start time and no calls row for the same user shows up
+// anywhere near that time — there's no scheduled_meeting_id on calls to join
+// on directly, so proximity in time on the same user is the best available
+// signal.
+export async function getMissedScheduledMeetings(
+  limit = 20,
+  userId: string | null = null
+): Promise<MissedScheduledMeeting[]> {
+  const now = Date.now();
+  const recentCutoff = new Date(now - MISSED_MEETING_GRACE_MS).toISOString();
+  const windowStart = new Date(now - MISSED_MEETING_WINDOW_MS).toISOString();
+
+  let query = supabaseAdmin
+    .from("scheduled_meetings")
+    .select(
+      "id, user_id, event_title, event_start_at, calendar_event_id, recall_bot_id, recall_bot_status, recall_bot_status_fetched_at"
+    )
+    .eq("bot_scheduled", true)
+    .lt("event_start_at", recentCutoff)
+    .gt("event_start_at", windowStart)
+    .order("event_start_at", { ascending: false });
+  if (userId) query = query.eq("user_id", userId);
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  const meetings = (data ?? []) as {
+    id: string;
+    user_id: string;
+    event_title: string;
+    event_start_at: string;
+    calendar_event_id: string;
+    recall_bot_id: string | null;
+    recall_bot_status: string | null;
+    recall_bot_status_fetched_at: string | null;
+  }[];
+  if (meetings.length === 0) return [];
+
+  const userIds = [...new Set(meetings.map((m) => m.user_id))];
+  const callsLowerBound = new Date(now - MISSED_MEETING_WINDOW_MS - MISSED_MEETING_MATCH_BUFFER_MS).toISOString();
+  const { data: callsData, error: callsError } = await supabaseAdmin
+    .from("calls")
+    .select("user_id, created_at")
+    .in("user_id", userIds)
+    .gte("created_at", callsLowerBound);
+  if (callsError) throw callsError;
+
+  const calls = (callsData ?? []) as { user_id: string; created_at: string }[];
+
+  const hasMatchingCall = (candidateUserId: string, eventStartAt: string): boolean => {
+    const eventTime = new Date(eventStartAt).getTime();
+    return calls.some(
+      (c) =>
+        c.user_id === candidateUserId &&
+        Math.abs(new Date(c.created_at).getTime() - eventTime) <= MISSED_MEETING_MATCH_BUFFER_MS
+    );
+  };
+
+  const missed = meetings.filter((m) => !hasMatchingCall(m.user_id, m.event_start_at)).slice(0, limit);
+  if (missed.length === 0) return [];
+
+  const missedUserIds = [...new Set(missed.map((m) => m.user_id))];
+  const { data: usersData, error: usersError } = await supabaseAdmin
+    .from("users")
+    .select("id, name, email")
+    .in("id", missedUserIds);
+  if (usersError) throw usersError;
+
+  const userById = new Map(
+    ((usersData ?? []) as { id: string; name: string | null; email: string }[]).map((u) => [u.id, u])
+  );
+
+  return missed.map((m) => ({
+    id: m.id,
+    user_id: m.user_id,
+    user_email: userById.get(m.user_id)?.email ?? "",
+    user_name: userById.get(m.user_id)?.name ?? null,
+    event_title: m.event_title,
+    event_start_at: m.event_start_at,
+    calendar_event_id: m.calendar_event_id,
+    recall_bot_id: m.recall_bot_id,
+    recall_bot_status: m.recall_bot_status,
+    recall_bot_status_fetched_at: m.recall_bot_status_fetched_at,
+  }));
+}
+
+export async function updateScheduledMeetingBotStatus(
+  scheduledMeetingId: string,
+  recallBotId: string,
+  status: string
+): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("scheduled_meetings")
+    .update({
+      recall_bot_id: recallBotId,
+      recall_bot_status: status,
+      recall_bot_status_fetched_at: new Date().toISOString(),
+    })
+    .eq("id", scheduledMeetingId);
   if (error) throw error;
 }

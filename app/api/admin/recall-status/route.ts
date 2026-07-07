@@ -5,11 +5,15 @@ import {
   getUpcomingScheduledMeetingsForUser,
   getSuspiciousRecentCalls,
   getSuspiciousRecentCallsForUser,
+  getMissedScheduledMeetings,
   updateCallRecallBotStatus,
+  updateScheduledMeetingBotStatus,
 } from "@/lib/db";
-import { getBotInfo } from "@/lib/recall";
+import { getBotInfo, getBotIdFromCalendarEvent } from "@/lib/recall";
 
 const BOT_STATUS_CACHE_MS = 60 * 60 * 1000;
+const MISSED_MEETING_STATUS_CACHE_MS = 15 * 60 * 1000;
+const NO_BOT_FOUND_LABEL = "Aucun bot retrouvé pour cet événement";
 
 type BotStatusChange = { code: string; sub_code?: string | null; created_at: string };
 
@@ -55,9 +59,10 @@ export async function GET(request: NextRequest) {
 
   const userId = request.nextUrl.searchParams.get("userId");
 
-  const [upcomingMeetings, suspiciousCalls] = await Promise.all([
+  const [upcomingMeetings, suspiciousCalls, missedMeetings] = await Promise.all([
     userId ? getUpcomingScheduledMeetingsForUser(userId) : getUpcomingScheduledMeetings(),
     userId ? getSuspiciousRecentCallsForUser(userId, 20) : getSuspiciousRecentCalls(20),
+    getMissedScheduledMeetings(20, userId),
   ]);
 
   // Only path in this route that can call the Recall API — capped at the 20
@@ -83,5 +88,51 @@ export async function GET(request: NextRequest) {
     })
   );
 
-  return NextResponse.json({ upcomingMeetings, suspiciousCalls: suspiciousWithStatus });
+  // Same idea as suspiciousCalls above, but with a 15min cache (shorter —
+  // no-show detection is meant to surface fresher, since the whole point is
+  // catching failures shortly after they happen) and up to 2 calls per
+  // meeting when recall_bot_id hasn't been resolved yet: one to look it up
+  // from the calendar event, one to fetch the bot's actual status.
+  const missedWithStatus = await Promise.all(
+    missedMeetings.map(async (meeting) => {
+      const fetchedAt = meeting.recall_bot_status_fetched_at
+        ? new Date(meeting.recall_bot_status_fetched_at).getTime()
+        : null;
+      const isFresh = fetchedAt !== null && Date.now() - fetchedAt < MISSED_MEETING_STATUS_CACHE_MS;
+      if (isFresh && meeting.recall_bot_status) {
+        return { ...meeting, status_label: meeting.recall_bot_status };
+      }
+
+      try {
+        let botId = meeting.recall_bot_id;
+        if (!botId) {
+          botId = await getBotIdFromCalendarEvent(meeting.calendar_event_id);
+        }
+        if (!botId) {
+          return { ...meeting, status_label: NO_BOT_FOUND_LABEL };
+        }
+
+        const botInfo = await getBotInfo(botId);
+        const statusLabel = describeBotStatus(botInfo);
+        await updateScheduledMeetingBotStatus(meeting.id, botId, statusLabel);
+        return { ...meeting, status_label: statusLabel };
+      } catch (err) {
+        console.error(`[recall-status] missed meeting status resolution failed for ${meeting.id}:`, err);
+        return { ...meeting, status_label: "Statut inconnu" };
+      }
+    })
+  );
+
+  return NextResponse.json({
+    upcomingMeetings,
+    suspiciousCalls: suspiciousWithStatus,
+    missedMeetings: missedWithStatus.map((m) => ({
+      id: m.id,
+      user_name: m.user_name,
+      user_email: m.user_email,
+      event_title: m.event_title,
+      event_start_at: m.event_start_at,
+      status_label: m.status_label,
+    })),
+  });
 }

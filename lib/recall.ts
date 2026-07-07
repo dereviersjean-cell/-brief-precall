@@ -277,6 +277,19 @@ export async function getBotInfo(botId: string): Promise<Record<string, unknown>
   return res.json() as Promise<Record<string, unknown>>;
 }
 
+// Resolves the bot attached to a calendar event, when scheduled_meetings
+// hasn't cached its recall_bot_id yet. calendar_event_id here is Recall's own
+// event id (what we store), not the underlying provider's event id.
+export async function getBotIdFromCalendarEvent(calendarEventId: string): Promise<string | null> {
+  const res = await fetch(`${RECALL_API_V2}/calendar-events/${calendarEventId}/`, {
+    headers: recallHeaders(),
+  });
+  if (!res.ok) throw new Error(`Recall.AI calendar-event lookup failed (${res.status})`);
+
+  const data = await res.json() as { bots?: Array<{ bot_id?: string }> };
+  return data.bots?.[0]?.bot_id ?? null;
+}
+
 export async function deleteRecallCalendar(calendarId: string): Promise<void> {
   const res = await fetch(`${RECALL_API_V2}/calendars/${calendarId}/`, {
     method: "DELETE",
