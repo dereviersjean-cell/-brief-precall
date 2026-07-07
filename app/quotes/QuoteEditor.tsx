@@ -84,6 +84,37 @@ function formatCurrency(n: number): string {
   return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(n);
 }
 
+function formatDateTime(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
+}
+
+const STATUS_STYLES: Record<string, { label: string; className: string }> = {
+  draft: { label: "Brouillon", className: "bg-slate-100 text-slate-600" },
+  sent: { label: "Envoyé", className: "bg-blue-50 text-blue-700" },
+  accepted: { label: "Accepté", className: "bg-emerald-50 text-emerald-700" },
+  rejected: { label: "Refusé", className: "bg-red-50 text-red-700" },
+};
+
+// "Ouvert" isn't a real status value — status stays "sent", viewed_at is a
+// separate timestamp — so it's derived here rather than looked up.
+function StatusBadge({ status, viewedAt }: { status: string; viewedAt: string | null }) {
+  if (status === "sent" && viewedAt) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0" />
+        Ouvert
+      </span>
+    );
+  }
+  const s = STATUS_STYLES[status] ?? { label: status, className: "bg-slate-100 text-slate-600" };
+  return (
+    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${s.className}`}>
+      {s.label}
+    </span>
+  );
+}
+
 function TextField({
   label,
   value,
@@ -133,6 +164,8 @@ export default function QuoteEditor({
   const [clientVatNumber, setClientVatNumber] = useState(quote?.client_vat_number ?? "");
 
   const [lines, setLines] = useState<EditorLine[]>(linesFromQuote(quote));
+
+  const isReadOnly = quote != null && quote.status !== "draft";
 
   const [notes, setNotes] = useState(quote?.notes ?? "");
   const [legalMentions, setLegalMentions] = useState(quote?.legal_mentions ?? settings.legal_mentions ?? "");
@@ -347,9 +380,47 @@ export default function QuoteEditor({
             <h1 className="text-2xl font-bold text-slate-900">
               {mode === "create" ? "Nouveau devis" : `Devis ${quote?.quote_number ?? ""}`}
             </h1>
-            <p className="text-slate-500 mt-1 text-sm">Brouillon — modifiable tant qu&apos;il n&apos;est pas envoyé.</p>
+            <p className="text-slate-500 mt-1 text-sm">
+              {isReadOnly ? "Devis envoyé — lecture seule." : "Brouillon — modifiable tant qu'il n'est pas envoyé."}
+            </p>
           </div>
         </div>
+
+        {isReadOnly && quote && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-6 py-5 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-slate-900">Statut</h2>
+              <StatusBadge status={quote.status} viewedAt={quote.viewed_at} />
+            </div>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-slate-400 text-xs uppercase tracking-wide mb-0.5">Envoyé le</p>
+                <p className="text-slate-700">{formatDateTime(quote.sent_at)}</p>
+              </div>
+              <div>
+                <p className="text-slate-400 text-xs uppercase tracking-wide mb-0.5">Ouverture</p>
+                <p className="text-slate-700">{quote.viewed_at ? formatDateTime(quote.viewed_at) : "Pas encore ouvert"}</p>
+              </div>
+              {quote.status === "accepted" && (
+                <div>
+                  <p className="text-slate-400 text-xs uppercase tracking-wide mb-0.5">Accepté le</p>
+                  <p className="text-emerald-700 font-medium">{formatDateTime(quote.accepted_at)}</p>
+                </div>
+              )}
+              {quote.status === "rejected" && (
+                <div>
+                  <p className="text-slate-400 text-xs uppercase tracking-wide mb-0.5">Refusé le</p>
+                  <p className="text-red-700 font-medium">{formatDateTime(quote.rejected_at)}</p>
+                  {quote.rejection_reason && (
+                    <p className="text-slate-500 text-xs mt-1">Motif : {quote.rejection_reason}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <fieldset disabled={isReadOnly} className="contents">
 
         {/* Client */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-6 py-5 mb-6">
@@ -639,6 +710,8 @@ export default function QuoteEditor({
           </div>
         </div>
 
+        </fieldset>
+
         {/* Actions */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
@@ -669,13 +742,15 @@ export default function QuoteEditor({
                 Aperçu PDF
               </span>
             )}
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
-            >
-              {saving ? "Enregistrement…" : "Enregistrer brouillon"}
-            </button>
+            {!isReadOnly && (
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
+              >
+                {saving ? "Enregistrement…" : "Enregistrer brouillon"}
+              </button>
+            )}
           </div>
         </div>
       </div>

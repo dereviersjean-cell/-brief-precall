@@ -8,12 +8,21 @@ import type { QuoteListItem } from "@/lib/db";
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
   draft: { label: "Brouillon", className: "bg-slate-100 text-slate-600" },
   sent: { label: "Envoyé", className: "bg-blue-50 text-blue-700" },
-  viewed: { label: "Vu", className: "bg-indigo-50 text-indigo-700" },
   accepted: { label: "Accepté", className: "bg-emerald-50 text-emerald-700" },
   rejected: { label: "Refusé", className: "bg-red-50 text-red-700" },
 };
 
-function StatusBadge({ status }: { status: string }) {
+// "Ouvert" isn't a real status value — status stays "sent", viewed_at is a
+// separate timestamp — so it's derived here rather than looked up.
+function StatusBadge({ status, viewedAt }: { status: string; viewedAt: string | null }) {
+  if (status === "sent" && viewedAt) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0" />
+        Ouvert
+      </span>
+    );
+  }
   const s = STATUS_STYLES[status] ?? { label: status, className: "bg-slate-100 text-slate-600" };
   return (
     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${s.className}`}>
@@ -35,6 +44,29 @@ export default function QuotesListClient({ quotes: initialQuotes }: { quotes: Qu
   const [quotes, setQuotes] = useState(initialQuotes);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [sendingId, setSendingId] = useState<string | null>(null);
+
+  async function handleSend(quote: QuoteListItem) {
+    if (!quote.client_email) {
+      alert("Ce devis n'a pas d'email client renseigné.");
+      return;
+    }
+    if (!window.confirm(`Envoyer le devis à ${quote.client_email} ?`)) return;
+
+    setSendingId(quote.id);
+    try {
+      const res = await fetch(`/api/quotes/${quote.id}/send`, { method: "POST" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error ?? "Erreur lors de l'envoi.");
+      }
+      router.refresh();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Erreur lors de l'envoi.");
+    } finally {
+      setSendingId(null);
+    }
+  }
 
   async function handleDelete(quote: QuoteListItem) {
     setOpenMenuId(null);
@@ -87,16 +119,27 @@ export default function QuotesListClient({ quotes: initialQuotes }: { quotes: Qu
               </td>
               <td className="py-3 pr-4 text-right font-mono text-slate-700">{formatCurrency(quote.total_ttc)}</td>
               <td className="py-3 pr-4">
-                <StatusBadge status={quote.status} />
+                <StatusBadge status={quote.status} viewedAt={quote.viewed_at} />
               </td>
               <td className="py-3 pr-4 text-slate-500">{formatDate(quote.issued_at ?? quote.created_at)}</td>
               <td className="py-3 pr-6 text-right relative">
-                <button
-                  onClick={() => setOpenMenuId(openMenuId === quote.id ? null : quote.id)}
-                  className="text-slate-400 hover:text-slate-700 px-2 py-1"
-                >
-                  ⋯
-                </button>
+                <div className="flex items-center justify-end gap-3">
+                  {quote.status === "draft" && (
+                    <button
+                      onClick={() => handleSend(quote)}
+                      disabled={sendingId === quote.id}
+                      className="text-xs font-medium text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
+                    >
+                      {sendingId === quote.id ? "Envoi…" : "📤 Envoyer"}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setOpenMenuId(openMenuId === quote.id ? null : quote.id)}
+                    className="text-slate-400 hover:text-slate-700 px-2 py-1"
+                  >
+                    ⋯
+                  </button>
+                </div>
                 {openMenuId === quote.id && (
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />

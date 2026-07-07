@@ -2352,6 +2352,11 @@ export type Quote = {
   viewed_at: string | null;
   accepted_at: string | null;
   rejected_at: string | null;
+  public_token: string | null;
+  rejection_reason: string | null;
+  acceptance_notified: boolean;
+  sent_email_subject: string | null;
+  sent_email_body: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -2365,6 +2370,7 @@ export type QuoteListItem = {
   total_ttc: number;
   issued_at: string;
   created_at: string;
+  viewed_at: string | null;
 };
 
 // client_name/client_email are already denormalized onto quotes itself (the
@@ -2372,7 +2378,7 @@ export type QuoteListItem = {
 export async function listQuotesForUser(userId: string): Promise<QuoteListItem[]> {
   const { data, error } = await supabaseAdmin
     .from("quotes")
-    .select("id, quote_number, status, client_name, client_email, total_ttc, issued_at, created_at")
+    .select("id, quote_number, status, client_name, client_email, total_ttc, issued_at, created_at, viewed_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -2659,4 +2665,196 @@ export async function getImpersonationLogsForUser(
     .limit(limit);
   if (error) throw error;
   return (data ?? []) as ImpersonationLogItem[];
+}
+
+// ─── Quotes module — sending, public access, acceptance tracking (sous-étape E) ─
+
+export async function getUserEmail(userId: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("email")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as { email: string } | null)?.email ?? null;
+}
+
+export async function markQuoteAsSent(
+  quoteId: string,
+  userId: string,
+  publicToken: string,
+  emailSubject: string,
+  emailBody: string
+): Promise<void> {
+  const { data: existing, error: fetchError } = await supabaseAdmin
+    .from("quotes")
+    .select("id, status")
+    .eq("id", quoteId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (fetchError) throw fetchError;
+  if (!existing) throw new Error("Devis introuvable.");
+  if ((existing as { status: string }).status !== "draft") {
+    throw new Error("Seuls les devis en brouillon peuvent être envoyés.");
+  }
+
+  const { error } = await supabaseAdmin
+    .from("quotes")
+    .update({
+      status: "sent",
+      sent_at: new Date().toISOString(),
+      public_token: publicToken,
+      sent_email_subject: emailSubject,
+      sent_email_body: emailBody,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", quoteId);
+  if (error) throw error;
+}
+
+// No session check — this backs the public /q/[token] page and its API
+// routes, reachable by anyone holding the (unguessable uuid) link.
+export async function getQuoteByPublicToken(token: string): Promise<QuoteWithLines | null> {
+  const { data: quote, error } = await supabaseAdmin
+    .from("quotes")
+    .select("*")
+    .eq("public_token", token)
+    .maybeSingle();
+  if (error) throw error;
+  if (!quote) return null;
+
+  const { data: lines, error: linesError } = await supabaseAdmin
+    .from("quote_lines")
+    .select("*")
+    .eq("quote_id", (quote as Quote).id)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (linesError) throw linesError;
+
+  return { ...(quote as Quote), lines: (lines ?? []) as QuoteLine[] };
+}
+
+// Single conditional UPDATE (not select-then-update) — the `.is("viewed_at",
+// null)` filter makes this atomic at the DB level, so N concurrent opens
+// still only ever record the first one, with no read/write race window.
+export async function markQuoteAsViewed(token: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("quotes")
+    .update({ viewed_at: new Date().toISOString() })
+    .eq("public_token", token)
+    .is("viewed_at", null);
+  if (error) throw error;
+}
+
+export type AcceptQuoteResult = { ok: true; quote: Quote } | { ok: false; error: string };
+
+// Same compare-and-swap idea as markQuoteAsViewed's atomic guard: the update
+// re-asserts the status we just read in its own WHERE clause, so a second
+// concurrent accept/reject (double-click, retried request) affects zero rows
+// and comes back as a clear, explicit failure rather than silently
+// re-accepting or racing the first request.
+export async function acceptQuoteByPublicToken(token: string): Promise<AcceptQuoteResult> {
+  const { data: existing, error: fetchError } = await supabaseAdmin
+    .from("quotes")
+    .select("id, status")
+    .eq("public_token", token)
+    .maybeSingle();
+  if (fetchError) throw fetchError;
+  if (!existing) return { ok: false, error: "Devis introuvable." };
+
+  const status = (existing as { status: string }).status;
+  if (status === "accepted" || status === "rejected") {
+    return { ok: false, error: `Ce devis a déjà été ${status === "accepted" ? "accepté" : "refusé"}.` };
+  }
+
+  const { data: updated, error } = await supabaseAdmin
+    .from("quotes")
+    .update({ status: "accepted", accepted_at: new Date().toISOString(), acceptance_notified: false })
+    .eq("id", (existing as { id: string }).id)
+    .eq("status", status)
+    .select("*")
+    .maybeSingle();
+  if (error) throw error;
+  if (!updated) {
+    return { ok: false, error: "Ce devis a déjà été traité." };
+  }
+
+  return { ok: true, quote: updated as Quote };
+}
+
+export type RejectQuoteResult = { ok: true } | { ok: false; error: string };
+
+export async function rejectQuoteByPublicToken(token: string, reason: string | null): Promise<RejectQuoteResult> {
+  const { data: existing, error: fetchError } = await supabaseAdmin
+    .from("quotes")
+    .select("id, status")
+    .eq("public_token", token)
+    .maybeSingle();
+  if (fetchError) throw fetchError;
+  if (!existing) return { ok: false, error: "Devis introuvable." };
+
+  const status = (existing as { status: string }).status;
+  if (status === "accepted" || status === "rejected") {
+    return { ok: false, error: `Ce devis a déjà été ${status === "accepted" ? "accepté" : "refusé"}.` };
+  }
+
+  const { data: updated, error } = await supabaseAdmin
+    .from("quotes")
+    .update({ status: "rejected", rejected_at: new Date().toISOString(), rejection_reason: reason })
+    .eq("id", (existing as { id: string }).id)
+    .eq("status", status)
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  if (!updated) {
+    return { ok: false, error: "Ce devis a déjà été traité." };
+  }
+
+  return { ok: true };
+}
+
+export type PendingAcceptanceNotification = {
+  quote_id: string;
+  quote_number: string;
+  client_name: string;
+  total_ttc: number;
+  accepted_at: string | null;
+};
+
+export async function listPendingAcceptanceNotifications(
+  userId: string
+): Promise<PendingAcceptanceNotification[]> {
+  const { data, error } = await supabaseAdmin
+    .from("quotes")
+    .select("id, quote_number, client_name, total_ttc, accepted_at")
+    .eq("user_id", userId)
+    .eq("status", "accepted")
+    .eq("acceptance_notified", false)
+    .order("accepted_at", { ascending: false });
+  if (error) throw error;
+
+  return (
+    (data ?? []) as Array<{
+      id: string;
+      quote_number: string;
+      client_name: string;
+      total_ttc: number;
+      accepted_at: string | null;
+    }>
+  ).map((q) => ({
+    quote_id: q.id,
+    quote_number: q.quote_number,
+    client_name: q.client_name,
+    total_ttc: q.total_ttc,
+    accepted_at: q.accepted_at,
+  }));
+}
+
+export async function markAcceptanceNotified(quoteId: string, userId: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("quotes")
+    .update({ acceptance_notified: true })
+    .eq("id", quoteId)
+    .eq("user_id", userId);
+  if (error) throw error;
 }
