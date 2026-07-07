@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "./supabase";
 import { generateEmbedding } from "./embeddings";
+import { computeQuoteTotals } from "./quote-calc";
 
 export async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 500): Promise<T> {
   let lastError: unknown;
@@ -2296,4 +2297,278 @@ export async function getNextQuoteNumber(userId: string): Promise<string> {
 
   const year = new Date().getFullYear();
   return `${row.prefix}-${year}-${String(row.number).padStart(4, "0")}`;
+}
+
+// ─── Quotes module — quotes + lines (sous-étape B) ────────────────────────────
+
+export async function listContactsForUser(userId: string): Promise<Contact[]> {
+  const { data, error } = await supabaseAdmin
+    .from("contacts")
+    .select("*")
+    .eq("user_id", userId)
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Contact[];
+}
+
+export type QuoteLine = {
+  id: string;
+  quote_id: string;
+  offer_id: string | null;
+  name: string;
+  description: string | null;
+  quantity: number;
+  unit: string | null;
+  unit_price: number;
+  vat_rate: number;
+  discount_type: "percent" | "amount" | null;
+  discount_value: number;
+  sort_order: number;
+  created_at: string;
+};
+
+export type Quote = {
+  id: string;
+  user_id: string;
+  contact_id: string | null;
+  quote_number: string;
+  status: string;
+  company_snapshot: Record<string, unknown>;
+  client_name: string;
+  client_email: string | null;
+  client_address: string | null;
+  client_siret: string | null;
+  client_vat_number: string | null;
+  notes: string | null;
+  legal_mentions: string | null;
+  payment_terms: string | null;
+  subtotal_ht: number;
+  total_discount: number;
+  total_vat: number;
+  total_ttc: number;
+  issued_at: string;
+  valid_until: string | null;
+  sent_at: string | null;
+  viewed_at: string | null;
+  accepted_at: string | null;
+  rejected_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type QuoteListItem = {
+  id: string;
+  quote_number: string;
+  status: string;
+  client_name: string;
+  client_email: string | null;
+  total_ttc: number;
+  issued_at: string;
+  created_at: string;
+};
+
+// client_name/client_email are already denormalized onto quotes itself (the
+// snapshot pattern), so no join to contacts is needed to display them.
+export async function listQuotesForUser(userId: string): Promise<QuoteListItem[]> {
+  const { data, error } = await supabaseAdmin
+    .from("quotes")
+    .select("id, quote_number, status, client_name, client_email, total_ttc, issued_at, created_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as QuoteListItem[];
+}
+
+export type QuoteWithLines = Quote & { lines: QuoteLine[] };
+
+export async function getQuoteWithLines(quoteId: string, userId: string): Promise<QuoteWithLines | null> {
+  const { data: quote, error } = await supabaseAdmin
+    .from("quotes")
+    .select("*")
+    .eq("id", quoteId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!quote) return null;
+
+  const { data: lines, error: linesError } = await supabaseAdmin
+    .from("quote_lines")
+    .select("*")
+    .eq("quote_id", quoteId)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (linesError) throw linesError;
+
+  return { ...(quote as Quote), lines: (lines ?? []) as QuoteLine[] };
+}
+
+export type QuoteLineInput = {
+  offer_id?: string | null;
+  name: string;
+  description?: string | null;
+  quantity: number;
+  unit?: string | null;
+  unit_price: number;
+  vat_rate: number;
+  discount_type?: "percent" | "amount" | null;
+  discount_value?: number | null;
+  sort_order?: number;
+};
+
+export type QuoteDataInput = {
+  contact_id?: string | null;
+  client_name: string;
+  client_email?: string | null;
+  client_address?: string | null;
+  client_siret?: string | null;
+  client_vat_number?: string | null;
+  notes?: string | null;
+  legal_mentions?: string | null;
+  payment_terms?: string | null;
+  valid_until?: string | null;
+  lines: QuoteLineInput[];
+};
+
+function quoteLineRows(quoteId: string, lines: QuoteLineInput[]) {
+  return lines.map((line, i) => ({
+    quote_id: quoteId,
+    offer_id: line.offer_id ?? null,
+    name: line.name,
+    description: line.description ?? null,
+    quantity: line.quantity,
+    unit: line.unit ?? null,
+    unit_price: line.unit_price,
+    vat_rate: line.vat_rate,
+    discount_type: line.discount_type ?? null,
+    discount_value: line.discount_value ?? 0,
+    sort_order: line.sort_order ?? i,
+  }));
+}
+
+// Drafts only — snapshots quote_settings (so later edits to the company
+// profile never retroactively change an already-created quote), and mints
+// the quote_number via the atomic Postgres function.
+export async function createQuote(userId: string, data: QuoteDataInput): Promise<string> {
+  const settings = await getQuoteSettings(userId);
+  if (!settings) {
+    throw new Error("Configurez d'abord vos paramètres devis avant de créer un devis.");
+  }
+
+  const quoteNumber = await getNextQuoteNumber(userId);
+  const totals = computeQuoteTotals(data.lines);
+
+  const companySnapshot = {
+    company_name: settings.company_name,
+    company_siret: settings.company_siret,
+    company_vat_number: settings.company_vat_number,
+    company_address: settings.company_address,
+    company_email: settings.company_email,
+    company_phone: settings.company_phone,
+    company_website: settings.company_website,
+    company_logo_url: settings.company_logo_url,
+    company_rib: settings.company_rib,
+  };
+
+  const { data: row, error } = await supabaseAdmin
+    .from("quotes")
+    .insert({
+      user_id: userId,
+      contact_id: data.contact_id ?? null,
+      quote_number: quoteNumber,
+      status: "draft",
+      company_snapshot: companySnapshot,
+      client_name: data.client_name,
+      client_email: data.client_email ?? null,
+      client_address: data.client_address ?? null,
+      client_siret: data.client_siret ?? null,
+      client_vat_number: data.client_vat_number ?? null,
+      notes: data.notes ?? null,
+      legal_mentions: data.legal_mentions ?? settings.legal_mentions,
+      payment_terms: data.payment_terms ?? settings.payment_terms,
+      valid_until: data.valid_until ?? null,
+      subtotal_ht: totals.subtotal_ht,
+      total_discount: totals.total_discount,
+      total_vat: totals.total_vat,
+      total_ttc: totals.total_ttc,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+
+  const quoteId = (row as { id: string }).id;
+
+  if (data.lines.length > 0) {
+    const { error: linesError } = await supabaseAdmin.from("quote_lines").insert(quoteLineRows(quoteId, data.lines));
+    if (linesError) throw linesError;
+  }
+
+  return quoteId;
+}
+
+export async function updateQuote(quoteId: string, userId: string, data: QuoteDataInput): Promise<void> {
+  const { data: existing, error: fetchError } = await supabaseAdmin
+    .from("quotes")
+    .select("id, status")
+    .eq("id", quoteId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (fetchError) throw fetchError;
+  if (!existing) throw new Error("Devis introuvable.");
+  if ((existing as { status: string }).status !== "draft") {
+    throw new Error("Seuls les devis en brouillon peuvent être modifiés.");
+  }
+
+  const totals = computeQuoteTotals(data.lines);
+
+  const { error } = await supabaseAdmin
+    .from("quotes")
+    .update({
+      contact_id: data.contact_id ?? null,
+      client_name: data.client_name,
+      client_email: data.client_email ?? null,
+      client_address: data.client_address ?? null,
+      client_siret: data.client_siret ?? null,
+      client_vat_number: data.client_vat_number ?? null,
+      notes: data.notes ?? null,
+      legal_mentions: data.legal_mentions ?? null,
+      payment_terms: data.payment_terms ?? null,
+      valid_until: data.valid_until ?? null,
+      subtotal_ht: totals.subtotal_ht,
+      total_discount: totals.total_discount,
+      total_vat: totals.total_vat,
+      total_ttc: totals.total_ttc,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", quoteId);
+  if (error) throw error;
+
+  // Replace all lines wholesale — simplest correct approach for a
+  // full-form editor save, avoids diffing added/removed/changed rows.
+  const { error: deleteError } = await supabaseAdmin.from("quote_lines").delete().eq("quote_id", quoteId);
+  if (deleteError) throw deleteError;
+
+  if (data.lines.length > 0) {
+    const { error: insertError } = await supabaseAdmin.from("quote_lines").insert(quoteLineRows(quoteId, data.lines));
+    if (insertError) throw insertError;
+  }
+}
+
+export async function deleteQuote(quoteId: string, userId: string): Promise<void> {
+  const { data: existing, error: fetchError } = await supabaseAdmin
+    .from("quotes")
+    .select("id, status")
+    .eq("id", quoteId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (fetchError) throw fetchError;
+  if (!existing) return;
+  if ((existing as { status: string }).status !== "draft") {
+    throw new Error("Seuls les devis en brouillon peuvent être supprimés.");
+  }
+
+  const { error: linesError } = await supabaseAdmin.from("quote_lines").delete().eq("quote_id", quoteId);
+  if (linesError) throw linesError;
+
+  const { error } = await supabaseAdmin.from("quotes").delete().eq("id", quoteId);
+  if (error) throw error;
 }

@@ -1,6 +1,24 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
+import { listQuotesForUser } from "@/lib/db";
+import QuotesListClient from "./QuotesListClient";
 
-export default function QuotesPage() {
+export default async function QuotesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const session = await getServerSession(authOptions);
+  const userId = (session as { supabaseUserId?: string } | null)?.supabaseUserId;
+  if (!userId) {
+    redirect("/login");
+  }
+
+  const { error } = await searchParams;
+  const quotes = await listQuotesForUser(userId);
+
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-5xl mx-auto px-6 py-10">
@@ -11,22 +29,42 @@ export default function QuotesPage() {
               Créez et suivez vos devis commerciaux.
             </p>
           </div>
-          <Link
-            href="/quotes/settings"
-            className="shrink-0 inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
-          >
-            ⚙️ Paramètres
-          </Link>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              href="/quotes/settings"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
+            >
+              ⚙️ Paramètres
+            </Link>
+            <Link
+              href="/quotes/new"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+            >
+              + Nouveau devis
+            </Link>
+          </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
-          <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center mx-auto mb-4">
-            <svg className="w-6 h-6 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 14.25l6-6m4.5-3.493V21.75l-3.75-1.5-3.75 1.5-3.75-1.5-3.75 1.5V4.757c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0c1.1.128 1.907 1.077 1.907 2.185z" />
-            </svg>
+        {error === "missing_company_info" && (
+          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-sm font-medium text-amber-800">
+              Configurez d&apos;abord la raison sociale de votre entreprise dans les paramètres avant de créer un devis.
+            </p>
           </div>
-          <p className="text-slate-700 font-medium">Aucun devis pour l&apos;instant. Configurez d&apos;abord vos paramètres.</p>
-        </div>
+        )}
+
+        {quotes.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+            <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 14.25l6-6m4.5-3.493V21.75l-3.75-1.5-3.75 1.5-3.75-1.5-3.75 1.5V4.757c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0c1.1.128 1.907 1.077 1.907 2.185z" />
+              </svg>
+            </div>
+            <p className="text-slate-700 font-medium">Aucun devis pour l&apos;instant. Configurez d&apos;abord vos paramètres.</p>
+          </div>
+        ) : (
+          <QuotesListClient quotes={quotes} />
+        )}
       </div>
     </div>
   );
