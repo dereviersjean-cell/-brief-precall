@@ -11,6 +11,7 @@ import {
   DEFAULT_REPLY_SUGGESTION_PROMPT,
   DEFAULT_QUOTE_GENERATION_PROMPT,
   DEFAULT_QUOTE_EMAIL_PROMPT,
+  DEFAULT_TASK_EMAIL_PROMPT,
 } from "@/lib/admin-config";
 
 const PROMPT_KEYS = [
@@ -19,6 +20,7 @@ const PROMPT_KEYS = [
   "reply_suggestion_prompt",
   "quote_generation_prompt",
   "quote_email_prompt",
+  "task_email_prompt",
 ] as const;
 
 export async function GET() {
@@ -26,13 +28,14 @@ export async function GET() {
     return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
   }
 
-  const [config, callAnalysis, emailFollowup, replyProspect, quoteGeneration, quoteEmail] = await Promise.all([
+  const [config, callAnalysis, emailFollowup, replyProspect, quoteGeneration, quoteEmail, taskEmail] = await Promise.all([
     readConfig(),
     readPromptConfig("call_analysis_system_prompt"),
     readPromptConfig("email_followup_prompt"),
     readPromptConfig("reply_suggestion_prompt"),
     readPromptConfig("quote_generation_prompt"),
     readPromptConfig("quote_email_prompt"),
+    readPromptConfig("task_email_prompt"),
   ]);
 
   return NextResponse.json({
@@ -42,6 +45,7 @@ export async function GET() {
     reply_suggestion_prompt: replyProspect ?? DEFAULT_REPLY_SUGGESTION_PROMPT,
     quote_generation_prompt: quoteGeneration ?? DEFAULT_QUOTE_GENERATION_PROMPT,
     quote_email_prompt: quoteEmail ?? DEFAULT_QUOTE_EMAIL_PROMPT,
+    task_email_prompt: taskEmail ?? DEFAULT_TASK_EMAIL_PROMPT,
   });
 }
 
@@ -83,4 +87,5 @@ export const DEFAULTS = {
   reply_suggestion_prompt: DEFAULT_REPLY_SUGGESTION_PROMPT,
   quote_generation_prompt: DEFAULT_QUOTE_GENERATION_PROMPT,
   quote_email_prompt: DEFAULT_QUOTE_EMAIL_PROMPT,
+  task_email_prompt: DEFAULT_TASK_EMAIL_PROMPT,
 };

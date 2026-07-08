@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { TaskListItem } from "@/lib/db";
 import { formatContactDisplayName } from "@/lib/format";
+import TaskEmailModal from "./TaskEmailModal";
 
 type GroupedTasks = {
   overdue: TaskListItem[];
@@ -49,45 +51,6 @@ function formatDueDate(dueAt: string): string {
   if (dayDiff === 1) return `Demain à ${timeStr}`;
   if (dayDiff <= 7) return due.toLocaleDateString("fr-FR", { weekday: "long", hour: "2-digit", minute: "2-digit" });
   return due.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
-}
-
-function DraftPlaceholderModal({
-  task,
-  onClose,
-  onMarkDone,
-}: {
-  task: TaskListItem;
-  onClose: () => void;
-  onMarkDone: (task: TaskListItem) => void;
-}) {
-  return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" onClick={onClose}>
-      <div
-        className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl text-center"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <p className="text-4xl mb-3">✍️</p>
-        <h2 className="font-semibold text-slate-900 mb-1">Rédaction IA à venir</h2>
-        <p className="text-sm text-slate-500 mb-5">
-          La génération automatique de brouillon Gmail pour « {task.title} » arrivera bientôt.
-        </p>
-        <div className="flex justify-center gap-2">
-          <button
-            onClick={onClose}
-            className="text-sm font-medium text-slate-600 border border-slate-200 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors"
-          >
-            Fermer
-          </button>
-          <button
-            onClick={() => onMarkDone(task)}
-            className="text-sm font-medium text-white bg-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            Marquer comme fait
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function TaskCard({
@@ -140,11 +103,12 @@ function TaskCard({
 }
 
 export default function TasksListClient({ initialGrouped }: { initialGrouped: GroupedTasks }) {
+  const router = useRouter();
   const [tab, setTab] = useState<"pending" | "history">("pending");
   const [grouped, setGrouped] = useState<GroupedTasks>(initialGrouped);
   const [history, setHistory] = useState<TaskListItem[] | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [draftTask, setDraftTask] = useState<TaskListItem | null>(null);
+  const [emailModalTask, setEmailModalTask] = useState<TaskListItem | null>(null);
 
   function removeTaskFromGrouped(taskId: string) {
     setGrouped((prev) => ({
@@ -157,7 +121,6 @@ export default function TasksListClient({ initialGrouped }: { initialGrouped: Gr
 
   async function handleComplete(task: TaskListItem) {
     removeTaskFromGrouped(task.id);
-    setDraftTask(null);
     try {
       await fetch(`/api/tasks/${task.id}/complete`, { method: "POST" });
     } catch {
@@ -173,6 +136,14 @@ export default function TasksListClient({ initialGrouped }: { initialGrouped: Gr
     } catch {
       // same trade-off as handleComplete
     }
+  }
+
+  function handleEmailSent() {
+    if (emailModalTask) {
+      removeTaskFromGrouped(emailModalTask.id);
+    }
+    setEmailModalTask(null);
+    router.refresh();
   }
 
   async function handleSwitchToHistory() {
@@ -258,7 +229,7 @@ export default function TasksListClient({ initialGrouped }: { initialGrouped: Gr
                           task={task}
                           onComplete={handleComplete}
                           onDismiss={handleDismiss}
-                          onOpenDraft={setDraftTask}
+                          onOpenDraft={setEmailModalTask}
                         />
                       ))}
                     </div>
@@ -295,8 +266,14 @@ export default function TasksListClient({ initialGrouped }: { initialGrouped: Gr
         )}
       </div>
 
-      {draftTask && (
-        <DraftPlaceholderModal task={draftTask} onClose={() => setDraftTask(null)} onMarkDone={handleComplete} />
+      {emailModalTask && (
+        <TaskEmailModal
+          taskId={emailModalTask.id}
+          taskTitle={emailModalTask.title}
+          contactEmail={emailModalTask.contact_email ?? ""}
+          onClose={() => setEmailModalTask(null)}
+          onSent={handleEmailSent}
+        />
       )}
     </div>
   );

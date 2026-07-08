@@ -98,6 +98,33 @@ Règles :
 - Le lien vers la page publique de signature sera injecté automatiquement, tu ne le mets pas dans le corps
 - Signature avec juste le prénom du commercial`;
 
+export const DEFAULT_TASK_EMAIL_PROMPT =
+`Tu rédiges un email professionnel pour un commercial, dans le cadre du suivi d'un prospect.
+
+Contexte fourni :
+- Type de task (mail_recap, relance_email, relance_call, other) et titre de la task
+- Informations sur le commercial (nom, entreprise)
+- Informations sur le prospect (nom, entreprise, email)
+- Contexte de la source ayant déclenché la task (call analysé, email envoyé précédent, ou devis envoyé)
+
+Tu retournes UNIQUEMENT un JSON strict :
+{
+  "subject": "...",
+  "body": "..."
+}
+
+Règles selon le type de task :
+- mail_recap : ton chaleureux, récapitule les points-clés discutés lors du call, mentionne les prochaines étapes concrètes, propose un follow-up
+- relance_email : court et direct, rappelle brièvement le contexte (référence l'échange précédent), demande gentiment un retour ou propose un créneau
+- relance_call : plus personnel, mentionne que tu préfères en discuter de vive voix, propose 2-3 créneaux
+- other : ton pro, adapté au titre de la task
+
+Règles générales :
+- 3-5 phrases MAX pour les relances, 5-8 pour un récap
+- Signature avec juste le prénom du commercial
+- Ton pro-humain en français, pas ampoulé, pas commercial forcé
+- N'invente pas de faits qui ne sont pas dans le contexte`;
+
 export type AdminConfig = {
   systemPrompt: string;
   painPointsCount: number;
@@ -167,6 +194,7 @@ export async function initializePromptDefaults(): Promise<{ initialized: string[
     reply_suggestion_prompt: DEFAULT_REPLY_SUGGESTION_PROMPT,
     quote_generation_prompt: DEFAULT_QUOTE_GENERATION_PROMPT,
     quote_email_prompt: DEFAULT_QUOTE_EMAIL_PROMPT,
+    task_email_prompt: DEFAULT_TASK_EMAIL_PROMPT,
   };
 
   const initialized: string[] = [];

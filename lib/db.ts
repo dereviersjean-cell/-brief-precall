@@ -3258,3 +3258,28 @@ export async function listCompletedTasks(userId: string, limit = 20): Promise<Ta
   if (error) throw error;
   return (data ?? []) as TaskListItem[];
 }
+
+// ─── Tasks module — per-task email generation/sending (sous-étape D) ───────────
+
+export async function getTaskById(taskId: string, userId: string): Promise<TaskListItem | null> {
+  const { data, error } = await supabaseAdmin
+    .from("tasks")
+    .select("*")
+    .eq("id", taskId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data as TaskListItem | null;
+}
+
+// Conditional update (not a plain set) — a "call" task's generated email is
+// the first follow-up ever sent for that call, but if one was already
+// recorded (e.g. sent from the feedback page), this must not clobber it.
+export async function markCallFollowUpSentIfUnset(callId: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("calls")
+    .update({ follow_up_sent_at: new Date().toISOString() })
+    .eq("id", callId)
+    .is("follow_up_sent_at", null);
+  if (error) throw error;
+}

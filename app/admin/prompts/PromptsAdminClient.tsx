@@ -9,6 +9,7 @@ import {
   DEFAULT_REPLY_SUGGESTION_PROMPT,
   DEFAULT_QUOTE_GENERATION_PROMPT,
   DEFAULT_QUOTE_EMAIL_PROMPT,
+  DEFAULT_TASK_EMAIL_PROMPT,
 } from "@/lib/admin-config";
 import { AdminNav } from "../AdminNav";
 
@@ -18,7 +19,8 @@ type PromptKey =
   | "email_followup_prompt"
   | "reply_suggestion_prompt"
   | "quote_generation_prompt"
-  | "quote_email_prompt";
+  | "quote_email_prompt"
+  | "task_email_prompt";
 
 type Prompts = Record<PromptKey, string>;
 
@@ -32,6 +34,7 @@ const DEFAULTS: Prompts = {
   reply_suggestion_prompt: DEFAULT_REPLY_SUGGESTION_PROMPT,
   quote_generation_prompt: DEFAULT_QUOTE_GENERATION_PROMPT,
   quote_email_prompt: DEFAULT_QUOTE_EMAIL_PROMPT,
+  task_email_prompt: DEFAULT_TASK_EMAIL_PROMPT,
 };
 
 const PROMPT_META: { key: PromptKey; title: string; description: string }[] = [
@@ -64,6 +67,11 @@ const PROMPT_META: { key: PromptKey; title: string; description: string }[] = [
     key: "quote_email_prompt",
     title: "Prompt Email d'envoi de devis",
     description: "Instructions pour rédiger le sujet et le corps de l'email d'envoi d'un devis, personnalisé selon l'historique des échanges avec le prospect.",
+  },
+  {
+    key: "task_email_prompt",
+    title: "Prompt Email de task",
+    description: "Instructions pour rédiger le sujet et le corps de l'email généré depuis une task (récap post-call, relance email, relance devis), ton adapté au type de task.",
   },
 ];
 
