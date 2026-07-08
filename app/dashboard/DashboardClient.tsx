@@ -152,7 +152,7 @@ function CalendarEventCard({
   return (
     <div className="bg-white rounded-lg border border-gray-200 py-3 px-4 flex items-center gap-5">
       <div className="text-center w-16 shrink-0">
-        <p className="text-lg font-bold text-ink">{formatTime(start)}</p>
+        <p className="text-lg font-bold text-gray-900">{formatTime(start)}</p>
         <p className="text-xs text-gray-500">{duration > 0 ? `${duration} min` : "—"}</p>
       </div>
       <div className="w-px h-10 bg-gray-200 shrink-0" />
@@ -163,7 +163,7 @@ function CalendarEventCard({
               {event.summary.charAt(0).toUpperCase()}
             </span>
           </div>
-          <h3 className="font-semibold text-ink truncate">{event.summary}</h3>
+          <h3 className="font-semibold text-gray-900 truncate">{event.summary}</h3>
           {existingBrief && (
             <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium shrink-0">
               Brief généré
@@ -180,7 +180,7 @@ function CalendarEventCard({
         {existingBrief ? (
           <Link
             href={`/brief/${existingBrief.calendar_event_id ?? existingBrief.id}?company=${encodeURIComponent(existingBrief.company_name ?? "")}&cached=true&contactEmail=${encodeURIComponent(existingBrief.contact_email ?? "")}`}
-            className="flex items-center gap-1.5 h-8 text-sm font-medium text-ink border border-gray-200 bg-white px-3 rounded-md hover:bg-gray-50 transition-colors duration-200"
+            className="flex items-center gap-1.5 h-8 text-sm font-medium text-gray-700 border border-gray-200 bg-white px-3 rounded-md hover:bg-gray-50 transition-colors duration-200"
           >
             Revoir
             <ArrowRight className="w-3.5 h-3.5" />
@@ -188,7 +188,7 @@ function CalendarEventCard({
         ) : (
           <button
             onClick={() => onPrepare(event)}
-            className="flex items-center gap-1.5 h-8 bg-ink text-white text-sm font-medium px-3 rounded-md hover:bg-primary transition-colors duration-200"
+            className="flex items-center gap-1.5 h-8 bg-gray-900 text-white text-sm font-medium px-3 rounded-md hover:bg-primary transition-colors duration-200"
           >
             Préparer le brief
             <ArrowRight className="w-3.5 h-3.5" />
@@ -221,7 +221,7 @@ function CompanyModal({
         className="bg-white rounded-lg p-6 w-full max-w-sm shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="font-semibold text-ink mb-1">Nom de l&apos;entreprise ?</h2>
+        <h2 className="font-semibold text-gray-900 mb-1">Nom de l&apos;entreprise ?</h2>
         <p className="text-sm text-gray-500 mb-4">
           Précisez le nom pour générer un brief précis.
         </p>
@@ -231,7 +231,7 @@ function CompanyModal({
           onChange={(e) => setValue(e.target.value)}
           autoFocus
           placeholder="ex. Salesforce, HubSpot…"
-          className="w-full px-3.5 py-2.5 border border-gray-200 rounded-md text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary mb-4"
+          className="w-full px-3.5 py-2.5 border border-gray-200 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary mb-4"
           onKeyDown={(e) => {
             if (e.key === "Enter" && value.trim()) onConfirm(event.id, value.trim());
             if (e.key === "Escape") onClose();
@@ -247,7 +247,7 @@ function CompanyModal({
           <button
             onClick={() => value.trim() && onConfirm(event.id, value.trim())}
             disabled={!value.trim()}
-            className="flex-1 text-sm font-semibold bg-ink text-white px-4 py-2 rounded-md hover:bg-primary transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 text-sm font-semibold bg-gray-900 text-white px-4 py-2 rounded-md hover:bg-primary transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Générer le brief
           </button>
@@ -359,7 +359,7 @@ export default function DashboardClient() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-semibold text-ink">Vos prochains rendez-vous</h1>
+            <h1 className="text-2xl font-semibold text-gray-900">Vos prochains rendez-vous</h1>
             <p className="text-gray-500 text-sm mt-1">
               {upcomingCount} RDV à venir
               {showCalendar && ` · ${provider === "azure-ad" ? "Microsoft Calendar" : "Google Calendar"}`}
@@ -376,13 +376,13 @@ export default function DashboardClient() {
           <div className="bg-lavender border border-gray-200 rounded-lg p-4 mb-8 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <Calendar className="w-5 h-5 text-primary shrink-0" />
-              <p className="text-sm text-ink">
+              <p className="text-sm text-gray-700">
                 Connectez Google Calendar pour charger vos vrais rendez-vous.
               </p>
             </div>
             <button
               onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
-              className="flex items-center gap-2 h-8 bg-ink text-white text-sm font-medium px-3 rounded-md hover:bg-primary transition-colors duration-200 shrink-0"
+              className="flex items-center gap-2 h-8 bg-gray-900 text-white text-sm font-medium px-3 rounded-md hover:bg-primary transition-colors duration-200 shrink-0"
             >
               Connecter Google
             </button>
@@ -415,7 +415,7 @@ export default function DashboardClient() {
             { label: "Taux de préparation", value: "—" },
           ].map((stat) => (
             <div key={stat.label} className="bg-white rounded-lg border border-gray-200 p-4">
-              <p className="text-2xl font-bold text-ink">{stat.value}</p>
+              <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
               <p className="text-xs text-gray-500 mt-0.5">{stat.label}</p>
             </div>
           ))}
@@ -441,7 +441,7 @@ export default function DashboardClient() {
                 <div className="w-14 h-14 bg-lavender rounded-lg flex items-center justify-center mx-auto mb-4">
                   <Calendar className="w-7 h-7 text-primary" strokeWidth={1.5} />
                 </div>
-                <p className="text-ink font-semibold mb-1">Aucun rendez-vous à venir pour l&apos;instant.</p>
+                <p className="text-gray-900 font-semibold mb-1">Aucun rendez-vous à venir pour l&apos;instant.</p>
                 <p className="text-gray-500 text-sm">Aucun événement Google Calendar avec des participants extérieurs dans les 7 prochains jours.</p>
               </div>
             ) : (
@@ -465,7 +465,7 @@ export default function DashboardClient() {
             <div className="w-14 h-14 bg-lavender rounded-lg flex items-center justify-center mx-auto mb-4">
               <Calendar className="w-7 h-7 text-primary" strokeWidth={1.5} />
             </div>
-            <p className="text-ink font-semibold mb-1">Aucun rendez-vous à venir pour l&apos;instant.</p>
+            <p className="text-gray-900 font-semibold mb-1">Aucun rendez-vous à venir pour l&apos;instant.</p>
             <p className="text-gray-500 text-sm">Brief se synchronise avec Google Calendar ou Microsoft pour afficher vos prochains rendez-vous et préparer vos briefs automatiquement.</p>
           </div>
         )}
@@ -487,7 +487,7 @@ export default function DashboardClient() {
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-ink truncate text-sm">
+                    <p className="font-semibold text-gray-900 truncate text-sm">
                       {formatCompanyName(brief.company_name)}
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5">
@@ -504,7 +504,7 @@ export default function DashboardClient() {
                   </span>
                   <Link
                     href={`/brief/${brief.calendar_event_id ?? brief.id}?company=${encodeURIComponent(brief.company_name ?? "")}&cached=true&contactEmail=${encodeURIComponent(brief.contact_email ?? "")}`}
-                    className="flex items-center gap-1.5 text-sm font-medium text-primary hover:text-ink shrink-0 transition-colors duration-200"
+                    className="flex items-center gap-1.5 text-sm font-medium text-primary hover:text-gray-900 shrink-0 transition-colors duration-200"
                   >
                     Revoir
                     <ArrowRight className="w-3.5 h-3.5" />

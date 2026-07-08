@@ -64,10 +64,10 @@ export default function AppSidebar() {
       {/* Logo */}
       <div className="px-5 h-16 flex items-center shrink-0">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-ink rounded-lg flex items-center justify-center shrink-0">
+          <div className="w-7 h-7 bg-gray-900 rounded-lg flex items-center justify-center shrink-0">
             <span className="text-white text-xs font-bold">B</span>
           </div>
-          <span className="font-bold text-ink text-base">Brief</span>
+          <span className="font-bold text-gray-900 text-base">Brief</span>
         </Link>
       </div>
 
@@ -136,11 +136,11 @@ export default function AppSidebar() {
 
         {/* User card */}
         <div className="flex items-center gap-2.5 px-3 py-2.5 mt-1 rounded-lg bg-gray-50">
-          <div className="w-8 h-8 rounded-full bg-ink flex items-center justify-center shrink-0">
+          <div className="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center shrink-0">
             <span className="text-white text-xs font-bold">{userInitials}</span>
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-semibold text-ink leading-none truncate">{userName}</p>
+            <p className="text-xs font-semibold text-gray-900 leading-none truncate">{userName}</p>
             {userEmail && <p className="text-xs text-gray-500 mt-1 truncate">{userEmail}</p>}
           </div>
         </div>
