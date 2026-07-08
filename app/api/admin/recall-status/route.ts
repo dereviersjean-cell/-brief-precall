@@ -32,6 +32,10 @@ const SUB_CODE_LABELS: Record<string, string> = {
   timeout_exceeded_everyone_left: "Timeout — tous les participants ont quitté",
   timeout_exceeded_only_bot_in_call: "Timeout — bot seul dans l'appel",
   meeting_not_started: "Réunion jamais démarrée",
+  // Observed directly on real bots (Recall auto-removes the bot from the
+  // waiting room after it's never admitted) — distinct from
+  // bot_not_accepted_by_host, which is an explicit host rejection.
+  bot_kicked_from_waiting_room: "Bot exclu de la salle d'attente — jamais admis à la réunion",
 };
 
 // Codes/sub_codes above are the ones we've actually observed or that are
@@ -39,12 +43,37 @@ const SUB_CODE_LABELS: Record<string, string> = {
 // silently misreport a status we haven't verified.
 function describeBotStatus(botInfo: Record<string, unknown>): string {
   const changes = (botInfo.status_changes as BotStatusChange[] | null) ?? [];
-  const last = changes[changes.length - 1];
-  if (!last) return "Statut inconnu";
+  if (changes.length === 0) return "Statut inconnu";
 
-  if (last.sub_code) {
-    return SUB_CODE_LABELS[last.sub_code] ?? `${CODE_LABELS[last.code] ?? last.code} (${last.sub_code})`;
+  // The chronologically last entry is almost always a terminal "done"
+  // marker carrying no sub_code of its own — the actually informative entry
+  // (why there's no recording) is typically "call_ended" just before it.
+  // Scan backwards for the last entry that actually carries a sub_code
+  // instead of blindly reading the final array element.
+  const withSubCode = [...changes].reverse().find((c) => c.sub_code);
+  if (withSubCode?.sub_code) {
+    return (
+      SUB_CODE_LABELS[withSubCode.sub_code] ??
+      `${CODE_LABELS[withSubCode.code] ?? withSubCode.code} (${withSubCode.sub_code})`
+    );
   }
+
+  // No sub_code anywhere in the history — "Terminé"/"Appel terminé" alone
+  // tells an admin nothing about *why* there's no transcript. Fall back to
+  // what the intermediate codes (already-recognized, not invented) imply.
+  const last = changes[changes.length - 1];
+  const codes = new Set(changes.map((c) => c.code));
+  const recordings = (botInfo.recordings as unknown[] | null) ?? [];
+  if ((last.code === "call_ended" || last.code === "done") && recordings.length === 0) {
+    if (codes.has("in_waiting_room") && !codes.has("in_call_recording") && !codes.has("in_call_not_recording")) {
+      return "Aucun transcript produit — bot resté en salle d'attente";
+    }
+    if (!codes.has("in_call_recording")) {
+      return "Aucun transcript produit — enregistrement jamais démarré";
+    }
+    return "Aucun transcript produit — enregistrement non disponible";
+  }
+
   return CODE_LABELS[last.code] ?? last.code;
 }
 
