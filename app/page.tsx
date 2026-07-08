@@ -419,7 +419,7 @@ function Footer() {
 
 export default function HomePage() {
   return (
-    <div className="marketing-page min-h-screen bg-background text-ink">
+    <div className="brief-ui min-h-screen bg-background text-ink">
       <Nav />
       <main>
         <Hero />

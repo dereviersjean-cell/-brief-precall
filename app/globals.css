@@ -15,12 +15,13 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ─── Marketing pages (/ and /login) design tokens ──────────────────────────
-   Scoped to what app/page.tsx and app/login/page.tsx actually use. Color
-   utilities (bg-background, text-ink, bg-primary, etc.) are safe to expose
-   globally via @theme since nothing else in the app uses these class names
-   (verified) — only the font-family and heading rules are scoped under
-   .marketing-page, since font-sans/h1-h4 ARE used/styled elsewhere. */
+/* ─── Brief UI design tokens ─────────────────────────────────────────────────
+   Originally landing/login only, now also reused by the sidebar + dashboard
+   (see AppSidebar.tsx, dashboard/layout.tsx). Color utilities (bg-background,
+   text-ink, bg-primary, etc.) are safe to expose globally via @theme since
+   nothing else in the app uses these class names (verified) — only the
+   font-family and heading rules are scoped under .brief-ui, since
+   font-sans/h1-h4 ARE used/styled elsewhere (other modules not yet migrated). */
 
 :root {
   --marketing-bg: oklch(0.982 0.012 295);

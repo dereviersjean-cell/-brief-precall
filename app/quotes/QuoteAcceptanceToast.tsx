@@ -35,11 +35,11 @@ export default function QuoteAcceptanceToast() {
   if (notifications.length === 0) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
+    <div className="brief-ui fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
       {notifications.map((n) => (
         <div
           key={n.quote_id}
-          className="bg-white border border-emerald-200 shadow-lg rounded-xl px-4 py-3 flex items-start gap-3"
+          className="bg-white border border-emerald-200 shadow-lg rounded-2xl px-4 py-3 flex items-start gap-3"
         >
           <p className="text-sm text-slate-700 flex-1">
             🎉 <span className="font-semibold">{n.client_name}</span> a accepté votre devis{" "}
@@ -47,7 +47,7 @@ export default function QuoteAcceptanceToast() {
           </p>
           <button
             onClick={() => handleClose(n.quote_id)}
-            className="shrink-0 text-slate-400 hover:text-slate-600 transition-colors"
+            className="shrink-0 text-slate-400 hover:text-slate-600 transition-colors duration-200"
             aria-label="Fermer"
           >
             ×

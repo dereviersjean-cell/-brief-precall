@@ -45,14 +45,14 @@ export default function TasksOverdueToast() {
   if (!visible) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-50 max-w-sm">
-      <div className="bg-white border border-amber-200 shadow-lg rounded-xl px-4 py-3 flex items-start gap-3">
+    <div className="brief-ui fixed top-4 right-4 z-50 max-w-sm">
+      <div className="bg-white border border-amber-200 shadow-lg rounded-2xl px-4 py-3 flex items-start gap-3">
         <p className="text-sm text-slate-700 flex-1">
           ⚠️ Vous avez {overdueCount} task{overdueCount > 1 ? "s" : ""} en retard
         </p>
         <button
           onClick={handleClose}
-          className="shrink-0 text-slate-400 hover:text-slate-600 transition-colors"
+          className="shrink-0 text-slate-400 hover:text-slate-600 transition-colors duration-200"
           aria-label="Fermer"
         >
           ×

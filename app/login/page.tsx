@@ -24,7 +24,7 @@ export default async function LoginPage({
   const errorMessage = error ? ERROR_MESSAGES[error] ?? null : null;
 
   return (
-    <div className="marketing-page min-h-screen bg-background text-ink grid lg:grid-cols-2">
+    <div className="brief-ui min-h-screen bg-background text-ink grid lg:grid-cols-2">
       {/* Left — sign in */}
       <div className="relative flex flex-col px-6 py-8 md:px-12 lg:px-16">
         <div className="flex items-center justify-between">
