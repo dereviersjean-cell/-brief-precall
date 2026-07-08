@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { createAsyncTranscript, getBotInfo, getTranscriptContent, transcriptToText } from "@/lib/recall";
-import { createCall, getUserProfile, saveCallAnalysis, getGoogleTokens, updateCallFollowUp, getContact, createContact, updateContact } from "@/lib/db";
+import { createCall, getUserProfile, saveCallAnalysis, getGoogleTokens, updateCallFollowUp, getContact, createContact, updateContact, generateTasksFromTemplates } from "@/lib/db";
 import { analyzeCall } from "@/lib/call-analysis";
 import { refreshGoogleAccessToken, getEmailHistory } from "@/lib/gmail";
 import { generateFollowUpEmail } from "@/lib/email-followup";
@@ -172,6 +172,20 @@ export async function POST(request: NextRequest) {
             });
             await saveCallAnalysis(call.id, savedAnalysis);
             console.log("[bot-webhook] call analysis saved, global_score:", savedAnalysis.global_score);
+
+            try {
+              const createdCount = await generateTasksFromTemplates(userId, "call", call.id, {
+                contact_id: null,
+                contact_email: contactEmail,
+                contact_name: null,
+              });
+              console.log("[bot-webhook] tasks generated from post_call templates:", createdCount);
+            } catch (taskErr) {
+              console.warn(
+                "[bot-webhook] generateTasksFromTemplates failed (non-blocking):",
+                taskErr instanceof Error ? taskErr.message : String(taskErr)
+              );
+            }
           } catch (analysisErr) {
             console.log("[bot-webhook] analyzeCall failed (non-blocking):", analysisErr instanceof Error ? analysisErr.message : String(analysisErr));
           }

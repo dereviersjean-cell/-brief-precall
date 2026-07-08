@@ -3025,3 +3025,189 @@ export async function ensureDefaultTaskTemplates(userId: string): Promise<void> 
     .insert(DEFAULT_TASK_TEMPLATES.map((t) => ({ ...t, user_id: userId })));
   if (insertError) throw insertError;
 }
+
+// ─── Tasks module — generation from real events (sous-étape B) ─────────────────
+
+export type TaskSourceType = "call" | "email" | "quote";
+
+const TRIGGER_TYPE_BY_SOURCE: Record<TaskSourceType, TaskTriggerType> = {
+  call: "post_call",
+  email: "email_sent_no_reply",
+  quote: "quote_sent_no_reply",
+};
+
+export type TaskContactData = {
+  contact_id: string | null;
+  contact_email: string | null;
+  contact_name: string | null;
+};
+
+// Idempotent — relies on the UNIQUE (user_id, template_id, source_type,
+// source_id) constraint + upsert/ignoreDuplicates, so calling this twice for
+// the same source (e.g. a retried webhook) never creates duplicate tasks.
+// Returns the number of tasks actually created (ignored/duplicate rows are
+// not returned by a select() after an ignoreDuplicates upsert).
+export async function generateTasksFromTemplates(
+  userId: string,
+  sourceType: TaskSourceType,
+  sourceId: string,
+  contactData: TaskContactData
+): Promise<number> {
+  const triggerType = TRIGGER_TYPE_BY_SOURCE[sourceType];
+
+  const { data: templates, error } = await supabaseAdmin
+    .from("task_templates")
+    .select("id, offset_hours, task_type, title, description, action_type")
+    .eq("user_id", userId)
+    .eq("trigger_type", triggerType)
+    .eq("enabled", true);
+  if (error) throw error;
+
+  const rows = (templates ?? []) as Array<{
+    id: string;
+    offset_hours: number;
+    task_type: string;
+    title: string;
+    description: string | null;
+    action_type: string;
+  }>;
+  if (rows.length === 0) return 0;
+
+  const now = Date.now();
+  const { data: inserted, error: insertError } = await supabaseAdmin
+    .from("tasks")
+    .upsert(
+      rows.map((t) => ({
+        user_id: userId,
+        template_id: t.id,
+        contact_id: contactData.contact_id,
+        contact_email: contactData.contact_email,
+        contact_name: contactData.contact_name,
+        source_type: sourceType,
+        source_id: sourceId,
+        task_type: t.task_type,
+        title: t.title,
+        description: t.description,
+        action_type: t.action_type,
+        due_at: new Date(now + t.offset_hours * 60 * 60 * 1000).toISOString(),
+      })),
+      { onConflict: "user_id,template_id,source_type,source_id", ignoreDuplicates: true }
+    )
+    .select("id");
+  if (insertError) throw insertError;
+
+  return (inserted ?? []).length;
+}
+
+export type TaskListItem = {
+  id: string;
+  user_id: string;
+  template_id: string | null;
+  contact_id: string | null;
+  contact_email: string | null;
+  contact_name: string | null;
+  source_type: string;
+  source_id: string | null;
+  task_type: string;
+  title: string;
+  description: string | null;
+  action_type: string;
+  due_at: string;
+  completed_at: string | null;
+  dismissed_at: string | null;
+  created_at: string;
+};
+
+// contact_id/contact_email/contact_name are already denormalized onto tasks
+// itself at creation time (same snapshot pattern as quotes' client_* fields),
+// so no join to contacts is needed to display them.
+export async function listTasksForUser(
+  userId: string,
+  filter: "pending" | "completed" | "all" = "pending"
+): Promise<TaskListItem[]> {
+  let query = supabaseAdmin.from("tasks").select("*").eq("user_id", userId);
+
+  if (filter === "pending") {
+    query = query.is("completed_at", null).is("dismissed_at", null);
+  } else if (filter === "completed") {
+    query = query.not("completed_at", "is", null);
+  }
+
+  const { data, error } = await query.order("due_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as TaskListItem[];
+}
+
+export async function completeTask(taskId: string, userId: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("tasks")
+    .update({ completed_at: new Date().toISOString() })
+    .eq("id", taskId)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
+export async function dismissTask(taskId: string, userId: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("tasks")
+    .update({ dismissed_at: new Date().toISOString() })
+    .eq("id", taskId)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
+export async function countPendingTasksDueToday(userId: string): Promise<number> {
+  const cutoff = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const { count, error } = await supabaseAdmin
+    .from("tasks")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .is("completed_at", null)
+    .is("dismissed_at", null)
+    .lte("due_at", cutoff);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+// ─── Tasks module — cron trigger sources ────────────────────────────────────────
+
+export type UnansweredFollowUpCall = {
+  id: string;
+  user_id: string;
+  contact_email: string | null;
+  company_name: string | null;
+};
+
+// "Email sent" in this codebase means a call's follow-up email
+// (calls.follow_up_sent_at / calls.replied_at) — there is no separate
+// sent-emails table.
+export async function getCallsWithUnansweredFollowUps(): Promise<UnansweredFollowUpCall[]> {
+  const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabaseAdmin
+    .from("calls")
+    .select("id, user_id, contact_email, company_name")
+    .not("follow_up_sent_at", "is", null)
+    .is("replied_at", null)
+    .gte("follow_up_sent_at", cutoff);
+  if (error) throw error;
+  return (data ?? []) as UnansweredFollowUpCall[];
+}
+
+export type UnansweredQuote = {
+  id: string;
+  user_id: string;
+  client_name: string;
+  client_email: string | null;
+  contact_id: string | null;
+};
+
+export async function getQuotesAwaitingAcceptance(): Promise<UnansweredQuote[]> {
+  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabaseAdmin
+    .from("quotes")
+    .select("id, user_id, client_name, client_email, contact_id")
+    .eq("status", "sent")
+    .gte("sent_at", cutoff);
+  if (error) throw error;
+  return (data ?? []) as UnansweredQuote[];
+}

@@ -1,7 +1,16 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { inngest } from "./inngest";
 import { generateEmbeddingsBatch } from "./embeddings";
-import { saveClientReferences, updateImportJob, getAllUsersWithRecallCalendar } from "./db";
+import {
+  saveClientReferences,
+  updateImportJob,
+  getAllUsersWithRecallCalendar,
+  generateTasksFromTemplates,
+  getCallsWithUnansweredFollowUps,
+  getQuotesAwaitingAcceptance,
+  type UnansweredFollowUpCall,
+  type UnansweredQuote,
+} from "./db";
 import { syncAndScheduleForUser } from "./recall";
 
 // ─── Text extraction ──────────────────────────────────────────────────────────
@@ -247,6 +256,66 @@ export const syncRecallCalendars = inngest.createFunction(
 
     const summary = { users: users.length, checked: totalChecked, scheduled: totalScheduled, skipped: totalSkipped };
     console.log("[sync-recall-calendars] done —", JSON.stringify(summary));
+    return summary;
+  }
+);
+
+export const checkEmailsWithoutReply = inngest.createFunction(
+  {
+    id: "check-emails-without-reply",
+    triggers: [{ cron: "*/30 * * * *" }],
+  },
+  async ({ step }) => {
+    const calls = (await step.run("get-unanswered-followups", async () => {
+      return getCallsWithUnansweredFollowUps();
+    })) as UnansweredFollowUpCall[];
+
+    console.log("[check-emails-without-reply] candidate calls:", calls.length);
+
+    let totalCreated = 0;
+    for (const call of calls) {
+      const created = (await step.run(`generate-tasks-call-${call.id}`, async () => {
+        return generateTasksFromTemplates(call.user_id, "email", call.id, {
+          contact_id: null,
+          contact_email: call.contact_email,
+          contact_name: null,
+        });
+      })) as number;
+      totalCreated += created;
+    }
+
+    const summary = { checked: calls.length, created: totalCreated };
+    console.log("[check-emails-without-reply] done —", JSON.stringify(summary));
+    return summary;
+  }
+);
+
+export const checkQuotesWithoutAcceptance = inngest.createFunction(
+  {
+    id: "check-quotes-without-acceptance",
+    triggers: [{ cron: "*/30 * * * *" }],
+  },
+  async ({ step }) => {
+    const quotes = (await step.run("get-quotes-awaiting-acceptance", async () => {
+      return getQuotesAwaitingAcceptance();
+    })) as UnansweredQuote[];
+
+    console.log("[check-quotes-without-acceptance] candidate quotes:", quotes.length);
+
+    let totalCreated = 0;
+    for (const quote of quotes) {
+      const created = (await step.run(`generate-tasks-quote-${quote.id}`, async () => {
+        return generateTasksFromTemplates(quote.user_id, "quote", quote.id, {
+          contact_id: quote.contact_id,
+          contact_email: quote.client_email,
+          contact_name: quote.client_name,
+        });
+      })) as number;
+      totalCreated += created;
+    }
+
+    const summary = { checked: quotes.length, created: totalCreated };
+    console.log("[check-quotes-without-acceptance] done —", JSON.stringify(summary));
     return summary;
   }
 );
