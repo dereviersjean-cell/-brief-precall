@@ -3211,3 +3211,50 @@ export async function getQuotesAwaitingAcceptance(): Promise<UnansweredQuote[]> 
   if (error) throw error;
   return (data ?? []) as UnansweredQuote[];
 }
+
+// ─── Tasks module — list views (sous-étape C) ──────────────────────────────────
+
+export type TaskUrgencyGroup = "overdue" | "today" | "this_week" | "later";
+
+export type GroupedTasks = Record<TaskUrgencyGroup, TaskListItem[]>;
+
+// Single query, split client-side by due_at delta — cheaper than 4 separate
+// range queries, and since the source query is already ordered by due_at asc,
+// each bucket comes out pre-sorted for free.
+export async function listPendingTasksGrouped(userId: string): Promise<GroupedTasks> {
+  const { data, error } = await supabaseAdmin
+    .from("tasks")
+    .select("*")
+    .eq("user_id", userId)
+    .is("completed_at", null)
+    .is("dismissed_at", null)
+    .order("due_at", { ascending: true });
+  if (error) throw error;
+
+  const tasks = (data ?? []) as TaskListItem[];
+  const now = Date.now();
+  const oneDayMs = 24 * 60 * 60 * 1000;
+  const sevenDaysMs = 7 * oneDayMs;
+
+  const grouped: GroupedTasks = { overdue: [], today: [], this_week: [], later: [] };
+  for (const task of tasks) {
+    const delta = new Date(task.due_at).getTime() - now;
+    if (delta < 0) grouped.overdue.push(task);
+    else if (delta < oneDayMs) grouped.today.push(task);
+    else if (delta < sevenDaysMs) grouped.this_week.push(task);
+    else grouped.later.push(task);
+  }
+  return grouped;
+}
+
+export async function listCompletedTasks(userId: string, limit = 20): Promise<TaskListItem[]> {
+  const { data, error } = await supabaseAdmin
+    .from("tasks")
+    .select("*")
+    .eq("user_id", userId)
+    .not("completed_at", "is", null)
+    .order("completed_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as TaskListItem[];
+}

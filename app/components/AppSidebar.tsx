@@ -3,10 +3,32 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+import { useEffect, useState } from "react";
 
 export default function AppSidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
+  const [pendingTasksCount, setPendingTasksCount] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchCount() {
+      try {
+        const res = await fetch("/api/tasks/pending-count");
+        if (!res.ok) return;
+        const data = (await res.json()) as { count: number };
+        if (!cancelled) setPendingTasksCount(data.count);
+      } catch {
+        // ignore transient errors — badge just stays at its last known value
+      }
+    }
+    fetchCount();
+    const interval = setInterval(fetchCount, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   const userName = session?.user?.name ?? "Jean Dupont";
   const userInitials = userName
@@ -113,7 +135,12 @@ export default function AppSidebar() {
           <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          Tasks
+          <span className="flex-1">Tasks</span>
+          {pendingTasksCount > 0 && (
+            <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-none shrink-0">
+              {pendingTasksCount > 9 ? "9+" : pendingTasksCount}
+            </span>
+          )}
         </Link>
 
         {/* Équipe (manager only) */}
