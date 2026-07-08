@@ -6,8 +6,84 @@
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  /* Hardcoded (not var()) on purpose — frees up --background/--foreground
+     below for the marketing-only palette without touching the rest of the
+     app's look. */
+  background: #f8fafc;
+  color: #0f172a;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+
+/* ─── Marketing pages (/ and /login) design tokens ──────────────────────────
+   Scoped to what app/page.tsx and app/login/page.tsx actually use. Color
+   utilities (bg-background, text-ink, bg-primary, etc.) are safe to expose
+   globally via @theme since nothing else in the app uses these class names
+   (verified) — only the font-family and heading rules are scoped under
+   .marketing-page, since font-sans/h1-h4 ARE used/styled elsewhere. */
+
+:root {
+  --marketing-bg: oklch(0.982 0.012 295);
+  --marketing-ink: oklch(0.14 0.03 265);
+  --marketing-primary: oklch(0.55 0.22 285);
+  --marketing-primary-fg: oklch(0.99 0 0);
+  --marketing-lavender: oklch(0.955 0.025 295);
+  --marketing-lavender-deep: oklch(0.88 0.06 290);
+  --marketing-border: oklch(0.9 0.02 285);
+  --marketing-muted-fg: oklch(0.48 0.02 265);
+  --marketing-sans: "Inter Tight", ui-sans-serif, system-ui, sans-serif;
+  --marketing-serif: "Instrument Serif", ui-serif, Georgia, serif;
+}
+
+@theme inline {
+  --color-background: var(--marketing-bg);
+  --color-ink: var(--marketing-ink);
+  --color-primary: var(--marketing-primary);
+  --color-primary-foreground: var(--marketing-primary-fg);
+  --color-lavender: var(--marketing-lavender);
+  --color-lavender-deep: var(--marketing-lavender-deep);
+  --color-border: var(--marketing-border);
+  --color-muted-foreground: var(--marketing-muted-fg);
+}
+
+.marketing-page {
+  font-family: var(--marketing-sans);
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+}
+.marketing-page h1,
+.marketing-page h2,
+.marketing-page h3,
+.marketing-page h4 {
+  font-family: var(--marketing-sans);
+  letter-spacing: -0.03em;
+}
+.italic-serif {
+  font-family: var(--marketing-serif);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-12px) rotate(-0.5deg); }
+}
+@keyframes float-slower {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(10px) rotate(0.6deg); }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes blob {
+  0%, 100% { transform: translate(0,0) scale(1); }
+  33% { transform: translate(30px,-20px) scale(1.05); }
+  66% { transform: translate(-20px,20px) scale(0.97); }
+}
+
+@utility animate-float-slow { animation: float-slow 7s ease-in-out infinite; }
+@utility animate-float-slower { animation: float-slower 9s ease-in-out infinite; }
+@utility animate-rise { animation: rise 0.9s cubic-bezier(.2,.7,.2,1) both; }
+@utility animate-blob { animation: blob 18s ease-in-out infinite; }

@@ -15,7 +15,7 @@ export function MicrosoftSignInButton() {
     <button
       onClick={handleClick}
       disabled={loading}
-      className="mt-3 w-full flex items-center justify-center gap-3 border border-slate-200 rounded-lg py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+      className="w-full inline-flex items-center justify-center gap-2.5 bg-white border border-border rounded-full px-6 py-3 text-sm font-medium text-ink hover:border-ink transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
     >
       {loading ? (
         <svg className="w-4 h-4 animate-spin text-slate-400" fill="none" viewBox="0 0 24 24">
@@ -23,11 +23,11 @@ export function MicrosoftSignInButton() {
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
         </svg>
       ) : (
-        <svg className="w-4 h-4" viewBox="0 0 21 21">
-          <rect x="1" y="1" width="9" height="9" fill="#F25022" />
-          <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
-          <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
-          <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
+        <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden>
+          <path fill="#F25022" d="M2 2h9.5v9.5H2z" />
+          <path fill="#7FBA00" d="M12.5 2H22v9.5h-9.5z" />
+          <path fill="#00A4EF" d="M2 12.5h9.5V22H2z" />
+          <path fill="#FFB900" d="M12.5 12.5H22V22h-9.5z" />
         </svg>
       )}
       {loading ? "Connexion en cours…" : "Continuer avec Microsoft"}
