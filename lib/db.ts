@@ -2868,3 +2868,160 @@ export async function markAcceptanceNotified(quoteId: string, userId: string): P
     .eq("user_id", userId);
   if (error) throw error;
 }
+
+// ─── Tasks module — configurable templates (sous-étape A) ──────────────────────
+
+export type TaskTriggerType = "post_call" | "email_sent_no_reply" | "quote_sent_no_reply";
+
+export type TaskTemplate = {
+  id: string;
+  user_id: string;
+  trigger_type: TaskTriggerType;
+  offset_hours: number;
+  task_type: string;
+  title: string;
+  description: string | null;
+  action_type: string;
+  enabled: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function listTaskTemplates(userId: string): Promise<TaskTemplate[]> {
+  const { data, error } = await supabaseAdmin
+    .from("task_templates")
+    .select("*")
+    .eq("user_id", userId)
+    .order("trigger_type", { ascending: true })
+    .order("sort_order", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as TaskTemplate[];
+}
+
+export type TaskTemplateInput = {
+  trigger_type: TaskTriggerType;
+  offset_hours: number;
+  task_type: string;
+  title: string;
+  description?: string | null;
+  action_type: string;
+  sort_order?: number;
+  enabled?: boolean;
+};
+
+export async function createTaskTemplate(userId: string, data: TaskTemplateInput): Promise<string> {
+  const { data: row, error } = await supabaseAdmin
+    .from("task_templates")
+    .insert({
+      user_id: userId,
+      trigger_type: data.trigger_type,
+      offset_hours: data.offset_hours,
+      task_type: data.task_type,
+      title: data.title,
+      description: data.description ?? null,
+      action_type: data.action_type,
+      sort_order: data.sort_order ?? 0,
+      enabled: data.enabled ?? true,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return (row as { id: string }).id;
+}
+
+export async function updateTaskTemplate(
+  templateId: string,
+  userId: string,
+  data: Partial<TaskTemplateInput>
+): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("task_templates")
+    .update({ ...data, updated_at: new Date().toISOString() })
+    .eq("id", templateId)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
+export async function deleteTaskTemplate(templateId: string, userId: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("task_templates")
+    .delete()
+    .eq("id", templateId)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
+const DEFAULT_TASK_TEMPLATES: TaskTemplateInput[] = [
+  // Après un call
+  {
+    trigger_type: "post_call",
+    offset_hours: 0,
+    task_type: "mail_recap",
+    title: "Envoyer un email de récap",
+    description: "Récapituler les points discutés et prochaines étapes",
+    action_type: "open_gmail_draft",
+    sort_order: 0,
+  },
+  {
+    trigger_type: "post_call",
+    offset_hours: 48,
+    task_type: "relance_email",
+    title: "Relancer si pas de réponse",
+    description: "Vérifier si le prospect a répondu, relancer sinon",
+    action_type: "open_gmail_draft",
+    sort_order: 1,
+  },
+  {
+    trigger_type: "post_call",
+    offset_hours: 168,
+    task_type: "relance_email",
+    title: "Deuxième relance",
+    description: "Relance 7 jours après le call si toujours pas de réponse",
+    action_type: "open_gmail_draft",
+    sort_order: 2,
+  },
+  // Après un email envoyé
+  {
+    trigger_type: "email_sent_no_reply",
+    offset_hours: 72,
+    task_type: "relance_email",
+    title: "Relancer après email",
+    description: "Aucune réponse 3 jours après l'envoi",
+    action_type: "open_gmail_draft",
+    sort_order: 0,
+  },
+  // Après un devis envoyé
+  {
+    trigger_type: "quote_sent_no_reply",
+    offset_hours: 48,
+    task_type: "relance_email",
+    title: "Relancer après envoi du devis",
+    description: "Vérifier si le devis a été consulté",
+    action_type: "open_gmail_draft",
+    sort_order: 0,
+  },
+  {
+    trigger_type: "quote_sent_no_reply",
+    offset_hours: 168,
+    task_type: "relance_call",
+    title: "Appeler pour débloquer",
+    description: "Devis envoyé depuis 7 jours sans acceptation — proposer un appel",
+    action_type: "none",
+    sort_order: 1,
+  },
+];
+
+export async function ensureDefaultTaskTemplates(userId: string): Promise<void> {
+  const { count, error } = await supabaseAdmin
+    .from("task_templates")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId);
+  if (error) throw error;
+  if (count && count > 0) return;
+
+  const { error: insertError } = await supabaseAdmin
+    .from("task_templates")
+    .insert(DEFAULT_TASK_TEMPLATES.map((t) => ({ ...t, user_id: userId })));
+  if (insertError) throw insertError;
+}

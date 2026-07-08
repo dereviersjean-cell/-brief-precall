@@ -23,6 +23,7 @@ export default function AppSidebar() {
   const feedbackActive = pathname.startsWith("/feedback");
   const contactsActive = pathname.startsWith("/contacts");
   const quotesActive = pathname.startsWith("/quotes");
+  const tasksActive = pathname.startsWith("/tasks");
   const teamActive = pathname.startsWith("/team");
   const settingsActive = pathname === "/settings";
 
@@ -98,6 +99,21 @@ export default function AppSidebar() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 14.25l6-6m4.5-3.493V21.75l-3.75-1.5-3.75 1.5-3.75-1.5-3.75 1.5V4.757c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0c1.1.128 1.907 1.077 1.907 2.185zM9.75 9h.008v.008H9.75V9zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm4.125 4.5h.008v.008h-.008V13.5zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
           </svg>
           Devis
+        </Link>
+
+        {/* Tasks */}
+        <Link
+          href="/tasks"
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+            tasksActive
+              ? "bg-indigo-50 text-indigo-700"
+              : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+          }`}
+        >
+          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Tasks
         </Link>
 
         {/* Équipe (manager only) */}

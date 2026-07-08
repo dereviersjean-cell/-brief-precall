@@ -28,12 +28,13 @@ const styles = StyleSheet.create({
   identitySection: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
     marginTop: 30,
   },
   quoteNumber: { fontSize: 28, fontWeight: "bold", color: "#111827" },
   issuedDate: { fontSize: 9, color: "#6B7280", marginTop: 4 },
   validityBadge: {
+    flexShrink: 0,
     backgroundColor: "#F3F4F6",
     borderRadius: 12,
     paddingVertical: 6,
