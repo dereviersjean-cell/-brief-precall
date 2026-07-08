@@ -131,36 +131,31 @@ function eventDuration(e: CalendarEvent) {
 
 function DayDivider({ label }: { label: string }) {
   return (
-    <div className="flex items-center gap-3 mb-3">
-      <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-        {label}
-      </h2>
-      <div className="flex-1 h-px bg-border" />
-    </div>
+    <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+      {label}
+    </h2>
   );
 }
 
 function CalendarEventCard({
   event,
   onPrepare,
-  provider = "google",
   existingBrief,
 }: {
   event: CalendarEvent;
   onPrepare: (event: CalendarEvent) => void;
-  provider?: string;
   existingBrief?: StoredBrief;
 }) {
   const start = eventStartDate(event);
   const duration = eventDuration(event);
 
   return (
-    <div className="bg-white rounded-2xl p-5 flex items-center gap-5 shadow-sm hover:shadow-md transition-shadow duration-200">
+    <div className="bg-white rounded-lg border border-gray-200 py-3 px-4 flex items-center gap-5">
       <div className="text-center w-16 shrink-0">
         <p className="text-lg font-bold text-ink">{formatTime(start)}</p>
-        <p className="text-xs text-muted-foreground">{duration > 0 ? `${duration} min` : "—"}</p>
+        <p className="text-xs text-gray-500">{duration > 0 ? `${duration} min` : "—"}</p>
       </div>
-      <div className="w-px h-10 bg-border shrink-0" />
+      <div className="w-px h-10 bg-gray-200 shrink-0" />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <div className="w-7 h-7 rounded-lg bg-lavender flex items-center justify-center shrink-0">
@@ -169,16 +164,13 @@ function CalendarEventCard({
             </span>
           </div>
           <h3 className="font-semibold text-ink truncate">{event.summary}</h3>
-          <span className="text-xs px-2 py-0.5 bg-lavender text-muted-foreground rounded-full font-medium shrink-0">
-            {provider === "azure-ad" ? "Microsoft Calendar" : "Google Calendar"}
-          </span>
           {existingBrief && (
             <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium shrink-0">
               Brief généré
             </span>
           )}
         </div>
-        <p className="text-sm text-muted-foreground truncate">
+        <p className="text-sm text-gray-500 truncate">
           {event.attendees.length > 0
             ? event.attendees.map((a) => a.name ?? a.email).join(", ")
             : "Aucun participant externe"}
@@ -188,7 +180,7 @@ function CalendarEventCard({
         {existingBrief ? (
           <Link
             href={`/brief/${existingBrief.calendar_event_id ?? existingBrief.id}?company=${encodeURIComponent(existingBrief.company_name ?? "")}&cached=true&contactEmail=${encodeURIComponent(existingBrief.contact_email ?? "")}`}
-            className="flex items-center gap-2 text-sm font-medium text-ink border border-border bg-white px-4 py-2 rounded-full hover:bg-lavender transition-colors duration-200"
+            className="flex items-center gap-1.5 h-8 text-sm font-medium text-ink border border-gray-200 bg-white px-3 rounded-md hover:bg-gray-50 transition-colors duration-200"
           >
             Revoir
             <ArrowRight className="w-3.5 h-3.5" />
@@ -196,7 +188,7 @@ function CalendarEventCard({
         ) : (
           <button
             onClick={() => onPrepare(event)}
-            className="flex items-center gap-2 bg-ink text-white text-sm font-medium px-4 py-2 rounded-full hover:bg-primary transition-colors duration-200"
+            className="flex items-center gap-1.5 h-8 bg-ink text-white text-sm font-medium px-3 rounded-md hover:bg-primary transition-colors duration-200"
           >
             Préparer le brief
             <ArrowRight className="w-3.5 h-3.5" />
@@ -226,11 +218,11 @@ function CompanyModal({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl"
+        className="bg-white rounded-lg p-6 w-full max-w-sm shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="font-semibold text-ink mb-1">Nom de l&apos;entreprise ?</h2>
-        <p className="text-sm text-muted-foreground mb-4">
+        <p className="text-sm text-gray-500 mb-4">
           Précisez le nom pour générer un brief précis.
         </p>
         <input
@@ -239,7 +231,7 @@ function CompanyModal({
           onChange={(e) => setValue(e.target.value)}
           autoFocus
           placeholder="ex. Salesforce, HubSpot…"
-          className="w-full px-3.5 py-2.5 border border-border rounded-xl text-sm text-ink focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary mb-4"
+          className="w-full px-3.5 py-2.5 border border-gray-200 rounded-md text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary mb-4"
           onKeyDown={(e) => {
             if (e.key === "Enter" && value.trim()) onConfirm(event.id, value.trim());
             if (e.key === "Escape") onClose();
@@ -248,14 +240,14 @@ function CompanyModal({
         <div className="flex gap-2">
           <button
             onClick={onClose}
-            className="flex-1 text-sm text-ink border border-border px-4 py-2.5 rounded-full hover:bg-lavender transition-colors duration-200"
+            className="flex-1 text-sm text-gray-600 border border-gray-200 px-4 py-2 rounded-md hover:bg-gray-50 transition-colors duration-200"
           >
             Annuler
           </button>
           <button
             onClick={() => value.trim() && onConfirm(event.id, value.trim())}
             disabled={!value.trim()}
-            className="flex-1 text-sm font-semibold bg-ink text-white px-4 py-2.5 rounded-full hover:bg-primary transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 text-sm font-semibold bg-ink text-white px-4 py-2 rounded-md hover:bg-primary transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Générer le brief
           </button>
@@ -269,17 +261,17 @@ function EventsSkeleton() {
   return (
     <div className="space-y-3 animate-pulse">
       {[1, 2, 3].map((i) => (
-        <div key={i} className="bg-white rounded-2xl p-5 flex items-center gap-5 shadow-sm">
+        <div key={i} className="bg-white rounded-lg border border-gray-200 py-3 px-4 flex items-center gap-5">
           <div className="w-16 shrink-0 space-y-1.5">
-            <div className="h-6 bg-lavender rounded w-12 mx-auto" />
-            <div className="h-3 bg-lavender rounded w-10 mx-auto" />
+            <div className="h-6 bg-gray-100 rounded w-12 mx-auto" />
+            <div className="h-3 bg-gray-100 rounded w-10 mx-auto" />
           </div>
-          <div className="w-px h-10 bg-border shrink-0" />
+          <div className="w-px h-10 bg-gray-200 shrink-0" />
           <div className="flex-1 space-y-2">
-            <div className="h-4 bg-lavender rounded w-1/3" />
-            <div className="h-3 bg-lavender rounded w-1/2" />
+            <div className="h-4 bg-gray-100 rounded w-1/3" />
+            <div className="h-3 bg-gray-100 rounded w-1/2" />
           </div>
-          <div className="h-9 w-28 bg-lavender rounded-full shrink-0" />
+          <div className="h-8 w-28 bg-gray-100 rounded-md shrink-0" />
         </div>
       ))}
     </div>
@@ -362,20 +354,18 @@ export default function DashboardClient() {
   const upcomingCount = calendarEvents?.length ?? 0;
 
   return (
-    <div className="brief-ui min-h-screen bg-background">
+    <div className="brief-ui min-h-screen bg-white">
       <main className="max-w-3xl mx-auto w-full px-6 py-10">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-ink">
-              Vos prochains <span className="italic-serif text-primary">rendez-vous</span>.
-            </h1>
-            <p className="text-muted-foreground text-sm mt-1">
+            <h1 className="text-2xl font-semibold text-ink">Vos prochains rendez-vous</h1>
+            <p className="text-gray-500 text-sm mt-1">
               {upcomingCount} RDV à venir
               {showCalendar && ` · ${provider === "azure-ad" ? "Microsoft Calendar" : "Google Calendar"}`}
             </p>
           </div>
-          <button className="flex items-center gap-2 text-sm font-medium text-ink border border-border bg-white px-4 py-2 rounded-full hover:bg-lavender transition-colors duration-200">
+          <button className="flex items-center gap-2 h-8 text-sm font-medium text-gray-600 border border-gray-200 bg-white px-3 rounded-md hover:bg-gray-50 transition-colors duration-200">
             <Plus className="w-4 h-4" />
             Ajouter un RDV
           </button>
@@ -383,7 +373,7 @@ export default function DashboardClient() {
 
         {/* Connect Google Calendar banner */}
         {!isAuthenticated && status !== "loading" && (
-          <div className="bg-lavender border border-border rounded-2xl p-4 mb-8 flex items-center justify-between gap-4">
+          <div className="bg-lavender border border-gray-200 rounded-lg p-4 mb-8 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <Calendar className="w-5 h-5 text-primary shrink-0" />
               <p className="text-sm text-ink">
@@ -392,7 +382,7 @@ export default function DashboardClient() {
             </div>
             <button
               onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
-              className="flex items-center gap-2 bg-ink text-white text-sm font-medium px-4 py-2 rounded-full hover:bg-primary transition-colors duration-200 shrink-0"
+              className="flex items-center gap-2 h-8 bg-ink text-white text-sm font-medium px-3 rounded-md hover:bg-primary transition-colors duration-200 shrink-0"
             >
               Connecter Google
             </button>
@@ -401,11 +391,11 @@ export default function DashboardClient() {
 
         {/* Calendar error */}
         {calendarError && (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-6 flex items-center justify-between gap-4">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-center justify-between gap-4">
             <p className="text-sm text-red-700">{calendarError}</p>
             <button
               onClick={() => signIn(provider === "azure-ad" ? "azure-ad" : "google", { callbackUrl: "/dashboard" })}
-              className="text-sm font-medium text-red-700 border border-red-300 px-3 py-1.5 rounded-full hover:bg-red-100 transition-colors duration-200 shrink-0"
+              className="text-sm font-medium text-red-700 border border-red-300 px-3 h-8 rounded-md hover:bg-red-100 transition-colors duration-200 shrink-0"
             >
               Reconnecter
             </button>
@@ -424,9 +414,9 @@ export default function DashboardClient() {
             },
             { label: "Taux de préparation", value: "—" },
           ].map((stat) => (
-            <div key={stat.label} className="bg-white rounded-2xl shadow-sm p-5">
+            <div key={stat.label} className="bg-white rounded-lg border border-gray-200 p-4">
               <p className="text-2xl font-bold text-ink">{stat.value}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{stat.label}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{stat.label}</p>
             </div>
           ))}
         </div>
@@ -435,9 +425,8 @@ export default function DashboardClient() {
         {calendarLoading && (
           <div className="space-y-8">
             <div>
-              <div className="flex items-center gap-3 mb-3 animate-pulse">
-                <div className="h-3 bg-lavender rounded w-24" />
-                <div className="flex-1 h-px bg-border" />
+              <div className="mb-3 animate-pulse">
+                <div className="h-3 bg-gray-100 rounded w-24" />
               </div>
               <EventsSkeleton />
             </div>
@@ -449,19 +438,19 @@ export default function DashboardClient() {
           <div className="space-y-8">
             {calendarGroups.length === 0 ? (
               <div className="text-center py-16">
-                <div className="w-14 h-14 bg-lavender rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <div className="w-14 h-14 bg-lavender rounded-lg flex items-center justify-center mx-auto mb-4">
                   <Calendar className="w-7 h-7 text-primary" strokeWidth={1.5} />
                 </div>
                 <p className="text-ink font-semibold mb-1">Aucun rendez-vous à venir pour l&apos;instant.</p>
-                <p className="text-muted-foreground text-sm">Aucun événement Google Calendar avec des participants extérieurs dans les 7 prochains jours.</p>
+                <p className="text-gray-500 text-sm">Aucun événement Google Calendar avec des participants extérieurs dans les 7 prochains jours.</p>
               </div>
             ) : (
               calendarGroups.map(([dayKey, events]) => (
                 <div key={dayKey}>
                   <DayDivider label={dayLabel(eventStartDate(events[0]))} />
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {events.map((e) => (
-                      <CalendarEventCard key={e.id} event={e} onPrepare={handlePrepare} provider={provider} existingBrief={recentBriefs.find((b) => b.calendar_event_id === e.id)} />
+                      <CalendarEventCard key={e.id} event={e} onPrepare={handlePrepare} existingBrief={recentBriefs.find((b) => b.calendar_event_id === e.id)} />
                     ))}
                   </div>
                 </div>
@@ -473,27 +462,24 @@ export default function DashboardClient() {
         {/* Empty state — not authenticated */}
         {!isAuthenticated && !calendarLoading && status !== "loading" && (
           <div className="text-center py-16">
-            <div className="w-14 h-14 bg-lavender rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <div className="w-14 h-14 bg-lavender rounded-lg flex items-center justify-center mx-auto mb-4">
               <Calendar className="w-7 h-7 text-primary" strokeWidth={1.5} />
             </div>
             <p className="text-ink font-semibold mb-1">Aucun rendez-vous à venir pour l&apos;instant.</p>
-            <p className="text-muted-foreground text-sm">Brief se synchronise avec Google Calendar ou Microsoft pour afficher vos prochains rendez-vous et préparer vos briefs automatiquement.</p>
+            <p className="text-gray-500 text-sm">Brief se synchronise avec Google Calendar ou Microsoft pour afficher vos prochains rendez-vous et préparer vos briefs automatiquement.</p>
           </div>
         )}
         {/* Briefs récents */}
         {recentBriefs.length > 0 && (
           <div className="mt-12">
-            <div className="flex items-center gap-3 mb-4">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                Briefs récents
-              </h2>
-              <div className="flex-1 h-px bg-border" />
-            </div>
+            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+              Briefs récents
+            </h2>
             <div className="space-y-2">
               {recentBriefs.map((brief) => (
                 <div
                   key={brief.id}
-                  className="bg-white rounded-2xl px-5 py-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow duration-200"
+                  className="bg-white rounded-lg border border-gray-200 px-4 py-3 flex items-center gap-4"
                 >
                   <div className="w-8 h-8 rounded-lg bg-lavender flex items-center justify-center shrink-0">
                     <span className="text-xs font-bold text-primary">
@@ -504,7 +490,7 @@ export default function DashboardClient() {
                     <p className="font-semibold text-ink truncate text-sm">
                       {formatCompanyName(brief.company_name)}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <p className="text-xs text-gray-500 mt-0.5">
                       {new Date(brief.created_at).toLocaleDateString("fr-FR", {
                         day: "numeric",
                         month: "long",

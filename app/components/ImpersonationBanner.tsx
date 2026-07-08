@@ -35,12 +35,12 @@ export default function ImpersonationBanner() {
   }
 
   return (
-    <div className="brief-ui sticky top-0 z-50 w-full bg-red-600 text-white px-4 py-2 flex items-center justify-between gap-3 text-sm font-medium shadow-md">
+    <div className="brief-ui sticky top-0 z-50 w-full bg-red-600 text-white px-4 py-2 flex items-center justify-between gap-3 text-sm font-medium shadow-sm">
       <span>👤 Connecté en tant que {targetUserName}</span>
       <button
         onClick={handleEnd}
         disabled={ending}
-        className="shrink-0 px-3 py-1 rounded-full bg-white/15 hover:bg-white/25 transition-colors duration-200 disabled:opacity-50"
+        className="shrink-0 px-3 py-1 rounded-md bg-white/15 hover:bg-white/25 transition-colors duration-200 disabled:opacity-50"
       >
         {ending ? "Fin en cours…" : "Terminer l'impersonation"}
       </button>

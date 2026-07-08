@@ -39,7 +39,7 @@ export default function QuoteAcceptanceToast() {
       {notifications.map((n) => (
         <div
           key={n.quote_id}
-          className="bg-white border border-emerald-200 shadow-lg rounded-2xl px-4 py-3 flex items-start gap-3"
+          className="bg-white border border-emerald-200 shadow-sm rounded-md px-4 py-3 flex items-start gap-3"
         >
           <p className="text-sm text-slate-700 flex-1">
             🎉 <span className="font-semibold">{n.client_name}</span> a accepté votre devis{" "}
