@@ -48,7 +48,8 @@ export default function AppSidebar() {
   const contactsActive = pathname.startsWith("/contacts");
   const quotesActive = pathname.startsWith("/quotes");
   const tasksActive = pathname.startsWith("/tasks");
-  const teamActive = pathname.startsWith("/team");
+  const playbookActive = pathname.startsWith("/team/playbook");
+  const teamActive = pathname.startsWith("/team") && !playbookActive;
   const settingsActive = pathname === "/settings";
 
   const navItems: { href: string; label: string; icon: LucideIcon; active: boolean; badge?: number }[] = [
@@ -97,20 +98,33 @@ export default function AppSidebar() {
           );
         })}
 
-        {/* Équipe (manager only) */}
+        {/* Équipe + Playbook (manager only) */}
         {isManager && (
-          <Link
-            href="/team"
-            className={`relative flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
-              teamActive ? "bg-[#F5F3FF] text-primary" : "text-gray-600 hover:bg-gray-50"
-            }`}
-          >
-            {teamActive && (
-              <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-sm bg-primary" />
-            )}
-            <Users className="w-4 h-4 shrink-0" />
-            Équipe
-          </Link>
+          <>
+            <Link
+              href="/team"
+              className={`relative flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                teamActive ? "bg-[#F5F3FF] text-primary" : "text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              {teamActive && (
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-sm bg-primary" />
+              )}
+              <Users className="w-4 h-4 shrink-0" />
+              Équipe
+            </Link>
+            <Link
+              href="/team/playbook"
+              className={`relative flex items-center gap-2 pl-10 pr-3.5 py-2 rounded-lg text-sm transition-colors duration-200 ${
+                playbookActive ? "bg-[#F5F3FF] text-primary font-medium" : "text-gray-500 hover:bg-gray-50"
+              }`}
+            >
+              {playbookActive && (
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-sm bg-primary" />
+              )}
+              Playbook
+            </Link>
+          </>
         )}
       </nav>
 

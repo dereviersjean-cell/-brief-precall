@@ -3283,3 +3283,398 @@ export async function markCallFollowUpSentIfUnset(callId: string): Promise<void>
     .is("follow_up_sent_at", null);
   if (error) throw error;
 }
+
+// ─── Playbook module — manager-configurable scoring rubric (sous-étape A) ──────
+// One playbook per organization (UNIQUE organization_id), each with ordered
+// dimensions, each dimension with ordered guiding questions (criteria).
+// call_analysis_system_prompt and the /feedback + /team score displays are
+// NOT wired to this yet — that's sous-étapes B and D.
+
+export type PlaybookCriterion = {
+  id: string;
+  dimension_id: string;
+  question: string;
+  sort_order: number;
+  created_at: string;
+};
+
+export type PlaybookDimension = {
+  id: string;
+  playbook_id: string;
+  key: string;
+  label: string;
+  description: string | null;
+  weight: number;
+  sort_order: number;
+  created_at: string;
+  criteria: PlaybookCriterion[];
+};
+
+export type Playbook = {
+  id: string;
+  organization_id: string;
+  name: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  dimensions: PlaybookDimension[];
+};
+
+function slugifyPlaybookKey(label: string): string {
+  const slug = label
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return slug || "dimension";
+}
+
+export async function getPlaybookForOrganization(orgId: string): Promise<Playbook | null> {
+  const { data: playbookRow, error: playbookError } = await supabaseAdmin
+    .from("playbooks")
+    .select("*")
+    .eq("organization_id", orgId)
+    .maybeSingle();
+  if (playbookError) throw playbookError;
+  if (!playbookRow) return null;
+
+  const { data: dimensionRows, error: dimensionsError } = await supabaseAdmin
+    .from("playbook_dimensions")
+    .select("*")
+    .eq("playbook_id", (playbookRow as { id: string }).id)
+    .order("sort_order", { ascending: true });
+  if (dimensionsError) throw dimensionsError;
+  const dimensions = (dimensionRows ?? []) as Omit<PlaybookDimension, "criteria">[];
+
+  const criteriaByDimension = new Map<string, PlaybookCriterion[]>();
+  if (dimensions.length > 0) {
+    const { data: criteriaRows, error: criteriaError } = await supabaseAdmin
+      .from("playbook_criteria")
+      .select("*")
+      .in("dimension_id", dimensions.map((d) => d.id))
+      .order("sort_order", { ascending: true });
+    if (criteriaError) throw criteriaError;
+    for (const row of (criteriaRows ?? []) as PlaybookCriterion[]) {
+      const list = criteriaByDimension.get(row.dimension_id) ?? [];
+      list.push(row);
+      criteriaByDimension.set(row.dimension_id, list);
+    }
+  }
+
+  return {
+    ...(playbookRow as Omit<Playbook, "dimensions">),
+    dimensions: dimensions.map((d) => ({ ...d, criteria: criteriaByDimension.get(d.id) ?? [] })),
+  };
+}
+
+type DefaultPlaybookDimensionSeed = {
+  key: string;
+  label: string;
+  weight: number;
+  sort_order: number;
+  questions: string[];
+};
+
+const DEFAULT_PLAYBOOK_DIMENSIONS: DefaultPlaybookDimensionSeed[] = [
+  {
+    key: "opening_framing",
+    label: "Ouverture & cadrage",
+    weight: 1,
+    sort_order: 0,
+    questions: [
+      "Le commercial s'est-il présenté clairement ?",
+      "L'agenda et l'objectif du call ont-ils été posés dès le début ?",
+    ],
+  },
+  {
+    key: "pain_point",
+    label: "Découverte des besoins",
+    weight: 1,
+    sort_order: 1,
+    questions: [
+      "Le prospect a-t-il exprimé un problème concret à résoudre ?",
+      "Le commercial a-t-il creusé les enjeux business ?",
+      "Le budget a-t-il été abordé ?",
+    ],
+  },
+  {
+    key: "pitch_demo",
+    label: "Pitch & démo",
+    weight: 1,
+    sort_order: 2,
+    questions: [
+      "Le pitch a-t-il été personnalisé selon les besoins du prospect ?",
+      "La démo a-t-elle mis en avant les cas d'usage pertinents ?",
+    ],
+  },
+  {
+    key: "next_step",
+    label: "Prochaine étape",
+    weight: 1,
+    sort_order: 3,
+    questions: [
+      "Une prochaine action concrète a-t-elle été fixée avec date ?",
+      "Les décideurs ont-ils été identifiés pour la suite ?",
+    ],
+  },
+];
+
+// Idempotent — only seeds if the org has no playbook yet (UNIQUE
+// organization_id also protects against a concurrent double-call). Call this
+// from the manager's first visit to /team/playbook.
+export async function ensureDefaultPlaybookForOrganization(orgId: string, createdBy: string): Promise<Playbook> {
+  const existing = await getPlaybookForOrganization(orgId);
+  if (existing) return existing;
+
+  const { data: playbookRow, error: playbookError } = await supabaseAdmin
+    .from("playbooks")
+    .insert({ organization_id: orgId, created_by: createdBy })
+    .select("id")
+    .single();
+  if (playbookError) throw playbookError;
+  const playbookId = (playbookRow as { id: string }).id;
+
+  for (const dim of DEFAULT_PLAYBOOK_DIMENSIONS) {
+    const { data: dimRow, error: dimError } = await supabaseAdmin
+      .from("playbook_dimensions")
+      .insert({
+        playbook_id: playbookId,
+        key: dim.key,
+        label: dim.label,
+        weight: dim.weight,
+        sort_order: dim.sort_order,
+      })
+      .select("id")
+      .single();
+    if (dimError) throw dimError;
+    const dimensionId = (dimRow as { id: string }).id;
+
+    const { error: criteriaError } = await supabaseAdmin.from("playbook_criteria").insert(
+      dim.questions.map((question, i) => ({
+        dimension_id: dimensionId,
+        question,
+        sort_order: i,
+      }))
+    );
+    if (criteriaError) throw criteriaError;
+  }
+
+  const created = await getPlaybookForOrganization(orgId);
+  if (!created) throw new Error("Échec de la création du playbook par défaut.");
+  return created;
+}
+
+// Used by sous-étape B (call analysis) to load the org's rubric for a given
+// commercial's user id.
+export async function getPlaybookForUser(userId: string): Promise<Playbook | null> {
+  const orgId = await getUserOrganizationId(userId);
+  if (!orgId) return null;
+  return getPlaybookForOrganization(orgId);
+}
+
+export async function updatePlaybookName(playbookId: string, orgId: string, name: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("playbooks")
+    .update({ name, updated_at: new Date().toISOString() })
+    .eq("id", playbookId)
+    .eq("organization_id", orgId);
+  if (error) throw error;
+}
+
+// ─── Playbook CRUD — every function below re-derives ownership from orgId
+// rather than trusting the caller's ids, so a manager can never read/write
+// another organization's playbook even by guessing/reusing ids.
+
+async function assertPlaybookInOrg(playbookId: string, orgId: string): Promise<void> {
+  const { data, error } = await supabaseAdmin
+    .from("playbooks")
+    .select("id")
+    .eq("id", playbookId)
+    .eq("organization_id", orgId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("Playbook introuvable pour cette organisation.");
+}
+
+async function getDimensionPlaybookId(dimensionId: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin
+    .from("playbook_dimensions")
+    .select("playbook_id")
+    .eq("id", dimensionId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as { playbook_id: string } | null)?.playbook_id ?? null;
+}
+
+async function assertDimensionInOrg(dimensionId: string, orgId: string): Promise<string> {
+  const playbookId = await getDimensionPlaybookId(dimensionId);
+  if (!playbookId) throw new Error("Dimension introuvable.");
+  await assertPlaybookInOrg(playbookId, orgId);
+  return playbookId;
+}
+
+async function getCriterionDimensionId(criterionId: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin
+    .from("playbook_criteria")
+    .select("dimension_id")
+    .eq("id", criterionId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as { dimension_id: string } | null)?.dimension_id ?? null;
+}
+
+export type PlaybookDimensionInput = {
+  key?: string;
+  label: string;
+  description?: string | null;
+  weight?: number;
+  sort_order?: number;
+};
+
+export async function createPlaybookDimension(
+  playbookId: string,
+  orgId: string,
+  data: PlaybookDimensionInput
+): Promise<string> {
+  await assertPlaybookInOrg(playbookId, orgId);
+
+  const key = data.key?.trim() || slugifyPlaybookKey(data.label);
+
+  let sortOrder = data.sort_order;
+  if (sortOrder === undefined) {
+    const { count, error: countError } = await supabaseAdmin
+      .from("playbook_dimensions")
+      .select("id", { count: "exact", head: true })
+      .eq("playbook_id", playbookId);
+    if (countError) throw countError;
+    sortOrder = count ?? 0;
+  }
+
+  const { data: row, error } = await supabaseAdmin
+    .from("playbook_dimensions")
+    .insert({
+      playbook_id: playbookId,
+      key,
+      label: data.label,
+      description: data.description ?? null,
+      weight: data.weight ?? 1,
+      sort_order: sortOrder,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return (row as { id: string }).id;
+}
+
+export async function updatePlaybookDimension(
+  dimensionId: string,
+  orgId: string,
+  data: Partial<PlaybookDimensionInput>
+): Promise<void> {
+  await assertDimensionInOrg(dimensionId, orgId);
+
+  const patch: Record<string, unknown> = {};
+  if (data.key !== undefined) patch.key = data.key;
+  if (data.label !== undefined) patch.label = data.label;
+  if (data.description !== undefined) patch.description = data.description;
+  if (data.weight !== undefined) patch.weight = data.weight;
+  if (data.sort_order !== undefined) patch.sort_order = data.sort_order;
+  if (Object.keys(patch).length === 0) return;
+
+  const { error } = await supabaseAdmin.from("playbook_dimensions").update(patch).eq("id", dimensionId);
+  if (error) throw error;
+}
+
+// Guards against leaving a playbook with zero dimensions (an empty playbook
+// can't score anything) — deletes the dimension's criteria first since we
+// can't assume the FK has ON DELETE CASCADE at the DB level.
+export async function deletePlaybookDimension(dimensionId: string, orgId: string): Promise<void> {
+  const playbookId = await assertDimensionInOrg(dimensionId, orgId);
+
+  const { count, error: countError } = await supabaseAdmin
+    .from("playbook_dimensions")
+    .select("id", { count: "exact", head: true })
+    .eq("playbook_id", playbookId);
+  if (countError) throw countError;
+  if ((count ?? 0) <= 1) {
+    throw new Error("Impossible de supprimer la dernière dimension du playbook.");
+  }
+
+  const { error: criteriaError } = await supabaseAdmin
+    .from("playbook_criteria")
+    .delete()
+    .eq("dimension_id", dimensionId);
+  if (criteriaError) throw criteriaError;
+
+  const { error } = await supabaseAdmin.from("playbook_dimensions").delete().eq("id", dimensionId);
+  if (error) throw error;
+}
+
+export async function reorderPlaybookDimensions(
+  playbookId: string,
+  orgId: string,
+  orderedIds: string[]
+): Promise<void> {
+  await assertPlaybookInOrg(playbookId, orgId);
+
+  // Every id must actually belong to this playbook, so a manager can't
+  // smuggle another org's dimension id into the reorder list.
+  const { data: existing, error: existingError } = await supabaseAdmin
+    .from("playbook_dimensions")
+    .select("id")
+    .eq("playbook_id", playbookId);
+  if (existingError) throw existingError;
+  const validIds = new Set((existing ?? []).map((d) => (d as { id: string }).id));
+  if (orderedIds.length === 0 || !orderedIds.every((id) => validIds.has(id))) {
+    throw new Error("Une ou plusieurs dimensions n'appartiennent pas à ce playbook.");
+  }
+
+  const results = await Promise.all(
+    orderedIds.map((id, index) =>
+      supabaseAdmin.from("playbook_dimensions").update({ sort_order: index }).eq("id", id)
+    )
+  );
+  for (const r of results) if (r.error) throw r.error;
+}
+
+export async function createPlaybookCriterion(
+  dimensionId: string,
+  orgId: string,
+  question: string
+): Promise<string> {
+  await assertDimensionInOrg(dimensionId, orgId);
+
+  const { count, error: countError } = await supabaseAdmin
+    .from("playbook_criteria")
+    .select("id", { count: "exact", head: true })
+    .eq("dimension_id", dimensionId);
+  if (countError) throw countError;
+
+  const { data, error } = await supabaseAdmin
+    .from("playbook_criteria")
+    .insert({ dimension_id: dimensionId, question, sort_order: count ?? 0 })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return (data as { id: string }).id;
+}
+
+export async function updatePlaybookCriterion(criterionId: string, orgId: string, question: string): Promise<void> {
+  const dimensionId = await getCriterionDimensionId(criterionId);
+  if (!dimensionId) throw new Error("Question introuvable.");
+  await assertDimensionInOrg(dimensionId, orgId);
+
+  const { error } = await supabaseAdmin.from("playbook_criteria").update({ question }).eq("id", criterionId);
+  if (error) throw error;
+}
+
+export async function deletePlaybookCriterion(criterionId: string, orgId: string): Promise<void> {
+  const dimensionId = await getCriterionDimensionId(criterionId);
+  if (!dimensionId) throw new Error("Question introuvable.");
+  await assertDimensionInOrg(dimensionId, orgId);
+
+  const { error } = await supabaseAdmin.from("playbook_criteria").delete().eq("id", criterionId);
+  if (error) throw error;
+}
