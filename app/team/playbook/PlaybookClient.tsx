@@ -350,6 +350,21 @@ function AddDimensionModal({
 
 export default function PlaybookClient({ playbook: initialPlaybook }: { playbook: Playbook }) {
   const [playbook, setPlaybook] = useState(initialPlaybook);
+  // useState(initialPlaybook) only reads its argument on mount — after the
+  // import modal calls router.refresh(), the parent server component
+  // re-fetches and passes a fresh `playbook` prop, but without re-syncing
+  // here the state above would never pick it up (this component isn't
+  // remounted), so the page kept showing the pre-import dimensions even
+  // though the replace had already succeeded in the database. Adjusting
+  // state during render (React's documented pattern for this — see
+  // "Adjusting some state when a prop changes" on react.dev) instead of in
+  // a useEffect avoids an extra render and the set-state-in-effect lint rule.
+  const [syncedFrom, setSyncedFrom] = useState(initialPlaybook);
+  if (initialPlaybook !== syncedFrom) {
+    setSyncedFrom(initialPlaybook);
+    setPlaybook(initialPlaybook);
+  }
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
 
