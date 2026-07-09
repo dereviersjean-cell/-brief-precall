@@ -486,6 +486,11 @@ export type CallAnalysisRow = {
   next_steps: string[] | null;
   summary: string | null;
   sentiment: string | null;
+  // Added sous-étape D — null for analyses saved before sous-étape B (or
+  // where getPlaybookSnapshotForUser's caller didn't pass one); consumers
+  // should go through getEffectiveScoresForDisplay rather than reading this
+  // directly, so that fallback is handled in one place.
+  playbook_snapshot: PlaybookSnapshot | null;
 };
 
 // PostgREST returns an embedded call_analysis(...) as a plain object now that
@@ -517,7 +522,7 @@ export async function getCallsWithAnalysis(userId: string): Promise<CallWithAnal
   const { data, error } = await supabaseAdmin
     .from("calls")
     .select(
-      "id, contact_email, company_name, created_at, started_at, status, duration_seconds, participant_count, follow_up_email, follow_up_sent_at, recall_bot_id, recording_id, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment)"
+      "id, contact_email, company_name, created_at, started_at, status, duration_seconds, participant_count, follow_up_email, follow_up_sent_at, recall_bot_id, recording_id, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment, playbook_snapshot)"
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
@@ -550,7 +555,7 @@ export async function getCallWithAnalysis(
   const { data, error } = await supabaseAdmin
     .from("calls")
     .select(
-      "id, contact_email, company_name, created_at, started_at, status, duration_seconds, participant_count, follow_up_email, follow_up_sent_at, recall_bot_id, recording_id, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment)"
+      "id, contact_email, company_name, created_at, started_at, status, duration_seconds, participant_count, follow_up_email, follow_up_sent_at, recall_bot_id, recording_id, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment, playbook_snapshot)"
     )
     .eq("id", callId)
     .eq("user_id", userId)
@@ -1600,23 +1605,33 @@ export async function getTeamOverview(managerId: string): Promise<TeamOverviewIt
   });
 }
 
-export type TeamAverageScores = {
-  global_score: number | null;
-  opening_framing: number | null;
-  pain_point: number | null;
-  pitch_demo: number | null;
-  next_step: number | null;
-  calls_analyzed_count: number;
+export type TeamAverageScoreDimension = {
+  key: string;
+  label: string;
+  weight: number;
+  average: number | null;
 };
 
+export type TeamAverageScores = {
+  global_score: number | null;
+  calls_analyzed_count: number;
+  dimensions: TeamAverageScoreDimension[];
+};
+
+// Dimensions shown are always the manager's ORG's CURRENT playbook (product
+// choice, sous-étape D) — fetched once here, not per-analysis — so the
+// bandeau stays consistent with what /team/playbook shows today, even
+// though individual analyses may have been scored against an older/different
+// playbook_snapshot. A dimension average is computed over whichever analyses
+// happen to have a matching key in their `scores`; older analyses that don't
+// (different dimension keys) are simply excluded from that dimension's
+// average rather than counted as missing/zero.
 export async function getTeamAverageScores(managerId: string): Promise<TeamAverageScores> {
+  const snapshot = await getPlaybookSnapshotForUser(managerId);
   const empty: TeamAverageScores = {
     global_score: null,
-    opening_framing: null,
-    pain_point: null,
-    pitch_demo: null,
-    next_step: null,
     calls_analyzed_count: 0,
+    dimensions: snapshot.dimensions.map((d) => ({ key: d.key, label: d.label, weight: d.weight, average: null })),
   };
 
   const commercials = await getCommercialsForManager(managerId);
@@ -1639,16 +1654,17 @@ export async function getTeamAverageScores(managerId: string): Promise<TeamAvera
 
   const avg = (values: number[]): number | null =>
     values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : null;
-  const dimension = (key: "opening_framing" | "pain_point" | "pitch_demo" | "next_step") =>
-    avg(allScores.map((s) => s[key]?.score).filter((v): v is number => typeof v === "number"));
 
   return {
     global_score: avg(allScores.map((s) => s.global_score)),
-    opening_framing: dimension("opening_framing"),
-    pain_point: dimension("pain_point"),
-    pitch_demo: dimension("pitch_demo"),
-    next_step: dimension("next_step"),
     calls_analyzed_count: allScores.length,
+    dimensions: snapshot.dimensions.map((d) => {
+      const scoresForDimension = allScores
+        .map((s) => s[d.key])
+        .filter((v): v is AnalysisDimensionScore => typeof v === "object" && v !== null)
+        .map((v) => v.score);
+      return { key: d.key, label: d.label, weight: d.weight, average: avg(scoresForDimension) };
+    }),
   };
 }
 
@@ -3527,49 +3543,11 @@ export async function getPlaybookSnapshotForUser(userId: string): Promise<Playbo
   };
 }
 
-export type EffectiveScoreItem = {
-  key: string;
-  label: string;
-  score: number;
-  description: string;
-  weight: number;
-};
-
-const LEGACY_DIMENSION_LABELS: Record<string, string> = {
-  opening_framing: "Ouverture & cadrage",
-  pain_point: "Découverte des besoins",
-  pitch_demo: "Pitch & démo",
-  next_step: "Prochaine étape",
-};
-const LEGACY_DIMENSION_ORDER = ["opening_framing", "pain_point", "pitch_demo", "next_step"];
-
-// Rétrocompat bridge for sous-étape D — reconciles a call_analysis row's
-// `scores` (dynamic dimension keys) with its `playbook_snapshot` (labels,
-// order, weight at analysis time) into a stable array. Analyses saved before
-// playbook_snapshot existed (or where the fallback default was used without
-// persisting one) fall back to the 4 historical labels/order — this is what
-// keeps old analyses displaying correctly with zero data migration.
-export function getEffectiveScoresForDisplay(callAnalysis: {
-  scores: AnalysisScores | null;
-  playbook_snapshot: PlaybookSnapshot | null;
-}): EffectiveScoreItem[] {
-  const { scores, playbook_snapshot } = callAnalysis;
-  if (!scores) return [];
-
-  if (playbook_snapshot && playbook_snapshot.dimensions.length > 0) {
-    return playbook_snapshot.dimensions.flatMap((dim) => {
-      const entry = scores[dim.key];
-      if (!entry || typeof entry !== "object") return [];
-      return [{ key: dim.key, label: dim.label, score: entry.score, description: entry.description, weight: dim.weight }];
-    });
-  }
-
-  return LEGACY_DIMENSION_ORDER.flatMap((key) => {
-    const entry = scores[key];
-    if (!entry || typeof entry !== "object") return [];
-    return [{ key, label: LEGACY_DIMENSION_LABELS[key] ?? key, score: entry.score, description: entry.description, weight: 1 }];
-  });
-}
+// Moved to lib/playbook-scores.ts (sous-étape D) — that module has zero
+// server-only dependencies, so client components can import it directly.
+// Re-exported here since this is where sous-étape B originally documented it.
+export { getEffectiveScoresForDisplay } from "./playbook-scores";
+export type { EffectiveScoreItem, ScoresDict } from "./playbook-scores";
 
 export async function updatePlaybookName(playbookId: string, orgId: string, name: string): Promise<void> {
   const { error } = await supabaseAdmin

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { analyzeCall } from "@/lib/call-analysis";
 import { readPromptConfig, DEFAULT_CALL_ANALYSIS_SYSTEM_PROMPT } from "@/lib/admin-config";
+import { DEFAULT_PLAYBOOK_SNAPSHOT } from "@/lib/db";
 
 const ADMIN_CONTEXT = {
   clientName: "Brief / Oliverlist",
@@ -30,7 +31,10 @@ export async function POST(request: NextRequest) {
   const promptUsed =
     (await readPromptConfig("call_analysis_system_prompt")) ?? DEFAULT_CALL_ANALYSIS_SYSTEM_PROMPT;
 
-  const analysis = await analyzeCall(transcript.trim(), ADMIN_CONTEXT);
+  // Explicit (rather than relying on analyzeCall's default param) so the
+  // response can echo back exactly which snapshot was used — the admin UI
+  // needs it to resolve dimension labels via getEffectiveScoresForDisplay.
+  const analysis = await analyzeCall(transcript.trim(), ADMIN_CONTEXT, DEFAULT_PLAYBOOK_SNAPSHOT);
 
-  return NextResponse.json({ analysis, prompt_used: promptUsed });
+  return NextResponse.json({ analysis, prompt_used: promptUsed, playbook_snapshot: DEFAULT_PLAYBOOK_SNAPSHOT });
 }

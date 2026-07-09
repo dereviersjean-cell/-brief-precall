@@ -26,15 +26,14 @@ function ScoreBadge({ score }: { score: number | null }) {
   );
 }
 
-const DIMENSION_KEYS = ["global_score", "opening_framing", "pain_point", "pitch_demo", "next_step"] as const;
-
-const DIMENSION_LABELS: Record<(typeof DIMENSION_KEYS)[number], string> = {
-  global_score: "Score global",
-  opening_framing: "Ouverture & cadrage",
-  pain_point: "Découverte besoin",
-  pitch_demo: "Pitch & démo",
-  next_step: "Prochaine étape",
-};
+function AverageCard({ label, value }: { label: string; value: number | null }) {
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
+      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{label}</p>
+      <p className="text-2xl font-bold text-slate-900 mt-1">{value !== null ? `${value.toFixed(1)}/5` : "—"}</p>
+    </div>
+  );
+}
 
 export default function TeamClient({
   overview,
@@ -98,21 +97,13 @@ export default function TeamClient({
           </div>
         </div>
 
-        {/* Team average scores */}
+        {/* Team average scores — dimensions viennent du playbook actuel de
+            l'organisation (voir getTeamAverageScores), pas d'un set fixe */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-2">
-          {DIMENSION_KEYS.map((key) => {
-            const value = averages[key];
-            return (
-              <div key={key} className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                  {DIMENSION_LABELS[key]}
-                </p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">
-                  {value !== null ? `${value.toFixed(1)}/5` : "—"}
-                </p>
-              </div>
-            );
-          })}
+          <AverageCard label="Score global" value={averages.global_score} />
+          {averages.dimensions.map((dim) => (
+            <AverageCard key={dim.key} label={dim.label} value={dim.average} />
+          ))}
         </div>
         <p className="text-slate-400 text-xs mb-8">
           {averages.calls_analyzed_count} appel{averages.calls_analyzed_count > 1 ? "s" : ""} analysé

@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import type { FormEvent } from "react";
 import type { CallAnalysis } from "@/lib/call-analysis";
+import type { PlaybookSnapshot } from "@/lib/db";
+import { getEffectiveScoresForDisplay } from "@/lib/playbook-scores";
 import { AdminNav } from "../AdminNav";
 
 type PageState = "loading" | "login" | "ready";
@@ -10,6 +12,7 @@ type PageState = "loading" | "login" | "ready";
 type AnalysisResult = {
   analysis: CallAnalysis;
   prompt_used: string;
+  playbook_snapshot: PlaybookSnapshot;
 };
 
 // ─── Spinner ─────────────────────────────────────────────────────────────────
@@ -94,7 +97,17 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
 
 // ─── Score bar ────────────────────────────────────────────────────────────────
 
-function ScoreBar({ score, label, description }: { score: number; label: string; description?: string }) {
+function ScoreBar({
+  score,
+  label,
+  description,
+  weight,
+}: {
+  score: number;
+  label: string;
+  description?: string;
+  weight?: number;
+}) {
   const pct = Math.round((score / 5) * 100);
   const barColor = score >= 4 ? "bg-green-500" : score >= 2.5 ? "bg-orange-400" : "bg-red-400";
   const textColor = score >= 4 ? "text-green-700" : score >= 2.5 ? "text-orange-600" : "text-red-600";
@@ -102,7 +115,14 @@ function ScoreBar({ score, label, description }: { score: number; label: string;
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-sm font-medium text-slate-700">{label}</span>
+        <span className="text-sm font-medium text-slate-700 flex items-center gap-2">
+          {label}
+          {weight != null && weight !== 1 && (
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">
+              poids {weight}
+            </span>
+          )}
+        </span>
         <span className={`text-sm font-bold ${textColor}`}>{score}/5</span>
       </div>
       <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-1.5">
@@ -131,7 +151,13 @@ function List({ items, icon, color }: { items: string[]; icon: string; color: st
 
 // ─── Analysis display ─────────────────────────────────────────────────────────
 
-function AnalysisDisplay({ analysis }: { analysis: CallAnalysis }) {
+function AnalysisDisplay({
+  analysis,
+  playbookSnapshot,
+}: {
+  analysis: CallAnalysis;
+  playbookSnapshot: PlaybookSnapshot;
+}) {
   const globalScore = analysis.scores.global_score;
   const globalColor = globalScore >= 4 ? "text-green-600" : globalScore >= 2.5 ? "text-orange-500" : "text-red-500";
 
@@ -141,12 +167,13 @@ function AnalysisDisplay({ analysis }: { analysis: CallAnalysis }) {
     négatif: "bg-red-100 text-red-600",
   };
 
-  // Dynamic — scores is keyed by whatever dimensions the playbook injected
-  // into the prompt (global_score aside), not a fixed set of 4.
-  const dimensionEntries = Object.entries(analysis.scores).filter(
-    (entry): entry is [string, { score: number; description: string }] =>
-      entry[0] !== "global_score" && typeof entry[1] === "object" && entry[1] !== null
-  );
+  // Same helper the rest of the app uses for score display (sous-étape D) —
+  // resolves human labels/weight/order from the snapshot instead of showing
+  // raw dimension keys.
+  const dimensionScores = getEffectiveScoresForDisplay({
+    scores: analysis.scores,
+    playbook_snapshot: playbookSnapshot,
+  });
 
   return (
     <div className="space-y-5">
@@ -176,8 +203,8 @@ function AnalysisDisplay({ analysis }: { analysis: CallAnalysis }) {
       <div className="bg-white rounded-2xl border border-slate-200 p-6">
         <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-5">Scores par dimension</h2>
         <div className="space-y-5">
-          {dimensionEntries.map(([key, dim]) => (
-            <ScoreBar key={key} score={dim.score} label={key} description={dim.description} />
+          {dimensionScores.map((dim) => (
+            <ScoreBar key={dim.key} score={dim.score} label={dim.label} description={dim.description} weight={dim.weight} />
           ))}
         </div>
       </div>
@@ -340,7 +367,7 @@ export default function TestAnalysisAdminClient() {
         {/* Results */}
         {result && (
           <>
-            <AnalysisDisplay analysis={result.analysis} />
+            <AnalysisDisplay analysis={result.analysis} playbookSnapshot={result.playbook_snapshot} />
             <PromptViewer prompt={result.prompt_used} />
           </>
         )}

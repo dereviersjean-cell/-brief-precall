@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import type { CallWithAnalysis, AnalysisScores } from "@/lib/db";
+import type { CallWithAnalysis } from "@/lib/db";
+import { getEffectiveScoresForDisplay } from "@/lib/playbook-scores";
 import { formatContactDisplayName } from "@/lib/format";
 
 function formatDateTime(iso: string): string {
@@ -18,7 +19,17 @@ function formatDuration(seconds: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-function ScoreBar({ score, label, description }: { score: number; label: string; description?: string }) {
+function ScoreBar({
+  score,
+  label,
+  description,
+  weight,
+}: {
+  score: number;
+  label: string;
+  description?: string;
+  weight?: number;
+}) {
   const pct = Math.round((score / 5) * 100);
   const color =
     score >= 4 ? "bg-green-500" : score >= 2.5 ? "bg-orange-400" : "bg-red-400";
@@ -28,7 +39,14 @@ function ScoreBar({ score, label, description }: { score: number; label: string;
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-sm font-medium text-slate-700">{label}</span>
+        <span className="text-sm font-medium text-slate-700 flex items-center gap-2">
+          {label}
+          {weight != null && weight !== 1 && (
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">
+              poids {weight}
+            </span>
+          )}
+        </span>
         <span className={`text-sm font-bold ${textColor}`}>{score}/5</span>
       </div>
       <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-1.5">
@@ -142,8 +160,10 @@ export default function FeedbackDetailClient({
   }, [call.id, call.follow_up_sent_at, readOnly]);
 
   const a = call.analysis;
-  const scores = a?.scores as AnalysisScores | null;
-  const globalScore = scores?.global_score ?? null;
+  const globalScore = a?.scores?.global_score ?? null;
+  const effectiveScores = a
+    ? getEffectiveScoresForDisplay({ scores: a.scores, playbook_snapshot: a.playbook_snapshot })
+    : [];
   const displayName = formatContactDisplayName(call.company_name, call.contact_email);
 
   const globalColor =
@@ -275,33 +295,23 @@ export default function FeedbackDetailClient({
               readOnly && <ReadOnlyVideoStatus call={call} />
             )}
 
-            {/* Scores par dimension */}
-            {scores && (
+            {/* Scores par dimension — dynamique via le playbook_snapshot de
+                l'analyse (ou les 4 labels historiques si absent) */}
+            {effectiveScores.length > 0 && (
               <div className="bg-white rounded-2xl border border-slate-200 p-6">
                 <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-5">
                   Scores par dimension
                 </h2>
                 <div className="space-y-5">
-                  <ScoreBar
-                    score={scores.opening_framing.score}
-                    label="Ouverture & cadrage"
-                    description={scores.opening_framing.description}
-                  />
-                  <ScoreBar
-                    score={scores.pain_point.score}
-                    label="Découverte des besoins"
-                    description={scores.pain_point.description}
-                  />
-                  <ScoreBar
-                    score={scores.pitch_demo.score}
-                    label="Argumentation & démo"
-                    description={scores.pitch_demo.description}
-                  />
-                  <ScoreBar
-                    score={scores.next_step.score}
-                    label="Conclusion & suite"
-                    description={scores.next_step.description}
-                  />
+                  {effectiveScores.map((dim) => (
+                    <ScoreBar
+                      key={dim.key}
+                      score={dim.score}
+                      label={dim.label}
+                      description={dim.description}
+                      weight={dim.weight}
+                    />
+                  ))}
                 </div>
               </div>
             )}
