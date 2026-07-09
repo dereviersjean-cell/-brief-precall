@@ -3870,6 +3870,25 @@ export async function getEmailTemplatesForUser(userId: string): Promise<EmailTem
   return getEmailTemplatesForOrganization(orgId);
 }
 
+// Security-critical (sous-étape B): re-derives the CALLER's org from userId
+// and only returns the template if it belongs to that same org — never
+// trusts the client's claim about which org a template_id belongs to. Used
+// by generate-reply-suggestion and tasks/[taskId]/generate-email so a user
+// can't read/use another organization's system_prompt by guessing an id.
+export async function getEmailTemplateById(templateId: string, userId: string): Promise<EmailTemplate | null> {
+  const orgId = await getUserOrganizationId(userId);
+  if (!orgId) return null;
+
+  const { data, error } = await supabaseAdmin
+    .from("email_templates")
+    .select("*")
+    .eq("id", templateId)
+    .eq("organization_id", orgId)
+    .maybeSingle();
+  if (error) throw error;
+  return data as EmailTemplate | null;
+}
+
 type DefaultEmailTemplateSeed = {
   name: string;
   description: string;

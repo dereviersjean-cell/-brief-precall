@@ -270,6 +270,7 @@ export default function TasksListClient({ initialGrouped }: { initialGrouped: Gr
         <TaskEmailModal
           taskId={emailModalTask.id}
           taskTitle={emailModalTask.title}
+          taskType={emailModalTask.task_type}
           contactEmail={emailModalTask.contact_email ?? ""}
           onClose={() => setEmailModalTask(null)}
           onSent={handleEmailSent}

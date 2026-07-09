@@ -57,6 +57,48 @@ ${missionInstructions}`;
   }
 }
 
+// Same shape as generateReplyToProspect but takes the chosen org email
+// template's system_prompt directly instead of reading reply_suggestion_prompt
+// from admin_config (sous-étape B of the Email Templates module).
+// generateReplyToProspect itself is left untouched — it's still the
+// rétrocompat path when no template is selected.
+export async function generateReplyToProspectWithTemplate(
+  prospectReply: string,
+  originalEmail: { subject: string; body: string },
+  systemPrompt: string,
+  transcript?: string
+): Promise<string | null> {
+  const client = new Anthropic();
+
+  const transcriptSection = transcript
+    ? `\nCONTEXTE DU CALL INITIAL\n\n${transcript.slice(0, 2000)}${transcript.length > 2000 ? "\n[transcript tronqué]" : ""}\n`
+    : "";
+
+  const userMessage = `EMAIL DE SUIVI ENVOYÉ AU PROSPECT
+
+Sujet : ${originalEmail.subject}
+
+${originalEmail.body}
+${transcriptSection}
+RÉPONSE DU PROSPECT
+
+${prospectReply}`;
+
+  try {
+    const message = await client.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 1000,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userMessage }],
+    });
+    const textBlock = message.content.find((b) => b.type === "text");
+    return textBlock?.type === "text" ? textBlock.text.trim() : null;
+  } catch (err) {
+    console.error("[email-followup] generateReplyToProspectWithTemplate Claude API failed:", err);
+    return null;
+  }
+}
+
 export async function generateFollowUpEmail(
   transcript: string,
   emailHistory: GmailMessage[],

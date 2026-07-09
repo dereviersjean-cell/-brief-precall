@@ -2,6 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import type { EmailTemplate } from "@/lib/db";
+
+const DEFAULT_PROMPT_VALUE = "__default__";
 
 function Spinner({ className = "w-4 h-4" }: { className?: string }) {
   return (
@@ -15,12 +18,14 @@ function Spinner({ className = "w-4 h-4" }: { className?: string }) {
 export default function TaskEmailModal({
   taskId,
   taskTitle,
+  taskType,
   contactEmail,
   onClose,
   onSent,
 }: {
   taskId: string;
   taskTitle: string;
+  taskType?: string;
   contactEmail: string;
   onClose: () => void;
   onSent: () => void;
@@ -32,34 +37,79 @@ export default function TaskEmailModal({
   const [gmailNotConnected, setGmailNotConnected] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [sending, setSending] = useState(false);
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(DEFAULT_PROMPT_VALUE);
 
-  const generate = useCallback(async () => {
-    setError(null);
-    try {
-      const res = await fetch(`/api/tasks/${taskId}/generate-email`, { method: "POST" });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error((data as { error?: string }).error ?? "La génération a échoué.");
+  // Takes the template id explicitly (rather than closing over the
+  // `selectedTemplateId` state) so the very first mount-time generation can
+  // use the resolved default the instant the templates fetch settles,
+  // without a stale-closure race between the two effects below.
+  const generate = useCallback(
+    async (templateId: string) => {
+      setError(null);
+      try {
+        const res = await fetch(`/api/tasks/${taskId}/generate-email`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(templateId !== DEFAULT_PROMPT_VALUE ? { email_template_id: templateId } : {}),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error((data as { error?: string }).error ?? "La génération a échoué.");
+        }
+        const data = (await res.json()) as { subject: string; body: string };
+        setSubject(data.subject);
+        setBody(data.body);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "La génération a échoué.");
       }
-      const data = (await res.json()) as { subject: string; body: string };
-      setSubject(data.subject);
-      setBody(data.body);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "La génération a échoué.");
-    }
-  }, [taskId]);
+    },
+    [taskId]
+  );
 
+  // Mount only: resolve the org's templates + default selection first, then
+  // run the initial generation with that resolved id — so the auto-generated
+  // email matches whatever the dropdown shows, no double-generate. Changing
+  // the dropdown afterwards must NOT auto-regenerate (see handleRegenerate).
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       setLoading(true);
-      await generate();
-      setLoading(false);
+
+      let initialTemplateId = DEFAULT_PROMPT_VALUE;
+      try {
+        const res = await fetch("/api/email-templates");
+        const data: EmailTemplate[] = res.ok ? await res.json() : [];
+        if (!cancelled) {
+          setTemplates(data);
+          if (data.length > 0) {
+            // Only one concrete heuristic is meaningful today: the immediate
+            // post-call recap task maps to the first template (sort_order 0,
+            // "Call 1" by default). Anything else falls back to the first
+            // template in the list, per spec.
+            const preferred = taskType === "mail_recap" ? data.find((t) => t.sort_order === 0) : undefined;
+            initialTemplateId = (preferred ?? data[0]).id;
+            setSelectedTemplateId(initialTemplateId);
+          }
+        }
+      } catch {
+        // Non-blocking — dropdown just stays on "Prompt par défaut".
+      }
+
+      if (!cancelled) {
+        await generate(initialTemplateId);
+        setLoading(false);
+      }
     })();
-  }, [generate]);
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleRegenerate() {
     setRegenerating(true);
-    await generate();
+    await generate(selectedTemplateId);
     setRegenerating(false);
   }
 
@@ -106,6 +156,25 @@ export default function TaskEmailModal({
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
+        </div>
+
+        <div className="flex items-center gap-2 mb-4">
+          <label htmlFor="task-email-template" className="text-xs text-slate-400 shrink-0">
+            Type de call
+          </label>
+          <select
+            id="task-email-template"
+            value={selectedTemplateId}
+            onChange={(e) => setSelectedTemplateId(e.target.value)}
+            className="flex-1 px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value={DEFAULT_PROMPT_VALUE}>Prompt par défaut</option>
+            {templates.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         {loading ? (

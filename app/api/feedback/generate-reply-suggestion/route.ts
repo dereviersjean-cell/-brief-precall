@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
-import { getCallReplyInfo } from "@/lib/db";
+import { getCallReplyInfo, getEmailTemplateById } from "@/lib/db";
 import { checkThreadReply } from "@/lib/gmail";
-import { generateReplyToProspect } from "@/lib/email-followup";
+import { generateReplyToProspect, generateReplyToProspectWithTemplate } from "@/lib/email-followup";
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -13,8 +13,9 @@ export async function POST(request: NextRequest) {
   const userId = auth.userId;
 
   let callId: string;
+  let emailTemplateId: string | undefined;
   try {
-    ({ callId } = await request.json());
+    ({ callId, email_template_id: emailTemplateId } = await request.json());
   } catch {
     return NextResponse.json({ error: "Corps invalide." }, { status: 400 });
   }
@@ -63,7 +64,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Impossible de récupérer la réponse du prospect." }, { status: 500 });
   }
 
-  const suggestion = await generateReplyToProspect(prospectReplyBody, info.follow_up_email);
+  // Optional template override (sous-étape B of Email Templates). Only ever
+  // trusts a template after getEmailTemplateById re-verifies it belongs to
+  // this user's org — an id for another org's template resolves to null and
+  // 404s here rather than silently falling back or leaking its prompt.
+  let suggestion: string | null;
+  if (emailTemplateId) {
+    const template = await getEmailTemplateById(emailTemplateId, userId);
+    if (!template) {
+      return NextResponse.json({ error: "Template introuvable." }, { status: 404 });
+    }
+    suggestion = await generateReplyToProspectWithTemplate(prospectReplyBody, info.follow_up_email, template.system_prompt);
+  } else {
+    suggestion = await generateReplyToProspect(prospectReplyBody, info.follow_up_email);
+  }
 
   if (!suggestion) {
     return NextResponse.json({ error: "Erreur lors de la génération de la suggestion." }, { status: 500 });

@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import type { CallWithAnalysis } from "@/lib/db";
+import type { CallWithAnalysis, EmailTemplate } from "@/lib/db";
 import { getEffectiveScoresForDisplay } from "@/lib/playbook-scores";
 import { formatContactDisplayName } from "@/lib/format";
+
+const DEFAULT_PROMPT_VALUE = "__default__";
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -142,6 +144,11 @@ export default function FeedbackDetailClient({
   const [videoStatus, setVideoStatus] = useState<VideoStatus>("idle");
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [reply, setReply] = useState<ReplyState>({ status: "idle" });
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [replySuggestion, setReplySuggestion] = useState<string | null>(null);
+  const [generatingSuggestion, setGeneratingSuggestion] = useState(false);
+  const [suggestionError, setSuggestionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (readOnly) return;
@@ -158,6 +165,57 @@ export default function FeedbackDetailClient({
       })
       .catch(() => setReply({ status: "none" }));
   }, [call.id, call.follow_up_sent_at, readOnly]);
+
+  // Org email templates for the "Type de call" dropdown — an empty result is
+  // expected (no manager has visited /team/email-templates yet) and just
+  // leaves the dropdown on "Prompt par défaut", not an error.
+  useEffect(() => {
+    if (readOnly) return;
+    let cancelled = false;
+    fetch("/api/email-templates")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: EmailTemplate[]) => {
+        if (cancelled) return;
+        setTemplates(data);
+        setSelectedTemplateId(data.length > 0 ? data[0].id : DEFAULT_PROMPT_VALUE);
+      })
+      .catch(() => {
+        if (!cancelled) setSelectedTemplateId(DEFAULT_PROMPT_VALUE);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [readOnly]);
+
+  // Selecting a template does NOT auto-regenerate — only this explicit
+  // action does (so it never silently overwrites a reply the user is mid-edit
+  // on). Only meaningful once the prospect has actually replied — same
+  // precondition the API route itself enforces.
+  async function handleGenerateSuggestion() {
+    setGeneratingSuggestion(true);
+    setSuggestionError(null);
+    try {
+      const res = await fetch("/api/feedback/generate-reply-suggestion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          callId: call.id,
+          ...(selectedTemplateId && selectedTemplateId !== DEFAULT_PROMPT_VALUE
+            ? { email_template_id: selectedTemplateId }
+            : {}),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error((data as { error?: string }).error ?? "La génération a échoué.");
+      }
+      setReplySuggestion((data as { suggestion?: string }).suggestion ?? null);
+    } catch (err) {
+      setSuggestionError(err instanceof Error ? err.message : "La génération a échoué.");
+    } finally {
+      setGeneratingSuggestion(false);
+    }
+  }
 
   const a = call.analysis;
   const globalScore = a?.scores?.global_score ?? null;
@@ -349,6 +407,29 @@ export default function FeedbackDetailClient({
               <ReadOnlyEmailBlock call={call} />
             ) : (
             <div className="bg-white rounded-2xl border border-slate-200 p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <label htmlFor="feedback-email-template" className="text-xs text-slate-400 shrink-0">
+                  Type de call
+                </label>
+                <select
+                  id="feedback-email-template"
+                  value={selectedTemplateId}
+                  onChange={(e) => setSelectedTemplateId(e.target.value)}
+                  className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 max-w-[220px]"
+                >
+                  {selectedTemplateId === "" && (
+                    <option value="" disabled hidden>
+                      Sélectionner un type
+                    </option>
+                  )}
+                  <option value={DEFAULT_PROMPT_VALUE}>Prompt par défaut</option>
+                  {templates.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Email de suivi suggéré</h2>
                 {call.follow_up_email && !sentAt && (
@@ -472,6 +553,32 @@ export default function FeedbackDetailClient({
                       >
                         {reply.loadingBody ? "Chargement…" : "Charger le contenu"}
                       </button>
+                    </div>
+                  )}
+
+                  {reply.body !== null && (
+                    <div className="mt-3 pt-3 border-t border-green-100">
+                      <button
+                        disabled={generatingSuggestion}
+                        onClick={handleGenerateSuggestion}
+                        className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors px-2.5 py-1 rounded-lg border border-indigo-200 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {generatingSuggestion ? "Génération…" : "✨ Régénérer avec Brief"}
+                      </button>
+                      {suggestionError && <p className="text-xs text-red-500 mt-2">{suggestionError}</p>}
+                      {replySuggestion !== null && (
+                        <div className="mt-2">
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                            Suggestion de réponse
+                          </p>
+                          <textarea
+                            value={replySuggestion}
+                            onChange={(e) => setReplySuggestion(e.target.value)}
+                            rows={5}
+                            className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none leading-relaxed"
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

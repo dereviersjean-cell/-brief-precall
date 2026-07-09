@@ -12,6 +12,7 @@ import {
   getQuoteWithLines,
   getUserName,
   getUserProfile,
+  getEmailTemplateById,
   type TaskListItem,
 } from "@/lib/db";
 import { formatContactDisplayName } from "@/lib/format";
@@ -92,6 +93,16 @@ export async function POST(
     return NextResponse.json({ error: "Task introuvable." }, { status: 404 });
   }
 
+  // Body is optional (rétrocompat) — the existing client calls this with no
+  // body at all for the default-prompt path.
+  let emailTemplateId: string | undefined;
+  try {
+    const body = (await request.json()) as { email_template_id?: string };
+    emailTemplateId = body?.email_template_id;
+  } catch {
+    // no body / invalid JSON — fine, treated the same as "no template selected"
+  }
+
   const contact = task.contact_id
     ? await getContactById(task.contact_id, auth.userId)
     : task.contact_email
@@ -108,7 +119,20 @@ export async function POST(
     buildSourceContext(task, auth.userId),
   ]);
 
-  const basePrompt = (await readPromptConfig("task_email_prompt")) ?? DEFAULT_TASK_EMAIL_PROMPT;
+  // Optional template override (sous-étape B of Email Templates). Only ever
+  // trusts a template after getEmailTemplateById re-verifies it belongs to
+  // this user's org — an id for another org's template resolves to null and
+  // 404s here rather than silently falling back or leaking its prompt.
+  let basePrompt: string;
+  if (emailTemplateId) {
+    const template = await getEmailTemplateById(emailTemplateId, auth.userId);
+    if (!template) {
+      return NextResponse.json({ error: "Template introuvable." }, { status: 404 });
+    }
+    basePrompt = template.system_prompt;
+  } else {
+    basePrompt = (await readPromptConfig("task_email_prompt")) ?? DEFAULT_TASK_EMAIL_PROMPT;
+  }
 
   const contextPrompt = `TYPE DE TASK
 
