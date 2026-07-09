@@ -459,12 +459,22 @@ export async function getLatestImportJob(userId: string): Promise<ImportJob | nu
   return data as ImportJob | null;
 }
 
+export type AnalysisDimensionScore = { score: number; description: string };
+
+// The 4 historical keys stay explicitly typed (non-optional) so existing
+// direct accesses like `scores.opening_framing.score` in /feedback and
+// /team keep type-checking unchanged — sous-étape B doesn't touch those
+// files. The index signature is what makes this "dynamic": any other
+// dimension key from a custom playbook is covered by it, typed as
+// AnalysisDimensionScore | number so it stays assignable alongside the
+// numeric global_score.
 export type AnalysisScores = {
   global_score: number;
-  opening_framing: { score: number; description: string };
-  pain_point: { score: number; description: string };
-  pitch_demo: { score: number; description: string };
-  next_step: { score: number; description: string };
+  opening_framing: AnalysisDimensionScore;
+  pain_point: AnalysisDimensionScore;
+  pitch_demo: AnalysisDimensionScore;
+  next_step: AnalysisDimensionScore;
+  [dimensionKey: string]: AnalysisDimensionScore | number;
 };
 
 export type CallAnalysisRow = {
@@ -1711,30 +1721,28 @@ export async function getCommercialDetailForManager(
   };
 }
 
+// playbookSnapshot is a frozen copy of the org playbook's dimensions at
+// analysis time (sous-étape B) — null for pre-playbook analyses and for
+// direct callers that don't pass one, which is fine: getEffectiveScoresForDisplay
+// falls back to the 4 historical labels when it's absent. analysis.scores is
+// already keyed by whatever dimension keys Claude was asked to score (see
+// analyzeCall / PlaybookSnapshot), so it's persisted as-is.
 export async function saveCallAnalysis(
   callId: string,
-  analysis: import("./call-analysis").CallAnalysis
+  analysis: import("./call-analysis").CallAnalysis,
+  playbookSnapshot: PlaybookSnapshot | null = null
 ): Promise<void> {
-  const globalScore = analysis.global_score ?? 0;
-  const sentiment =
-    globalScore >= 4 ? "positif" : globalScore >= 2.5 ? "neutre" : "négatif";
-
   const { error } = await supabaseAdmin.from("call_analysis").upsert(
     {
       call_id: callId,
-      strengths: analysis.strengths,
-      weaknesses: analysis.weaknesses,
-      objections: analysis.objections,
+      strengths: analysis.strong_points,
+      weaknesses: analysis.weak_points,
+      objections: [],
       next_steps: analysis.next_steps,
-      summary: analysis.coaching_summary,
-      sentiment,
-      scores: {
-        global_score: analysis.global_score,
-        opening_framing: analysis.opening_framing,
-        pain_point: analysis.pain_point,
-        pitch_demo: analysis.pitch_demo,
-        next_step: analysis.next_step,
-      },
+      summary: analysis.summary,
+      sentiment: analysis.sentiment,
+      scores: analysis.scores,
+      playbook_snapshot: playbookSnapshot,
     },
     { onConflict: "call_id" }
   );
@@ -3472,6 +3480,95 @@ export async function getPlaybookForUser(userId: string): Promise<Playbook | nul
   const orgId = await getUserOrganizationId(userId);
   if (!orgId) return null;
   return getPlaybookForOrganization(orgId);
+}
+
+// ─── Playbook snapshot (sous-étape B) — frozen copy of the rubric used at
+// analysis time, so a call's scores stay interpretable even if the org's
+// playbook is edited or restructured afterwards.
+
+export type PlaybookSnapshotDimension = {
+  key: string;
+  label: string;
+  weight: number;
+  criteria: string[];
+};
+
+export type PlaybookSnapshot = {
+  playbook_name: string;
+  dimensions: PlaybookSnapshotDimension[];
+};
+
+// Derived from the same seed data ensureDefaultPlaybookForOrganization uses,
+// so the two can never drift apart.
+export const DEFAULT_PLAYBOOK_SNAPSHOT: PlaybookSnapshot = {
+  playbook_name: "Playbook par défaut",
+  dimensions: DEFAULT_PLAYBOOK_DIMENSIONS.map((d) => ({
+    key: d.key,
+    label: d.label,
+    weight: d.weight,
+    criteria: d.questions,
+  })),
+};
+
+// Called right before invoking Claude — falls back to the hardcoded
+// 4-dimension default when the user has no org or no playbook yet, so
+// analysis always has a rubric (and a snapshot) to work with.
+export async function getPlaybookSnapshotForUser(userId: string): Promise<PlaybookSnapshot> {
+  const playbook = await getPlaybookForUser(userId);
+  if (!playbook) return DEFAULT_PLAYBOOK_SNAPSHOT;
+  return {
+    playbook_name: playbook.name,
+    dimensions: playbook.dimensions.map((d) => ({
+      key: d.key,
+      label: d.label,
+      weight: d.weight,
+      criteria: d.criteria.map((c) => c.question),
+    })),
+  };
+}
+
+export type EffectiveScoreItem = {
+  key: string;
+  label: string;
+  score: number;
+  description: string;
+  weight: number;
+};
+
+const LEGACY_DIMENSION_LABELS: Record<string, string> = {
+  opening_framing: "Ouverture & cadrage",
+  pain_point: "Découverte des besoins",
+  pitch_demo: "Pitch & démo",
+  next_step: "Prochaine étape",
+};
+const LEGACY_DIMENSION_ORDER = ["opening_framing", "pain_point", "pitch_demo", "next_step"];
+
+// Rétrocompat bridge for sous-étape D — reconciles a call_analysis row's
+// `scores` (dynamic dimension keys) with its `playbook_snapshot` (labels,
+// order, weight at analysis time) into a stable array. Analyses saved before
+// playbook_snapshot existed (or where the fallback default was used without
+// persisting one) fall back to the 4 historical labels/order — this is what
+// keeps old analyses displaying correctly with zero data migration.
+export function getEffectiveScoresForDisplay(callAnalysis: {
+  scores: AnalysisScores | null;
+  playbook_snapshot: PlaybookSnapshot | null;
+}): EffectiveScoreItem[] {
+  const { scores, playbook_snapshot } = callAnalysis;
+  if (!scores) return [];
+
+  if (playbook_snapshot && playbook_snapshot.dimensions.length > 0) {
+    return playbook_snapshot.dimensions.flatMap((dim) => {
+      const entry = scores[dim.key];
+      if (!entry || typeof entry !== "object") return [];
+      return [{ key: dim.key, label: dim.label, score: entry.score, description: entry.description, weight: dim.weight }];
+    });
+  }
+
+  return LEGACY_DIMENSION_ORDER.flatMap((key) => {
+    const entry = scores[key];
+    if (!entry || typeof entry !== "object") return [];
+    return [{ key, label: LEGACY_DIMENSION_LABELS[key] ?? key, score: entry.score, description: entry.description, weight: 1 }];
+  });
 }
 
 export async function updatePlaybookName(playbookId: string, orgId: string, name: string): Promise<void> {

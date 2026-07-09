@@ -132,21 +132,21 @@ function List({ items, icon, color }: { items: string[]; icon: string; color: st
 // ─── Analysis display ─────────────────────────────────────────────────────────
 
 function AnalysisDisplay({ analysis }: { analysis: CallAnalysis }) {
-  const globalColor =
-    analysis.global_score >= 4
-      ? "text-green-600"
-      : analysis.global_score >= 2.5
-      ? "text-orange-500"
-      : "text-red-500";
-
-  const sentiment =
-    analysis.global_score >= 4 ? "positif" : analysis.global_score >= 2.5 ? "neutre" : "négatif";
+  const globalScore = analysis.scores.global_score;
+  const globalColor = globalScore >= 4 ? "text-green-600" : globalScore >= 2.5 ? "text-orange-500" : "text-red-500";
 
   const sentimentBg: Record<string, string> = {
     positif: "bg-green-100 text-green-700",
     neutre: "bg-slate-100 text-slate-500",
     négatif: "bg-red-100 text-red-600",
   };
+
+  // Dynamic — scores is keyed by whatever dimensions the playbook injected
+  // into the prompt (global_score aside), not a fixed set of 4.
+  const dimensionEntries = Object.entries(analysis.scores).filter(
+    (entry): entry is [string, { score: number; description: string }] =>
+      entry[0] !== "global_score" && typeof entry[1] === "object" && entry[1] !== null
+  );
 
   return (
     <div className="space-y-5">
@@ -155,20 +155,20 @@ function AnalysisDisplay({ analysis }: { analysis: CallAnalysis }) {
         <div>
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Score global</p>
           <p className={`text-4xl font-bold ${globalColor}`}>
-            {analysis.global_score.toFixed(1)}
+            {globalScore.toFixed(1)}
             <span className="text-base font-medium text-slate-300">/5</span>
           </p>
         </div>
-        <span className={`text-sm font-medium px-3 py-1 rounded-full ${sentimentBg[sentiment] ?? "bg-slate-100 text-slate-500"}`}>
-          {sentiment}
+        <span className={`text-sm font-medium px-3 py-1 rounded-full ${sentimentBg[analysis.sentiment] ?? "bg-slate-100 text-slate-500"}`}>
+          {analysis.sentiment}
         </span>
       </div>
 
-      {/* Synthèse coaching */}
-      {analysis.coaching_summary && (
+      {/* Résumé */}
+      {analysis.summary && (
         <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
-          <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wider mb-2">Synthèse coaching</p>
-          <p className="text-slate-700 text-sm leading-relaxed">{analysis.coaching_summary}</p>
+          <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wider mb-2">Résumé</p>
+          <p className="text-slate-700 text-sm leading-relaxed">{analysis.summary}</p>
         </div>
       )}
 
@@ -176,26 +176,9 @@ function AnalysisDisplay({ analysis }: { analysis: CallAnalysis }) {
       <div className="bg-white rounded-2xl border border-slate-200 p-6">
         <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-5">Scores par dimension</h2>
         <div className="space-y-5">
-          <ScoreBar
-            score={analysis.opening_framing.score}
-            label="Ouverture & cadrage"
-            description={analysis.opening_framing.description}
-          />
-          <ScoreBar
-            score={analysis.pain_point.score}
-            label="Découverte des besoins"
-            description={analysis.pain_point.description}
-          />
-          <ScoreBar
-            score={analysis.pitch_demo.score}
-            label="Argumentation & démo"
-            description={analysis.pitch_demo.description}
-          />
-          <ScoreBar
-            score={analysis.next_step.score}
-            label="Conclusion & suite"
-            description={analysis.next_step.description}
-          />
+          {dimensionEntries.map(([key, dim]) => (
+            <ScoreBar key={key} score={dim.score} label={key} description={dim.description} />
+          ))}
         </div>
       </div>
 
@@ -203,21 +186,13 @@ function AnalysisDisplay({ analysis }: { analysis: CallAnalysis }) {
       <div className="grid grid-cols-2 gap-5">
         <div className="bg-white rounded-2xl border border-slate-200 p-5">
           <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Points forts</h2>
-          <List items={analysis.strengths} icon="✓" color="text-green-500" />
+          <List items={analysis.strong_points} icon="✓" color="text-green-500" />
         </div>
         <div className="bg-white rounded-2xl border border-slate-200 p-5">
           <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Axes d&apos;amélioration</h2>
-          <List items={analysis.weaknesses} icon="△" color="text-orange-400" />
+          <List items={analysis.weak_points} icon="△" color="text-orange-400" />
         </div>
       </div>
-
-      {/* Objections */}
-      {analysis.objections.length > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-5">
-          <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Objections rencontrées</h2>
-          <List items={analysis.objections} icon="–" color="text-slate-400" />
-        </div>
-      )}
 
       {/* Prochaines étapes */}
       {analysis.next_steps.length > 0 && (

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { createAsyncTranscript, getBotInfo, getTranscriptContent, transcriptToText } from "@/lib/recall";
-import { createCall, getUserProfile, saveCallAnalysis, getGoogleTokens, updateCallFollowUp, getContact, createContact, updateContact, generateTasksFromTemplates } from "@/lib/db";
+import { createCall, getUserProfile, saveCallAnalysis, getGoogleTokens, updateCallFollowUp, getContact, createContact, updateContact, generateTasksFromTemplates, getPlaybookSnapshotForUser } from "@/lib/db";
 import { analyzeCall } from "@/lib/call-analysis";
 import { refreshGoogleAccessToken, getEmailHistory } from "@/lib/gmail";
 import { generateFollowUpEmail } from "@/lib/email-followup";
@@ -163,15 +163,23 @@ export async function POST(request: NextRequest) {
           try {
             const profile = await getUserProfile(userId);
             const meetingDate = new Date().toISOString().split("T")[0] ?? "";
-            savedAnalysis = await analyzeCall(transcriptText, {
-              clientName: profile?.company_name ?? "",
-              clientWebsite: "",
-              prospectName: companyName ?? "",
-              prospectWebsite: contactEmail ? contactEmail.split("@")[1] ?? "" : "",
-              meetingDate,
-            });
-            await saveCallAnalysis(call.id, savedAnalysis);
-            console.log("[bot-webhook] call analysis saved, global_score:", savedAnalysis.global_score);
+            // Snapshot the org's playbook now (sous-étape B) — falls back to
+            // the hardcoded 4-dimension default when the user has no org or
+            // no playbook yet, so this always resolves to something.
+            const playbookSnapshot = await getPlaybookSnapshotForUser(userId);
+            savedAnalysis = await analyzeCall(
+              transcriptText,
+              {
+                clientName: profile?.company_name ?? "",
+                clientWebsite: "",
+                prospectName: companyName ?? "",
+                prospectWebsite: contactEmail ? contactEmail.split("@")[1] ?? "" : "",
+                meetingDate,
+              },
+              playbookSnapshot
+            );
+            await saveCallAnalysis(call.id, savedAnalysis, playbookSnapshot);
+            console.log("[bot-webhook] call analysis saved, global_score:", savedAnalysis.scores.global_score);
 
             try {
               const createdCount = await generateTasksFromTemplates(userId, "call", call.id, {
@@ -192,8 +200,8 @@ export async function POST(request: NextRequest) {
 
           // Step 4 — upsert contact (non-blocking)
           try {
-            if (contactEmail && savedAnalysis?.coaching_summary) {
-              const newSummary = savedAnalysis.coaching_summary;
+            if (contactEmail && savedAnalysis?.summary) {
+              const newSummary = savedAnalysis.summary;
               const existing = await getContact(userId, contactEmail);
               if (existing) {
                 const mergedSummary = existing.last_call_summary
