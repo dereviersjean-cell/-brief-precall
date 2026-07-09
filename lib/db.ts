@@ -3835,3 +3835,253 @@ export async function deletePlaybookCriterion(criterionId: string, orgId: string
   const { error } = await supabaseAdmin.from("playbook_criteria").delete().eq("id", criterionId);
   if (error) throw error;
 }
+
+// ─── Email templates module — manager-configurable post-call email prompts
+// (Email Templates sous-étape A). One collection per organization, same
+// architecture as the Playbook module. Not consumed anywhere yet — that's
+// sous-étape B (generate-reply-suggestion, tasks/[id]/generate-email).
+
+export type EmailTemplate = {
+  id: string;
+  organization_id: string;
+  name: string;
+  description: string | null;
+  system_prompt: string;
+  sort_order: number;
+  is_default: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function getEmailTemplatesForOrganization(orgId: string): Promise<EmailTemplate[]> {
+  const { data, error } = await supabaseAdmin
+    .from("email_templates")
+    .select("*")
+    .eq("organization_id", orgId)
+    .order("sort_order", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as EmailTemplate[];
+}
+
+export async function getEmailTemplatesForUser(userId: string): Promise<EmailTemplate[]> {
+  const orgId = await getUserOrganizationId(userId);
+  if (!orgId) return [];
+  return getEmailTemplatesForOrganization(orgId);
+}
+
+type DefaultEmailTemplateSeed = {
+  name: string;
+  description: string;
+  system_prompt: string;
+  sort_order: number;
+};
+
+const DEFAULT_EMAIL_TEMPLATES: DefaultEmailTemplateSeed[] = [
+  {
+    name: "Call 1 — Découverte",
+    description: "Premier rendez-vous : découverte des besoins, cadrage.",
+    system_prompt: `Tu rédiges un email de suivi post-call pour un premier rendez-vous de découverte.
+
+Contexte fourni :
+- Analyse du call (résumé, points-clés, besoins exprimés, prochaines étapes)
+- Infos sur le prospect (nom, entreprise)
+- Infos sur le commercial (nom, entreprise)
+
+Tu retournes UNIQUEMENT un JSON strict :
+{
+  "subject": "...",
+  "body": "..."
+}
+
+Règles :
+- Sujet clair mentionnant l'entreprise du prospect (ex: "Suite à notre échange - [Entreprise]")
+- Corps 5-7 phrases : remerciement, récapitulatif des besoins identifiés, valeur ajoutée proposée, prochaines étapes concrètes avec date si possible
+- Ton chaleureux et professionnel, en français
+- Signature avec juste le prénom du commercial
+- N'invente rien qui ne soit pas dans l'analyse du call`,
+    sort_order: 0,
+  },
+  {
+    name: "Call 2 — Démo / Proposition",
+    description: "Deuxième rendez-vous : présentation détaillée, démonstration.",
+    system_prompt: `Tu rédiges un email de suivi post-call pour un rendez-vous de démonstration ou de présentation de proposition.
+
+Contexte fourni :
+- Analyse du call
+- Infos sur le prospect et le commercial
+- Historique récent des échanges
+
+Tu retournes UNIQUEMENT un JSON strict :
+{
+  "subject": "...",
+  "body": "..."
+}
+
+Règles :
+- Sujet orienté valeur (ex: "Récapitulatif de notre démo - Prochaines étapes")
+- Corps 6-8 phrases : reconnaissance des points-clés discutés, réponses aux objections mentionnées, résumé de la solution proposée, clarification des questions restantes, prochaines étapes avec échéance
+- Ton engagé, orienté action, en français
+- Si un devis a été mentionné, propose de l'envoyer
+- Signature avec juste le prénom du commercial`,
+    sort_order: 1,
+  },
+  {
+    name: "Call 3 — Closing",
+    description: "Rendez-vous de closing : négociation, signature.",
+    system_prompt: `Tu rédiges un email de suivi post-call pour un rendez-vous de closing.
+
+Contexte fourni :
+- Analyse du call (accords, objections, négociations)
+- Infos sur le prospect et le commercial
+
+Tu retournes UNIQUEMENT un JSON strict :
+{
+  "subject": "...",
+  "body": "..."
+}
+
+Règles :
+- Sujet direct et orienté action (ex: "Prochaines étapes pour finaliser notre collaboration")
+- Corps 5-7 phrases : reconnaissance des points d'accord, réaffirmation de la proposition finale, réponse aux dernières objections, appel à l'action clair (signature du devis, planification kick-off, etc.)
+- Ton confiant, orienté conclusion, en français
+- Signature avec juste le prénom du commercial`,
+    sort_order: 2,
+  },
+];
+
+// Idempotent — only seeds if the org has no templates yet. Call this from
+// the manager's first visit to /team/email-templates.
+export async function ensureDefaultEmailTemplates(orgId: string, createdBy: string): Promise<EmailTemplate[]> {
+  const existing = await getEmailTemplatesForOrganization(orgId);
+  if (existing.length > 0) return existing;
+
+  const { error } = await supabaseAdmin.from("email_templates").insert(
+    DEFAULT_EMAIL_TEMPLATES.map((t) => ({
+      organization_id: orgId,
+      name: t.name,
+      description: t.description,
+      system_prompt: t.system_prompt,
+      sort_order: t.sort_order,
+      is_default: true,
+      created_by: createdBy,
+    }))
+  );
+  if (error) throw error;
+
+  return getEmailTemplatesForOrganization(orgId);
+}
+
+export type EmailTemplateInput = {
+  name: string;
+  description?: string | null;
+  system_prompt: string;
+  sort_order?: number;
+};
+
+export async function createEmailTemplate(
+  orgId: string,
+  createdBy: string,
+  data: EmailTemplateInput
+): Promise<string> {
+  const org = await getOrganization(orgId);
+  if (!org) throw new Error("Organisation introuvable.");
+
+  let sortOrder = data.sort_order;
+  if (sortOrder === undefined) {
+    const { count, error: countError } = await supabaseAdmin
+      .from("email_templates")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", orgId);
+    if (countError) throw countError;
+    sortOrder = count ?? 0;
+  }
+
+  const { data: row, error } = await supabaseAdmin
+    .from("email_templates")
+    .insert({
+      organization_id: orgId,
+      name: data.name,
+      description: data.description ?? null,
+      system_prompt: data.system_prompt,
+      sort_order: sortOrder,
+      is_default: false,
+      created_by: createdBy,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return (row as { id: string }).id;
+}
+
+// Filtered by organization_id in the same query — a manager can never touch
+// another org's template even by guessing/reusing an id (same pattern as
+// updatePlaybookName).
+export async function updateEmailTemplate(
+  templateId: string,
+  orgId: string,
+  data: Partial<EmailTemplateInput>
+): Promise<void> {
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (data.name !== undefined) patch.name = data.name;
+  if (data.description !== undefined) patch.description = data.description;
+  if (data.system_prompt !== undefined) patch.system_prompt = data.system_prompt;
+  if (data.sort_order !== undefined) patch.sort_order = data.sort_order;
+
+  const { error } = await supabaseAdmin
+    .from("email_templates")
+    .update(patch)
+    .eq("id", templateId)
+    .eq("organization_id", orgId);
+  if (error) throw error;
+}
+
+// Guards against leaving an org with zero templates. Hard delete (no
+// criteria/child rows to cascade, unlike playbook dimensions).
+export async function deleteEmailTemplate(templateId: string, orgId: string): Promise<void> {
+  const { data: template, error: templateError } = await supabaseAdmin
+    .from("email_templates")
+    .select("id")
+    .eq("id", templateId)
+    .eq("organization_id", orgId)
+    .maybeSingle();
+  if (templateError) throw templateError;
+  if (!template) throw new Error("Template introuvable pour cette organisation.");
+
+  const { count, error: countError } = await supabaseAdmin
+    .from("email_templates")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", orgId);
+  if (countError) throw countError;
+  if ((count ?? 0) <= 1) {
+    throw new Error("Impossible de supprimer le dernier template de l'organisation.");
+  }
+
+  const { error } = await supabaseAdmin
+    .from("email_templates")
+    .delete()
+    .eq("id", templateId)
+    .eq("organization_id", orgId);
+  if (error) throw error;
+}
+
+export async function reorderEmailTemplates(orgId: string, orderedIds: string[]): Promise<void> {
+  // Every id must actually belong to this org, so a manager can't smuggle
+  // another org's template id into the reorder list.
+  const { data: existing, error: existingError } = await supabaseAdmin
+    .from("email_templates")
+    .select("id")
+    .eq("organization_id", orgId);
+  if (existingError) throw existingError;
+  const validIds = new Set((existing ?? []).map((t) => (t as { id: string }).id));
+  if (orderedIds.length === 0 || !orderedIds.every((id) => validIds.has(id))) {
+    throw new Error("Un ou plusieurs templates n'appartiennent pas à cette organisation.");
+  }
+
+  const results = await Promise.all(
+    orderedIds.map((id, index) =>
+      supabaseAdmin.from("email_templates").update({ sort_order: index }).eq("id", id).eq("organization_id", orgId)
+    )
+  );
+  for (const r of results) if (r.error) throw r.error;
+}

@@ -49,7 +49,8 @@ export default function AppSidebar() {
   const quotesActive = pathname.startsWith("/quotes");
   const tasksActive = pathname.startsWith("/tasks");
   const playbookActive = pathname.startsWith("/team/playbook");
-  const teamActive = pathname.startsWith("/team") && !playbookActive;
+  const emailTemplatesActive = pathname.startsWith("/team/email-templates");
+  const teamActive = pathname.startsWith("/team") && !playbookActive && !emailTemplatesActive;
   const settingsActive = pathname === "/settings";
 
   const navItems: { href: string; label: string; icon: LucideIcon; active: boolean; badge?: number }[] = [
@@ -123,6 +124,17 @@ export default function AppSidebar() {
                 <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-sm bg-primary" />
               )}
               Playbook
+            </Link>
+            <Link
+              href="/team/email-templates"
+              className={`relative flex items-center gap-2 pl-10 pr-3.5 py-2 rounded-lg text-sm transition-colors duration-200 ${
+                emailTemplatesActive ? "bg-[#F5F3FF] text-primary font-medium" : "text-gray-500 hover:bg-gray-50"
+              }`}
+            >
+              {emailTemplatesActive && (
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-sm bg-primary" />
+              )}
+              Templates emails
             </Link>
           </>
         )}
