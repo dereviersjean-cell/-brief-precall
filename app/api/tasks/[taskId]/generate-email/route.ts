@@ -71,6 +71,19 @@ Montant total TTC : ${formatCurrency(quote.total_ttc)}`;
   return "Aucun contexte source disponible.";
 }
 
+// More resilient than the previous "strip ```json fences and hope the whole
+// string is valid JSON" — a template asking for extra framing (or Claude
+// adding so much as a one-line preamble/postamble around the fence) used to
+// break JSON.parse outright. This isolates the {...} object regardless of
+// what surrounds it, while staying a no-op for the common pure-JSON case.
+function extractJsonObject(raw: string): string {
+  const cleaned = raw.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start === -1 || end === -1 || end < start) return cleaned;
+  return cleaned.slice(start, end + 1);
+}
+
 function sanitizeEmail(raw: unknown, task: TaskListItem): GeneratedTaskEmail {
   const obj = (raw ?? {}) as Partial<GeneratedTaskEmail>;
   return {
@@ -153,23 +166,35 @@ CONTEXTE SOURCE
 
 ${sourceContext}`;
 
+  let raw = "";
   try {
     const client = new Anthropic();
     const message = await client.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 800,
+      // Was 800 — too tight for some templates (e.g. Call 1 explicitly asks
+      // for 5-7 sentences covering 4 separate points), risking truncation
+      // mid-JSON on longer real-world call context. Matches the budget
+      // generateFollowUpEmail already uses for the same subject+body JSON shape.
+      max_tokens: 1500,
       system: basePrompt,
       messages: [{ role: "user", content: contextPrompt }],
     });
 
     const textBlock = message.content.find((b) => b.type === "text");
-    const raw = textBlock?.type === "text" ? textBlock.text : "";
-    const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    const parsed = JSON.parse(cleaned) as unknown;
+    raw = textBlock?.type === "text" ? textBlock.text : "";
+    const parsed = JSON.parse(extractJsonObject(raw)) as unknown;
 
     return NextResponse.json(sanitizeEmail(parsed, task));
   } catch (err) {
-    console.error("[tasks/generate-email] Claude API failed:", err);
+    // Logs the raw Claude response, not just the parse error — without this,
+    // a JSON.parse failure showed up in Vercel logs as a bare "Unexpected
+    // token" with no way to tell whether Claude wrapped the JSON in prose,
+    // truncated mid-object, or something else entirely.
+    console.error(
+      "[tasks/generate-email] generation failed:",
+      err instanceof Error ? err.message : err,
+      raw ? `\nRaw Claude response:\n${raw}` : "(no response captured — API call itself failed)"
+    );
     return NextResponse.json(
       { error: "La génération a échoué. Réessayez ou rédigez l'email manuellement." },
       { status: 502 }
