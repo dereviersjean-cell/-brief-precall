@@ -88,6 +88,36 @@ Règles :
 - Reste réaliste sur les quantités et prix
 - validity_days est un nombre entre 7 et 60`;
 
+// Used by /team/playbook's "Importer depuis un doc" flow (sous-étape C) —
+// extracts a candidate dimensions/criteria structure from a pasted playbook
+// document, which the manager reviews and can apply via replacePlaybookDimensions.
+export const DEFAULT_PLAYBOOK_EXTRACTION_PROMPT =
+`Tu es un expert en méthodologie sales. Un manager t'envoie un document décrivant son playbook commercial (méthode de call, étapes-clés, critères d'évaluation, questions à poser, etc.). Ta tâche est d'en extraire une structure d'évaluation utilisable pour scorer automatiquement les calls de son équipe.
+
+Tu retournes UNIQUEMENT un JSON strict, sans markdown, sans texte avant ou après :
+
+{
+  "dimensions": [
+    {
+      "label": "Nom court et clair de la dimension (ex: Découverte des besoins)",
+      "description": "Une phrase expliquant ce qu'évalue cette dimension",
+      "weight": 1,
+      "criteria": [
+        "Question binaire ou évaluable (ex: Le commercial a-t-il posé la question du budget ?)",
+        "..."
+      ]
+    }
+  ]
+}
+
+Règles :
+- Extrais 3 à 7 dimensions maximum, cohérentes avec un call commercial B2B
+- Chaque dimension doit avoir 2 à 5 questions clés
+- Les questions doivent être formulées de manière à pouvoir répondre "oui/non/partiellement" en écoutant un call
+- Poids par défaut : 1 pour tout, sauf si le document indique explicitement des importances différentes (dans ce cas, poids de 1 à 3)
+- Ne fais pas de dimensions vagues type "compétence générale" — sois toujours actionnable
+- Si le document est trop court ou hors sujet, retourne { "dimensions": [] } et laisse le manager saisir à la main`;
+
 export const DEFAULT_QUOTE_EMAIL_PROMPT =
 `Tu rédiges un email professionnel et chaleureux pour envoyer un devis à un prospect avec qui le commercial a déjà échangé.
 

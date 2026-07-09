@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Check, X, ArrowUp, ArrowDown, Plus, Trash2 } from "lucide-react";
+import { Pencil, Check, X, ArrowUp, ArrowDown, Plus, Trash2, Upload } from "lucide-react";
 import type { Playbook, PlaybookDimension } from "@/lib/db";
+import ImportPlaybookModal from "./ImportPlaybookModal";
 
 function PlaybookNameEditor({ name, onSave }: { name: string; onSave: (next: string) => void }) {
   const [editing, setEditing] = useState(false);
@@ -350,6 +351,7 @@ function AddDimensionModal({
 export default function PlaybookClient({ playbook: initialPlaybook }: { playbook: Playbook }) {
   const [playbook, setPlaybook] = useState(initialPlaybook);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   async function handleSaveName(name: string) {
     const prev = playbook.name;
@@ -527,11 +529,20 @@ export default function PlaybookClient({ playbook: initialPlaybook }: { playbook
   return (
     <div className="brief-ui min-h-screen bg-white">
       <main className="max-w-3xl mx-auto w-full px-6 py-10">
-        <div className="mb-8">
-          <PlaybookNameEditor name={playbook.name} onSave={handleSaveName} />
-          <p className="text-gray-500 text-sm mt-1">
-            Ce playbook s&apos;applique à tous les rendez-vous de votre organisation.
-          </p>
+        <div className="mb-8 flex items-start justify-between gap-4">
+          <div>
+            <PlaybookNameEditor name={playbook.name} onSave={handleSaveName} />
+            <p className="text-gray-500 text-sm mt-1">
+              Ce playbook s&apos;applique à tous les rendez-vous de votre organisation.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="shrink-0 h-8 px-3 inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-200"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            Importer depuis un doc
+          </button>
         </div>
 
         <div className="space-y-4">
@@ -561,6 +572,7 @@ export default function PlaybookClient({ playbook: initialPlaybook }: { playbook
       </main>
 
       {showAddModal && <AddDimensionModal onClose={() => setShowAddModal(false)} onCreate={handleAddDimension} />}
+      {showImportModal && <ImportPlaybookModal onClose={() => setShowImportModal(false)} />}
     </div>
   );
 }

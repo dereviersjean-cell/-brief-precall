@@ -12,6 +12,7 @@ import {
   DEFAULT_QUOTE_GENERATION_PROMPT,
   DEFAULT_QUOTE_EMAIL_PROMPT,
   DEFAULT_TASK_EMAIL_PROMPT,
+  DEFAULT_PLAYBOOK_EXTRACTION_PROMPT,
 } from "@/lib/admin-config";
 
 const PROMPT_KEYS = [
@@ -21,6 +22,7 @@ const PROMPT_KEYS = [
   "quote_generation_prompt",
   "quote_email_prompt",
   "task_email_prompt",
+  "playbook_extraction_prompt",
 ] as const;
 
 export async function GET() {
@@ -28,15 +30,17 @@ export async function GET() {
     return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
   }
 
-  const [config, callAnalysis, emailFollowup, replyProspect, quoteGeneration, quoteEmail, taskEmail] = await Promise.all([
-    readConfig(),
-    readPromptConfig("call_analysis_system_prompt"),
-    readPromptConfig("email_followup_prompt"),
-    readPromptConfig("reply_suggestion_prompt"),
-    readPromptConfig("quote_generation_prompt"),
-    readPromptConfig("quote_email_prompt"),
-    readPromptConfig("task_email_prompt"),
-  ]);
+  const [config, callAnalysis, emailFollowup, replyProspect, quoteGeneration, quoteEmail, taskEmail, playbookExtraction] =
+    await Promise.all([
+      readConfig(),
+      readPromptConfig("call_analysis_system_prompt"),
+      readPromptConfig("email_followup_prompt"),
+      readPromptConfig("reply_suggestion_prompt"),
+      readPromptConfig("quote_generation_prompt"),
+      readPromptConfig("quote_email_prompt"),
+      readPromptConfig("task_email_prompt"),
+      readPromptConfig("playbook_extraction_prompt"),
+    ]);
 
   return NextResponse.json({
     systemPrompt: config.systemPrompt,
@@ -46,6 +50,7 @@ export async function GET() {
     quote_generation_prompt: quoteGeneration ?? DEFAULT_QUOTE_GENERATION_PROMPT,
     quote_email_prompt: quoteEmail ?? DEFAULT_QUOTE_EMAIL_PROMPT,
     task_email_prompt: taskEmail ?? DEFAULT_TASK_EMAIL_PROMPT,
+    playbook_extraction_prompt: playbookExtraction ?? DEFAULT_PLAYBOOK_EXTRACTION_PROMPT,
   });
 }
 
@@ -88,4 +93,5 @@ export const DEFAULTS = {
   quote_generation_prompt: DEFAULT_QUOTE_GENERATION_PROMPT,
   quote_email_prompt: DEFAULT_QUOTE_EMAIL_PROMPT,
   task_email_prompt: DEFAULT_TASK_EMAIL_PROMPT,
+  playbook_extraction_prompt: DEFAULT_PLAYBOOK_EXTRACTION_PROMPT,
 };

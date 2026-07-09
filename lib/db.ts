@@ -3665,6 +3665,88 @@ export async function createPlaybookDimension(
   return (row as { id: string }).id;
 }
 
+export type PlaybookDimensionReplacementInput = {
+  label: string;
+  description?: string | null;
+  weight?: number;
+  criteria?: string[];
+};
+
+// Wholesale replace — deletes every existing dimension (and its criteria) on
+// this playbook and inserts dimensionsData in order. Used by the "import
+// from document" flow (sous-étape C), which is explicitly all-or-nothing (no
+// incremental merge with what's already there). Guarded against wiping the
+// playbook on an empty extraction result.
+export async function replacePlaybookDimensions(
+  playbookId: string,
+  orgId: string,
+  dimensionsData: PlaybookDimensionReplacementInput[]
+): Promise<Playbook> {
+  await assertPlaybookInOrg(playbookId, orgId);
+
+  if (dimensionsData.length === 0) {
+    const current = await getPlaybookForOrganization(orgId);
+    if (!current) throw new Error("Playbook introuvable pour cette organisation.");
+    return current;
+  }
+
+  const { data: existingDimensions, error: existingError } = await supabaseAdmin
+    .from("playbook_dimensions")
+    .select("id")
+    .eq("playbook_id", playbookId);
+  if (existingError) throw existingError;
+
+  const existingIds = (existingDimensions ?? []).map((d) => (d as { id: string }).id);
+  if (existingIds.length > 0) {
+    const { error: deleteCriteriaError } = await supabaseAdmin
+      .from("playbook_criteria")
+      .delete()
+      .in("dimension_id", existingIds);
+    if (deleteCriteriaError) throw deleteCriteriaError;
+
+    const { error: deleteDimensionsError } = await supabaseAdmin
+      .from("playbook_dimensions")
+      .delete()
+      .eq("playbook_id", playbookId);
+    if (deleteDimensionsError) throw deleteDimensionsError;
+  }
+
+  for (let i = 0; i < dimensionsData.length; i++) {
+    const dim = dimensionsData[i];
+
+    const { data: dimRow, error: dimError } = await supabaseAdmin
+      .from("playbook_dimensions")
+      .insert({
+        playbook_id: playbookId,
+        key: slugifyPlaybookKey(dim.label),
+        label: dim.label,
+        description: dim.description ?? null,
+        weight: dim.weight ?? 1,
+        sort_order: i,
+      })
+      .select("id")
+      .single();
+    if (dimError) throw dimError;
+    const dimensionId = (dimRow as { id: string }).id;
+
+    const questions = (dim.criteria ?? []).filter((q) => q.trim());
+    if (questions.length > 0) {
+      const { error: criteriaError } = await supabaseAdmin.from("playbook_criteria").insert(
+        questions.map((question, qi) => ({
+          dimension_id: dimensionId,
+          question,
+          sort_order: qi,
+        }))
+      );
+      if (criteriaError) throw criteriaError;
+    }
+  }
+
+  const updated = await getPlaybookForOrganization(orgId);
+  if (!updated) throw new Error("Échec de la mise à jour du playbook.");
+  return updated;
+}
+
 export async function updatePlaybookDimension(
   dimensionId: string,
   orgId: string,
