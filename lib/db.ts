@@ -2,6 +2,7 @@ import { supabaseAdmin } from "./supabase";
 import { generateEmbedding } from "./embeddings";
 import { computeQuoteTotals } from "./quote-calc";
 import type { TranscriptJson } from "./recall";
+import type { NotificationEventType, NotificationChannel, NotificationPreference } from "./notification-preferences";
 
 export async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 500): Promise<T> {
   let lastError: unknown;
@@ -4272,4 +4273,58 @@ export async function reorderEmailTemplates(orgId: string, orderedIds: string[])
     )
   );
   for (const r of results) if (r.error) throw r.error;
+}
+
+// ─── Notification preferences (module Distribution Flexible, sous-étape A) ─
+// Strictly per-user, never per-organization — a manager has no read or write
+// access to a commercial's preferences, even for calls/briefs they're
+// otherwise allowed to view. Sous-étapes B/C/D (the actual send points) will
+// read via getEffectiveChannelsForUser; nothing sends anything yet.
+// NotificationPreference itself lives in lib/notification-preferences.ts
+// alongside the other types/constants for this feature — re-exported here
+// isn't needed since callers import it from there directly.
+
+export async function getNotificationPreferencesForUser(userId: string): Promise<NotificationPreference[]> {
+  const { data, error } = await supabaseAdmin
+    .from("notification_preferences")
+    .select("event_type, channel, enabled")
+    .eq("user_id", userId);
+  if (error) throw error;
+  return (data ?? []) as NotificationPreference[];
+}
+
+export async function setNotificationPreference(
+  userId: string,
+  eventType: NotificationEventType,
+  channel: NotificationChannel,
+  enabled: boolean
+): Promise<NotificationPreference> {
+  const { data, error } = await supabaseAdmin
+    .from("notification_preferences")
+    .upsert(
+      { user_id: userId, event_type: eventType, channel, enabled, updated_at: new Date().toISOString() },
+      { onConflict: "user_id,event_type,channel" }
+    )
+    .select("event_type, channel, enabled")
+    .single();
+  if (error) throw error;
+  return data as NotificationPreference;
+}
+
+// Used by the sous-étapes B/C/D send points, not by this sous-étape's own
+// route/page — returns [] rather than throwing when the user has no
+// preferences at all (nothing enabled yet), so a caller can safely treat an
+// empty array as "send nowhere" without a separate existence check.
+export async function getEffectiveChannelsForUser(
+  userId: string,
+  eventType: NotificationEventType
+): Promise<NotificationChannel[]> {
+  const { data, error } = await supabaseAdmin
+    .from("notification_preferences")
+    .select("channel")
+    .eq("user_id", userId)
+    .eq("event_type", eventType)
+    .eq("enabled", true);
+  if (error) throw error;
+  return ((data ?? []) as { channel: NotificationChannel }[]).map((r) => r.channel);
 }

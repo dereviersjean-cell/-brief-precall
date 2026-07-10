@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 type Props = {
   initialProductDescription: string;
@@ -695,6 +696,23 @@ export default function SettingsClient({
               </a>
             </div>
           )}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mt-6">
+        <div className="px-6 py-5 flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900 mb-1">Notifications et distribution</h2>
+            <p className="text-sm text-slate-500">
+              Choisissez où recevoir vos briefs pré-call et vos analyses post-call.
+            </p>
+          </div>
+          <Link
+            href="/settings/notifications"
+            className="shrink-0 inline-flex items-center gap-2 bg-indigo-600 text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            Configurer
+          </Link>
         </div>
       </div>
     </div>
