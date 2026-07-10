@@ -497,6 +497,11 @@ export type CallAnalysisRow = {
   // should go through getEffectiveScoresForDisplay rather than reading this
   // directly, so that fallback is handled in one place.
   playbook_snapshot: PlaybookSnapshot | null;
+  // Generated once, on demand, by POST /api/feedback/[id]/key-points (not by
+  // analyzeCall) — null until the first person opens the call's analysis
+  // page, then cached here permanently. See lib/key-points.ts.
+  key_points: string | null;
+  key_points_generated_at: string | null;
 };
 
 // PostgREST returns an embedded call_analysis(...) as a plain object now that
@@ -549,7 +554,7 @@ export async function getCallsWithAnalysis(userId: string): Promise<CallWithAnal
   const { data, error } = await supabaseAdmin
     .from("calls")
     .select(
-      "id, contact_email, company_name, created_at, started_at, status, duration_seconds, participant_count, follow_up_email, follow_up_sent_at, recall_bot_id, recording_id, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment, playbook_snapshot)"
+      "id, contact_email, company_name, created_at, started_at, status, duration_seconds, participant_count, follow_up_email, follow_up_sent_at, recall_bot_id, recording_id, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment, playbook_snapshot, key_points, key_points_generated_at)"
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
@@ -586,7 +591,7 @@ export async function getCallWithAnalysis(
   const { data, error } = await supabaseAdmin
     .from("calls")
     .select(
-      "id, contact_email, company_name, created_at, started_at, status, duration_seconds, participant_count, follow_up_email, follow_up_sent_at, recall_bot_id, recording_id, transcript, transcript_json, speaker_names_override, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment, playbook_snapshot)"
+      "id, contact_email, company_name, created_at, started_at, status, duration_seconds, participant_count, follow_up_email, follow_up_sent_at, recall_bot_id, recording_id, transcript, transcript_json, speaker_names_override, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment, playbook_snapshot, key_points, key_points_generated_at)"
     )
     .eq("id", callId)
     .eq("user_id", userId)
@@ -1836,6 +1841,24 @@ export async function saveCallAnalysis(
     },
     { onConflict: "call_id" }
   );
+  if (error) throw error;
+}
+
+// Caches the on-demand key-points generation (lib/key-points.ts) — the
+// route calling this has already proven access to the call (owner or linked
+// manager, same check as /feedback/[id]/page.tsx) before ever reaching here,
+// so this only needs the analysisId+callId pair filter as a sanity check
+// against updating the wrong row, not a full ownership re-check.
+export async function updateCallAnalysisKeyPoints(
+  analysisId: string,
+  callId: string,
+  keyPoints: string
+): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("call_analysis")
+    .update({ key_points: keyPoints, key_points_generated_at: new Date().toISOString() })
+    .eq("id", analysisId)
+    .eq("call_id", callId);
   if (error) throw error;
 }
 

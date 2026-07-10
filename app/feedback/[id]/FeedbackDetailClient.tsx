@@ -9,6 +9,7 @@ import { getEffectiveScoresForDisplay } from "@/lib/playbook-scores";
 import { formatContactDisplayName } from "@/lib/format";
 import TemplatePromptSettingsModal from "@/app/components/TemplatePromptSettingsModal";
 import ConversationAnalyticsBlock from "./ConversationAnalyticsBlock";
+import KeyPointsBlock from "./KeyPointsBlock";
 
 const DEFAULT_PROMPT_VALUE = "__default__";
 
@@ -568,13 +569,11 @@ export default function FeedbackDetailClient({
           </div>
         ) : (
           <div className="space-y-5">
-            {/* Coaching summary */}
-            {a.summary && (
-              <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
-                <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wider mb-2">Synthèse coaching</p>
-                <p className="text-slate-700 text-sm leading-relaxed">{a.summary}</p>
-              </div>
-            )}
+            {/* Points clés — generated on demand (not by analyzeCall), cached
+                on call_analysis.key_points. Replaces the old "Synthèse
+                coaching" block (a.summary is no longer rendered anywhere in
+                this file). */}
+            <KeyPointsBlock callId={call.id} initialKeyPoints={a.key_points} />
 
             {/* Enregistrement vidéo — /api/recall/video-url autorise le propriétaire et un manager rattaché ;
                 si le bot/l'enregistrement n'existe pas du tout, on affiche un statut informatif à la place */}
