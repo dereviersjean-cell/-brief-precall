@@ -23,6 +23,62 @@ function formatDuration(seconds: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+type TranscriptTurn = { speaker: string; text: string };
+
+// Mirrors transcriptToText's own format (lib/recall.ts): one turn per line,
+// "Speaker: text". Split on the first ": " only — a speaker name never
+// contains one, but their spoken text often does.
+function parseTranscript(raw: string): TranscriptTurn[] {
+  return raw
+    .split("\n")
+    .map((line) => {
+      const idx = line.indexOf(": ");
+      return idx === -1 ? { speaker: "", text: line } : { speaker: line.slice(0, idx), text: line.slice(idx + 2) };
+    })
+    .filter((turn) => turn.text.trim().length > 0);
+}
+
+function TranscriptSection({ transcript }: { transcript: string | null }) {
+  const [open, setOpen] = useState(false);
+  const turns = transcript ? parseTranscript(transcript) : [];
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between text-left"
+      >
+        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">📄 Transcript</h2>
+        <svg
+          className={`w-4 h-4 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && (
+        <div className="mt-4">
+          {turns.length === 0 ? (
+            <p className="text-sm text-slate-400">Transcript non disponible</p>
+          ) : (
+            <div className="max-h-[420px] overflow-y-auto space-y-3 pr-1">
+              {turns.map((turn, i) => (
+                <div key={i} className="flex gap-2 text-sm leading-relaxed">
+                  {turn.speaker && <span className="font-semibold text-slate-900 shrink-0">{turn.speaker}</span>}
+                  <span className="text-slate-700">{turn.text}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ScoreBar({
   score,
   label,
@@ -619,6 +675,11 @@ export default function FeedbackDetailClient({
               )}
             </div>
             )}
+
+            {/* Transcript — collapsed by default, both readOnly and edit
+                modes render this same block so a manager viewing via
+                /team/[commercialId]/calls/[callId] sees it too. */}
+            <TranscriptSection transcript={call.transcript} />
           </div>
         )}
       </div>

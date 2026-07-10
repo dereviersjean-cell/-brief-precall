@@ -516,6 +516,13 @@ export type CallWithAnalysis = {
   recall_bot_id: string | null;
   recording_id: string | null;
   analysis: CallAnalysisRow | null;
+  // Raw "Speaker: text" transcript, one turn per line (see transcriptToText
+  // in lib/recall.ts) — already persisted on calls.transcript at ingest time
+  // (app/api/recall/bot-webhook/route.ts), never re-fetched from Recall.
+  // Deliberately not selected by getCallsWithAnalysis below (explicitly null
+  // there): that function backs list views where pulling a full transcript
+  // per row would bloat the payload for no reason.
+  transcript: string | null;
 };
 
 export async function getCallsWithAnalysis(userId: string): Promise<CallWithAnalysis[]> {
@@ -544,6 +551,7 @@ export async function getCallsWithAnalysis(userId: string): Promise<CallWithAnal
       recall_bot_id: row.recall_bot_id as string | null,
       recording_id: row.recording_id as string | null,
       analysis,
+      transcript: null,
     };
   });
 }
@@ -555,7 +563,7 @@ export async function getCallWithAnalysis(
   const { data, error } = await supabaseAdmin
     .from("calls")
     .select(
-      "id, contact_email, company_name, created_at, started_at, status, duration_seconds, participant_count, follow_up_email, follow_up_sent_at, recall_bot_id, recording_id, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment, playbook_snapshot)"
+      "id, contact_email, company_name, created_at, started_at, status, duration_seconds, participant_count, follow_up_email, follow_up_sent_at, recall_bot_id, recording_id, transcript, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment, playbook_snapshot)"
     )
     .eq("id", callId)
     .eq("user_id", userId)
@@ -579,6 +587,7 @@ export async function getCallWithAnalysis(
     recall_bot_id: row.recall_bot_id as string | null,
     recording_id: row.recording_id as string | null,
     analysis,
+    transcript: row.transcript as string | null,
   };
 }
 
