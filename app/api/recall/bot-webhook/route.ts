@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { createAsyncTranscript, getBotInfo, getTranscriptContent, transcriptToText, buildTranscriptJson, resolveSpeakerNames } from "@/lib/recall";
-import { createCall, getUserProfile, getUserName, getUserEmail, saveCallAnalysis, getGoogleTokens, updateCallFollowUp, getContact, createContact, updateContact, generateTasksFromTemplates, getPlaybookSnapshotForUser } from "@/lib/db";
+import { createCall, getUserProfile, getUserName, getUserEmail, saveCallAnalysis, updateCallAnalysisKeyPoints, getGoogleTokens, updateCallFollowUp, getContact, createContact, updateContact, generateTasksFromTemplates, getPlaybookSnapshotForUser } from "@/lib/db";
 import { analyzeCall } from "@/lib/call-analysis";
 import { refreshGoogleAccessToken, getEmailHistory } from "@/lib/gmail";
 import { generateFollowUpEmail } from "@/lib/email-followup";
+import { generateKeyPoints } from "@/lib/key-points";
+import { dispatchCallAnalysis } from "@/lib/notifications-dispatcher";
+import { formatContactDisplayName } from "@/lib/format";
 import Anthropic from "@anthropic-ai/sdk";
 
 type StatusChange = { code: string; created_at: string };
@@ -191,6 +194,7 @@ export async function POST(request: NextRequest) {
 
           // Step 3 — analyze call with Claude (non-blocking, result shared with step 4)
           let savedAnalysis: Awaited<ReturnType<typeof analyzeCall>> | null = null;
+          let keyPoints: string | null = null;
           try {
             const profile = await getUserProfile(userId);
             const meetingDate = new Date().toISOString().split("T")[0] ?? "";
@@ -209,7 +213,7 @@ export async function POST(request: NextRequest) {
               },
               playbookSnapshot
             );
-            await saveCallAnalysis(call.id, savedAnalysis, playbookSnapshot);
+            const { id: analysisId } = await saveCallAnalysis(call.id, savedAnalysis, playbookSnapshot);
             console.log("[bot-webhook] call analysis saved, global_score:", savedAnalysis.scores.global_score);
 
             try {
@@ -223,6 +227,31 @@ export async function POST(request: NextRequest) {
               console.warn(
                 "[bot-webhook] generateTasksFromTemplates failed (non-blocking):",
                 taskErr instanceof Error ? taskErr.message : String(taskErr)
+              );
+            }
+
+            // Step 3b — generate + persist key_points now (module Distribution
+            // Flexible, sous-étape B) so the post-call notification email
+            // (Step 6 below) has real content instead of an empty section.
+            // app/api/feedback/[id]/key-points/route.ts remains the on-demand
+            // fallback for calls where this fails, or that predate it.
+            try {
+              const transcriptForKeyPoints = transcriptJson
+                ? transcriptJson.turns
+                    .map((t) => `${speakerNamesOverride[t.speaker_id] || t.speaker_id}: ${t.text}`)
+                    .join("\n")
+                : transcriptText;
+              keyPoints = await generateKeyPoints(transcriptForKeyPoints);
+              if (keyPoints) {
+                await updateCallAnalysisKeyPoints(analysisId, call.id, keyPoints);
+                console.log("[bot-webhook] key_points generated and saved");
+              } else {
+                console.log("[bot-webhook] generateKeyPoints returned null (non-blocking)");
+              }
+            } catch (keyPointsErr) {
+              console.log(
+                "[bot-webhook] key_points generation failed (non-blocking):",
+                keyPointsErr instanceof Error ? keyPointsErr.message : String(keyPointsErr)
               );
             }
           } catch (analysisErr) {
@@ -286,6 +315,33 @@ export async function POST(request: NextRequest) {
             }
           } catch (followUpErr) {
             console.log("[bot-webhook] follow-up email failed (non-blocking):", followUpErr instanceof Error ? followUpErr.message : String(followUpErr));
+          }
+
+          // Step 6 — dispatch post-call analysis notifications (module
+          // Distribution Flexible, sous-étape B; non-blocking). Only
+          // meaningful once Step 3 actually produced an analysis.
+          if (savedAnalysis) {
+            try {
+              const results = await dispatchCallAnalysis(
+                userId,
+                {
+                  keyPoints,
+                  globalScore: savedAnalysis.scores.global_score,
+                  sentiment: savedAnalysis.sentiment,
+                },
+                {
+                  callId: call.id,
+                  callTitle: companyName ? `Call avec ${companyName}` : "Votre call",
+                  contactName: contactEmail ? formatContactDisplayName(companyName, contactEmail) : null,
+                }
+              );
+              console.log("[bot-webhook] dispatchCallAnalysis results:", results);
+            } catch (dispatchErr) {
+              console.log(
+                "[bot-webhook] dispatchCallAnalysis failed (non-blocking):",
+                dispatchErr instanceof Error ? dispatchErr.message : String(dispatchErr)
+              );
+            }
           }
         } catch (err) {
           console.log("[bot-webhook] transcript.done pipeline failed:", err instanceof Error ? err.message : String(err));

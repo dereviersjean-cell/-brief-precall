@@ -12,12 +12,13 @@ export const CHANNEL_META: Record<NotificationChannel, { label: string; descript
   email: {
     label: "Email",
     description: "Envoyé sur votre boîte mail connectée",
-    implemented: false, // passera à true en sous-étape B
+    implemented: true, // sous-étape B
   },
   calendar: {
     label: "Calendrier",
     description: "Ajouté à la description de l'événement",
-    implemented: false,
+    implemented: true, // sous-étape B — voir lib/google-calendar.ts pour le
+    // blocage de scope OAuth qui empêche l'écriture effective pour l'instant
   },
   hubspot: {
     label: "HubSpot",

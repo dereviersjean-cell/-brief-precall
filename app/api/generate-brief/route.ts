@@ -4,11 +4,13 @@ import Anthropic from "@anthropic-ai/sdk";
 import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
 import { readConfig } from "@/lib/admin-config";
-import { generateBrief } from "@/lib/brief-generator";
+import { generateBrief, type GeneratedBriefJson } from "@/lib/brief-generator";
 import { enrichWithPappers } from "@/lib/pappers";
 import { fetchRecentNews } from "@/lib/news";
 import { getBriefByEventId, saveBrief, getUserProfile, withRetry } from "@/lib/db";
 import { checkRateLimit, retryAfterMinutes } from "@/lib/rate-limit";
+import { dispatchBriefPreCall } from "@/lib/notifications-dispatcher";
+import { formatContactDisplayName } from "@/lib/format";
 
 const DOMAIN_TLDS = /\.(com|fr|ai|io|co|net|org|eu|be|app|tech|dev|uk|de|es|it|nl|ch|ca|au|me|biz|info|saas)$/i;
 
@@ -26,6 +28,7 @@ export async function POST(request: NextRequest) {
   let company: string;
   let calendarEventId: string | null = null;
   let contactEmail: string | null = null;
+  let meetingStartsAt: string | null = null;
   let force = false;
 
   try {
@@ -33,6 +36,7 @@ export async function POST(request: NextRequest) {
     company = body?.company;
     calendarEventId = body?.calendarEventId ?? null;
     contactEmail = body?.contactEmail ?? null;
+    meetingStartsAt = body?.meetingStartsAt ?? null;
     force = body?.force === true;
   } catch {
     return NextResponse.json({ error: "Corps de la requête invalide." }, { status: 400 });
@@ -120,6 +124,20 @@ export async function POST(request: NextRequest) {
       withRetry(() => saveBrief(userId, trimmed, contactEmail, calendarEventId, brief, config.model)).catch(
         (err) => console.error("[generate-brief] saveBrief failed after retries:", err)
       );
+
+      // Non-blocking — never delays the response back to the front end, and
+      // a dispatch failure must never surface as a brief-generation error
+      // (dispatchBriefPreCall itself never throws; this catch is just a
+      // last-resort safety net).
+      dispatchBriefPreCall(userId, brief as GeneratedBriefJson, {
+        calendarEventId,
+        meetingTitle: trimmed,
+        meetingStartsAt,
+        contactName: contactEmail ? formatContactDisplayName(null, contactEmail) : null,
+        contactEmail,
+      })
+        .then((results) => console.log("[generate-brief] dispatchBriefPreCall results:", results))
+        .catch((err) => console.error("[generate-brief] dispatchBriefPreCall failed:", err));
     }
 
     return NextResponse.json(brief);

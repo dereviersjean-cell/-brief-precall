@@ -1,9 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { AdminConfig } from "./admin-config";
+import type { AdminConfig } from "./admin-config";
 import type { NewsArticle } from "./news";
-import { findSimilarReferences, SimilarReference } from "./embeddings";
+import { findSimilarReferences } from "./embeddings";
+import type { SimilarReference } from "./embeddings";
 import { getContact } from "./db";
-import { enrichFromCRM, CrmEnrichment } from "./crm/enrichment";
+import { enrichFromCRM } from "./crm/enrichment";
+import type { CrmEnrichment } from "./crm/enrichment";
 
 const client = new Anthropic();
 
@@ -235,4 +237,58 @@ export async function generateBrief(
     console.error("[brief-generator] Échec du parsing JSON :\n", textBlock.text);
     throw new Error("Le modèle n'a pas retourné du JSON valide.");
   }
+}
+
+// Raw shape generateBrief actually returns (the JSON schema dictated to
+// Claude in buildUserPrompt above) — distinct from lib/types.ts's `Brief`,
+// which is a client-side-adapted shape (see adaptApiBrief/adaptCachedContent
+// in app/brief/[id]/{BriefClient,page}.tsx). Notifications (sous-étape B)
+// hook in server-side right where this raw shape is already available, so
+// formatBriefAsMarkdown works from it directly rather than re-adapting.
+export type GeneratedBriefJson = {
+  overview?: string;
+  accroche?: string;
+  pain_points?: Array<{ title: string; detail: string }>;
+  arguments?: Array<{ title: string; detail: string }>;
+  vocabulaire?: string[];
+  references?: Array<{ client_name: string; relevance: string; pitch: string }>;
+  historique_relationnel?: string;
+};
+
+// Shared by the pre-call email (rendered to HTML) and the calendar
+// description (rendered to plain text) — see lib/email.ts / lib/google-calendar.ts.
+export function formatBriefAsMarkdown(brief: GeneratedBriefJson): string {
+  const sections: string[] = [];
+
+  if (brief.accroche) {
+    sections.push(`## Accroche suggérée\n${brief.accroche}`);
+  }
+  if (brief.overview) {
+    sections.push(`## Contexte entreprise\n${brief.overview}`);
+  }
+  if (brief.pain_points?.length) {
+    sections.push(
+      `## Points de douleur\n${brief.pain_points.map((p) => `- **${p.title}** — ${p.detail}`).join("\n")}`
+    );
+  }
+  if (brief.arguments?.length) {
+    sections.push(
+      `## Arguments à mettre en avant\n${brief.arguments.map((a) => `- **${a.title}** — ${a.detail}`).join("\n")}`
+    );
+  }
+  if (brief.references?.length) {
+    sections.push(
+      `## Références clients pertinentes\n${brief.references
+        .map((r) => `- **${r.client_name}** — ${r.pitch}`)
+        .join("\n")}`
+    );
+  }
+  if (brief.historique_relationnel) {
+    sections.push(`## Historique relationnel\n${brief.historique_relationnel}`);
+  }
+  if (brief.vocabulaire?.length) {
+    sections.push(`## Vocabulaire clé\n${brief.vocabulaire.join(", ")}`);
+  }
+
+  return sections.join("\n\n");
 }

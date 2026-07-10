@@ -263,6 +263,9 @@ export default function BriefClient({
           company: meeting.company,
           calendarEventId: meeting.id,
           contactEmail: contactEmail ?? null,
+          // Only used server-side to enrich the pre-call notification email
+          // (sous-étape B) — not used by generateBrief itself.
+          meetingStartsAt: meeting.date,
           force,
         }),
       });
@@ -282,7 +285,7 @@ export default function BriefClient({
     } finally {
       setIsGenerating(false);
     }
-  }, [meeting.company, meeting.id, contactEmail]);
+  }, [meeting.company, meeting.id, meeting.date, contactEmail]);
 
   useEffect(() => {
     if (autoGenerate && !meeting.brief) {

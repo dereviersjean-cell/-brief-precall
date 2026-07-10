@@ -2,10 +2,19 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
+import { AlertTriangle } from "lucide-react";
 
-export default function ConnexionsSettingsClient({ recallConnected }: { recallConnected: boolean }) {
+export default function ConnexionsSettingsClient({
+  recallConnected,
+  hasCalendarWriteAccess,
+}: {
+  recallConnected: boolean;
+  hasCalendarWriteAccess: boolean;
+}) {
   const router = useRouter();
   const [disconnecting, setDisconnecting] = useState(false);
+  const [reconnecting, setReconnecting] = useState(false);
 
   const searchParams = useSearchParams();
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -110,6 +119,34 @@ export default function ConnexionsSettingsClient({ recallConnected }: { recallCo
           )}
         </div>
       </div>
+
+      {/* Distinct from "Calendrier Recall" above — this is about the app's
+          own Google session (login), not Recall's separate calendar
+          connection. Reconnecting here re-runs NextAuth's Google OAuth flow
+          so the user grants the newer calendar.events scope (module
+          Distribution Flexible sous-étape B) — /api/recall/google-oauth/start
+          above wouldn't touch this at all, it's a different credential. */}
+      {!hasCalendarWriteAccess && (
+        <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mt-6">
+          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-amber-900">
+              Reconnectez-vous à Google Calendar pour bénéficier des nouvelles fonctionnalités (écriture de briefs
+              dans les événements).
+            </p>
+            <button
+              disabled={reconnecting}
+              onClick={async () => {
+                setReconnecting(true);
+                await signIn("google", { callbackUrl: "/settings/connexions" });
+              }}
+              className="inline-block mt-2 text-xs font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 transition-colors px-2.5 py-1 rounded-md disabled:opacity-50"
+            >
+              {reconnecting ? "Redirection…" : "Se reconnecter avec Google"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

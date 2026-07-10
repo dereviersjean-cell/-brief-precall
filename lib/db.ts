@@ -1823,26 +1823,34 @@ export async function getCommercialDetailForManager(
 // falls back to the 4 historical labels when it's absent. analysis.scores is
 // already keyed by whatever dimension keys Claude was asked to score (see
 // analyzeCall / PlaybookSnapshot), so it's persisted as-is.
+// Returns the row's id — used by the bot-webhook to immediately generate
+// key_points for the same analysis (module Distribution Flexible, sous-étape
+// B) without a separate lookup query.
 export async function saveCallAnalysis(
   callId: string,
   analysis: import("./call-analysis").CallAnalysis,
   playbookSnapshot: PlaybookSnapshot | null = null
-): Promise<void> {
-  const { error } = await supabaseAdmin.from("call_analysis").upsert(
-    {
-      call_id: callId,
-      strengths: analysis.strong_points,
-      weaknesses: analysis.weak_points,
-      objections: [],
-      next_steps: analysis.next_steps,
-      summary: analysis.summary,
-      sentiment: analysis.sentiment,
-      scores: analysis.scores,
-      playbook_snapshot: playbookSnapshot,
-    },
-    { onConflict: "call_id" }
-  );
+): Promise<{ id: string }> {
+  const { data, error } = await supabaseAdmin
+    .from("call_analysis")
+    .upsert(
+      {
+        call_id: callId,
+        strengths: analysis.strong_points,
+        weaknesses: analysis.weak_points,
+        objections: [],
+        next_steps: analysis.next_steps,
+        summary: analysis.summary,
+        sentiment: analysis.sentiment,
+        scores: analysis.scores,
+        playbook_snapshot: playbookSnapshot,
+      },
+      { onConflict: "call_id" }
+    )
+    .select("id")
+    .single();
   if (error) throw error;
+  return data as { id: string };
 }
 
 // Caches the on-demand key-points generation (lib/key-points.ts) — the

@@ -1,0 +1,138 @@
+import { getEffectiveChannelsForUser, getUserName, getUserEmail } from "./db";
+import { sendBriefPreCallEmail, sendCallAnalysisEmail } from "./email";
+import { appendBriefToCalendarEvent, hasCalendarWriteAccess } from "./google-calendar";
+import { formatBriefAsMarkdown, type GeneratedBriefJson } from "./brief-generator";
+
+// Same hardcoded-origin convention as lib/email.ts / lib/recall.ts.
+const APP_URL = "https://brief-precall.vercel.app";
+
+// Single entry point per event type (module Distribution Flexible,
+// sous-étape B) — reads the user's own notification_preferences and
+// dispatches only to the channels they've enabled. Both functions:
+//  - resolve userId's own name/email internally (the recipient of these
+//    notifications is always the commercial themselves, not the prospect —
+//    "reçu vos briefs pré-call" in the settings page copy), so callers only
+//    need to pass event-specific content/context, not user identity.
+//  - never throw: every channel attempt is individually caught, and the
+//    per-channel outcome is returned as "sent" or "error: <message>" for the
+//    caller to log. A failed send must never fail the request that
+//    triggered it (brief generation, the Recall webhook).
+
+export type BriefDispatchMeetingContext = {
+  calendarEventId: string | null;
+  meetingTitle: string;
+  meetingStartsAt: string | null;
+  contactName: string | null;
+  contactEmail: string | null;
+};
+
+export type BriefDispatchResult = { email: string | null; calendar: string | null };
+
+export async function dispatchBriefPreCall(
+  userId: string,
+  brief: GeneratedBriefJson,
+  meetingContext: BriefDispatchMeetingContext
+): Promise<BriefDispatchResult> {
+  const results: BriefDispatchResult = { email: null, calendar: null };
+
+  const channels = await getEffectiveChannelsForUser(userId, "brief_precall");
+  if (channels.length === 0) return results;
+
+  const briefMarkdown = formatBriefAsMarkdown(brief);
+  const briefUrl = `${APP_URL}/brief/${encodeURIComponent(meetingContext.calendarEventId ?? "")}?company=${encodeURIComponent(
+    meetingContext.meetingTitle
+  )}`;
+
+  if (channels.includes("email")) {
+    try {
+      const userEmail = await getUserEmail(userId);
+      if (!userEmail) throw new Error("Aucun email pour ce user.");
+      const userName = await getUserName(userId);
+      await sendBriefPreCallEmail({
+        to: userEmail,
+        userName,
+        meetingTitle: meetingContext.meetingTitle,
+        meetingStartsAt: meetingContext.meetingStartsAt,
+        contactName: meetingContext.contactName,
+        contactEmail: meetingContext.contactEmail,
+        briefContent: briefMarkdown,
+        briefUrl,
+      });
+      results.email = "sent";
+    } catch (err) {
+      results.email = `error: ${err instanceof Error ? err.message : String(err)}`;
+    }
+  }
+
+  if (channels.includes("calendar")) {
+    if (!meetingContext.calendarEventId) {
+      results.calendar = "error: no calendarEventId for this meeting";
+    } else if (!(await hasCalendarWriteAccess(userId))) {
+      // Expected, handled state — not a failure. The user's stored Google
+      // token predates the calendar.events scope upgrade (lib/auth.ts); the
+      // fix is them reconnecting, not retrying, so this skips the attempt
+      // entirely instead of letting it hit Google and log a 403.
+      console.warn(
+        `[dispatchBriefPreCall] Utilisateur ${userId} a activé le canal calendar mais n'a pas le scope calendar.events — brief non ajouté à l'événement. Attend reconnexion.`
+      );
+      results.calendar = "skipped: calendar.events scope missing, user must reconnect Google";
+    } else {
+      try {
+        await appendBriefToCalendarEvent(userId, meetingContext.calendarEventId, briefMarkdown, briefUrl);
+        results.calendar = "sent";
+      } catch (err) {
+        results.calendar = `error: ${err instanceof Error ? err.message : String(err)}`;
+      }
+    }
+  }
+
+  return results;
+}
+
+export type CallAnalysisDispatchContext = {
+  callId: string;
+  callTitle: string;
+  contactName: string | null;
+};
+
+export type CallAnalysisDispatchInput = {
+  keyPoints: string | null;
+  globalScore: number | null;
+  sentiment: string | null;
+};
+
+export type CallAnalysisDispatchResult = { email: string | null };
+
+export async function dispatchCallAnalysis(
+  userId: string,
+  callAnalysis: CallAnalysisDispatchInput,
+  callContext: CallAnalysisDispatchContext
+): Promise<CallAnalysisDispatchResult> {
+  const results: CallAnalysisDispatchResult = { email: null };
+
+  const channels = await getEffectiveChannelsForUser(userId, "analyse_postcall");
+  if (channels.length === 0) return results;
+
+  if (channels.includes("email")) {
+    try {
+      const userEmail = await getUserEmail(userId);
+      if (!userEmail) throw new Error("Aucun email pour ce user.");
+      const userName = await getUserName(userId);
+      await sendCallAnalysisEmail({
+        to: userEmail,
+        userName,
+        callTitle: callContext.callTitle,
+        contactName: callContext.contactName,
+        keyPoints: callAnalysis.keyPoints,
+        globalScore: callAnalysis.globalScore,
+        sentiment: callAnalysis.sentiment,
+        analysisUrl: `${APP_URL}/feedback/${callContext.callId}`,
+      });
+      results.email = "sent";
+    } catch (err) {
+      results.email = `error: ${err instanceof Error ? err.message : String(err)}`;
+    }
+  }
+
+  return results;
+}

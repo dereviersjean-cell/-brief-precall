@@ -17,11 +17,23 @@ export const authOptions: AuthOptions = {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       authorization: {
         params: {
+          // calendar.events (not calendar.readonly) — module Distribution
+          // Flexible sous-étape B needs to write the pre-call brief into the
+          // event description, not just read events. IMPORTANT: this only
+          // takes effect for NEW sign-ins/consents. Every user who already
+          // logged in before this change has a refresh_token scoped to
+          // whatever they granted at that time (calendar.readonly) —
+          // changing the requested scope in code does not retroactively
+          // upgrade tokens already issued. Existing users must sign out and
+          // sign back in (or otherwise re-trigger Google's consent screen)
+          // before calendar writes will work for them; until then,
+          // hasCalendarWriteAccess(userId) (lib/google-calendar.ts) reports
+          // false for them and the calendar channel is skipped, not failed.
           scope: [
             "openid",
             "email",
             "profile",
-            "https://www.googleapis.com/auth/calendar.readonly",
+            "https://www.googleapis.com/auth/calendar.events",
             "https://www.googleapis.com/auth/gmail.readonly",
             "https://www.googleapis.com/auth/gmail.send",
           ].join(" "),

@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { AlertTriangle } from "lucide-react";
 import {
   AVAILABLE_CHANNELS,
   CHANNEL_META,
@@ -26,6 +28,20 @@ export default function NotificationSettingsClient({
   const [preferences, setPreferences] = useState<Map<string, boolean>>(
     () => new Map(initialPreferences.map((p) => [prefKey(p.event_type, p.channel), p.enabled]))
   );
+
+  // null while loading — deliberately not shown as "needs reconnection"
+  // until we actually know, to avoid a flash of the warning for users who
+  // already have write access.
+  const [hasCalendarWriteAccess, setHasCalendarWriteAccess] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetch("/api/notification-preferences/calendar-status")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { hasWriteAccess?: boolean } | null) => {
+        setHasCalendarWriteAccess(data?.hasWriteAccess ?? false);
+      })
+      .catch(() => setHasCalendarWriteAccess(false));
+  }, []);
 
   async function handleToggle(eventType: NotificationEventType, channel: NotificationChannel) {
     const k = prefKey(eventType, channel);
@@ -81,33 +97,51 @@ export default function NotificationSettingsClient({
                 const meta = CHANNEL_META[channel];
                 const enabled = preferences.get(prefKey(section.eventType, channel)) ?? false;
                 const disabled = !meta.implemented;
+                const showCalendarWarning =
+                  channel === "calendar" && hasCalendarWriteAccess === false && (!disabled || enabled);
                 return (
-                  <div key={channel} className="flex items-center justify-between gap-4 px-4 py-3.5">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-medium text-slate-900 text-sm">{meta.label}</p>
-                        {disabled && (
-                          <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full">
-                            Bientôt disponible
-                          </span>
-                        )}
+                  <div key={channel} className="px-4 py-3.5">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium text-slate-900 text-sm">{meta.label}</p>
+                          {disabled && (
+                            <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full">
+                              Bientôt disponible
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">{meta.description}</p>
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5">{meta.description}</p>
-                    </div>
-                    <button
-                      onClick={() => handleToggle(section.eventType, channel)}
-                      disabled={disabled}
-                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${
-                        enabled ? "bg-indigo-600" : "bg-slate-200"
-                      }`}
-                      aria-label={enabled ? "Désactiver" : "Activer"}
-                    >
-                      <span
-                        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                          enabled ? "translate-x-[18px]" : "translate-x-1"
+                      <button
+                        onClick={() => handleToggle(section.eventType, channel)}
+                        disabled={disabled}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${
+                          enabled ? "bg-indigo-600" : "bg-slate-200"
                         }`}
-                      />
-                    </button>
+                        aria-label={enabled ? "Désactiver" : "Activer"}
+                      >
+                        <span
+                          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                            enabled ? "translate-x-[18px]" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    {showCalendarWarning && (
+                      <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-md text-amber-900 text-sm p-3 mt-3">
+                        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <p>Ce canal nécessite une reconnexion à Google Calendar avec l&apos;autorisation d&apos;écriture.</p>
+                          <Link
+                            href="/settings/connexions"
+                            className="inline-block mt-2 text-xs font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 transition-colors px-2.5 py-1 rounded-md"
+                          >
+                            Reconnecter Google Calendar
+                          </Link>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
