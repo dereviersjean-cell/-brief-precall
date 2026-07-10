@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
-import { Settings } from "lucide-react";
+import { useState, useEffect, type ReactNode } from "react";
+import { Settings, Search } from "lucide-react";
 import type { CallWithAnalysis, EmailTemplate } from "@/lib/db";
 import { getEffectiveScoresForDisplay } from "@/lib/playbook-scores";
 import { formatContactDisplayName } from "@/lib/format";
@@ -27,7 +27,11 @@ type TranscriptTurn = { speaker: string; text: string };
 
 // Mirrors transcriptToText's own format (lib/recall.ts): one turn per line,
 // "Speaker: text". Split on the first ": " only — a speaker name never
-// contains one, but their spoken text often does.
+// contains one, but their spoken text often does. transcriptToText only
+// ever joins each segment's word text — it discards Recall's per-word
+// start_timestamp/end_timestamp entirely — so nothing here can recover a
+// per-turn timestamp; confirmed against several real stored transcripts,
+// none contain one in any form. Nothing is rendered for it as a result.
 function parseTranscript(raw: string): TranscriptTurn[] {
   return raw
     .split("\n")
@@ -38,9 +42,51 @@ function parseTranscript(raw: string): TranscriptTurn[] {
     .filter((turn) => turn.text.trim().length > 0);
 }
 
+// Wraps every case-insensitive occurrence of `query` in `text` with a
+// highlight span, preserving the original casing of the matched substring.
+function highlightMatches(text: string, query: string) {
+  const trimmed = query.trim();
+  if (!trimmed) return text;
+
+  const lowerText = text.toLowerCase();
+  const lowerQuery = trimmed.toLowerCase();
+  const parts: ReactNode[] = [];
+  let cursor = 0;
+  let matchAt = lowerText.indexOf(lowerQuery, cursor);
+  let key = 0;
+
+  while (matchAt !== -1) {
+    if (matchAt > cursor) parts.push(text.slice(cursor, matchAt));
+    parts.push(
+      <span key={key++} className="bg-yellow-100 text-slate-900">
+        {text.slice(matchAt, matchAt + trimmed.length)}
+      </span>
+    );
+    cursor = matchAt + trimmed.length;
+    matchAt = lowerText.indexOf(lowerQuery, cursor);
+  }
+  if (cursor < text.length) parts.push(text.slice(cursor));
+  return parts;
+}
+
 function TranscriptSection({ transcript }: { transcript: string | null }) {
   const [open, setOpen] = useState(false);
-  const turns = transcript ? parseTranscript(transcript) : [];
+  const [query, setQuery] = useState("");
+  const [copied, setCopied] = useState(false);
+  const allTurns = transcript ? parseTranscript(transcript) : [];
+
+  const trimmedQuery = query.trim();
+  const filteredTurns = trimmedQuery
+    ? allTurns.filter((turn) => `${turn.speaker} ${turn.text}`.toLowerCase().includes(trimmedQuery.toLowerCase()))
+    : allTurns;
+
+  function handleCopy() {
+    if (!transcript) return;
+    navigator.clipboard.writeText(transcript).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-5">
@@ -61,17 +107,46 @@ function TranscriptSection({ transcript }: { transcript: string | null }) {
       </button>
       {open && (
         <div className="mt-4">
-          {turns.length === 0 ? (
+          {allTurns.length === 0 ? (
             <p className="text-sm text-slate-400">Transcript non disponible</p>
           ) : (
-            <div className="max-h-[420px] overflow-y-auto space-y-3 pr-1">
-              {turns.map((turn, i) => (
-                <div key={i} className="flex gap-2 text-sm leading-relaxed">
-                  {turn.speaker && <span className="font-semibold text-slate-900 shrink-0">{turn.speaker}</span>}
-                  <span className="text-slate-700">{turn.text}</span>
+            <>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Rechercher dans le transcript…"
+                    className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-md text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
                 </div>
-              ))}
-            </div>
+                <button
+                  onClick={handleCopy}
+                  className="shrink-0 text-xs font-medium text-slate-600 border border-slate-200 rounded-md px-3 py-1.5 hover:bg-slate-50 transition-colors"
+                >
+                  {copied ? "✓ Copié" : "📋 Copier"}
+                </button>
+              </div>
+              <p className="text-xs text-slate-400 mb-3">
+                {trimmedQuery
+                  ? `${filteredTurns.length} résultat${filteredTurns.length !== 1 ? "s" : ""} trouvé${filteredTurns.length !== 1 ? "s" : ""}`
+                  : `${allTurns.length} tour${allTurns.length !== 1 ? "s" : ""} de parole`}
+              </p>
+              <div className="max-h-[500px] overflow-y-auto pr-1">
+                {filteredTurns.map((turn, i) => (
+                  <div key={i} className={`rounded-lg p-3 mb-2 ${i % 2 === 0 ? "bg-slate-50" : "bg-white"}`}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
+                        {turn.speaker || "Inconnu"}
+                      </span>
+                    </div>
+                    <p className="text-slate-700 text-sm leading-relaxed">{highlightMatches(turn.text, query)}</p>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       )}
@@ -414,6 +489,11 @@ export default function FeedbackDetailClient({
               readOnly && <ReadOnlyVideoStatus call={call} />
             )}
 
+            {/* Transcript — directement sous le bloc vidéo, repliée par
+                défaut. Rendue unconditionally of readOnly so a manager
+                viewing via /team/[commercialId]/calls/[callId] sees it too. */}
+            <TranscriptSection transcript={call.transcript} />
+
             {/* Scores par dimension — dynamique via le playbook_snapshot de
                 l'analyse (ou les 4 labels historiques si absent) */}
             {effectiveScores.length > 0 && (
@@ -675,11 +755,6 @@ export default function FeedbackDetailClient({
               )}
             </div>
             )}
-
-            {/* Transcript — collapsed by default, both readOnly and edit
-                modes render this same block so a manager viewing via
-                /team/[commercialId]/calls/[callId] sees it too. */}
-            <TranscriptSection transcript={call.transcript} />
           </div>
         )}
       </div>
