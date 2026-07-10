@@ -6,8 +6,8 @@ import { requireActiveUser } from "@/lib/api-auth";
 import { createRecallCalendarV2 } from "@/lib/recall";
 import { saveRecallCalendarId } from "@/lib/db";
 
-const SUCCESS_URL = "https://brief-precall.vercel.app/settings?recall=connected";
-const ERROR_URL = "https://brief-precall.vercel.app/settings?recall=error";
+const SUCCESS_URL = "https://brief-precall.vercel.app/settings/connexions?recall=connected";
+const ERROR_URL = "https://brief-precall.vercel.app/settings/connexions?recall=error";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");

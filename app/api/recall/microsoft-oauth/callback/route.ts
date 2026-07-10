@@ -6,8 +6,8 @@ import { requireActiveUser } from "@/lib/api-auth";
 import { createRecallCalendarV2Microsoft } from "@/lib/recall";
 import { saveRecallCalendarId } from "@/lib/db";
 
-const SUCCESS_URL = "https://brief-precall.vercel.app/settings?recall=connected";
-const ERROR_URL = "https://brief-precall.vercel.app/settings?recall=error";
+const SUCCESS_URL = "https://brief-precall.vercel.app/settings/connexions?recall=connected";
+const ERROR_URL = "https://brief-precall.vercel.app/settings/connexions?recall=error";
 const REDIRECT_URI = "https://brief-precall.vercel.app/api/recall/microsoft-oauth/callback";
 
 export async function GET(request: NextRequest) {

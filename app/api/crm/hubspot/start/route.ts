@@ -6,7 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
 import { getHubspotAuthUrl } from "@/lib/crm/hubspot";
 
-const ERROR_URL = "https://brief-precall.vercel.app/settings?crm=error";
+const ERROR_URL = "https://brief-precall.vercel.app/settings/crm?crm=error";
 
 export async function GET() {
   const session = await getServerSession(authOptions);

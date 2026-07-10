@@ -46,7 +46,7 @@ export default function NotificationSettingsClient({
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-10">
+    <div>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-slate-900">Notifications et distribution</h1>
         <p className="text-sm text-slate-500 mt-1">

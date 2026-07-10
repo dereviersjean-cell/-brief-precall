@@ -51,7 +51,7 @@ export default function AppSidebar() {
   const playbookActive = pathname.startsWith("/team/playbook");
   const emailTemplatesActive = pathname.startsWith("/team/email-templates");
   const teamActive = pathname.startsWith("/team") && !playbookActive && !emailTemplatesActive;
-  const settingsActive = pathname === "/settings";
+  const settingsActive = pathname.startsWith("/settings");
 
   const navItems: { href: string; label: string; icon: LucideIcon; active: boolean; badge?: number }[] = [
     { href: "/dashboard", label: "Brief", icon: FileText, active: briefActive },

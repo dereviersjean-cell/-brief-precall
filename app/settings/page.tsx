@@ -1,38 +1,10 @@
-import { Suspense } from "react";
-import { getUserProfile, getRecallCalendarId, getCrmTokens } from "@/lib/db";
-import { getEffectiveUserId } from "@/lib/session-user";
-import SettingsClient from "./SettingsClient";
+import { redirect } from "next/navigation";
 
-export default async function SettingsPage() {
-  const userId = await getEffectiveUserId();
-
-  let profile = null;
-  let recallConnected = false;
-  let pipedriveConnected = false;
-  let hubspotConnected = false;
-  if (userId) {
-    const [p, recallCalendarId, pipedriveTokens, hubspotTokens] = await Promise.all([
-      getUserProfile(userId),
-      getRecallCalendarId(userId),
-      getCrmTokens(userId, "pipedrive"),
-      getCrmTokens(userId, "hubspot"),
-    ]);
-    profile = p;
-    recallConnected = recallCalendarId !== null;
-    pipedriveConnected = pipedriveTokens !== null;
-    hubspotConnected = hubspotTokens !== null;
-  }
-
-  return (
-    <Suspense>
-      <SettingsClient
-        initialProductDescription={profile?.product_description ?? ""}
-        initialIcp={profile?.icp ?? ""}
-        initialCompanyName={profile?.company_name ?? ""}
-        recallConnected={recallConnected}
-        pipedriveConnected={pipedriveConnected}
-        hubspotConnected={hubspotConnected}
-      />
-    </Suspense>
-  );
+// /settings itself is now just a hub redirect — the actual content lives in
+// the category sub-pages (general/connexions/crm/notifications), navigated
+// via SettingsNav. Kept as a route (rather than removed) so existing links
+// to bare /settings — e.g. TaskEmailModal's "Connecter Gmail dans les
+// paramètres" — keep working.
+export default function SettingsPage() {
+  redirect("/settings/general");
 }

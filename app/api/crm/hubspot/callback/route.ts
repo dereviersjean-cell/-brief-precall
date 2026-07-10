@@ -6,8 +6,8 @@ import { requireActiveUser } from "@/lib/api-auth";
 import { exchangeHubspotCode } from "@/lib/crm/hubspot";
 import { saveCrmTokens } from "@/lib/db";
 
-const SUCCESS_URL = "https://brief-precall.vercel.app/settings?crm=hubspot_connected";
-const ERROR_URL = "https://brief-precall.vercel.app/settings?crm=error";
+const SUCCESS_URL = "https://brief-precall.vercel.app/settings/crm?crm=hubspot_connected";
+const ERROR_URL = "https://brief-precall.vercel.app/settings/crm?crm=error";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
