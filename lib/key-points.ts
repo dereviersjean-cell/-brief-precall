@@ -21,6 +21,18 @@ Règles :
 - Sois fidèle au transcript.
 - Longueur cible : 250 à 400 mots.`;
 
+// Claude's own output sometimes repeats the "💡 Points clés" heading the
+// system prompt above asks for, as a markdown title on the first line —
+// duplicating KeyPointsBlock.tsx's own <h2> in the rendered page. Strips it
+// (plus any blank lines right after) when present. Matches # or ##, the
+// emoji being optional, singular/plural "Point(s)", and "clés"/"cles" —
+// a no-op (returns the text unchanged) when the pattern isn't found.
+const DUPLICATE_TITLE_RE = /^#{1,6}\s*💡?\s*Points?\s+cl[ée]s\s*\n+/iu;
+
+function stripDuplicateTitle(text: string): string {
+  return text.replace(DUPLICATE_TITLE_RE, "").trimStart();
+}
+
 // Plain text out (not JSON, unlike analyzeCall) — cached verbatim in
 // call_analysis.key_points by the caller. Never throws: a failed generation
 // must not break the page that requested it, just leave key_points unset so
@@ -35,7 +47,8 @@ export async function generateKeyPoints(transcript: string): Promise<string | nu
       messages: [{ role: "user", content: transcript }],
     });
     const textBlock = message.content.find((b) => b.type === "text");
-    return textBlock?.type === "text" ? textBlock.text.trim() : null;
+    if (textBlock?.type !== "text") return null;
+    return stripDuplicateTitle(textBlock.text.trim());
   } catch (err) {
     console.error("[key-points] generateKeyPoints failed:", err instanceof Error ? err.message : String(err));
     return null;

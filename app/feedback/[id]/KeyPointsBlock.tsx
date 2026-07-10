@@ -1,6 +1,37 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ComponentProps } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+// remark-gfm isn't part of the literal component list requested, but
+// generateKeyPoints' own output has been observed using a GFM pipe-table for
+// "Prochaines étapes" (the prompt doesn't mandate a format there) — without
+// it, react-markdown (CommonMark only) renders that as literal "| a | b |"
+// text, i.e. the same "raw markdown syntax on screen" bug this whole change
+// exists to fix. table/thead/tbody/tr/th/td get minimal matching styling
+// below for the same reason.
+const markdownComponents: ComponentProps<typeof ReactMarkdown>["components"] = {
+  h1: ({ children }) => <h2 className="text-base font-semibold text-slate-900 mt-4 mb-2 first:mt-0">{children}</h2>,
+  h2: ({ children }) => <h2 className="text-base font-semibold text-slate-900 mt-4 mb-2 first:mt-0">{children}</h2>,
+  h3: ({ children }) => <h3 className="text-sm font-semibold text-slate-900 mt-3 mb-1.5 first:mt-0">{children}</h3>,
+  p: ({ children }) => <p className="text-slate-700 text-sm leading-relaxed my-2">{children}</p>,
+  ul: ({ children }) => <ul className="list-disc list-inside my-2 text-slate-700 text-sm space-y-0.5">{children}</ul>,
+  ol: ({ children }) => <ol className="list-decimal list-inside my-2 text-slate-700 text-sm space-y-0.5">{children}</ol>,
+  li: ({ children }) => <li className="my-1">{children}</li>,
+  strong: ({ children }) => <strong className="font-semibold text-slate-900">{children}</strong>,
+  hr: () => <hr className="my-6 border-slate-200" />,
+  table: ({ children }) => (
+    <div className="overflow-x-auto my-3">
+      <table className="min-w-full text-sm border-collapse">{children}</table>
+    </div>
+  ),
+  thead: ({ children }) => <thead className="border-b border-slate-200">{children}</thead>,
+  th: ({ children }) => (
+    <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-2 py-1.5">{children}</th>
+  ),
+  td: ({ children }) => <td className="text-slate-700 px-2 py-1.5 border-t border-slate-100">{children}</td>,
+};
 
 function Spinner({ className = "w-4 h-4" }: { className?: string }) {
   return (
@@ -72,7 +103,9 @@ export default function KeyPointsBlock({
       )}
 
       {status === "idle" && keyPoints && (
-        <div className="whitespace-pre-wrap text-slate-700 text-sm leading-relaxed">{keyPoints}</div>
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+          {keyPoints}
+        </ReactMarkdown>
       )}
     </div>
   );
