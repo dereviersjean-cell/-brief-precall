@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useState, useEffect, type ReactNode } from "react";
-import { Settings, Search } from "lucide-react";
+import { Settings, Search, Pencil } from "lucide-react";
 import type { CallWithAnalysis, EmailTemplate } from "@/lib/db";
+import type { ConversationAnalytics } from "@/lib/transcript-analytics";
 import { getEffectiveScoresForDisplay } from "@/lib/playbook-scores";
 import { formatContactDisplayName } from "@/lib/format";
 import TemplatePromptSettingsModal from "@/app/components/TemplatePromptSettingsModal";
+import ConversationAnalyticsBlock from "./ConversationAnalyticsBlock";
 
 const DEFAULT_PROMPT_VALUE = "__default__";
 
@@ -69,23 +71,116 @@ function highlightMatches(text: string, query: string) {
   return parts;
 }
 
-function TranscriptSection({ transcript }: { transcript: string | null }) {
+type ResolvedTurn = {
+  // null for turns derived from the legacy flat-text fallback — there's no
+  // stable id to key an edit against there, so no pencil icon for those.
+  speakerId: string | null;
+  displayName: string;
+  text: string;
+  startMs: number | null;
+};
+
+// transcript_json (sous-étape A) takes priority when present — it carries
+// real per-turn timestamps and a stable speaker_id the user can rename via
+// the pencil icon. Historical calls ingested before it existed have
+// transcript_json: null, so this falls back to parsing the flat `transcript`
+// column instead (no timestamps possible there — see parseTranscript above).
+function resolveTurns(call: CallWithAnalysis): ResolvedTurn[] {
+  if (call.transcript_json && call.transcript_json.turns.length > 0) {
+    return call.transcript_json.turns.map((t) => ({
+      speakerId: t.speaker_id,
+      displayName: call.speaker_names_override[t.speaker_id] || t.speaker_id,
+      text: t.text,
+      startMs: t.start_ms,
+    }));
+  }
+  if (call.transcript) {
+    return parseTranscript(call.transcript).map((t) => ({
+      speakerId: null,
+      displayName: t.speaker || "Inconnu",
+      text: t.text,
+      startMs: null,
+    }));
+  }
+  return [];
+}
+
+const SPEAKER_TIP_DISMISSED_KEY = "brief:transcript-speaker-tip-dismissed";
+
+function TranscriptSection({ call }: { call: CallWithAnalysis }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [copied, setCopied] = useState(false);
-  const allTurns = transcript ? parseTranscript(transcript) : [];
+  const [overrideMap, setOverrideMap] = useState(call.speaker_names_override);
+  const [editingSpeakerId, setEditingSpeakerId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState("");
+  const [showTip, setShowTip] = useState(false);
+
+  const hasTranscriptJson = !!call.transcript_json && call.transcript_json.turns.length > 0;
+
+  useEffect(() => {
+    if (!hasTranscriptJson) return;
+    setShowTip(window.localStorage.getItem(SPEAKER_TIP_DISMISSED_KEY) !== "1");
+  }, [hasTranscriptJson]);
+
+  function dismissTip() {
+    setShowTip(false);
+    window.localStorage.setItem(SPEAKER_TIP_DISMISSED_KEY, "1");
+  }
+
+  const allTurns = resolveTurns(call).map((t) =>
+    t.speakerId && overrideMap[t.speakerId] ? { ...t, displayName: overrideMap[t.speakerId] } : t
+  );
 
   const trimmedQuery = query.trim();
   const filteredTurns = trimmedQuery
-    ? allTurns.filter((turn) => `${turn.speaker} ${turn.text}`.toLowerCase().includes(trimmedQuery.toLowerCase()))
+    ? allTurns.filter((turn) => `${turn.displayName} ${turn.text}`.toLowerCase().includes(trimmedQuery.toLowerCase()))
     : allTurns;
 
   function handleCopy() {
-    if (!transcript) return;
-    navigator.clipboard.writeText(transcript).then(() => {
+    // Built from the resolved turns (not the raw call.transcript) when
+    // available — the flat column always says "Unknown" per turn today
+    // (transcriptToText doesn't read the real Recall field, see lib/recall.ts),
+    // so copying resolved names is strictly more useful. Falls back to the
+    // raw flat text for historical calls with no transcript_json.
+    const text = hasTranscriptJson
+      ? allTurns.map((t) => `${t.displayName}: ${t.text}`).join("\n")
+      : call.transcript;
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
+  }
+
+  function startEditing(turn: ResolvedTurn) {
+    if (!turn.speakerId) return;
+    setEditingSpeakerId(turn.speakerId);
+    setEditDraft(overrideMap[turn.speakerId] ?? turn.speakerId);
+  }
+
+  async function commitEdit() {
+    const speakerId = editingSpeakerId;
+    setEditingSpeakerId(null);
+    if (!speakerId) return;
+    const trimmed = editDraft.trim();
+    if (!trimmed || trimmed === overrideMap[speakerId]) return;
+
+    const previous = overrideMap;
+    const next = { ...overrideMap, [speakerId]: trimmed };
+    setOverrideMap(next);
+    try {
+      const res = await fetch(`/api/feedback/${call.id}/speaker-names`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ speaker_names: next }),
+      });
+      if (!res.ok) throw new Error();
+      const data = (await res.json()) as { speaker_names: Record<string, string> };
+      setOverrideMap(data.speaker_names);
+    } catch {
+      setOverrideMap(previous);
+    }
   }
 
   return (
@@ -129,6 +224,14 @@ function TranscriptSection({ transcript }: { transcript: string | null }) {
                   {copied ? "✓ Copié" : "📋 Copier"}
                 </button>
               </div>
+              {showTip && hasTranscriptJson && (
+                <p className="flex items-center justify-between gap-2 text-xs text-indigo-600 bg-indigo-50 rounded-md px-2.5 py-1.5 mb-3">
+                  <span>Cliquez sur un nom pour le corriger</span>
+                  <button onClick={dismissTip} className="text-indigo-400 hover:text-indigo-600 shrink-0">
+                    ✕
+                  </button>
+                </p>
+              )}
               <p className="text-xs text-slate-400 mb-3">
                 {trimmedQuery
                   ? `${filteredTurns.length} résultat${filteredTurns.length !== 1 ? "s" : ""} trouvé${filteredTurns.length !== 1 ? "s" : ""}`
@@ -137,10 +240,40 @@ function TranscriptSection({ transcript }: { transcript: string | null }) {
               <div className="max-h-[500px] overflow-y-auto pr-1">
                 {filteredTurns.map((turn, i) => (
                   <div key={i} className={`rounded-lg p-3 mb-2 ${i % 2 === 0 ? "bg-slate-50" : "bg-white"}`}>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
-                        {turn.speaker || "Inconnu"}
-                      </span>
+                    <div className="flex items-center justify-between mb-1.5 gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        {editingSpeakerId === turn.speakerId ? (
+                          <input
+                            autoFocus
+                            value={editDraft}
+                            onChange={(e) => setEditDraft(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") commitEdit();
+                              if (e.key === "Escape") setEditingSpeakerId(null);
+                            }}
+                            onBlur={commitEdit}
+                            className="text-xs font-semibold text-slate-700 uppercase tracking-wide border border-indigo-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                        ) : (
+                          <>
+                            <span className="text-xs font-semibold text-slate-700 uppercase tracking-wide truncate">
+                              {turn.displayName}
+                            </span>
+                            {turn.speakerId && (
+                              <button
+                                onClick={() => startEditing(turn)}
+                                title="Corriger le nom du speaker"
+                                className="shrink-0 text-slate-300 hover:text-slate-500 transition-colors"
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                      {turn.startMs !== null && (
+                        <span className="text-xs text-slate-400 shrink-0">{formatDuration(Math.floor(turn.startMs / 1000))}</span>
+                      )}
                     </div>
                     <p className="text-slate-700 text-sm leading-relaxed">{highlightMatches(turn.text, query)}</p>
                   </div>
@@ -260,11 +393,13 @@ function ReadOnlyEmailBlock({ call }: { call: CallWithAnalysis }) {
 
 export default function FeedbackDetailClient({
   call,
+  analytics,
   readOnly = false,
   backHref = "/feedback",
   backLabel = "Retour aux feedbacks",
 }: {
   call: CallWithAnalysis;
+  analytics: ConversationAnalytics | null;
   readOnly?: boolean;
   backHref?: string;
   backLabel?: string;
@@ -489,10 +624,18 @@ export default function FeedbackDetailClient({
               readOnly && <ReadOnlyVideoStatus call={call} />
             )}
 
+            {/* Analytics — above the transcript, below the video (sous-étape
+                B). analytics is null for any call without transcript_json
+                (historical calls, or transcript_json with <5 turns) — the
+                component itself renders nothing in that case. */}
+            <ConversationAnalyticsBlock analytics={analytics} />
+
             {/* Transcript — directement sous le bloc vidéo, repliée par
                 défaut. Rendue unconditionally of readOnly so a manager
-                viewing via /team/[commercialId]/calls/[callId] sees it too. */}
-            <TranscriptSection transcript={call.transcript} />
+                viewing via /team/[commercialId]/calls/[callId] sees it too
+                (speaker-name editing included — updateCallSpeakerNames
+                accepts owner or linked manager). */}
+            <TranscriptSection call={call} />
 
             {/* Scores par dimension — dynamique via le playbook_snapshot de
                 l'analyse (ou les 4 labels historiques si absent) */}

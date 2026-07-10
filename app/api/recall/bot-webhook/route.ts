@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Webhook } from "svix";
-import { createAsyncTranscript, getBotInfo, getTranscriptContent, transcriptToText } from "@/lib/recall";
-import { createCall, getUserProfile, saveCallAnalysis, getGoogleTokens, updateCallFollowUp, getContact, createContact, updateContact, generateTasksFromTemplates, getPlaybookSnapshotForUser } from "@/lib/db";
+import { createAsyncTranscript, getBotInfo, getTranscriptContent, transcriptToText, buildTranscriptJson, resolveSpeakerNames } from "@/lib/recall";
+import { createCall, getUserProfile, getUserName, getUserEmail, saveCallAnalysis, getGoogleTokens, updateCallFollowUp, getContact, createContact, updateContact, generateTasksFromTemplates, getPlaybookSnapshotForUser } from "@/lib/db";
 import { analyzeCall } from "@/lib/call-analysis";
 import { refreshGoogleAccessToken, getEmailHistory } from "@/lib/gmail";
 import { generateFollowUpEmail } from "@/lib/email-followup";
@@ -140,6 +140,35 @@ export async function POST(request: NextRequest) {
             }
           }
 
+          // Step 1c — normalize transcript_json + resolve an initial
+          // speaker_names_override (sous-étape A). Non-blocking: neither must
+          // ever prevent the call row itself from being saved — transcript_json
+          // stays null and speaker_names_override stays {} on failure, same as
+          // for any historical call ingested before this existed.
+          let transcriptJson: ReturnType<typeof buildTranscriptJson> | null = null;
+          let speakerNamesOverride: Record<string, string> = {};
+          try {
+            transcriptJson = buildTranscriptJson(content);
+            const [commercialName, commercialEmail] = await Promise.all([getUserName(userId), getUserEmail(userId)]);
+            speakerNamesOverride = resolveSpeakerNames(content, {
+              commercialName,
+              commercialEmail,
+              contactEmail,
+              contactCompanyName: companyName,
+            });
+            console.log(
+              "[bot-webhook] transcript_json turns:",
+              transcriptJson.turns.length,
+              "| speaker_names_override:",
+              JSON.stringify(speakerNamesOverride)
+            );
+          } catch (err) {
+            console.error(
+              "[bot-webhook] buildTranscriptJson/resolveSpeakerNames failed (non-blocking):",
+              err instanceof Error ? err.message : String(err)
+            );
+          }
+
           // Step 2 — save call
           const call = await createCall({
             user_id: userId,
@@ -155,6 +184,8 @@ export async function POST(request: NextRequest) {
             recall_bot_id: botId ?? null,
             recording_id: recordingId ?? null,
             transcript_id: transcriptId,
+            transcript_json: transcriptJson,
+            speaker_names_override: speakerNamesOverride,
           });
           console.log("[bot-webhook] call created:", call.id);
 

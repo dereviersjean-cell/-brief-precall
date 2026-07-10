@@ -1,4 +1,5 @@
-import { getCallWithAnalysis, getCallWithAnalysisForManager, getUserRole } from "@/lib/db";
+import { getCallWithAnalysis, getCallWithAnalysisForManager, getUserRole, getUserName } from "@/lib/db";
+import { computeConversationAnalytics } from "@/lib/transcript-analytics";
 import { getEffectiveUserId } from "@/lib/session-user";
 import { notFound } from "next/navigation";
 import FeedbackDetailClient from "./FeedbackDetailClient";
@@ -25,5 +26,12 @@ export default async function FeedbackDetailPage({
 
   if (!call) notFound();
 
-  return <FeedbackDetailClient call={call} />;
+  // call.user_id is always the actual owner (correct even when a manager is
+  // viewing) — computeConversationAnalytics needs the commercial's real name
+  // to identify them among the transcript's speakers.
+  const analytics = call.transcript_json
+    ? computeConversationAnalytics(call.transcript_json, call.speaker_names_override, await getUserName(call.user_id))
+    : null;
+
+  return <FeedbackDetailClient call={call} analytics={analytics} />;
 }

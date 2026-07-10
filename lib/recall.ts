@@ -1,3 +1,5 @@
+import { formatContactDisplayName } from "./format";
+
 const RECALL_BASE_URL = "https://eu-central-1.recall.ai/api/v1";
 
 function recallHeaders(): HeadersInit {
@@ -256,6 +258,12 @@ export async function getTranscriptContent(transcriptId: string): Promise<unknow
   return contentRes.json();
 }
 
+// NOTE: the real Recall segment shape (verified against live transcripts)
+// has no top-level `speaker` string — it's `segment.participant.name`. The
+// cast below always misses, so every call in production falls back to
+// "Unknown" for every turn. Left as-is per instructions (kept only for
+// rétrocompat of the flat-text column); buildTranscriptJson/
+// resolveSpeakerNames below use the real `participant` shape instead.
 export function transcriptToText(content: unknown): string {
   if (!Array.isArray(content)) return typeof content === "string" ? content : JSON.stringify(content);
   return content
@@ -267,6 +275,188 @@ export function transcriptToText(content: unknown): string {
     })
     .filter(Boolean)
     .join("\n");
+}
+
+// Real Recall transcript segment shape (one per contiguous chunk Recall
+// produced, not necessarily one per full speaker turn — the same speaker
+// can appear across several consecutive segments, hence the merge step in
+// buildTranscriptJson below). Verified against live transcript downloads.
+type RecallTranscriptWord = {
+  text?: string;
+  start_timestamp?: { relative?: number | null } | null;
+  end_timestamp?: { relative?: number | null } | null;
+};
+type RecallTranscriptParticipant = {
+  id?: number | string | null;
+  name?: string | null;
+  email?: string | null;
+};
+type RecallTranscriptSegment = {
+  participant?: RecallTranscriptParticipant | null;
+  words?: RecallTranscriptWord[];
+};
+
+export type TranscriptJson = {
+  turns: Array<{
+    speaker_id: string;
+    speaker_name_raw: string | null;
+    start_ms: number;
+    end_ms: number;
+    text: string;
+  }>;
+  total_duration_ms: number;
+};
+
+// Normalizes a raw Recall transcript into speaker-turns with millisecond
+// timestamps, for calls.transcript_json. A "turn" is a run of consecutive
+// segments from the same participant merged into one — Recall itself splits
+// a single speaker's uninterrupted talking into several segments (~27% of
+// segments in a real sample were a same-speaker continuation of the
+// previous one), so segment-per-turn would fragment the transcript far more
+// than an actual conversation would.
+export function buildTranscriptJson(recallTranscript: unknown): TranscriptJson {
+  if (!Array.isArray(recallTranscript)) return { turns: [], total_duration_ms: 0 };
+
+  type RawEntry = { speakerId: string; speakerNameRaw: string | null; startMs: number; endMs: number; text: string };
+
+  const rawEntries: RawEntry[] = [];
+  for (const segment of recallTranscript as RecallTranscriptSegment[]) {
+    const words = segment.words ?? [];
+    const text = words.map((w) => w.text ?? "").join(" ").trim();
+    if (!text) continue;
+
+    const participant = segment.participant ?? null;
+    const speakerId = participant?.id != null ? String(participant.id) : "unknown";
+    const startMs = Math.round((words[0]?.start_timestamp?.relative ?? 0) * 1000);
+    const lastWordStartSeconds = (words[words.length - 1]?.end_timestamp?.relative ?? startMs / 1000) as number;
+    const endMs = Math.max(startMs, Math.round(lastWordStartSeconds * 1000));
+
+    rawEntries.push({
+      speakerId,
+      speakerNameRaw: participant?.name?.trim() || null,
+      startMs,
+      endMs,
+      text,
+    });
+  }
+
+  const turns: TranscriptJson["turns"] = [];
+  for (const entry of rawEntries) {
+    const last = turns[turns.length - 1];
+    if (last && last.speaker_id === entry.speakerId) {
+      last.text += ` ${entry.text}`;
+      last.end_ms = entry.endMs;
+      last.speaker_name_raw = last.speaker_name_raw ?? entry.speakerNameRaw;
+    } else {
+      turns.push({
+        speaker_id: entry.speakerId,
+        speaker_name_raw: entry.speakerNameRaw,
+        start_ms: entry.startMs,
+        end_ms: entry.endMs,
+        text: entry.text,
+      });
+    }
+  }
+
+  const total_duration_ms = turns.reduce((max, t) => Math.max(max, t.end_ms), 0);
+  return { turns, total_duration_ms };
+}
+
+export type SpeakerResolutionContext = {
+  commercialName: string | null;
+  commercialEmail: string | null;
+  contactEmail: string | null;
+  contactCompanyName: string | null;
+};
+
+// Resolves a { speaker_id: display_name } mapping once at ingestion, stored
+// as the initial calls.speaker_names_override (the user can edit it
+// afterwards; this never re-runs). Takes the RAW Recall transcript, not
+// TranscriptJson — participant.email (needed for the email-match heuristic
+// below) isn't part of the normalized TranscriptJson shape.
+//
+// Resolution order per speaker, most to least certain:
+//  1. Recall's own speaker_name_raw (participant.name) — reliable when
+//     present, e.g. sourced from Google Meet's own participant identity.
+//  2. participant.email matched against the commercial's account email or
+//     the call's known contact_email — deterministic, so tried before any
+//     guess. (Originally specified as a match against
+//     scheduled_meetings.raw.attendees[].email, but that data is never
+//     persisted — scheduled_meetings only stores calendar_event_id/
+//     event_title/event_start_at/bot_scheduled/ineligibility_reason, no
+//     attendees — confirmed against the live schema. Matching against
+//     calls.contact_email/company_name — already stored per-call — serves
+//     the same purpose without a new migration; per user decision.)
+//  3. Guess: the most-talkative still-unresolved speaker is plausibly the
+//     commercial (the bot is invited by them, and demo-style calls tend to
+//     skew toward the host talking more) — never certain, so only applied
+//     once, and only if the commercial hasn't already been identified by 1
+//     or 2 for a different speaker (otherwise two speakers could both end
+//     up labeled with the commercial's name).
+//  4. Whatever's left is genuinely unidentified.
+export function resolveSpeakerNames(
+  rawTranscript: unknown,
+  callContext: SpeakerResolutionContext
+): Record<string, string> {
+  if (!Array.isArray(rawTranscript)) return {};
+
+  type PerSpeaker = { speakerId: string; nameRaw: string | null; email: string | null; totalMs: number };
+  const bySpeaker = new Map<string, PerSpeaker>();
+
+  for (const segment of rawTranscript as RecallTranscriptSegment[]) {
+    const words = segment.words ?? [];
+    if (words.length === 0) continue;
+
+    const participant = segment.participant ?? null;
+    const speakerId = participant?.id != null ? String(participant.id) : "unknown";
+    const startMs = Math.round((words[0]?.start_timestamp?.relative ?? 0) * 1000);
+    const lastWordStartSeconds = (words[words.length - 1]?.end_timestamp?.relative ?? startMs / 1000) as number;
+    const endMs = Math.max(startMs, Math.round(lastWordStartSeconds * 1000));
+    const durationMs = endMs - startMs;
+
+    const existing = bySpeaker.get(speakerId);
+    if (existing) {
+      existing.totalMs += durationMs;
+      existing.nameRaw = existing.nameRaw ?? (participant?.name?.trim() || null);
+      existing.email = existing.email ?? (participant?.email?.trim() || null);
+    } else {
+      bySpeaker.set(speakerId, {
+        speakerId,
+        nameRaw: participant?.name?.trim() || null,
+        email: participant?.email?.trim() || null,
+        totalMs: durationMs,
+      });
+    }
+  }
+
+  const result: Record<string, string> = {};
+  const unresolved: PerSpeaker[] = [];
+
+  for (const speaker of bySpeaker.values()) {
+    if (speaker.nameRaw) {
+      result[speaker.speakerId] = speaker.nameRaw;
+    } else if (speaker.email && callContext.commercialEmail && speaker.email === callContext.commercialEmail) {
+      result[speaker.speakerId] = callContext.commercialName ?? "Commercial";
+    } else if (speaker.email && callContext.contactEmail && speaker.email === callContext.contactEmail) {
+      result[speaker.speakerId] = formatContactDisplayName(callContext.contactCompanyName, callContext.contactEmail);
+    } else {
+      unresolved.push(speaker);
+    }
+  }
+
+  const commercialAlreadyIdentified =
+    !!callContext.commercialName && Object.values(result).includes(callContext.commercialName);
+  if (callContext.commercialName && !commercialAlreadyIdentified && unresolved.length > 0) {
+    const topTalker = unresolved.reduce((a, b) => (b.totalMs > a.totalMs ? b : a));
+    result[topTalker.speakerId] = callContext.commercialName;
+    unresolved.splice(unresolved.indexOf(topTalker), 1);
+  }
+
+  for (const speaker of unresolved) {
+    result[speaker.speakerId] = "Participant non identifié";
+  }
+
+  return result;
 }
 
 export async function getBotInfo(botId: string): Promise<Record<string, unknown>> {

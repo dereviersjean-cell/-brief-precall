@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "./supabase";
 import { generateEmbedding } from "./embeddings";
 import { computeQuoteTotals } from "./quote-calc";
+import type { TranscriptJson } from "./recall";
 
 export async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 500): Promise<T> {
   let lastError: unknown;
@@ -238,6 +239,11 @@ export type CallData = {
   recording_id: string | null;
   transcript_id: string | null;
   participant_count?: number | null;
+  // Optional — populated by the bot-webhook when buildTranscriptJson/
+  // resolveSpeakerNames succeed; absent (not merely null) for any call path
+  // that doesn't compute them, which upsert simply leaves untouched.
+  transcript_json?: TranscriptJson | null;
+  speaker_names_override?: Record<string, string>;
 };
 
 // Upsert, not a plain insert — the bot-webhook's transcript.done handler does
@@ -504,6 +510,12 @@ function normalizeCallAnalysis<T>(raw: T | T[] | null | undefined): T | null {
 
 export type CallWithAnalysis = {
   id: string;
+  // The call owner's id — always the actual commercial who took the call,
+  // even when fetched via getCallWithAnalysisForManager (which resolves its
+  // own `ownerId` internally but previously never returned it). Needed by
+  // page.tsx to resolve the commercial's name for computeConversationAnalytics
+  // regardless of whether the owner or a linked manager is viewing.
+  user_id: string;
   contact_email: string | null;
   company_name: string | null;
   created_at: string;
@@ -523,6 +535,14 @@ export type CallWithAnalysis = {
   // there): that function backs list views where pulling a full transcript
   // per row would bloat the payload for no reason.
   transcript: string | null;
+  // Normalized speaker-turns with ms timestamps (see buildTranscriptJson in
+  // lib/recall.ts) — null for calls ingested before sous-étape A, in which
+  // case the UI falls back to parsing `transcript` above with no timestamps.
+  transcript_json: TranscriptJson | null;
+  // { speaker_id: display_name }, seeded once at ingestion by
+  // resolveSpeakerNames and editable afterwards via updateCallSpeakerNames.
+  // {} (not null) for historical calls — nothing to override yet.
+  speaker_names_override: Record<string, string>;
 };
 
 export async function getCallsWithAnalysis(userId: string): Promise<CallWithAnalysis[]> {
@@ -539,6 +559,7 @@ export async function getCallsWithAnalysis(userId: string): Promise<CallWithAnal
     const analysis = normalizeCallAnalysis(row.call_analysis as CallAnalysisRow | CallAnalysisRow[] | null);
     return {
       id: row.id as string,
+      user_id: userId,
       contact_email: row.contact_email as string | null,
       company_name: row.company_name as string | null,
       created_at: row.created_at as string,
@@ -552,6 +573,8 @@ export async function getCallsWithAnalysis(userId: string): Promise<CallWithAnal
       recording_id: row.recording_id as string | null,
       analysis,
       transcript: null,
+      transcript_json: null,
+      speaker_names_override: {},
     };
   });
 }
@@ -563,7 +586,7 @@ export async function getCallWithAnalysis(
   const { data, error } = await supabaseAdmin
     .from("calls")
     .select(
-      "id, contact_email, company_name, created_at, started_at, status, duration_seconds, participant_count, follow_up_email, follow_up_sent_at, recall_bot_id, recording_id, transcript, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment, playbook_snapshot)"
+      "id, contact_email, company_name, created_at, started_at, status, duration_seconds, participant_count, follow_up_email, follow_up_sent_at, recall_bot_id, recording_id, transcript, transcript_json, speaker_names_override, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment, playbook_snapshot)"
     )
     .eq("id", callId)
     .eq("user_id", userId)
@@ -575,6 +598,7 @@ export async function getCallWithAnalysis(
   const analysis = normalizeCallAnalysis(row.call_analysis as CallAnalysisRow | CallAnalysisRow[] | null);
   return {
     id: row.id as string,
+    user_id: userId,
     contact_email: row.contact_email as string | null,
     company_name: row.company_name as string | null,
     created_at: row.created_at as string,
@@ -588,6 +612,8 @@ export async function getCallWithAnalysis(
     recording_id: row.recording_id as string | null,
     analysis,
     transcript: row.transcript as string | null,
+    transcript_json: row.transcript_json as TranscriptJson | null,
+    speaker_names_override: (row.speaker_names_override as Record<string, string> | null) ?? {},
   };
 }
 
@@ -614,6 +640,45 @@ export async function getCallWithAnalysisForManager(
   if (!link) return null;
 
   return getCallWithAnalysis(callId, ownerId);
+}
+
+// Owner-or-manager write path for calls.speaker_names_override — mirrors
+// getCallWithAnalysisForManager's own owner-then-manager-link check just
+// above (a plain existence check is enough here, no need for the full call
+// + analysis payload a read would return). Replaces the whole map rather
+// than merging keys: the caller (PATCH /api/feedback/[id]/speaker-names)
+// always sends the full up-to-date mapping from the client's in-memory
+// state, so a partial-merge here would just be redundant.
+export async function updateCallSpeakerNames(
+  callId: string,
+  userId: string,
+  speakerNames: Record<string, string>
+): Promise<void> {
+  const { data: call, error: callError } = await supabaseAdmin
+    .from("calls")
+    .select("user_id")
+    .eq("id", callId)
+    .maybeSingle();
+  if (callError) throw callError;
+  if (!call) throw new Error("Call introuvable.");
+  const ownerId = (call as { user_id: string }).user_id;
+
+  if (ownerId !== userId) {
+    const { data: link, error: linkError } = await supabaseAdmin
+      .from("manager_commercial_links")
+      .select("id")
+      .eq("manager_id", userId)
+      .eq("commercial_id", ownerId)
+      .maybeSingle();
+    if (linkError) throw linkError;
+    if (!link) throw new Error("Accès refusé à ce call.");
+  }
+
+  const { error } = await supabaseAdmin
+    .from("calls")
+    .update({ speaker_names_override: speakerNames })
+    .eq("id", callId);
+  if (error) throw error;
 }
 
 export type CallHistoryItem = {
