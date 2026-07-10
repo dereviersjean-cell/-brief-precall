@@ -12,7 +12,7 @@ import {
   getQuoteWithLines,
   getUserName,
   getUserProfile,
-  getEmailTemplateById,
+  getEffectiveEmailTemplateSystemPrompt,
   type TaskListItem,
 } from "@/lib/db";
 import { formatContactDisplayName } from "@/lib/format";
@@ -199,16 +199,18 @@ export async function POST(
   ]);
 
   // Optional template override (sous-étape B of Email Templates). Only ever
-  // trusts a template after getEmailTemplateById re-verifies it belongs to
-  // this user's org — an id for another org's template resolves to null and
-  // 404s here rather than silently falling back or leaking its prompt.
+  // trusts a template after getEffectiveEmailTemplateSystemPrompt re-verifies
+  // it belongs to this user's org — an id for another org's template
+  // resolves to null and 404s here rather than silently falling back or
+  // leaking its prompt. Prefers the caller's personal override over the
+  // template's own prompt when one exists (sous-étape C).
   let basePrompt: string;
   if (emailTemplateId) {
-    const template = await getEmailTemplateById(emailTemplateId, auth.userId);
-    if (!template) {
+    const effectivePrompt = await getEffectiveEmailTemplateSystemPrompt(auth.userId, emailTemplateId);
+    if (effectivePrompt === null) {
       return NextResponse.json({ error: "Template introuvable." }, { status: 404 });
     }
-    basePrompt = template.system_prompt;
+    basePrompt = effectivePrompt;
   } else {
     basePrompt = (await readPromptConfig("task_email_prompt")) ?? DEFAULT_TASK_EMAIL_PROMPT;
   }

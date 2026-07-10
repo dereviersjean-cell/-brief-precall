@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { Settings } from "lucide-react";
 import type { CallWithAnalysis, EmailTemplate } from "@/lib/db";
 import { getEffectiveScoresForDisplay } from "@/lib/playbook-scores";
 import { formatContactDisplayName } from "@/lib/format";
+import TemplatePromptSettingsModal from "@/app/components/TemplatePromptSettingsModal";
 
 const DEFAULT_PROMPT_VALUE = "__default__";
 
@@ -149,6 +151,7 @@ export default function FeedbackDetailClient({
   const [replySuggestion, setReplySuggestion] = useState<string | null>(null);
   const [generatingSuggestion, setGeneratingSuggestion] = useState(false);
   const [suggestionError, setSuggestionError] = useState<string | null>(null);
+  const [showPromptSettings, setShowPromptSettings] = useState(false);
 
   useEffect(() => {
     if (readOnly) return;
@@ -216,6 +219,8 @@ export default function FeedbackDetailClient({
       setGeneratingSuggestion(false);
     }
   }
+
+  const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
 
   const a = call.analysis;
   const globalScore = a?.scores?.global_score ?? null;
@@ -429,6 +434,15 @@ export default function FeedbackDetailClient({
                     </option>
                   ))}
                 </select>
+                {selectedTemplate && (
+                  <button
+                    onClick={() => setShowPromptSettings(true)}
+                    title="Personnaliser le prompt pour vos futures générations"
+                    className="shrink-0 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                  >
+                    <Settings className="w-4 h-4" />
+                  </button>
+                )}
               </div>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Email de suivi suggéré</h2>
@@ -608,6 +622,15 @@ export default function FeedbackDetailClient({
           </div>
         )}
       </div>
+
+      {showPromptSettings && selectedTemplate && (
+        <TemplatePromptSettingsModal
+          templateId={selectedTemplate.id}
+          templateName={selectedTemplate.name}
+          defaultSystemPrompt={selectedTemplate.system_prompt}
+          onClose={() => setShowPromptSettings(false)}
+        />
+      )}
     </div>
   );
 }

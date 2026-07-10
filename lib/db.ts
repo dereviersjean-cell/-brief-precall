@@ -3889,6 +3889,78 @@ export async function getEmailTemplateById(templateId: string, userId: string): 
   return data as EmailTemplate | null;
 }
 
+// A commercial's personal rewrite of an org template's prompt — never
+// touches the manager's row in email_templates, only ever read/written by
+// the user who owns it. UNIQUE (user_id, template_id) in the DB backs the
+// upsert below.
+export type EmailTemplateOverride = {
+  id: string;
+  user_id: string;
+  template_id: string;
+  system_prompt: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function getEmailTemplateOverride(userId: string, templateId: string): Promise<EmailTemplateOverride | null> {
+  const { data, error } = await supabaseAdmin
+    .from("email_template_overrides")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("template_id", templateId)
+    .maybeSingle();
+  if (error) throw error;
+  return data as EmailTemplateOverride | null;
+}
+
+// Security-critical (like getEmailTemplateById above, which this reuses):
+// re-derives the CALLER's org from userId and only writes the override if
+// the template belongs to that org — a template id for another
+// organization resolves to null here and throws, so a user can't attach
+// (or even confirm the existence of) an override on another org's template
+// by guessing an id.
+export async function upsertEmailTemplateOverride(userId: string, templateId: string, systemPrompt: string): Promise<void> {
+  const template = await getEmailTemplateById(templateId, userId);
+  if (!template) {
+    throw new Error("Template introuvable pour cette organisation.");
+  }
+
+  const { error } = await supabaseAdmin.from("email_template_overrides").upsert(
+    {
+      user_id: userId,
+      template_id: templateId,
+      system_prompt: systemPrompt,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id,template_id" }
+  );
+  if (error) throw error;
+}
+
+// Restores the "use the manager's prompt" behavior — a no-op (not an error)
+// if the user had no override to begin with.
+export async function deleteEmailTemplateOverride(userId: string, templateId: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("email_template_overrides")
+    .delete()
+    .eq("user_id", userId)
+    .eq("template_id", templateId);
+  if (error) throw error;
+}
+
+// The single read path generation routes use in place of a direct
+// template.system_prompt access — the user's personal override always wins
+// over the manager's template prompt when one exists. Returns null (rather
+// than throwing) when the template doesn't exist or isn't in the caller's
+// org, matching getEmailTemplateById's contract so route handlers can 404
+// the same way they already do.
+export async function getEffectiveEmailTemplateSystemPrompt(userId: string, templateId: string): Promise<string | null> {
+  const template = await getEmailTemplateById(templateId, userId);
+  if (!template) return null;
+  const override = await getEmailTemplateOverride(userId, templateId);
+  return override?.system_prompt ?? template.system_prompt;
+}
+
 type DefaultEmailTemplateSeed = {
   name: string;
   description: string;

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
-import { getCallReplyInfo, getEmailTemplateById } from "@/lib/db";
+import { getCallReplyInfo, getEffectiveEmailTemplateSystemPrompt } from "@/lib/db";
 import { checkThreadReply } from "@/lib/gmail";
 import { generateReplyToProspect, generateReplyToProspectWithTemplate } from "@/lib/email-followup";
 
@@ -65,16 +65,18 @@ export async function POST(request: NextRequest) {
   }
 
   // Optional template override (sous-étape B of Email Templates). Only ever
-  // trusts a template after getEmailTemplateById re-verifies it belongs to
-  // this user's org — an id for another org's template resolves to null and
-  // 404s here rather than silently falling back or leaking its prompt.
+  // trusts a template after getEffectiveEmailTemplateSystemPrompt
+  // re-verifies it belongs to this user's org — an id for another org's
+  // template resolves to null and 404s here rather than silently falling
+  // back or leaking its prompt. Prefers the caller's personal override over
+  // the template's own prompt when one exists (sous-étape C).
   let suggestion: string | null;
   if (emailTemplateId) {
-    const template = await getEmailTemplateById(emailTemplateId, userId);
-    if (!template) {
+    const effectivePrompt = await getEffectiveEmailTemplateSystemPrompt(userId, emailTemplateId);
+    if (effectivePrompt === null) {
       return NextResponse.json({ error: "Template introuvable." }, { status: 404 });
     }
-    suggestion = await generateReplyToProspectWithTemplate(prospectReplyBody, info.follow_up_email, template.system_prompt);
+    suggestion = await generateReplyToProspectWithTemplate(prospectReplyBody, info.follow_up_email, effectivePrompt);
   } else {
     suggestion = await generateReplyToProspect(prospectReplyBody, info.follow_up_email);
   }
