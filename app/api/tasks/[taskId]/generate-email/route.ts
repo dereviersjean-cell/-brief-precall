@@ -19,6 +19,26 @@ import { formatContactDisplayName } from "@/lib/format";
 
 export type GeneratedTaskEmail = { subject: string; body: string };
 
+// Appended to whichever prompt is used (default or an org's custom Email
+// Template) — never left to the prompt author to restate. A manager editing
+// a template on /team/email-templates writes content instructions only (e.g.
+// "structure the email with these 8 sections"); nothing there told them the
+// route parses the response as strict {subject, body} JSON, so a
+// content-only template made Claude correctly follow it and return prose,
+// breaking JSON.parse downstream. The 300-word cap keeps arbitrarily long
+// custom templates (e.g. one asking for 8 bulleted sections) inside the
+// max_tokens budget instead of truncating mid-JSON.
+const JSON_OUTPUT_CONTRACT = `
+
+---
+Quelles que soient les instructions ci-dessus sur le contenu à rédiger, le format de sortie est non négociable : tu dois retourner UNIQUEMENT un objet JSON strict, sans texte avant ni après, sans balises de code markdown :
+{
+  "subject": "...",
+  "body": "..."
+}
+Le "body" est le texte complet de l'email (texte brut, éventuellement avec des puces "-"), respectant les consignes de contenu ci-dessus. N'inclus aucun contenu hors de ces deux champs JSON.
+Reste concis : 300 mots maximum pour le "body", quel que soit le nombre de sections ou de points demandés ci-dessus — condense plutôt que de tout développer.`;
+
 function formatCurrency(n: number): string {
   return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(n);
 }
@@ -81,7 +101,53 @@ function extractJsonObject(raw: string): string {
   const start = cleaned.indexOf("{");
   const end = cleaned.lastIndexOf("}");
   if (start === -1 || end === -1 || end < start) return cleaned;
-  return cleaned.slice(start, end + 1);
+  return sanitizeJsonControlChars(cleaned.slice(start, end + 1));
+}
+
+// Claude intermittently writes a literal newline inside the "body" string
+// value instead of the escaped `\n` (same prompt, same context — reproduced
+// 1-in-3 runs locally against real data), which JSON.parse rejects outright
+// ("Bad control character in string literal"). Walks the string tracking
+// whether we're inside a JSON string (respecting `\"` and `\\` escapes) and
+// escapes any raw control character found there — a no-op when the model
+// already escaped correctly.
+function sanitizeJsonControlChars(text: string): string {
+  let out = "";
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (escaped) {
+        out += ch;
+        escaped = false;
+        continue;
+      }
+      if (ch === "\\") {
+        out += ch;
+        escaped = true;
+        continue;
+      }
+      if (ch === '"') {
+        out += ch;
+        inString = false;
+        continue;
+      }
+      const code = ch.charCodeAt(0);
+      if (code < 0x20) {
+        if (ch === "\n") out += "\\n";
+        else if (ch === "\r") out += "\\r";
+        else if (ch === "\t") out += "\\t";
+        else out += "\\u" + code.toString(16).padStart(4, "0");
+        continue;
+      }
+      out += ch;
+    } else {
+      out += ch;
+      if (ch === '"') inString = true;
+    }
+  }
+  return out;
 }
 
 function sanitizeEmail(raw: unknown, task: TaskListItem): GeneratedTaskEmail {
@@ -167,32 +233,33 @@ CONTEXTE SOURCE
 ${sourceContext}`;
 
   let raw = "";
+  let stopReason: string | null = null;
   try {
     const client = new Anthropic();
     const message = await client.messages.create({
       model: "claude-sonnet-4-6",
-      // Was 800 — too tight for some templates (e.g. Call 1 explicitly asks
-      // for 5-7 sentences covering 4 separate points), risking truncation
-      // mid-JSON on longer real-world call context. Matches the budget
-      // generateFollowUpEmail already uses for the same subject+body JSON shape.
       max_tokens: 1500,
-      system: basePrompt,
+      system: basePrompt + JSON_OUTPUT_CONTRACT,
       messages: [{ role: "user", content: contextPrompt }],
     });
 
+    stopReason = message.stop_reason;
     const textBlock = message.content.find((b) => b.type === "text");
     raw = textBlock?.type === "text" ? textBlock.text : "";
     const parsed = JSON.parse(extractJsonObject(raw)) as unknown;
 
     return NextResponse.json(sanitizeEmail(parsed, task));
   } catch (err) {
-    // Logs the raw Claude response, not just the parse error — without this,
-    // a JSON.parse failure showed up in Vercel logs as a bare "Unexpected
-    // token" with no way to tell whether Claude wrapped the JSON in prose,
-    // truncated mid-object, or something else entirely.
+    // Logs enough to diagnose a failure from Vercel logs alone, without a
+    // redeploy: which task/template triggered it, the raw Claude response
+    // (not just the parse error — "Unexpected token" alone can't distinguish
+    // prose-wrapped JSON from mid-object truncation), and stop_reason (a
+    // "max_tokens" cutoff needs a bigger budget or a tighter prompt; anything
+    // else means the model just didn't produce valid JSON).
     console.error(
       "[tasks/generate-email] generation failed:",
       err instanceof Error ? err.message : err,
+      `\ntaskId=${taskId} userId=${auth.userId} emailTemplateId=${emailTemplateId ?? "(default prompt)"} stop_reason=${stopReason ?? "(API call itself failed)"}`,
       raw ? `\nRaw Claude response:\n${raw}` : "(no response captured — API call itself failed)"
     );
     return NextResponse.json(
