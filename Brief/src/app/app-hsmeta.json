@@ -14,11 +14,10 @@
         "oauth",
         "crm.objects.deals.read",
         "crm.objects.contacts.read",
+        "crm.objects.contacts.write",
         "crm.objects.companies.read",
         "crm.objects.notes.read",
-        "crm.objects.notes.write",
-        "crm.objects.meetings.read",
-        "crm.objects.meetings.write"
+        "crm.objects.notes.write"
       ],
       "optionalScopes": [],
       "conditionallyRequiredScopes": []
