@@ -333,6 +333,7 @@ export async function POST(request: NextRequest) {
                   callId: call.id,
                   callTitle: companyName ? `Call avec ${companyName}` : "Votre call",
                   contactName: contactEmail ? formatContactDisplayName(companyName, contactEmail) : null,
+                  contactEmail,
                 }
               );
               console.log("[bot-webhook] dispatchCallAnalysis results:", results);

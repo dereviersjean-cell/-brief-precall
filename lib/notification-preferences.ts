@@ -23,7 +23,9 @@ export const CHANNEL_META: Record<NotificationChannel, { label: string; descript
   hubspot: {
     label: "HubSpot",
     description: "Note ajoutée sur le meeting du deal",
-    implemented: false,
+    implemented: true, // sous-étape C — voir lib/crm/hubspot.ts pour le
+    // scope OAuth (notes.write/meetings.write) qui nécessite une
+    // reconnexion pour les connexions existantes
   },
   pipedrive: {
     label: "Pipedrive",

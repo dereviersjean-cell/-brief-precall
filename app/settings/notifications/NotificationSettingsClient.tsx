@@ -33,6 +33,7 @@ export default function NotificationSettingsClient({
   // until we actually know, to avoid a flash of the warning for users who
   // already have write access.
   const [hasCalendarWriteAccess, setHasCalendarWriteAccess] = useState<boolean | null>(null);
+  const [hasHubspotWriteAccess, setHasHubspotWriteAccess] = useState<boolean | null>(null);
 
   useEffect(() => {
     fetch("/api/notification-preferences/calendar-status")
@@ -41,6 +42,13 @@ export default function NotificationSettingsClient({
         setHasCalendarWriteAccess(data?.hasWriteAccess ?? false);
       })
       .catch(() => setHasCalendarWriteAccess(false));
+
+    fetch("/api/notification-preferences/hubspot-status")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { hasWriteAccess?: boolean } | null) => {
+        setHasHubspotWriteAccess(data?.hasWriteAccess ?? false);
+      })
+      .catch(() => setHasHubspotWriteAccess(false));
   }, []);
 
   async function handleToggle(eventType: NotificationEventType, channel: NotificationChannel) {
@@ -99,6 +107,8 @@ export default function NotificationSettingsClient({
                 const disabled = !meta.implemented;
                 const showCalendarWarning =
                   channel === "calendar" && hasCalendarWriteAccess === false && (!disabled || enabled);
+                const showHubspotWarning =
+                  channel === "hubspot" && hasHubspotWriteAccess === false && (!disabled || enabled);
                 return (
                   <div key={channel} className="px-4 py-3.5">
                     <div className="flex items-center justify-between gap-4">
@@ -139,6 +149,20 @@ export default function NotificationSettingsClient({
                           >
                             Reconnecter Google Calendar
                           </Link>
+                        </div>
+                      </div>
+                    )}
+                    {showHubspotWarning && (
+                      <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-md text-amber-900 text-sm p-3 mt-3">
+                        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <p>Ce canal nécessite une reconnexion à HubSpot avec l&apos;autorisation d&apos;écriture (notes, meetings).</p>
+                          <a
+                            href="/api/crm/hubspot/start"
+                            className="inline-block mt-2 text-xs font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 transition-colors px-2.5 py-1 rounded-md"
+                          >
+                            Reconnecter HubSpot
+                          </a>
                         </div>
                       </div>
                     )}

@@ -2,6 +2,7 @@ import { getEffectiveChannelsForUser, getUserName, getUserEmail } from "./db";
 import { sendBriefPreCallEmail, sendCallAnalysisEmail } from "./email";
 import { appendBriefToCalendarEvent, hasCalendarWriteAccess } from "./google-calendar";
 import { formatBriefAsMarkdown, type GeneratedBriefJson } from "./brief-generator";
+import { hasHubSpotWriteAccess, htmlBodyForHubSpot, writeToHubSpotCascade } from "./crm/hubspot";
 
 // Same hardcoded-origin convention as lib/email.ts / lib/recall.ts.
 const APP_URL = "https://brief-precall.vercel.app";
@@ -26,14 +27,14 @@ export type BriefDispatchMeetingContext = {
   contactEmail: string | null;
 };
 
-export type BriefDispatchResult = { email: string | null; calendar: string | null };
+export type BriefDispatchResult = { email: string | null; calendar: string | null; hubspot: string | null };
 
 export async function dispatchBriefPreCall(
   userId: string,
   brief: GeneratedBriefJson,
   meetingContext: BriefDispatchMeetingContext
 ): Promise<BriefDispatchResult> {
-  const results: BriefDispatchResult = { email: null, calendar: null };
+  const results: BriefDispatchResult = { email: null, calendar: null, hubspot: null };
 
   const channels = await getEffectiveChannelsForUser(userId, "brief_precall");
   if (channels.length === 0) return results;
@@ -86,6 +87,42 @@ export async function dispatchBriefPreCall(
     }
   }
 
+  if (channels.includes("hubspot")) {
+    if (!meetingContext.contactEmail) {
+      results.hubspot = "error: no contactEmail for this meeting";
+    } else if (!(await hasHubSpotWriteAccess(userId))) {
+      // Same "expected, handled state" pattern as the calendar branch above —
+      // existing HubSpot connections predate the notes.write/meetings.write
+      // scopes (lib/crm/hubspot.ts SCOPES), the fix is reconnecting, not
+      // retrying.
+      console.warn(
+        `[dispatchBriefPreCall] Utilisateur ${userId} a activé le canal hubspot mais n'a pas le scope crm.objects.notes.write — brief non écrit dans HubSpot. Attend reconnexion.`
+      );
+      results.hubspot = "skipped: crm.objects.notes.write scope missing, user must reconnect HubSpot";
+    } else {
+      try {
+        const htmlBody = htmlBodyForHubSpot({
+          markdown: briefMarkdown,
+          linkUrl: briefUrl,
+          linkLabel: "Voir dans Brief",
+        });
+        const cascadeResult = await writeToHubSpotCascade(
+          userId,
+          meetingContext.contactEmail,
+          htmlBody,
+          meetingContext.calendarEventId ?? meetingContext.contactEmail,
+          meetingContext.meetingStartsAt ?? undefined
+        );
+        results.hubspot =
+          cascadeResult.target === "none"
+            ? "skipped: no matching meeting/deal/contact found in HubSpot"
+            : `sent: ${cascadeResult.target}${cascadeResult.id ? ` (${cascadeResult.id})` : ""}`;
+      } catch (err) {
+        results.hubspot = `error: ${err instanceof Error ? err.message : String(err)}`;
+      }
+    }
+  }
+
   return results;
 }
 
@@ -93,6 +130,7 @@ export type CallAnalysisDispatchContext = {
   callId: string;
   callTitle: string;
   contactName: string | null;
+  contactEmail: string | null;
 };
 
 export type CallAnalysisDispatchInput = {
@@ -101,17 +139,19 @@ export type CallAnalysisDispatchInput = {
   sentiment: string | null;
 };
 
-export type CallAnalysisDispatchResult = { email: string | null };
+export type CallAnalysisDispatchResult = { email: string | null; hubspot: string | null };
 
 export async function dispatchCallAnalysis(
   userId: string,
   callAnalysis: CallAnalysisDispatchInput,
   callContext: CallAnalysisDispatchContext
 ): Promise<CallAnalysisDispatchResult> {
-  const results: CallAnalysisDispatchResult = { email: null };
+  const results: CallAnalysisDispatchResult = { email: null, hubspot: null };
 
   const channels = await getEffectiveChannelsForUser(userId, "analyse_postcall");
   if (channels.length === 0) return results;
+
+  const analysisUrl = `${APP_URL}/feedback/${callContext.callId}`;
 
   if (channels.includes("email")) {
     try {
@@ -126,11 +166,39 @@ export async function dispatchCallAnalysis(
         keyPoints: callAnalysis.keyPoints,
         globalScore: callAnalysis.globalScore,
         sentiment: callAnalysis.sentiment,
-        analysisUrl: `${APP_URL}/feedback/${callContext.callId}`,
+        analysisUrl,
       });
       results.email = "sent";
     } catch (err) {
       results.email = `error: ${err instanceof Error ? err.message : String(err)}`;
+    }
+  }
+
+  if (channels.includes("hubspot")) {
+    if (!callContext.contactEmail) {
+      results.hubspot = "error: no contactEmail for this call";
+    } else if (!callAnalysis.keyPoints) {
+      results.hubspot = "skipped: no keyPoints generated for this call";
+    } else if (!(await hasHubSpotWriteAccess(userId))) {
+      console.warn(
+        `[dispatchCallAnalysis] Utilisateur ${userId} a activé le canal hubspot mais n'a pas le scope crm.objects.notes.write — analyse non écrite dans HubSpot. Attend reconnexion.`
+      );
+      results.hubspot = "skipped: crm.objects.notes.write scope missing, user must reconnect HubSpot";
+    } else {
+      try {
+        const htmlBody = htmlBodyForHubSpot({
+          markdown: callAnalysis.keyPoints,
+          linkUrl: analysisUrl,
+          linkLabel: "Voir l'analyse dans Brief",
+        });
+        const cascadeResult = await writeToHubSpotCascade(userId, callContext.contactEmail, htmlBody, callContext.callId);
+        results.hubspot =
+          cascadeResult.target === "none"
+            ? "skipped: no matching meeting/deal/contact found in HubSpot"
+            : `sent: ${cascadeResult.target}${cascadeResult.id ? ` (${cascadeResult.id})` : ""}`;
+      } catch (err) {
+        results.hubspot = `error: ${err instanceof Error ? err.message : String(err)}`;
+      }
     }
   }
 
