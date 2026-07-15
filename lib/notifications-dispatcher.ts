@@ -92,13 +92,13 @@ export async function dispatchBriefPreCall(
       results.hubspot = "error: no contactEmail for this meeting";
     } else if (!(await hasHubSpotWriteAccess(userId))) {
       // Same "expected, handled state" pattern as the calendar branch above —
-      // existing HubSpot connections predate the notes.write/meetings.write
+      // existing HubSpot connections predate the contacts.write/deals.write
       // scopes (lib/crm/hubspot.ts SCOPES), the fix is reconnecting, not
       // retrying.
       console.warn(
-        `[dispatchBriefPreCall] Utilisateur ${userId} a activé le canal hubspot mais n'a pas le scope crm.objects.notes.write — brief non écrit dans HubSpot. Attend reconnexion.`
+        `[dispatchBriefPreCall] Utilisateur ${userId} a activé le canal hubspot mais n'a pas le scope crm.objects.contacts.write — brief non écrit dans HubSpot. Attend reconnexion.`
       );
-      results.hubspot = "skipped: crm.objects.notes.write scope missing, user must reconnect HubSpot";
+      results.hubspot = "skipped: crm.objects.contacts.write scope missing, user must reconnect HubSpot";
     } else {
       try {
         const htmlBody = htmlBodyForHubSpot({
@@ -181,9 +181,9 @@ export async function dispatchCallAnalysis(
       results.hubspot = "skipped: no keyPoints generated for this call";
     } else if (!(await hasHubSpotWriteAccess(userId))) {
       console.warn(
-        `[dispatchCallAnalysis] Utilisateur ${userId} a activé le canal hubspot mais n'a pas le scope crm.objects.notes.write — analyse non écrite dans HubSpot. Attend reconnexion.`
+        `[dispatchCallAnalysis] Utilisateur ${userId} a activé le canal hubspot mais n'a pas le scope crm.objects.contacts.write — analyse non écrite dans HubSpot. Attend reconnexion.`
       );
-      results.hubspot = "skipped: crm.objects.notes.write scope missing, user must reconnect HubSpot";
+      results.hubspot = "skipped: crm.objects.contacts.write scope missing, user must reconnect HubSpot";
     } else {
       try {
         const htmlBody = htmlBodyForHubSpot({

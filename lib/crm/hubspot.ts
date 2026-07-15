@@ -2,8 +2,12 @@ import { marked, Renderer } from "marked";
 import { getCrmTokens, saveCrmTokens } from "../db";
 
 const REDIRECT_URI = "https://brief-precall.vercel.app/api/crm/hubspot/callback";
-// notes.{read,write} and meetings.{read,write} added for module Distribution
-// Flexible sous-étape C (write briefs/analyses into HubSpot). IMPORTANT: this
+// deals.write and contacts.write added for module Distribution Flexible
+// sous-étape C (write briefs/analyses into HubSpot). Notes and meetings are
+// engagements, not their own scoped objects — there's no crm.objects.notes.*
+// or crm.objects.meetings.* scope; access is gated by the parent object's
+// own read/write scope instead (contacts.write covers notes/meeting writes
+// on a contact, deals.write covers notes writes on a deal). IMPORTANT: this
 // only affects NEW connections — every user who already connected HubSpot
 // before this change has an access/refresh token pair scoped to the old,
 // read-only list. Upgrading the requested scope here does not retroactively
@@ -11,7 +15,7 @@ const REDIRECT_URI = "https://brief-precall.vercel.app/api/crm/hubspot/callback"
 // hasHubSpotWriteAccess below, and /api/crm/hubspot/start which they can
 // re-run) before writes will work for them.
 const SCOPES =
-  "oauth crm.objects.deals.read crm.objects.contacts.read crm.objects.companies.read crm.objects.notes.read crm.objects.notes.write crm.objects.meetings.read crm.objects.meetings.write";
+  "oauth crm.objects.deals.read crm.objects.deals.write crm.objects.contacts.read crm.objects.contacts.write crm.objects.companies.read";
 
 export function getHubspotAuthUrl(state: string): string {
   const params = new URLSearchParams({
@@ -205,7 +209,7 @@ export async function hasHubSpotWriteAccess(userId: string): Promise<boolean> {
       return false;
     }
     const data = (await res.json()) as { scopes?: string[] };
-    return (data.scopes ?? []).includes("crm.objects.notes.write");
+    return (data.scopes ?? []).includes("crm.objects.contacts.write");
   } catch (err) {
     console.error(`[hasHubSpotWriteAccess] failed for user ${userId}:`, err instanceof Error ? err.message : String(err));
     return false;
@@ -385,9 +389,10 @@ function mergeHubspotMeetingBody(existingBody: string, section: string): string 
 // crm/v4/associations/notes/meetings/labels, which returns an empty result
 // set, and independently corroborated by HubSpot's own developer
 // community). Notes can only attach to contacts/deals/companies/tickets.
-// Writing straight into the meeting's own hs_meeting_body property
-// (crm.objects.meetings.write) achieves the actual goal — the brief anchored
-// on that meeting, visible directly on its record — better than a
+// Writing straight into the meeting's own hs_meeting_body property (via
+// crm.objects.contacts.write — meetings are engagements attached to
+// contacts, not their own scoped object) achieves the actual goal — the
+// brief anchored on that meeting, visible directly on its record — better than a
 // disconnected note would have anyway.
 export async function appendToHubSpotMeetingBody(userId: string, meetingId: string, htmlBody: string): Promise<void> {
   return withHubspotAuth(userId, async (accessToken) => {
