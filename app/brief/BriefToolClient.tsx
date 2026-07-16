@@ -280,7 +280,7 @@ function EventsSkeleton() {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function DashboardClient() {
+export default function BriefToolClient() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const provider = session?.provider ?? "google";
@@ -381,7 +381,7 @@ export default function DashboardClient() {
               </p>
             </div>
             <button
-              onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+              onClick={() => signIn("google", { callbackUrl: "/brief" })}
               className="flex items-center gap-2 h-8 bg-gray-900 text-white text-sm font-medium px-3 rounded-md hover:bg-primary transition-colors duration-200 shrink-0"
             >
               Connecter Google
@@ -394,7 +394,7 @@ export default function DashboardClient() {
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-center justify-between gap-4">
             <p className="text-sm text-red-700">{calendarError}</p>
             <button
-              onClick={() => signIn(provider === "azure-ad" ? "azure-ad" : "google", { callbackUrl: "/dashboard" })}
+              onClick={() => signIn(provider === "azure-ad" ? "azure-ad" : "google", { callbackUrl: "/brief" })}
               className="text-sm font-medium text-red-700 border border-red-300 px-3 h-8 rounded-md hover:bg-red-100 transition-colors duration-200 shrink-0"
             >
               Reconnecter

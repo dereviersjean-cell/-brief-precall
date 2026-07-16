@@ -308,13 +308,13 @@ export default function BriefClient({
         <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
-              href="/dashboard"
+              href="/brief"
               className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
-              Dashboard
+              Brief
             </Link>
             <span className="text-slate-200">/</span>
             <span className="text-sm font-medium text-slate-900">{meeting.company}</span>

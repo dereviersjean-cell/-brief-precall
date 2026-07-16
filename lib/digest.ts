@@ -14,6 +14,7 @@ import {
 } from "./db";
 import { readPromptConfig, DEFAULT_DIGEST_COMMERCIAL_PROMPT, DEFAULT_DIGEST_MANAGER_PROMPT } from "./admin-config";
 import { sendCommercialWeeklyDigestEmail, sendManagerWeeklyDigestEmail } from "./email";
+import { mostRecentParisMonday } from "./paris-week";
 
 // Module Distribution Flexible, sous-étape 3 (digest hebdo). Entry point for
 // the two Inngest crons (lib/inngest-functions.ts) — one per timing value.
@@ -24,30 +25,10 @@ import { sendCommercialWeeklyDigestEmail, sendManagerWeeklyDigestEmail } from ".
 const APP_URL = "https://brief-precall.vercel.app";
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-// All commercials are FR-based (per CLAUDE.md), so week boundaries are
-// computed in Europe/Paris regardless of the server's own timezone (Vercel
-// runs in UTC). Approximated as UTC-midnight-on-the-Paris-calendar-date
-// rather than exact Paris-midnight — off by the UTC/Paris offset (1-2h at
-// the boundary), which is fine for a weekly digest, not a precision report.
-function parisDateParts(d: Date): { year: number; month: number; day: number; weekday: number } {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Paris",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    weekday: "short",
-  }).formatToParts(d);
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
-  const weekdayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-  return { year: Number(get("year")), month: Number(get("month")), day: Number(get("day")), weekday: weekdayMap[get("weekday")] ?? 0 };
-}
-
-function mostRecentParisMonday(now: Date): Date {
-  const { year, month, day, weekday } = parisDateParts(now);
-  const todayUTCMidnight = new Date(Date.UTC(year, month - 1, day));
-  const daysSinceMonday = weekday === 0 ? 6 : weekday - 1;
-  return new Date(todayUTCMidnight.getTime() - daysSinceMonday * ONE_DAY_MS);
-}
+// Week-boundary math (mostRecentParisMonday) lives in lib/paris-week.ts,
+// dependency-free on purpose — this file pulls in the Anthropic SDK below,
+// and app/dashboard's client components need the week math too (via
+// lib/dashboard.ts) without dragging that SDK into the browser bundle.
 
 export type DigestRange = { rangeStart: Date; rangeEnd: Date; prevRangeStart: Date; prevRangeEnd: Date };
 

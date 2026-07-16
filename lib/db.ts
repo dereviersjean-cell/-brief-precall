@@ -4646,3 +4646,41 @@ export async function deletePlaybookNotionConnection(organizationId: string): Pr
   const { error } = await supabaseAdmin.from("playbook_notion_connections").delete().eq("organization_id", organizationId);
   if (error) throw error;
 }
+
+// ─── Dashboard (page d'accueil) ─────────────────────────────────────────────
+//
+// Raw per-call scores since a given date, un-aggregated — bucketing by week
+// happens in lib/dashboard.ts (Europe/Paris week boundaries, same convention
+// as lib/digest.ts), which is business logic, not a query, so it doesn't
+// belong here.
+
+export type CallScorePoint = { created_at: string; global_score: number | null };
+
+export async function getRecentCallScores(userId: string, sinceISO: string): Promise<CallScorePoint[]> {
+  const { data, error } = await supabaseAdmin
+    .from("calls")
+    .select("created_at, call_analysis(scores)")
+    .eq("user_id", userId)
+    .gte("created_at", sinceISO)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return ((data ?? []) as Array<{ created_at: string; call_analysis: CallAnalysisRow | CallAnalysisRow[] | null }>).map((row) => ({
+    created_at: row.created_at,
+    global_score: normalizeCallAnalysis(row.call_analysis)?.scores?.global_score ?? null,
+  }));
+}
+
+export async function getRecentTeamCallScores(userIds: string[], sinceISO: string): Promise<CallScorePoint[]> {
+  if (userIds.length === 0) return [];
+  const { data, error } = await supabaseAdmin
+    .from("calls")
+    .select("created_at, call_analysis(scores)")
+    .in("user_id", userIds)
+    .gte("created_at", sinceISO)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return ((data ?? []) as Array<{ created_at: string; call_analysis: CallAnalysisRow | CallAnalysisRow[] | null }>).map((row) => ({
+    created_at: row.created_at,
+    global_score: normalizeCallAnalysis(row.call_analysis)?.scores?.global_score ?? null,
+  }));
+}

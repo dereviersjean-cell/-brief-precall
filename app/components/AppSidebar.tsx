@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { FileText, Video, History, FileCheck, CheckSquare, Bell, Users, Settings, LogOut, ChevronDown } from "lucide-react";
+import { LayoutDashboard, FileText, Video, History, FileCheck, CheckSquare, Bell, Users, Settings, LogOut, ChevronDown } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export default function AppSidebar() {
@@ -43,7 +43,8 @@ export default function AppSidebar() {
 
   const isManager = session?.role === "manager";
 
-  const briefActive = pathname === "/dashboard" || pathname.startsWith("/brief");
+  const dashboardActive = pathname === "/dashboard";
+  const briefActive = pathname.startsWith("/brief");
   const feedbackActive = pathname.startsWith("/feedback");
   const contactsActive = pathname.startsWith("/contacts");
   const quotesActive = pathname.startsWith("/quotes");
@@ -63,7 +64,8 @@ export default function AppSidebar() {
   }, [playbookActive, emailTemplatesActive]);
 
   const navItems: { href: string; label: string; icon: LucideIcon; active: boolean; badge?: number }[] = [
-    { href: "/dashboard", label: "Brief", icon: FileText, active: briefActive },
+    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, active: dashboardActive },
+    { href: "/brief", label: "Brief", icon: FileText, active: briefActive },
     { href: "/feedback", label: "Analyse rendez-vous", icon: Video, active: feedbackActive },
     { href: "/contacts", label: "Historique", icon: History, active: contactsActive },
     { href: "/quotes", label: "Devis", icon: FileCheck, active: quotesActive },
