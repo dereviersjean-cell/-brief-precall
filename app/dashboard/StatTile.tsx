@@ -28,6 +28,7 @@ const ACCENTS: Record<string, { bg: string; text: string }> = {
   emerald: { bg: "bg-emerald-50", text: "text-emerald-500" },
   amber: { bg: "bg-amber-50", text: "text-amber-500" },
   violet: { bg: "bg-violet-50", text: "text-violet-500" },
+  rose: { bg: "bg-red-50", text: "text-red-500" },
 };
 
 export default function StatTile({
