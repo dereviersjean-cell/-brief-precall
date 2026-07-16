@@ -14,6 +14,9 @@ import {
   CheckCircle2,
   BarChart3,
   Users,
+  Share2,
+  Mail,
+  BookOpen,
 } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -240,7 +243,7 @@ function Workflow() {
     {
       n: "03",
       title: "Après le RDV",
-      desc: "Analyse détaillée, tâches de suivi créées, brouillons emails prêts, devis pré-remplis à envoyer.",
+      desc: "Analyse détaillée poussée dans votre CRM ou sur Slack, tâches de suivi créées, brouillons emails prêts, devis pré-remplis à envoyer.",
     },
   ];
   return (
@@ -280,7 +283,7 @@ function Features() {
     {
       icon: Video,
       title: "Analyse automatique des calls",
-      desc: "Score de qualité par dimension, sentiment, points forts et axes d'amélioration.",
+      desc: "Score de qualité par dimension, sentiment, et relecture vidéo synchronisée au transcript pour revoir qui a dit quoi, exactement quand.",
     },
     {
       icon: History,
@@ -296,6 +299,21 @@ function Features() {
       icon: CheckSquare,
       title: "Tâches de suivi automatiques",
       desc: "Brief crée vos relances et brouillons emails au bon moment.",
+    },
+    {
+      icon: Share2,
+      title: "Distribution automatique",
+      desc: "Briefs et analyses poussés directement dans HubSpot, Pipedrive ou en message privé Slack — pas besoin de revenir sur Brief.",
+    },
+    {
+      icon: Mail,
+      title: "Digest hebdomadaire par IA",
+      desc: "Chaque semaine, un résumé généré par l'IA : ce qui a bien fonctionné, ce qui peut être amélioré, ce qu'il ne faut pas oublier — pour le commercial et pour son manager.",
+    },
+    {
+      icon: BookOpen,
+      title: "Playbook coaching sur-mesure",
+      desc: "Définissez vos propres critères d'évaluation par équipe, importés depuis un document ou directement depuis Notion.",
     },
     {
       icon: Users,
@@ -335,6 +353,8 @@ function Integrations() {
     "Microsoft 365",
     "HubSpot",
     "Pipedrive",
+    "Slack",
+    "Notion",
     "Gmail",
     "Outlook",
     "Google Meet",

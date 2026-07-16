@@ -98,7 +98,7 @@ export default async function LoginPage({
         <div className="relative h-full flex flex-col justify-between p-12 xl:p-16">
           <div className="max-w-md">
             <div className="italic-serif text-4xl xl:text-5xl leading-[1.05] text-ink">
-              Le copilote IA qui prépare, analyse et suit chaque rendez-vous commercial.
+              Le copilote IA qui prépare, analyse, distribue et suit chaque rendez-vous commercial.
             </div>
           </div>
 
