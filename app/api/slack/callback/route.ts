@@ -5,8 +5,8 @@ import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
 import { exchangeSlackCode, saveSlackConnection } from "@/lib/slack";
 
-const SUCCESS_URL = "https://brief-precall.vercel.app/settings/notifications?slack=connected";
-const ERROR_URL = "https://brief-precall.vercel.app/settings/notifications?slack=error";
+const SUCCESS_URL = "https://brief-precall.vercel.app/settings/connexions?slack=connected";
+const ERROR_URL = "https://brief-precall.vercel.app/settings/connexions?slack=error";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");

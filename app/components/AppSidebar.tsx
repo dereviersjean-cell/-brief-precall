@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { FileText, Video, History, FileCheck, CheckSquare, Users, Settings, LogOut } from "lucide-react";
+import { FileText, Video, History, FileCheck, CheckSquare, Bell, Users, Settings, LogOut } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export default function AppSidebar() {
@@ -48,6 +48,7 @@ export default function AppSidebar() {
   const contactsActive = pathname.startsWith("/contacts");
   const quotesActive = pathname.startsWith("/quotes");
   const tasksActive = pathname.startsWith("/tasks");
+  const notificationsActive = pathname.startsWith("/notifications");
   const playbookActive = pathname.startsWith("/team/playbook");
   const emailTemplatesActive = pathname.startsWith("/team/email-templates");
   const teamActive = pathname.startsWith("/team") && !playbookActive && !emailTemplatesActive;
@@ -59,6 +60,7 @@ export default function AppSidebar() {
     { href: "/contacts", label: "Historique", icon: History, active: contactsActive },
     { href: "/quotes", label: "Devis", icon: FileCheck, active: quotesActive },
     { href: "/tasks", label: "Tasks", icon: CheckSquare, active: tasksActive, badge: pendingTasksCount },
+    { href: "/notifications", label: "Notifications", icon: Bell, active: notificationsActive },
   ];
 
   return (
@@ -99,9 +101,9 @@ export default function AppSidebar() {
           );
         })}
 
-        {/* Équipe + Playbook (manager only) */}
+        {/* Équipe + sous-pages (manager only) */}
         {isManager && (
-          <>
+          <div>
             <Link
               href="/team"
               className={`relative flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
@@ -114,29 +116,29 @@ export default function AppSidebar() {
               <Users className="w-4 h-4 shrink-0" />
               Équipe
             </Link>
-            <Link
-              href="/team/playbook"
-              className={`relative flex items-center gap-2 pl-10 pr-3.5 py-2 rounded-lg text-sm transition-colors duration-200 ${
-                playbookActive ? "bg-[#F5F3FF] text-primary font-medium" : "text-gray-500 hover:bg-gray-50"
-              }`}
-            >
-              {playbookActive && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-sm bg-primary" />
-              )}
-              Playbook
-            </Link>
-            <Link
-              href="/team/email-templates"
-              className={`relative flex items-center gap-2 pl-10 pr-3.5 py-2 rounded-lg text-sm transition-colors duration-200 ${
-                emailTemplatesActive ? "bg-[#F5F3FF] text-primary font-medium" : "text-gray-500 hover:bg-gray-50"
-              }`}
-            >
-              {emailTemplatesActive && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-sm bg-primary" />
-              )}
-              Templates emails
-            </Link>
-          </>
+
+            {/* Nested under Équipe — indented to align under its icon, with a
+                connecting guide line so the grouping reads visually instead
+                of the sub-links floating disconnected from their parent. */}
+            <div className="ml-[22px] pl-4 border-l border-gray-200 mt-0.5 space-y-0.5">
+              <Link
+                href="/team/playbook"
+                className={`block px-2.5 py-1.5 rounded-md text-sm transition-colors duration-200 ${
+                  playbookActive ? "text-primary font-medium bg-[#F5F3FF]" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                }`}
+              >
+                Playbook
+              </Link>
+              <Link
+                href="/team/email-templates"
+                className={`block px-2.5 py-1.5 rounded-md text-sm transition-colors duration-200 ${
+                  emailTemplatesActive ? "text-primary font-medium bg-[#F5F3FF]" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                }`}
+              >
+                Templates emails
+              </Link>
+            </div>
+          </div>
         )}
       </nav>
 

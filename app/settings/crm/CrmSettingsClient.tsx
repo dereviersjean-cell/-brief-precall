@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import ClientReferencesSection from "./ClientReferencesSection";
 
 type Props = {
   pipedriveConnected: boolean;
@@ -241,6 +242,8 @@ export default function CrmSettingsClient({
           </div>
         </div>
       </div>
+
+      <ClientReferencesSection />
     </div>
   );
 }

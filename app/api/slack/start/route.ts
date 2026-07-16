@@ -6,7 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
 import { getSlackAuthUrl } from "@/lib/slack";
 
-const ERROR_URL = "https://brief-precall.vercel.app/settings/notifications?slack=error";
+const ERROR_URL = "https://brief-precall.vercel.app/settings/connexions?slack=error";
 
 export async function GET() {
   const session = await getServerSession(authOptions);

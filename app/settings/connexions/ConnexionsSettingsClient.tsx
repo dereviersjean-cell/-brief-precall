@@ -2,19 +2,25 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { useSession, signIn } from "next-auth/react";
 import { AlertTriangle } from "lucide-react";
 
 export default function ConnexionsSettingsClient({
   recallConnected,
   hasCalendarWriteAccess,
+  slackConnected: initialSlackConnected,
 }: {
   recallConnected: boolean;
   hasCalendarWriteAccess: boolean;
+  slackConnected: boolean;
 }) {
   const router = useRouter();
+  const { data: session } = useSession();
   const [disconnecting, setDisconnecting] = useState(false);
   const [reconnecting, setReconnecting] = useState(false);
+
+  const [slackConnected, setSlackConnected] = useState(initialSlackConnected);
+  const [slackDisconnecting, setSlackDisconnecting] = useState(false);
 
   const searchParams = useSearchParams();
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -31,14 +37,29 @@ export default function ConnexionsSettingsClient({
       const t = setTimeout(() => setToast(null), 5000);
       return () => clearTimeout(t);
     }
+    const slack = searchParams.get("slack");
+    if (slack === "connected") {
+      setSlackConnected(true);
+      setToast({ type: "success", message: "Slack connecté avec succès." });
+      const t = setTimeout(() => setToast(null), 5000);
+      return () => clearTimeout(t);
+    }
+    if (slack === "error") {
+      setToast({ type: "error", message: "La connexion à Slack a échoué, réessayez." });
+      const t = setTimeout(() => setToast(null), 5000);
+      return () => clearTimeout(t);
+    }
   }, [searchParams]);
+
+  const mailProvider = session?.provider === "google" ? "Google" : session?.provider === "azure-ad" ? "Microsoft" : null;
+  const hasGmailAccess = session?.provider === "google";
 
   return (
     <div>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-slate-900">Connexions</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Intégrations techniques permettant l&apos;enregistrement automatique de vos appels.
+          Vos comptes connectés — calendrier, email et Slack.
         </p>
       </div>
 
@@ -147,6 +168,86 @@ export default function ConnexionsSettingsClient({
           </div>
         </div>
       )}
+
+      {/* Compte Mail — read-only: this is the same account used to log into
+          Brief (lib/auth.ts), not a separate integration, so there's no
+          connect/disconnect action here (that's the sidebar's "Déconnexion").
+          Only Google sign-ins carry the gmail.readonly/gmail.send scopes —
+          Microsoft/Azure AD sign-ins only request Calendars.Read. */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mt-6">
+        <div className="px-6 py-5">
+          <h2 className="text-sm font-semibold text-slate-900 mb-1">Compte Mail</h2>
+          <p className="text-sm text-slate-500 mb-4">
+            Le compte utilisé pour vous connecter à Brief — envoi des emails de suivi et lecture des réponses.
+          </p>
+          {mailProvider ? (
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full">
+                <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-sm font-medium text-emerald-700">
+                  {mailProvider} — {session?.user?.email}
+                </span>
+              </div>
+              {!hasGmailAccess && (
+                <span className="text-xs text-slate-400">Pas d&apos;accès Gmail (connecté via Microsoft)</span>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-400">Chargement…</p>
+          )}
+        </div>
+      </div>
+
+      {/* Compte Slack — same connect/disconnect pattern as Pipedrive/HubSpot
+          in /settings/crm (CrmSettingsClient.tsx). Status fetched
+          server-side (page.tsx, via hasSlackConnection) so there's no
+          loading flash. */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mt-6">
+        <div className="px-6 py-5">
+          <h2 className="text-sm font-semibold text-slate-900 mb-1">Compte Slack</h2>
+          <p className="text-sm text-slate-500 mb-4">
+            Permet l&apos;envoi de vos briefs, analyses et digests en message privé sur Slack.
+          </p>
+          {slackConnected ? (
+            <div className="flex items-center gap-3">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full">
+                <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-sm font-medium text-emerald-700">Slack connecté</span>
+              </div>
+              <button
+                disabled={slackDisconnecting}
+                onClick={async () => {
+                  if (!window.confirm("Déconnecter Slack ? Le canal Slack sera désactivé dans vos notifications.")) return;
+                  setSlackDisconnecting(true);
+                  try {
+                    await fetch("/api/slack/disconnect", { method: "POST" });
+                    setSlackConnected(false);
+                  } finally {
+                    setSlackDisconnecting(false);
+                  }
+                }}
+                className="text-sm text-slate-400 hover:text-red-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {slackDisconnecting ? "Déconnexion…" : "Déconnecter"}
+              </button>
+            </div>
+          ) : (
+            <a
+              href="/api/slack/start"
+              className="inline-flex items-center gap-2 bg-[#4A154B] text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-[#3d1140] transition-colors"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8.845 14.522a2.528 2.528 0 0 1-2.521 2.521A2.528 2.528 0 0 1 3.803 14.522a2.528 2.528 0 0 1 2.521-2.521h2.521v2.521ZM10.108 14.522a2.528 2.528 0 0 1 2.521-2.521 2.528 2.528 0 0 1 2.521 2.521v6.31A2.528 2.528 0 0 1 12.629 23.35a2.528 2.528 0 0 1-2.521-2.521v-6.307ZM12.629 8.845a2.528 2.528 0 0 1-2.521-2.521A2.528 2.528 0 0 1 12.629 3.8a2.528 2.528 0 0 1 2.521 2.521v2.521h-2.521ZM12.629 10.108a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521h-6.31a2.528 2.528 0 0 1-2.52-2.521 2.528 2.528 0 0 1 2.52-2.521h6.307ZM18.306 12.629a2.528 2.528 0 0 1 2.521-2.521 2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521h-2.521v-2.521ZM17.043 12.629a2.528 2.528 0 0 1-2.521 2.521 2.528 2.528 0 0 1-2.521-2.521v-6.31a2.528 2.528 0 0 1 2.521-2.52 2.528 2.528 0 0 1 2.521 2.52v6.31Z" fillOpacity=".9"/>
+              </svg>
+              Connecter Slack
+            </a>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
