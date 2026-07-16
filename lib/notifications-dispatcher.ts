@@ -4,6 +4,7 @@ import { appendBriefToCalendarEvent, hasCalendarWriteAccess } from "./google-cal
 import { formatBriefAsMarkdown, type GeneratedBriefJson } from "./brief-generator";
 import { hasHubSpotWriteAccess, htmlBodyForHubSpot, writeToHubSpotCascade } from "./crm/hubspot";
 import { hasPipedriveWriteAccess, htmlBodyForPipedrive, writeToPipedriveCascade } from "./crm/pipedrive";
+import { hasSlackConnection, mrkdwnMessageForSlack, writeToSlackDM } from "./slack";
 
 // Same hardcoded-origin convention as lib/email.ts / lib/recall.ts.
 const APP_URL = "https://brief-precall.vercel.app";
@@ -33,6 +34,7 @@ export type BriefDispatchResult = {
   calendar: string | null;
   hubspot: string | null;
   pipedrive: string | null;
+  slack: string | null;
 };
 
 export async function dispatchBriefPreCall(
@@ -40,7 +42,7 @@ export async function dispatchBriefPreCall(
   brief: GeneratedBriefJson,
   meetingContext: BriefDispatchMeetingContext
 ): Promise<BriefDispatchResult> {
-  const results: BriefDispatchResult = { email: null, calendar: null, hubspot: null, pipedrive: null };
+  const results: BriefDispatchResult = { email: null, calendar: null, hubspot: null, pipedrive: null, slack: null };
 
   const channels = await getEffectiveChannelsForUser(userId, "brief_precall");
   if (channels.length === 0) return results;
@@ -165,6 +167,24 @@ export async function dispatchBriefPreCall(
     }
   }
 
+  if (channels.includes("slack")) {
+    if (!(await hasSlackConnection(userId))) {
+      // Unlike the calendar/hubspot/pipedrive "reconnect" cases, this is
+      // usually a first-time connection, not a scope upgrade — the fix is
+      // the same either way (send them to connect), so the message stays
+      // generic.
+      results.slack = "skipped: Slack not connected, user must connect Slack";
+    } else {
+      try {
+        const text = mrkdwnMessageForSlack({ markdown: briefMarkdown, linkUrl: briefUrl, linkLabel: "Voir dans Brief" });
+        const dispatchResult = await writeToSlackDM(userId, text);
+        results.slack = dispatchResult.target === "none" ? "skipped: Slack not connected" : "sent";
+      } catch (err) {
+        results.slack = `error: ${err instanceof Error ? err.message : String(err)}`;
+      }
+    }
+  }
+
   return results;
 }
 
@@ -181,14 +201,19 @@ export type CallAnalysisDispatchInput = {
   sentiment: string | null;
 };
 
-export type CallAnalysisDispatchResult = { email: string | null; hubspot: string | null; pipedrive: string | null };
+export type CallAnalysisDispatchResult = {
+  email: string | null;
+  hubspot: string | null;
+  pipedrive: string | null;
+  slack: string | null;
+};
 
 export async function dispatchCallAnalysis(
   userId: string,
   callAnalysis: CallAnalysisDispatchInput,
   callContext: CallAnalysisDispatchContext
 ): Promise<CallAnalysisDispatchResult> {
-  const results: CallAnalysisDispatchResult = { email: null, hubspot: null, pipedrive: null };
+  const results: CallAnalysisDispatchResult = { email: null, hubspot: null, pipedrive: null, slack: null };
 
   const channels = await getEffectiveChannelsForUser(userId, "analyse_postcall");
   if (channels.length === 0) return results;
@@ -268,6 +293,26 @@ export async function dispatchCallAnalysis(
             : `sent: ${cascadeResult.target}${cascadeResult.id ? ` (${cascadeResult.id})` : ""}`;
       } catch (err) {
         results.pipedrive = `error: ${err instanceof Error ? err.message : String(err)}`;
+      }
+    }
+  }
+
+  if (channels.includes("slack")) {
+    if (!callAnalysis.keyPoints) {
+      results.slack = "skipped: no keyPoints generated for this call";
+    } else if (!(await hasSlackConnection(userId))) {
+      results.slack = "skipped: Slack not connected, user must connect Slack";
+    } else {
+      try {
+        const text = mrkdwnMessageForSlack({
+          markdown: callAnalysis.keyPoints,
+          linkUrl: analysisUrl,
+          linkLabel: "Voir l'analyse dans Brief",
+        });
+        const dispatchResult = await writeToSlackDM(userId, text);
+        results.slack = dispatchResult.target === "none" ? "skipped: Slack not connected" : "sent";
+      } catch (err) {
+        results.slack = `error: ${err instanceof Error ? err.message : String(err)}`;
       }
     }
   }

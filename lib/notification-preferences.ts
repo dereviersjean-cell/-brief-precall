@@ -37,7 +37,9 @@ export const CHANNEL_META: Record<NotificationChannel, { label: string; descript
   slack: {
     label: "Slack",
     description: "Message privé envoyé sur votre workspace",
-    implemented: false,
+    implemented: true, // sous-étape D — voir lib/slack.ts. Connexion par
+    // utilisateur (chacun connecte son propre compte Slack, comme
+    // HubSpot/Pipedrive), pas une install unique au niveau workspace.
   },
 };
 

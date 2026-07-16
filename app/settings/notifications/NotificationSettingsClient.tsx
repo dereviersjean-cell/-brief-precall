@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
 import {
   AVAILABLE_CHANNELS,
@@ -35,6 +36,25 @@ export default function NotificationSettingsClient({
   const [hasCalendarWriteAccess, setHasCalendarWriteAccess] = useState<boolean | null>(null);
   const [hasHubspotWriteAccess, setHasHubspotWriteAccess] = useState<boolean | null>(null);
   const [hasPipedriveWriteAccess, setHasPipedriveWriteAccess] = useState<boolean | null>(null);
+  const [hasSlackConnection, setHasSlackConnection] = useState<boolean | null>(null);
+
+  const searchParams = useSearchParams();
+  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  useEffect(() => {
+    const slack = searchParams.get("slack");
+    if (slack === "connected") {
+      setHasSlackConnection(true);
+      setToast({ type: "success", message: "Slack connecté avec succès." });
+      const t = setTimeout(() => setToast(null), 5000);
+      return () => clearTimeout(t);
+    }
+    if (slack === "error") {
+      setToast({ type: "error", message: "La connexion à Slack a échoué, réessayez." });
+      const t = setTimeout(() => setToast(null), 5000);
+      return () => clearTimeout(t);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     fetch("/api/notification-preferences/calendar-status")
@@ -57,7 +77,16 @@ export default function NotificationSettingsClient({
         setHasPipedriveWriteAccess(data?.hasWriteAccess ?? false);
       })
       .catch(() => setHasPipedriveWriteAccess(false));
+
+    fetch("/api/notification-preferences/slack-status")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { connected?: boolean } | null) => {
+        setHasSlackConnection(data?.connected ?? false);
+      })
+      .catch(() => setHasSlackConnection(false));
   }, []);
+
+  const [slackDisconnecting, setSlackDisconnecting] = useState(false);
 
   async function handleToggle(eventType: NotificationEventType, channel: NotificationChannel) {
     const k = prefKey(eventType, channel);
@@ -86,6 +115,22 @@ export default function NotificationSettingsClient({
         </p>
       </div>
 
+      {toast && (
+        <div className={`mb-6 rounded-xl border px-4 py-3 flex items-center justify-between gap-4 ${
+          toast.type === "success" ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"
+        }`}>
+          <p className={`text-sm font-medium ${toast.type === "success" ? "text-emerald-700" : "text-red-700"}`}>
+            {toast.message}
+          </p>
+          <button
+            onClick={() => setToast(null)}
+            className={`shrink-0 text-lg leading-none ${toast.type === "success" ? "text-emerald-400 hover:text-emerald-600" : "text-red-400 hover:text-red-600"}`}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       <div className="flex items-start gap-2.5 bg-indigo-50 border border-indigo-100 rounded-lg px-4 py-3 mb-8">
         <svg
           className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5"
@@ -101,6 +146,33 @@ export default function NotificationSettingsClient({
           sera envoyée.
         </p>
       </div>
+
+      {hasSlackConnection === true && (
+        <div className="flex items-center gap-3 mb-8">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full">
+            <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-sm font-medium text-emerald-700">Compte Slack connecté</span>
+          </div>
+          <button
+            disabled={slackDisconnecting}
+            onClick={async () => {
+              if (!window.confirm("Déconnecter Slack ? Le canal Slack sera désactivé.")) return;
+              setSlackDisconnecting(true);
+              try {
+                await fetch("/api/slack/disconnect", { method: "POST" });
+                setHasSlackConnection(false);
+              } finally {
+                setSlackDisconnecting(false);
+              }
+            }}
+            className="text-sm text-slate-400 hover:text-red-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {slackDisconnecting ? "Déconnexion…" : "Déconnecter Slack"}
+          </button>
+        </div>
+      )}
 
       <div className="space-y-8">
         {SECTIONS.map((section) => (
@@ -119,6 +191,8 @@ export default function NotificationSettingsClient({
                   channel === "hubspot" && hasHubspotWriteAccess === false && (!disabled || enabled);
                 const showPipedriveWarning =
                   channel === "pipedrive" && hasPipedriveWriteAccess === false && (!disabled || enabled);
+                const showSlackWarning =
+                  channel === "slack" && hasSlackConnection === false && (!disabled || enabled);
                 return (
                   <div key={channel} className="px-4 py-3.5">
                     <div className="flex items-center justify-between gap-4">
@@ -186,6 +260,20 @@ export default function NotificationSettingsClient({
                             className="inline-block mt-2 text-xs font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 transition-colors px-2.5 py-1 rounded-md"
                           >
                             Reconnecter Pipedrive
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                    {showSlackWarning && (
+                      <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-md text-amber-900 text-sm p-3 mt-3">
+                        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <p>Ce canal nécessite de connecter votre compte Slack.</p>
+                          <a
+                            href="/api/slack/start"
+                            className="inline-block mt-2 text-xs font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 transition-colors px-2.5 py-1 rounded-md"
+                          >
+                            Connecter Slack
                           </a>
                         </div>
                       </div>
