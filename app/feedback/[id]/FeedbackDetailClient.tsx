@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import { Settings, Search, Pencil } from "lucide-react";
 import type { CallWithAnalysis, EmailTemplate } from "@/lib/db";
 import type { ConversationAnalytics } from "@/lib/transcript-analytics";
@@ -10,6 +10,7 @@ import { formatContactDisplayName } from "@/lib/format";
 import TemplatePromptSettingsModal from "@/app/components/TemplatePromptSettingsModal";
 import ConversationAnalyticsBlock from "./ConversationAnalyticsBlock";
 import KeyPointsBlock from "./KeyPointsBlock";
+import SpeakerTimelineBlock from "./SpeakerTimelineBlock";
 
 const DEFAULT_PROMPT_VALUE = "__default__";
 
@@ -74,11 +75,13 @@ function highlightMatches(text: string, query: string) {
 
 type ResolvedTurn = {
   // null for turns derived from the legacy flat-text fallback — there's no
-  // stable id to key an edit against there, so no pencil icon for those.
+  // stable id to key an edit against there, so no pencil icon for those, and
+  // no startMs to seek the video to.
   speakerId: string | null;
   displayName: string;
   text: string;
   startMs: number | null;
+  endMs: number | null;
 };
 
 // transcript_json (sous-étape A) takes priority when present — it carries
@@ -93,6 +96,7 @@ function resolveTurns(call: CallWithAnalysis): ResolvedTurn[] {
       displayName: call.speaker_names_override[t.speaker_id] || t.speaker_id,
       text: t.text,
       startMs: t.start_ms,
+      endMs: t.end_ms,
     }));
   }
   if (call.transcript) {
@@ -101,6 +105,7 @@ function resolveTurns(call: CallWithAnalysis): ResolvedTurn[] {
       displayName: t.speaker || "Inconnu",
       text: t.text,
       startMs: null,
+      endMs: null,
     }));
   }
   return [];
@@ -108,45 +113,69 @@ function resolveTurns(call: CallWithAnalysis): ResolvedTurn[] {
 
 const SPEAKER_TIP_DISMISSED_KEY = "brief:transcript-speaker-tip-dismissed";
 
-function TranscriptSection({ call }: { call: CallWithAnalysis }) {
-  const [open, setOpen] = useState(false);
+// Lives in the sticky right column next to the video now (was a standalone
+// collapsible block) — turns/overrideMap are resolved once by the parent
+// (FeedbackDetailClient) since SpeakerTimelineBlock needs the exact same
+// data. onSeek/seekable/currentTimeMs wire the video sync: click a row to
+// jump the video there, and the row matching current playback position gets
+// highlighted + scrolled into view automatically.
+function TranscriptSection({
+  callId,
+  turns,
+  overrideMap,
+  onOverrideMapChange,
+  onSeek,
+  seekable,
+  currentTimeMs,
+}: {
+  callId: string;
+  turns: ResolvedTurn[];
+  overrideMap: Record<string, string>;
+  onOverrideMapChange: (next: Record<string, string>) => void;
+  onSeek: (ms: number) => void;
+  seekable: boolean;
+  currentTimeMs: number | null;
+}) {
+  const [open, setOpen] = useState(true);
   const [query, setQuery] = useState("");
   const [copied, setCopied] = useState(false);
-  const [overrideMap, setOverrideMap] = useState(call.speaker_names_override);
   const [editingSpeakerId, setEditingSpeakerId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const [showTip, setShowTip] = useState(false);
+  const activeRowRef = useRef<HTMLDivElement>(null);
 
-  const hasTranscriptJson = !!call.transcript_json && call.transcript_json.turns.length > 0;
+  const hasTimestamps = turns.some((t) => t.startMs !== null);
 
   useEffect(() => {
-    if (!hasTranscriptJson) return;
+    if (!hasTimestamps) return;
     setShowTip(window.localStorage.getItem(SPEAKER_TIP_DISMISSED_KEY) !== "1");
-  }, [hasTranscriptJson]);
+  }, [hasTimestamps]);
 
   function dismissTip() {
     setShowTip(false);
     window.localStorage.setItem(SPEAKER_TIP_DISMISSED_KEY, "1");
   }
 
-  const allTurns = resolveTurns(call).map((t) =>
-    t.speakerId && overrideMap[t.speakerId] ? { ...t, displayName: overrideMap[t.speakerId] } : t
-  );
-
   const trimmedQuery = query.trim();
   const filteredTurns = trimmedQuery
-    ? allTurns.filter((turn) => `${turn.displayName} ${turn.text}`.toLowerCase().includes(trimmedQuery.toLowerCase()))
-    : allTurns;
+    ? turns.filter((turn) => `${turn.displayName} ${turn.text}`.toLowerCase().includes(trimmedQuery.toLowerCase()))
+    : turns;
+
+  // Last turn whose startMs is at or before the current playback position —
+  // only meaningful while actively playing back (currentTimeMs !== null) and
+  // when not filtering (a search result list has no coherent "current" row).
+  const activeIndex =
+    currentTimeMs !== null && !trimmedQuery
+      ? filteredTurns.reduce((best, t, i) => (t.startMs !== null && t.startMs <= currentTimeMs ? i : best), -1)
+      : -1;
+
+  useEffect(() => {
+    if (activeIndex === -1) return;
+    activeRowRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [activeIndex]);
 
   function handleCopy() {
-    // Built from the resolved turns (not the raw call.transcript) when
-    // available — the flat column always says "Unknown" per turn today
-    // (transcriptToText doesn't read the real Recall field, see lib/recall.ts),
-    // so copying resolved names is strictly more useful. Falls back to the
-    // raw flat text for historical calls with no transcript_json.
-    const text = hasTranscriptJson
-      ? allTurns.map((t) => `${t.displayName}: ${t.text}`).join("\n")
-      : call.transcript;
+    const text = hasTimestamps ? turns.map((t) => `${t.displayName}: ${t.text}`).join("\n") : turns.map((t) => t.text).join("\n");
     if (!text) return;
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
@@ -169,18 +198,18 @@ function TranscriptSection({ call }: { call: CallWithAnalysis }) {
 
     const previous = overrideMap;
     const next = { ...overrideMap, [speakerId]: trimmed };
-    setOverrideMap(next);
+    onOverrideMapChange(next);
     try {
-      const res = await fetch(`/api/feedback/${call.id}/speaker-names`, {
+      const res = await fetch(`/api/feedback/${callId}/speaker-names`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ speaker_names: next }),
       });
       if (!res.ok) throw new Error();
       const data = (await res.json()) as { speaker_names: Record<string, string> };
-      setOverrideMap(data.speaker_names);
+      onOverrideMapChange(data.speaker_names);
     } catch {
-      setOverrideMap(previous);
+      onOverrideMapChange(previous);
     }
   }
 
@@ -203,7 +232,7 @@ function TranscriptSection({ call }: { call: CallWithAnalysis }) {
       </button>
       {open && (
         <div className="mt-4">
-          {allTurns.length === 0 ? (
+          {turns.length === 0 ? (
             <p className="text-sm text-slate-400">Transcript non disponible</p>
           ) : (
             <>
@@ -225,9 +254,9 @@ function TranscriptSection({ call }: { call: CallWithAnalysis }) {
                   {copied ? "✓ Copié" : "📋 Copier"}
                 </button>
               </div>
-              {showTip && hasTranscriptJson && (
+              {showTip && hasTimestamps && (
                 <p className="flex items-center justify-between gap-2 text-xs text-indigo-600 bg-indigo-50 rounded-md px-2.5 py-1.5 mb-3">
-                  <span>Cliquez sur un nom pour le corriger</span>
+                  <span>Cliquez sur un nom pour le corriger, ou sur une ligne pour aller à ce moment de la vidéo</span>
                   <button onClick={dismissTip} className="text-indigo-400 hover:text-indigo-600 shrink-0">
                     ✕
                   </button>
@@ -236,49 +265,60 @@ function TranscriptSection({ call }: { call: CallWithAnalysis }) {
               <p className="text-xs text-slate-400 mb-3">
                 {trimmedQuery
                   ? `${filteredTurns.length} résultat${filteredTurns.length !== 1 ? "s" : ""} trouvé${filteredTurns.length !== 1 ? "s" : ""}`
-                  : `${allTurns.length} tour${allTurns.length !== 1 ? "s" : ""} de parole`}
+                  : `${turns.length} tour${turns.length !== 1 ? "s" : ""} de parole`}
               </p>
-              <div className="max-h-[500px] overflow-y-auto pr-1">
-                {filteredTurns.map((turn, i) => (
-                  <div key={i} className={`rounded-lg p-3 mb-2 ${i % 2 === 0 ? "bg-slate-50" : "bg-white"}`}>
-                    <div className="flex items-center justify-between mb-1.5 gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        {editingSpeakerId === turn.speakerId ? (
-                          <input
-                            autoFocus
-                            value={editDraft}
-                            onChange={(e) => setEditDraft(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") commitEdit();
-                              if (e.key === "Escape") setEditingSpeakerId(null);
-                            }}
-                            onBlur={commitEdit}
-                            className="text-xs font-semibold text-slate-700 uppercase tracking-wide border border-indigo-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          />
-                        ) : (
-                          <>
-                            <span className="text-xs font-semibold text-slate-700 uppercase tracking-wide truncate">
-                              {turn.displayName}
-                            </span>
-                            {turn.speakerId && (
-                              <button
-                                onClick={() => startEditing(turn)}
-                                title="Corriger le nom du speaker"
-                                className="shrink-0 text-slate-300 hover:text-slate-500 transition-colors"
-                              >
-                                <Pencil className="w-3 h-3" />
-                              </button>
-                            )}
-                          </>
+              <div className="max-h-[420px] overflow-y-auto pr-1">
+                {filteredTurns.map((turn, i) => {
+                  const isActive = i === activeIndex;
+                  const canSeek = seekable && turn.startMs !== null;
+                  return (
+                    <div
+                      key={i}
+                      ref={isActive ? activeRowRef : undefined}
+                      onClick={canSeek ? () => onSeek(turn.startMs as number) : undefined}
+                      className={`rounded-lg p-3 mb-2 transition-colors ${
+                        isActive ? "bg-indigo-50 ring-1 ring-indigo-200" : i % 2 === 0 ? "bg-slate-50" : "bg-white"
+                      } ${canSeek ? "cursor-pointer hover:bg-indigo-50/60" : ""}`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5 gap-2">
+                        <div className="flex items-center gap-1.5 min-w-0" onClick={(e) => e.stopPropagation()}>
+                          {editingSpeakerId === turn.speakerId ? (
+                            <input
+                              autoFocus
+                              value={editDraft}
+                              onChange={(e) => setEditDraft(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") commitEdit();
+                                if (e.key === "Escape") setEditingSpeakerId(null);
+                              }}
+                              onBlur={commitEdit}
+                              className="text-xs font-semibold text-slate-700 uppercase tracking-wide border border-indigo-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                          ) : (
+                            <>
+                              <span className="text-xs font-semibold text-slate-700 uppercase tracking-wide truncate">
+                                {turn.displayName}
+                              </span>
+                              {turn.speakerId && (
+                                <button
+                                  onClick={() => startEditing(turn)}
+                                  title="Corriger le nom du speaker"
+                                  className="shrink-0 text-slate-300 hover:text-slate-500 transition-colors"
+                                >
+                                  <Pencil className="w-3 h-3" />
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                        {turn.startMs !== null && (
+                          <span className="text-xs text-slate-400 shrink-0">{formatDuration(Math.floor(turn.startMs / 1000))}</span>
                         )}
                       </div>
-                      {turn.startMs !== null && (
-                        <span className="text-xs text-slate-400 shrink-0">{formatDuration(Math.floor(turn.startMs / 1000))}</span>
-                      )}
+                      <p className="text-slate-700 text-sm leading-relaxed">{highlightMatches(turn.text, query)}</p>
                     </div>
-                    <p className="text-slate-700 text-sm leading-relaxed">{highlightMatches(turn.text, query)}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </>
           )}
@@ -392,6 +432,8 @@ function ReadOnlyEmailBlock({ call }: { call: CallWithAnalysis }) {
   );
 }
 
+type Tab = "overview" | "email";
+
 export default function FeedbackDetailClient({
   call,
   analytics,
@@ -405,6 +447,7 @@ export default function FeedbackDetailClient({
   backHref?: string;
   backLabel?: string;
 }) {
+  const [tab, setTab] = useState<Tab>("overview");
   const [copied, setCopied] = useState(false);
   const [subject, setSubject] = useState(call.follow_up_email?.subject ?? "");
   const [body, setBody] = useState(call.follow_up_email?.body ?? "");
@@ -419,6 +462,61 @@ export default function FeedbackDetailClient({
   const [generatingSuggestion, setGeneratingSuggestion] = useState(false);
   const [suggestionError, setSuggestionError] = useState<string | null>(null);
   const [showPromptSettings, setShowPromptSettings] = useState(false);
+
+  // Speaker rename overrides, lifted here from TranscriptSection — both it
+  // and SpeakerTimelineBlock need the same renamed display names.
+  const [overrideMap, setOverrideMap] = useState(call.speaker_names_override);
+  const allTurns = resolveTurns(call).map((t) =>
+    t.speakerId && overrideMap[t.speakerId] ? { ...t, displayName: overrideMap[t.speakerId] } : t
+  );
+  const totalDurationMs = allTurns.reduce((max, t) => Math.max(max, t.endMs ?? 0), 0);
+
+  // Video ref + seek plumbing — a click on a transcript row or a
+  // SpeakerTimelineBlock mark calls seekTo(ms). If the video hasn't been
+  // loaded yet (still behind the "Voir l'enregistrement" click-to-load
+  // gate), the seek is queued and applied once the fetched URL is ready.
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [pendingSeekMs, setPendingSeekMs] = useState<number | null>(null);
+  const [currentTimeMs, setCurrentTimeMs] = useState<number | null>(null);
+  const hasVideo = !!(call.recall_bot_id && call.recording_id);
+
+  async function loadVideo() {
+    if (videoStatus !== "idle") return;
+    setVideoStatus("loading");
+    try {
+      const res = await fetch(`/api/recall/video-url?callId=${call.id}`);
+      if (!res.ok) {
+        setVideoStatus("unavailable");
+        return;
+      }
+      const { videoUrl: url } = (await res.json()) as { videoUrl: string };
+      setVideoUrl(url);
+      setVideoStatus("ready");
+    } catch {
+      setVideoStatus("unavailable");
+    }
+  }
+
+  function seekTo(ms: number) {
+    if (!hasVideo) return;
+    if (videoStatus === "ready" && videoRef.current) {
+      videoRef.current.currentTime = ms / 1000;
+      videoRef.current.play().catch(() => {});
+      setCurrentTimeMs(ms);
+      return;
+    }
+    setPendingSeekMs(ms);
+    loadVideo();
+  }
+
+  useEffect(() => {
+    if (videoStatus === "ready" && pendingSeekMs !== null && videoRef.current) {
+      videoRef.current.currentTime = pendingSeekMs / 1000;
+      videoRef.current.play().catch(() => {});
+      setCurrentTimeMs(pendingSeekMs);
+      setPendingSeekMs(null);
+    }
+  }, [videoStatus, pendingSeekMs]);
 
   useEffect(() => {
     if (readOnly) return;
@@ -511,9 +609,14 @@ export default function FeedbackDetailClient({
     négatif: "bg-red-100 text-red-600",
   };
 
+  const TABS: { key: Tab; label: string }[] = [
+    { key: "overview", label: "Overview" },
+    { key: "email", label: "Email de suivi" },
+  ];
+
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="max-w-3xl mx-auto px-6 py-10">
+      <div className="max-w-6xl mx-auto px-6 py-10">
         {/* Back */}
         <Link
           href={backHref}
@@ -568,335 +671,357 @@ export default function FeedbackDetailClient({
             Analyse non disponible pour cet appel.
           </div>
         ) : (
-          <div className="space-y-5">
-            {/* Points clés — generated on demand (not by analyzeCall), cached
-                on call_analysis.key_points. Replaces the old "Synthèse
-                coaching" block (a.summary is no longer rendered anywhere in
-                this file). */}
-            <KeyPointsBlock callId={call.id} initialKeyPoints={a.key_points} />
-
-            {/* Enregistrement vidéo — /api/recall/video-url autorise le propriétaire et un manager rattaché ;
-                si le bot/l'enregistrement n'existe pas du tout, on affiche un statut informatif à la place */}
-            {call.recall_bot_id && call.recording_id ? (
-              <div className="bg-white rounded-2xl border border-slate-200 p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Enregistrement</h2>
-                  {videoStatus === "idle" && (
-                    <button
-                      onClick={async () => {
-                        setVideoStatus("loading");
-                        try {
-                          const res = await fetch(`/api/recall/video-url?callId=${call.id}`);
-                          if (!res.ok) { setVideoStatus("unavailable"); return; }
-                          const { videoUrl: url } = await res.json() as { videoUrl: string };
-                          setVideoUrl(url);
-                          setVideoStatus("ready");
-                        } catch {
-                          setVideoStatus("unavailable");
-                        }
-                      }}
-                      className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors px-2.5 py-1 rounded-lg border border-indigo-200 hover:bg-indigo-50"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
-                      Voir l&apos;enregistrement
-                    </button>
-                  )}
-                  {videoStatus === "loading" && (
-                    <span className="text-xs text-slate-400">Chargement…</span>
-                  )}
-                </div>
-                {videoStatus === "ready" && videoUrl && (
-                  <video
-                    controls
-                    src={videoUrl}
-                    className="w-full rounded-xl bg-black"
-                    style={{ maxHeight: "360px" }}
-                  />
-                )}
-                {videoStatus === "unavailable" && (
-                  <p className="text-sm text-slate-400 italic">Enregistrement non disponible.</p>
-                )}
-              </div>
-            ) : (
-              readOnly && <ReadOnlyVideoStatus call={call} />
-            )}
-
-            {/* Analytics — above the transcript, below the video (sous-étape
-                B). analytics is null for any call without transcript_json
-                (historical calls, or transcript_json with <5 turns) — the
-                component itself renders nothing in that case. */}
-            <ConversationAnalyticsBlock analytics={analytics} />
-
-            {/* Transcript — directement sous le bloc vidéo, repliée par
-                défaut. Rendue unconditionally of readOnly so a manager
-                viewing via /team/[commercialId]/calls/[callId] sees it too
-                (speaker-name editing included — updateCallSpeakerNames
-                accepts owner or linked manager). */}
-            <TranscriptSection call={call} />
-
-            {/* Scores par dimension — dynamique via le playbook_snapshot de
-                l'analyse (ou les 4 labels historiques si absent) */}
-            {effectiveScores.length > 0 && (
-              <div className="bg-white rounded-2xl border border-slate-200 p-6">
-                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-5">
-                  Scores par dimension
-                </h2>
-                <div className="space-y-5">
-                  {effectiveScores.map((dim) => (
-                    <ScoreBar
-                      key={dim.key}
-                      score={dim.score}
-                      label={dim.label}
-                      description={dim.description}
-                      weight={dim.weight}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Strengths + Weaknesses */}
-            <div className="grid grid-cols-2 gap-5">
-              <div className="bg-white rounded-2xl border border-slate-200 p-5">
-                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Points forts</h2>
-                <List items={a.strengths ?? []} icon="✓" color="text-green-500" />
-              </div>
-              <div className="bg-white rounded-2xl border border-slate-200 p-5">
-                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Axes d&apos;amélioration</h2>
-                <List items={a.weaknesses ?? []} icon="△" color="text-orange-400" />
-              </div>
-            </div>
-
-            {/* Objections */}
-            {(a.objections ?? []).length > 0 && (
-              <div className="bg-white rounded-2xl border border-slate-200 p-5">
-                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Objections rencontrées</h2>
-                <List items={a.objections ?? []} icon="–" color="text-slate-400" />
-              </div>
-            )}
-
-            {/* Next steps */}
-            {(a.next_steps ?? []).length > 0 && (
-              <div className="bg-white rounded-2xl border border-slate-200 p-5">
-                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Prochaines étapes</h2>
-                <List items={a.next_steps ?? []} icon="→" color="text-indigo-400" />
-              </div>
-            )}
-
-            {/* Email de suivi */}
-            {readOnly ? (
-              <ReadOnlyEmailBlock call={call} />
-            ) : (
-            <div className="bg-white rounded-2xl border border-slate-200 p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <label htmlFor="feedback-email-template" className="text-xs text-slate-400 shrink-0">
-                  Type de call
-                </label>
-                <select
-                  id="feedback-email-template"
-                  value={selectedTemplateId}
-                  onChange={(e) => setSelectedTemplateId(e.target.value)}
-                  className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 max-w-[220px]"
-                >
-                  {selectedTemplateId === "" && (
-                    <option value="" disabled hidden>
-                      Sélectionner un type
-                    </option>
-                  )}
-                  <option value={DEFAULT_PROMPT_VALUE}>Prompt par défaut</option>
-                  {templates.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-                {selectedTemplate && (
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-5 items-start">
+            {/* LEFT — tabbed content, scrolls with the page */}
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-1 bg-white rounded-xl border border-slate-200 p-1 mb-5">
+                {TABS.map((t) => (
                   <button
-                    onClick={() => setShowPromptSettings(true)}
-                    title="Personnaliser le prompt pour vos futures générations"
-                    className="shrink-0 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                    key={t.key}
+                    onClick={() => setTab(t.key)}
+                    className={`px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors duration-200 ${
+                      tab === t.key ? "bg-indigo-600 text-white" : "text-slate-500 hover:text-slate-700"
+                    }`}
                   >
-                    <Settings className="w-4 h-4" />
+                    {t.label}
                   </button>
-                )}
-              </div>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Email de suivi suggéré</h2>
-                {call.follow_up_email && !sentAt && (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        const text = `Objet : ${subject}\n\n${body}`;
-                        navigator.clipboard.writeText(text).then(() => {
-                          setCopied(true);
-                          setTimeout(() => setCopied(false), 2000);
-                        });
-                      }}
-                      className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors px-2.5 py-1 rounded-lg border border-indigo-200 hover:bg-indigo-50"
-                    >
-                      {copied ? "Copié !" : "Copier"}
-                    </button>
-                    <button
-                      disabled={sendStatus === "sending"}
-                      onClick={async () => {
-                        const to = call.contact_email ?? "ce contact";
-                        if (!window.confirm(`Envoyer cet email à ${to} ?`)) return;
-                        setSendStatus("sending");
-                        try {
-                          const res = await fetch("/api/feedback/send-follow-up", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ callId: call.id, subject, body }),
-                          });
-                          if (res.status === 401 || res.status === 403) {
-                            setSendStatus("auth-error");
-                            return;
-                          }
-                          if (!res.ok) {
-                            setSendStatus("error");
-                            return;
-                          }
-                          const now = new Date().toISOString();
-                          setSentAt(now);
-                          setSendStatus("sent");
-                        } catch {
-                          setSendStatus("error");
-                        }
-                      }}
-                      className="text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors px-2.5 py-1 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {sendStatus === "sending" ? "Envoi…" : "Envoyer"}
-                    </button>
-                  </div>
-                )}
-                {sentAt && (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs text-emerald-600 font-medium">
-                      Envoyé le {formatSentAt(sentAt)}
-                    </span>
-                    {reply.status === "replied" && (
-                      <button
-                        onClick={() =>
-                          setReply((r) =>
-                            r.status === "replied" ? { ...r, open: !r.open } : r
-                          )
-                        }
-                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
-                      >
-                        <svg className="w-3 h-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414L8.414 15l-4.121-4.121a1 1 0 011.414-1.414L8.414 12.172l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                        Le prospect a répondu
-                        <svg
-                          className={`w-3 h-3 shrink-0 transition-transform ${reply.open ? "rotate-180" : ""}`}
-                          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                )}
+                ))}
               </div>
 
-              {sendStatus === "auth-error" && (
-                <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700">
-                  Reconnecte-toi à Google pour envoyer cet email.{" "}
-                  <a href="/api/auth/signout" className="font-medium underline hover:text-amber-900">
-                    Se déconnecter
-                  </a>
-                </div>
-              )}
-              {sendStatus === "error" && (
-                <p className="mb-4 text-sm text-red-600">Erreur lors de l&apos;envoi, réessaie.</p>
-              )}
+              {tab === "overview" && (
+                <div className="space-y-5">
+                  {/* Points clés — generated on demand (not by analyzeCall), cached
+                      on call_analysis.key_points. */}
+                  <KeyPointsBlock callId={call.id} initialKeyPoints={a.key_points} />
 
-              {reply.status === "replied" && reply.open && (
-                <div className="mb-4 rounded-xl bg-green-50 border border-green-200 px-4 py-3">
-                  <p className="text-xs font-semibold text-green-600 uppercase tracking-wider mb-1.5">
-                    Réponse du prospect — {formatSentAt(reply.repliedAt)}
-                  </p>
-                  {reply.body !== null ? (
-                    <pre className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-sans">
-                      {reply.body}
-                    </pre>
-                  ) : (
-                    <div className="flex items-center gap-3">
-                      <p className="text-sm text-slate-500 italic">Contenu non chargé.</p>
-                      <button
-                        disabled={reply.loadingBody}
-                        onClick={async () => {
-                          setReply((r) => r.status === "replied" ? { ...r, loadingBody: true } : r);
-                          try {
-                            const res = await fetch(`/api/feedback/check-reply?callId=${call.id}&force=true`);
-                            const data = await res.json() as { replied: boolean; repliedAt?: string; body?: string | null };
-                            setReply((r) =>
-                              r.status === "replied"
-                                ? { ...r, body: data.body ?? null, loadingBody: false }
-                                : r
-                            );
-                          } catch {
-                            setReply((r) => r.status === "replied" ? { ...r, loadingBody: false } : r);
-                          }
-                        }}
-                        className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors px-2 py-1 rounded border border-indigo-200 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {reply.loadingBody ? "Chargement…" : "Charger le contenu"}
-                      </button>
+                  {/* Qui a parlé, quand — clickable, seeks the video on the right. */}
+                  <SpeakerTimelineBlock
+                    turns={allTurns
+                      .filter((t) => t.speakerId !== null && t.startMs !== null && t.endMs !== null)
+                      .map((t) => ({ speakerId: t.speakerId as string, displayName: t.displayName, startMs: t.startMs as number, endMs: t.endMs as number }))}
+                    totalDurationMs={totalDurationMs}
+                    onSeek={seekTo}
+                    seekable={hasVideo}
+                  />
+
+                  <ConversationAnalyticsBlock analytics={analytics} />
+
+                  {/* Scores par dimension — dynamique via le playbook_snapshot de
+                      l'analyse (ou les 4 labels historiques si absent) */}
+                  {effectiveScores.length > 0 && (
+                    <div className="bg-white rounded-2xl border border-slate-200 p-6">
+                      <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-5">
+                        Scores par dimension
+                      </h2>
+                      <div className="space-y-5">
+                        {effectiveScores.map((dim) => (
+                          <ScoreBar
+                            key={dim.key}
+                            score={dim.score}
+                            label={dim.label}
+                            description={dim.description}
+                            weight={dim.weight}
+                          />
+                        ))}
+                      </div>
                     </div>
                   )}
 
-                  {reply.body !== null && (
-                    <div className="mt-3 pt-3 border-t border-green-100">
+                  {/* Strengths + Weaknesses */}
+                  <div className="grid grid-cols-2 gap-5">
+                    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                      <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Points forts</h2>
+                      <List items={a.strengths ?? []} icon="✓" color="text-green-500" />
+                    </div>
+                    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                      <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Axes d&apos;amélioration</h2>
+                      <List items={a.weaknesses ?? []} icon="△" color="text-orange-400" />
+                    </div>
+                  </div>
+
+                  {/* Objections */}
+                  {(a.objections ?? []).length > 0 && (
+                    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                      <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Objections rencontrées</h2>
+                      <List items={a.objections ?? []} icon="–" color="text-slate-400" />
+                    </div>
+                  )}
+
+                  {/* Next steps */}
+                  {(a.next_steps ?? []).length > 0 && (
+                    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                      <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Prochaines étapes</h2>
+                      <List items={a.next_steps ?? []} icon="→" color="text-indigo-400" />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {tab === "email" && (
+                readOnly ? (
+                  <ReadOnlyEmailBlock call={call} />
+                ) : (
+                <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <label htmlFor="feedback-email-template" className="text-xs text-slate-400 shrink-0">
+                      Type de call
+                    </label>
+                    <select
+                      id="feedback-email-template"
+                      value={selectedTemplateId}
+                      onChange={(e) => setSelectedTemplateId(e.target.value)}
+                      className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 max-w-[220px]"
+                    >
+                      {selectedTemplateId === "" && (
+                        <option value="" disabled hidden>
+                          Sélectionner un type
+                        </option>
+                      )}
+                      <option value={DEFAULT_PROMPT_VALUE}>Prompt par défaut</option>
+                      {templates.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                    {selectedTemplate && (
                       <button
-                        disabled={generatingSuggestion}
-                        onClick={handleGenerateSuggestion}
-                        className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors px-2.5 py-1 rounded-lg border border-indigo-200 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => setShowPromptSettings(true)}
+                        title="Personnaliser le prompt pour vos futures générations"
+                        className="shrink-0 text-slate-400 hover:text-slate-600 transition-colors p-1"
                       >
-                        {generatingSuggestion ? "Génération…" : "✨ Régénérer avec Brief"}
+                        <Settings className="w-4 h-4" />
                       </button>
-                      {suggestionError && <p className="text-xs text-red-500 mt-2">{suggestionError}</p>}
-                      {replySuggestion !== null && (
-                        <div className="mt-2">
-                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
-                            Suggestion de réponse
-                          </p>
-                          <textarea
-                            value={replySuggestion}
-                            onChange={(e) => setReplySuggestion(e.target.value)}
-                            rows={5}
-                            className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none leading-relaxed"
-                          />
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Email de suivi suggéré</h2>
+                    {call.follow_up_email && !sentAt && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            const text = `Objet : ${subject}\n\n${body}`;
+                            navigator.clipboard.writeText(text).then(() => {
+                              setCopied(true);
+                              setTimeout(() => setCopied(false), 2000);
+                            });
+                          }}
+                          className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors px-2.5 py-1 rounded-lg border border-indigo-200 hover:bg-indigo-50"
+                        >
+                          {copied ? "Copié !" : "Copier"}
+                        </button>
+                        <button
+                          disabled={sendStatus === "sending"}
+                          onClick={async () => {
+                            const to = call.contact_email ?? "ce contact";
+                            if (!window.confirm(`Envoyer cet email à ${to} ?`)) return;
+                            setSendStatus("sending");
+                            try {
+                              const res = await fetch("/api/feedback/send-follow-up", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ callId: call.id, subject, body }),
+                              });
+                              if (res.status === 401 || res.status === 403) {
+                                setSendStatus("auth-error");
+                                return;
+                              }
+                              if (!res.ok) {
+                                setSendStatus("error");
+                                return;
+                              }
+                              const now = new Date().toISOString();
+                              setSentAt(now);
+                              setSendStatus("sent");
+                            } catch {
+                              setSendStatus("error");
+                            }
+                          }}
+                          className="text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors px-2.5 py-1 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {sendStatus === "sending" ? "Envoi…" : "Envoyer"}
+                        </button>
+                      </div>
+                    )}
+                    {sentAt && (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs text-emerald-600 font-medium">
+                          Envoyé le {formatSentAt(sentAt)}
+                        </span>
+                        {reply.status === "replied" && (
+                          <button
+                            onClick={() =>
+                              setReply((r) =>
+                                r.status === "replied" ? { ...r, open: !r.open } : r
+                              )
+                            }
+                            className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
+                          >
+                            <svg className="w-3 h-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414L8.414 15l-4.121-4.121a1 1 0 011.414-1.414L8.414 12.172l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                            Le prospect a répondu
+                            <svg
+                              className={`w-3 h-3 shrink-0 transition-transform ${reply.open ? "rotate-180" : ""}`}
+                              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {sendStatus === "auth-error" && (
+                    <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700">
+                      Reconnecte-toi à Google pour envoyer cet email.{" "}
+                      <a href="/api/auth/signout" className="font-medium underline hover:text-amber-900">
+                        Se déconnecter
+                      </a>
+                    </div>
+                  )}
+                  {sendStatus === "error" && (
+                    <p className="mb-4 text-sm text-red-600">Erreur lors de l&apos;envoi, réessaie.</p>
+                  )}
+
+                  {reply.status === "replied" && reply.open && (
+                    <div className="mb-4 rounded-xl bg-green-50 border border-green-200 px-4 py-3">
+                      <p className="text-xs font-semibold text-green-600 uppercase tracking-wider mb-1.5">
+                        Réponse du prospect — {formatSentAt(reply.repliedAt)}
+                      </p>
+                      {reply.body !== null ? (
+                        <pre className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-sans">
+                          {reply.body}
+                        </pre>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <p className="text-sm text-slate-500 italic">Contenu non chargé.</p>
+                          <button
+                            disabled={reply.loadingBody}
+                            onClick={async () => {
+                              setReply((r) => r.status === "replied" ? { ...r, loadingBody: true } : r);
+                              try {
+                                const res = await fetch(`/api/feedback/check-reply?callId=${call.id}&force=true`);
+                                const data = await res.json() as { replied: boolean; repliedAt?: string; body?: string | null };
+                                setReply((r) =>
+                                  r.status === "replied"
+                                    ? { ...r, body: data.body ?? null, loadingBody: false }
+                                    : r
+                                );
+                              } catch {
+                                setReply((r) => r.status === "replied" ? { ...r, loadingBody: false } : r);
+                              }
+                            }}
+                            className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors px-2 py-1 rounded border border-indigo-200 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {reply.loadingBody ? "Chargement…" : "Charger le contenu"}
+                          </button>
+                        </div>
+                      )}
+
+                      {reply.body !== null && (
+                        <div className="mt-3 pt-3 border-t border-green-100">
+                          <button
+                            disabled={generatingSuggestion}
+                            onClick={handleGenerateSuggestion}
+                            className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors px-2.5 py-1 rounded-lg border border-indigo-200 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {generatingSuggestion ? "Génération…" : "✨ Régénérer avec Brief"}
+                          </button>
+                          {suggestionError && <p className="text-xs text-red-500 mt-2">{suggestionError}</p>}
+                          {replySuggestion !== null && (
+                            <div className="mt-2">
+                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                                Suggestion de réponse
+                              </p>
+                              <textarea
+                                value={replySuggestion}
+                                onChange={(e) => setReplySuggestion(e.target.value)}
+                                rows={5}
+                                className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none leading-relaxed"
+                              />
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
                   )}
-                </div>
-              )}
 
-              {call.follow_up_email ? (
-                <>
-                  <input
-                    type="text"
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-3"
-                    placeholder="Objet"
-                  />
-                  <textarea
-                    value={body}
-                    onChange={(e) => setBody(e.target.value)}
-                    rows={8}
-                    className="w-full px-3 py-3 border border-slate-200 rounded-lg text-sm text-slate-600 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none leading-relaxed"
-                  />
-                </>
-              ) : (
-                <p className="text-slate-400 text-sm italic">Email de suivi en cours de génération…</p>
+                  {call.follow_up_email ? (
+                    <>
+                      <input
+                        type="text"
+                        value={subject}
+                        onChange={(e) => setSubject(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-3"
+                        placeholder="Objet"
+                      />
+                      <textarea
+                        value={body}
+                        onChange={(e) => setBody(e.target.value)}
+                        rows={8}
+                        className="w-full px-3 py-3 border border-slate-200 rounded-lg text-sm text-slate-600 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none leading-relaxed"
+                      />
+                    </>
+                  ) : (
+                    <p className="text-slate-400 text-sm italic">Email de suivi en cours de génération…</p>
+                  )}
+                </div>
+                )
               )}
             </div>
-            )}
+
+            {/* RIGHT — sticky video + transcript, stays in view while the
+                left column scrolls */}
+            <div className="lg:sticky lg:top-6 space-y-5">
+              {hasVideo ? (
+                <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Enregistrement</h2>
+                    {videoStatus === "idle" && (
+                      <button
+                        onClick={loadVideo}
+                        className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors px-2.5 py-1 rounded-lg border border-indigo-200 hover:bg-indigo-50"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                        Voir l&apos;enregistrement
+                      </button>
+                    )}
+                    {videoStatus === "loading" && (
+                      <span className="text-xs text-slate-400">Chargement…</span>
+                    )}
+                  </div>
+                  {videoStatus === "ready" && videoUrl && (
+                    <video
+                      ref={videoRef}
+                      controls
+                      src={videoUrl}
+                      onTimeUpdate={(e) => setCurrentTimeMs(Math.floor(e.currentTarget.currentTime * 1000))}
+                      className="w-full rounded-xl bg-black"
+                      style={{ maxHeight: "320px" }}
+                    />
+                  )}
+                  {videoStatus === "unavailable" && (
+                    <p className="text-sm text-slate-400 italic">Enregistrement non disponible.</p>
+                  )}
+                </div>
+              ) : (
+                readOnly && <ReadOnlyVideoStatus call={call} />
+              )}
+
+              <TranscriptSection
+                callId={call.id}
+                turns={allTurns}
+                overrideMap={overrideMap}
+                onOverrideMapChange={setOverrideMap}
+                onSeek={seekTo}
+                seekable={hasVideo}
+                currentTimeMs={videoStatus === "ready" ? currentTimeMs : null}
+              />
+            </div>
           </div>
         )}
       </div>

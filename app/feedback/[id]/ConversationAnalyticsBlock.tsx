@@ -2,15 +2,6 @@ import type { ConversationAnalytics } from "@/lib/transcript-analytics";
 
 type AnalyticsSpeaker = ConversationAnalytics["speakers"][number];
 
-// bg-indigo-500 is reserved for the commercial (see barSegmentColor) —
-// non-commercial speakers cycle through this palette instead.
-const PROSPECT_COLORS = ["bg-slate-400", "bg-slate-500", "bg-slate-600", "bg-slate-700"];
-
-function barSegmentColor(speaker: AnalyticsSpeaker, prospectIndex: number): string {
-  if (speaker.is_commercial) return "bg-indigo-500";
-  return PROSPECT_COLORS[prospectIndex % PROSPECT_COLORS.length];
-}
-
 function formatMmSs(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000);
   const m = Math.floor(totalSeconds / 60);
@@ -68,80 +59,13 @@ export default function ConversationAnalyticsBlock({ analytics }: { analytics: C
   const silenceMs = Math.max(0, analytics.total_duration_ms - sumTalkTimeMs);
   const silencePct = analytics.total_duration_ms > 0 ? Math.round((100 * silenceMs) / analytics.total_duration_ms) : 0;
 
-  let prospectIndex = 0;
-
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-5">
       <div className="mb-4">
         <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">🎧 Analyse de la conversation</h2>
-        <p className="text-xs text-slate-400 mt-0.5">Statistiques calculées depuis le transcript</p>
-      </div>
-
-      {/* Talk-time segmented bar — width per speaker is talk_time_ratio (vs.
-          total_duration_ms, not vs. sum of talk times). Whatever's left
-          (silence/crosstalk/dead air) gets its own explicit "Silences"
-          segment below rather than being left as unlabeled bar space. */}
-      <div className="w-full h-6 rounded-full overflow-hidden bg-slate-100 flex">
-        {speakers.map((s) => {
-          const pct = Math.round(s.talk_time_ratio * 100);
-          const color = barSegmentColor(s, s.is_commercial ? 0 : prospectIndex);
-          if (!s.is_commercial) prospectIndex++;
-          const wide = pct >= 12;
-          return (
-            <div
-              key={s.speaker_id}
-              className={`h-full ${color} flex items-center justify-center overflow-hidden transition-all`}
-              style={{ width: `${pct}%` }}
-              title={wide ? undefined : `${s.display_name} — ${pct}%`}
-            >
-              {wide && (
-                <span className="text-[11px] font-medium text-white px-1 truncate">
-                  {s.display_name} {pct}%
-                </span>
-              )}
-            </div>
-          );
-        })}
-        {silencePct > 0 && (
-          <div
-            className="h-full bg-slate-200 flex items-center justify-center overflow-hidden transition-all"
-            style={{ width: `${silencePct}%` }}
-            title={silencePct < 12 ? `Silences — ${silencePct}%` : undefined}
-          >
-            {silencePct >= 12 && (
-              <span className="text-[11px] font-medium text-slate-500 px-1 truncate">Silences {silencePct}%</span>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Legend */}
-      <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-3 mb-5">
-        {(() => {
-          let legendProspectIndex = 0;
-          return speakers.map((s) => {
-            const color = barSegmentColor(s, s.is_commercial ? 0 : legendProspectIndex);
-            if (!s.is_commercial) legendProspectIndex++;
-            return (
-              <div key={s.speaker_id} className="flex items-center gap-1.5 text-xs text-slate-600">
-                <span className={`w-2 h-2 rounded-full ${color} shrink-0`} />
-                <span className="font-medium text-slate-700">{s.display_name}</span>
-                <span className="text-slate-400">
-                  {formatMmSs(s.talk_time_ms)} · {Math.round(s.talk_time_ratio * 100)}%
-                </span>
-              </div>
-            );
-          });
-        })()}
-        {silencePct > 0 && (
-          <div className="flex items-center gap-1.5 text-xs text-slate-600">
-            <span className="w-2 h-2 rounded-full bg-slate-200 shrink-0" />
-            <span className="font-medium text-slate-700">Silences</span>
-            <span className="text-slate-400">
-              {formatMmSs(silenceMs)} · {silencePct}%
-            </span>
-          </div>
-        )}
+        <p className="text-xs text-slate-400 mt-0.5">
+          Statistiques calculées depuis le transcript — qui a parlé quand est visible juste au-dessus.
+        </p>
       </div>
 
       {/* Stat cards */}
@@ -205,6 +129,14 @@ export default function ConversationAnalyticsBlock({ analytics }: { analytics: C
             {back_and_forth_count >= 10 && (
               <p className="text-sm text-slate-600 mt-2">Rythme conversationnel fluide</p>
             )}
+          </div>
+        )}
+
+        {silencePct > 0 && (
+          <div className="bg-slate-50 rounded-lg p-4">
+            <p className="text-2xl font-semibold text-slate-900">{silencePct}%</p>
+            <p className="text-xs text-slate-500 uppercase tracking-wide mt-1">Silences</p>
+            <p className="text-sm text-slate-600 mt-2">{formatMmSs(silenceMs)} sans échange</p>
           </div>
         )}
       </div>
