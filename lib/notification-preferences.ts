@@ -29,8 +29,10 @@ export const CHANNEL_META: Record<NotificationChannel, { label: string; descript
   },
   pipedrive: {
     label: "Pipedrive",
-    description: "Note ajoutée sur le deal",
-    implemented: false,
+    description: "Note ajoutée sur l'activité du deal",
+    implemented: true, // sous-étape C2 — voir lib/crm/pipedrive.ts pour les
+    // scopes (deals:full/contacts:full/activities:full) qui nécessitent une
+    // reconnexion pour les connexions existantes
   },
   slack: {
     label: "Slack",

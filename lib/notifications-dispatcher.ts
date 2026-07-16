@@ -3,6 +3,7 @@ import { sendBriefPreCallEmail, sendCallAnalysisEmail } from "./email";
 import { appendBriefToCalendarEvent, hasCalendarWriteAccess } from "./google-calendar";
 import { formatBriefAsMarkdown, type GeneratedBriefJson } from "./brief-generator";
 import { hasHubSpotWriteAccess, htmlBodyForHubSpot, writeToHubSpotCascade } from "./crm/hubspot";
+import { hasPipedriveWriteAccess, htmlBodyForPipedrive, writeToPipedriveCascade } from "./crm/pipedrive";
 
 // Same hardcoded-origin convention as lib/email.ts / lib/recall.ts.
 const APP_URL = "https://brief-precall.vercel.app";
@@ -27,14 +28,19 @@ export type BriefDispatchMeetingContext = {
   contactEmail: string | null;
 };
 
-export type BriefDispatchResult = { email: string | null; calendar: string | null; hubspot: string | null };
+export type BriefDispatchResult = {
+  email: string | null;
+  calendar: string | null;
+  hubspot: string | null;
+  pipedrive: string | null;
+};
 
 export async function dispatchBriefPreCall(
   userId: string,
   brief: GeneratedBriefJson,
   meetingContext: BriefDispatchMeetingContext
 ): Promise<BriefDispatchResult> {
-  const results: BriefDispatchResult = { email: null, calendar: null, hubspot: null };
+  const results: BriefDispatchResult = { email: null, calendar: null, hubspot: null, pipedrive: null };
 
   const channels = await getEffectiveChannelsForUser(userId, "brief_precall");
   if (channels.length === 0) return results;
@@ -123,6 +129,42 @@ export async function dispatchBriefPreCall(
     }
   }
 
+  if (channels.includes("pipedrive")) {
+    if (!meetingContext.contactEmail) {
+      results.pipedrive = "error: no contactEmail for this meeting";
+    } else if (!(await hasPipedriveWriteAccess(userId))) {
+      // Same "expected, handled state" pattern as the hubspot branch above —
+      // existing Pipedrive connections predate the deals:full/contacts:full/
+      // activities:full scopes (lib/crm/pipedrive.ts), the fix is
+      // reconnecting, not retrying.
+      console.warn(
+        `[dispatchBriefPreCall] Utilisateur ${userId} a activé le canal pipedrive mais n'a pas les scopes d'écriture — brief non écrit dans Pipedrive. Attend reconnexion.`
+      );
+      results.pipedrive = "skipped: deals:full/contacts:full/activities:full scope missing, user must reconnect Pipedrive";
+    } else {
+      try {
+        const htmlBody = htmlBodyForPipedrive({
+          markdown: briefMarkdown,
+          linkUrl: briefUrl,
+          linkLabel: "Voir dans Brief",
+        });
+        const cascadeResult = await writeToPipedriveCascade(
+          userId,
+          meetingContext.contactEmail,
+          htmlBody,
+          meetingContext.calendarEventId ?? meetingContext.contactEmail,
+          meetingContext.meetingStartsAt ?? undefined
+        );
+        results.pipedrive =
+          cascadeResult.target === "none"
+            ? "skipped: no matching activity/deal/contact found in Pipedrive"
+            : `sent: ${cascadeResult.target}${cascadeResult.id ? ` (${cascadeResult.id})` : ""}`;
+      } catch (err) {
+        results.pipedrive = `error: ${err instanceof Error ? err.message : String(err)}`;
+      }
+    }
+  }
+
   return results;
 }
 
@@ -139,14 +181,14 @@ export type CallAnalysisDispatchInput = {
   sentiment: string | null;
 };
 
-export type CallAnalysisDispatchResult = { email: string | null; hubspot: string | null };
+export type CallAnalysisDispatchResult = { email: string | null; hubspot: string | null; pipedrive: string | null };
 
 export async function dispatchCallAnalysis(
   userId: string,
   callAnalysis: CallAnalysisDispatchInput,
   callContext: CallAnalysisDispatchContext
 ): Promise<CallAnalysisDispatchResult> {
-  const results: CallAnalysisDispatchResult = { email: null, hubspot: null };
+  const results: CallAnalysisDispatchResult = { email: null, hubspot: null, pipedrive: null };
 
   const channels = await getEffectiveChannelsForUser(userId, "analyse_postcall");
   if (channels.length === 0) return results;
@@ -198,6 +240,34 @@ export async function dispatchCallAnalysis(
             : `sent: ${cascadeResult.target}${cascadeResult.id ? ` (${cascadeResult.id})` : ""}`;
       } catch (err) {
         results.hubspot = `error: ${err instanceof Error ? err.message : String(err)}`;
+      }
+    }
+  }
+
+  if (channels.includes("pipedrive")) {
+    if (!callContext.contactEmail) {
+      results.pipedrive = "error: no contactEmail for this call";
+    } else if (!callAnalysis.keyPoints) {
+      results.pipedrive = "skipped: no keyPoints generated for this call";
+    } else if (!(await hasPipedriveWriteAccess(userId))) {
+      console.warn(
+        `[dispatchCallAnalysis] Utilisateur ${userId} a activé le canal pipedrive mais n'a pas les scopes d'écriture — analyse non écrite dans Pipedrive. Attend reconnexion.`
+      );
+      results.pipedrive = "skipped: deals:full/contacts:full/activities:full scope missing, user must reconnect Pipedrive";
+    } else {
+      try {
+        const htmlBody = htmlBodyForPipedrive({
+          markdown: callAnalysis.keyPoints,
+          linkUrl: analysisUrl,
+          linkLabel: "Voir l'analyse dans Brief",
+        });
+        const cascadeResult = await writeToPipedriveCascade(userId, callContext.contactEmail, htmlBody, callContext.callId);
+        results.pipedrive =
+          cascadeResult.target === "none"
+            ? "skipped: no matching activity/deal/contact found in Pipedrive"
+            : `sent: ${cascadeResult.target}${cascadeResult.id ? ` (${cascadeResult.id})` : ""}`;
+      } catch (err) {
+        results.pipedrive = `error: ${err instanceof Error ? err.message : String(err)}`;
       }
     }
   }
