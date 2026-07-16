@@ -388,10 +388,11 @@ export async function sendCommercialWeeklyDigestEmail(params: {
   to: string;
   userName: string | null;
   periodLabel: string; // e.g. "1 – 5 juillet 2026"
+  narrative: string | null; // markdown, generated from digest_commercial_prompt (lib/admin-config.ts) — see lib/digest.ts
   stats: { calls_count: number; briefs_count: number; avg_score: number | null; prev_avg_score: number | null; quotes_sent: number; quotes_accepted: number };
   dashboardUrl: string;
 }): Promise<void> {
-  const { to, userName, periodLabel, stats, dashboardUrl } = params;
+  const { to, userName, periodLabel, narrative, stats, dashboardUrl } = params;
 
   const body = `
     <h1 style="font-size:20px;font-weight:700;color:${NOTIF.textPrimary};margin:0 0 4px;">📬 Votre semaine sur Brief</h1>
@@ -413,6 +414,7 @@ export async function sendCommercialWeeklyDigestEmail(params: {
         ${statCellHtml("Devis acceptés", String(stats.quotes_accepted), "50%")}
       </tr>
     </table>
+    ${narrative ? renderMarkdownForEmail(narrative) : ""}
     ${ctaButtonHtml("Voir mon tableau de bord", dashboardUrl)}`;
 
   const resend = new Resend(process.env.RESEND_API_KEY);
@@ -432,6 +434,7 @@ export async function sendManagerWeeklyDigestEmail(params: {
   to: string;
   userName: string | null;
   periodLabel: string;
+  narrative: string | null; // markdown, generated from digest_manager_prompt (lib/admin-config.ts) — see lib/digest.ts
   team: Array<{
     name: string | null;
     email: string;
@@ -442,7 +445,7 @@ export async function sendManagerWeeklyDigestEmail(params: {
   }>;
   teamUrl: string;
 }): Promise<void> {
-  const { to, userName, periodLabel, team, teamUrl } = params;
+  const { to, userName, periodLabel, narrative, team, teamUrl } = params;
 
   const totalCalls = team.reduce((sum, t) => sum + t.calls_count, 0);
   const totalBriefs = team.reduce((sum, t) => sum + t.briefs_count, 0);
@@ -469,6 +472,7 @@ export async function sendManagerWeeklyDigestEmail(params: {
         ${statCellHtml("Briefs (équipe)", String(totalBriefs), "50%")}
       </tr>
     </table>
+    ${narrative ? renderMarkdownForEmail(narrative) : ""}
     ${
       team.length > 0
         ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">

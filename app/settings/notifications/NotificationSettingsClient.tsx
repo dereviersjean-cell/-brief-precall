@@ -41,6 +41,27 @@ export default function NotificationSettingsClient({
   const [digestEnabled, setDigestEnabled] = useState(initialDigestPreference.enabled);
   const [digestTiming, setDigestTiming] = useState<DigestTiming>(initialDigestPreference.timing);
   const [digestSaving, setDigestSaving] = useState(false);
+  const [digestPreviewSending, setDigestPreviewSending] = useState<DigestTiming | null>(null);
+  const [digestPreviewResult, setDigestPreviewResult] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  async function sendDigestPreview(timing: DigestTiming) {
+    setDigestPreviewSending(timing);
+    setDigestPreviewResult(null);
+    try {
+      const res = await fetch("/api/digest-preferences/send-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timing }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !data.ok) throw new Error(data.error ?? "Échec de l'envoi.");
+      setDigestPreviewResult({ type: "success", message: "Aperçu envoyé — vérifiez votre boîte mail." });
+    } catch (err) {
+      setDigestPreviewResult({ type: "error", message: err instanceof Error ? err.message : "Échec de l'envoi." });
+    } finally {
+      setDigestPreviewSending(null);
+    }
+  }
 
   async function saveDigestPreference(nextEnabled: boolean, nextTiming: DigestTiming) {
     const previousEnabled = digestEnabled;
@@ -362,6 +383,23 @@ export default function NotificationSettingsClient({
                 </button>
               ))}
             </div>
+          )}
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100">
+            {(Object.keys(DIGEST_TIMING_LABELS) as DigestTiming[]).map((timing) => (
+              <button
+                key={timing}
+                onClick={() => sendDigestPreview(timing)}
+                disabled={digestPreviewSending !== null}
+                className="text-xs font-medium px-3 py-1.5 rounded-full border border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {digestPreviewSending === timing ? "Envoi…" : `Aperçu "${DIGEST_TIMING_LABELS[timing]}"`}
+              </button>
+            ))}
+          </div>
+          {digestPreviewResult && (
+            <p className={`text-xs mt-2 ${digestPreviewResult.type === "success" ? "text-emerald-600" : "text-red-600"}`}>
+              {digestPreviewResult.message}
+            </p>
           )}
         </div>
       </div>

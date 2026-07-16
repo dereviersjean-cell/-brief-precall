@@ -11,6 +11,8 @@ import {
   DEFAULT_QUOTE_EMAIL_PROMPT,
   DEFAULT_TASK_EMAIL_PROMPT,
   DEFAULT_PLAYBOOK_EXTRACTION_PROMPT,
+  DEFAULT_DIGEST_COMMERCIAL_PROMPT,
+  DEFAULT_DIGEST_MANAGER_PROMPT,
 } from "@/lib/admin-config";
 import { AdminNav } from "../AdminNav";
 
@@ -22,7 +24,9 @@ type PromptKey =
   | "quote_generation_prompt"
   | "quote_email_prompt"
   | "task_email_prompt"
-  | "playbook_extraction_prompt";
+  | "playbook_extraction_prompt"
+  | "digest_commercial_prompt"
+  | "digest_manager_prompt";
 
 type Prompts = Record<PromptKey, string>;
 
@@ -38,6 +42,8 @@ const DEFAULTS: Prompts = {
   quote_email_prompt: DEFAULT_QUOTE_EMAIL_PROMPT,
   task_email_prompt: DEFAULT_TASK_EMAIL_PROMPT,
   playbook_extraction_prompt: DEFAULT_PLAYBOOK_EXTRACTION_PROMPT,
+  digest_commercial_prompt: DEFAULT_DIGEST_COMMERCIAL_PROMPT,
+  digest_manager_prompt: DEFAULT_DIGEST_MANAGER_PROMPT,
 };
 
 const PROMPT_META: { key: PromptKey; title: string; description: string }[] = [
@@ -80,6 +86,16 @@ const PROMPT_META: { key: PromptKey; title: string; description: string }[] = [
     key: "playbook_extraction_prompt",
     title: "Prompt Extraction de playbook",
     description: "Instructions pour extraire une structure de dimensions/questions à partir d'un document playbook collé par un manager (page /team/playbook, import).",
+  },
+  {
+    key: "digest_commercial_prompt",
+    title: "Prompt Digest hebdo — Commercial",
+    description: "Narratif qualitatif (bien fait / à améliorer / à ne pas oublier, ou pour lundi : à faire cette semaine) du digest hebdomadaire personnel d'un commercial.",
+  },
+  {
+    key: "digest_manager_prompt",
+    title: "Prompt Digest hebdo — Manager",
+    description: "Narratif qualitatif du digest hebdomadaire équipe d'un manager, à partir des points forts/faibles de chaque commercial rattaché.",
   },
 ];
 

@@ -4524,3 +4524,82 @@ export async function getManagerDigestData(
     return { ...currentStats, user_id: c.id, name: c.name, email: c.email, prev_avg_score: prevStats.avg_score };
   });
 }
+
+export async function getDigestRecipientById(userId: string): Promise<DigestRecipient | null> {
+  const { data, error } = await supabaseAdmin.from("users").select("id, email, name, role").eq("id", userId).maybeSingle();
+  if (error) throw error;
+  return data as DigestRecipient | null;
+}
+
+// ─── Digest hebdo — narratif qualitatif (bien fait / à améliorer / à ne pas
+// oublier) via lib/digest.ts + lib/admin-config.ts's digest_commercial_prompt
+// / digest_manager_prompt. Raw material only — the actual Claude call lives
+// in lib/digest.ts, not here (lib/db.ts stays queries-only).
+
+export type DigestCallInsight = {
+  user_id: string;
+  summary: string | null;
+  strengths: string[];
+  weaknesses: string[];
+  objections: string[];
+  next_steps: string[];
+};
+
+export async function getDigestCallInsights(userIds: string[], fromISO: string, toISO: string): Promise<DigestCallInsight[]> {
+  if (userIds.length === 0) return [];
+
+  const { data, error } = await supabaseAdmin
+    .from("calls")
+    .select("user_id, call_analysis(summary, strengths, weaknesses, objections, next_steps)")
+    .in("user_id", userIds)
+    .gte("created_at", fromISO)
+    .lt("created_at", toISO);
+  if (error) throw error;
+
+  return ((data ?? []) as Array<{ user_id: string; call_analysis: CallAnalysisRow | CallAnalysisRow[] | null }>)
+    .map((row) => {
+      const analysis = normalizeCallAnalysis(row.call_analysis);
+      if (!analysis) return null;
+      return {
+        user_id: row.user_id,
+        summary: analysis.summary,
+        strengths: analysis.strengths ?? [],
+        weaknesses: analysis.weaknesses ?? [],
+        objections: analysis.objections ?? [],
+        next_steps: analysis.next_steps ?? [],
+      };
+    })
+    .filter((x): x is DigestCallInsight => x !== null);
+}
+
+export type DigestPendingTask = { user_id: string; title: string; due_at: string };
+
+// Same "not completed, not dismissed" definition as listTasksForUser's
+// "pending" filter — not date-ranged (a task from 3 weeks ago still pending
+// is exactly the kind of thing a digest should surface as "don't forget").
+export async function getDigestPendingTasks(userIds: string[]): Promise<DigestPendingTask[]> {
+  if (userIds.length === 0) return [];
+
+  const { data, error } = await supabaseAdmin
+    .from("tasks")
+    .select("user_id, title, due_at")
+    .in("user_id", userIds)
+    .is("completed_at", null)
+    .is("dismissed_at", null);
+  if (error) throw error;
+  return (data ?? []) as DigestPendingTask[];
+}
+
+export type DigestPendingQuote = { user_id: string; client_name: string; issued_at: string };
+
+export async function getDigestPendingQuotes(userIds: string[]): Promise<DigestPendingQuote[]> {
+  if (userIds.length === 0) return [];
+
+  const { data, error } = await supabaseAdmin
+    .from("quotes")
+    .select("user_id, client_name, issued_at")
+    .in("user_id", userIds)
+    .eq("status", "sent");
+  if (error) throw error;
+  return (data ?? []) as DigestPendingQuote[];
+}
