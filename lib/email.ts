@@ -358,3 +358,141 @@ export async function sendCallAnalysisEmail(params: {
     throw new Error(`sendCallAnalysisEmail failed: ${error.message}`);
   }
 }
+
+// ─── Digest hebdomadaire (module Distribution Flexible, sous-étape 3) ──────
+
+function formatScore(score: number | null): string {
+  return score !== null ? score.toFixed(1) : "—";
+}
+
+// ▲/▼/— against the previous period — same "week-over-week trend" idea as
+// getCommercialDetailForManager's `trend` field, just rendered inline here
+// instead of as a separate UI element.
+function scoreTrendHtml(score: number | null, prevScore: number | null): string {
+  if (score === null || prevScore === null) return "";
+  const delta = score - prevScore;
+  if (Math.abs(delta) < 0.05) return `<span style="font-size:12px;color:${NOTIF.textSecondary};">— stable</span>`;
+  const up = delta > 0;
+  return `<span style="font-size:12px;font-weight:600;color:${up ? "#15803D" : "#B91C1C"};">${up ? "▲" : "▼"} ${Math.abs(delta).toFixed(1)}</span>`;
+}
+
+function statCellHtml(label: string, value: string, width = "33%"): string {
+  return `
+    <td style="padding:14px 16px;background:${NOTIF.card};border-radius:8px;" width="${width}">
+      <p style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:${NOTIF.textSecondary};margin:0 0 6px;font-weight:600;">${label}</p>
+      <p style="font-size:22px;font-weight:700;margin:0;color:${NOTIF.textPrimary};">${value}</p>
+    </td>`;
+}
+
+export async function sendCommercialWeeklyDigestEmail(params: {
+  to: string;
+  userName: string | null;
+  periodLabel: string; // e.g. "1 – 5 juillet 2026"
+  stats: { calls_count: number; briefs_count: number; avg_score: number | null; prev_avg_score: number | null; quotes_sent: number; quotes_accepted: number };
+  dashboardUrl: string;
+}): Promise<void> {
+  const { to, userName, periodLabel, stats, dashboardUrl } = params;
+
+  const body = `
+    <h1 style="font-size:20px;font-weight:700;color:${NOTIF.textPrimary};margin:0 0 4px;">📬 Votre semaine sur Brief</h1>
+    <p style="font-size:14px;color:${NOTIF.textSecondary};margin:0 0 24px;">${periodLabel}${userName ? ` — ${userName}` : ""}</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+      <tr>
+        ${statCellHtml("Calls", String(stats.calls_count))}
+        <td width="8"></td>
+        ${statCellHtml("Briefs générés", String(stats.briefs_count))}
+        <td width="8"></td>
+        ${statCellHtml("Score moyen", formatScore(stats.avg_score))}
+      </tr>
+    </table>
+    <p style="margin:0 0 24px;">${scoreTrendHtml(stats.avg_score, stats.prev_avg_score)}</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+      <tr>
+        ${statCellHtml("Devis envoyés", String(stats.quotes_sent), "50%")}
+        <td width="8"></td>
+        ${statCellHtml("Devis acceptés", String(stats.quotes_accepted), "50%")}
+      </tr>
+    </table>
+    ${ctaButtonHtml("Voir mon tableau de bord", dashboardUrl)}`;
+
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const { error } = await resend.emails.send({
+    from: process.env.RESEND_FROM_EMAIL!,
+    to,
+    subject: `📬 Votre semaine sur Brief — ${periodLabel}`,
+    html: emailShellHtml(body),
+  });
+
+  if (error) {
+    throw new Error(`sendCommercialWeeklyDigestEmail failed: ${error.message}`);
+  }
+}
+
+export async function sendManagerWeeklyDigestEmail(params: {
+  to: string;
+  userName: string | null;
+  periodLabel: string;
+  team: Array<{
+    name: string | null;
+    email: string;
+    calls_count: number;
+    briefs_count: number;
+    avg_score: number | null;
+    prev_avg_score: number | null;
+  }>;
+  teamUrl: string;
+}): Promise<void> {
+  const { to, userName, periodLabel, team, teamUrl } = params;
+
+  const totalCalls = team.reduce((sum, t) => sum + t.calls_count, 0);
+  const totalBriefs = team.reduce((sum, t) => sum + t.briefs_count, 0);
+
+  const rows = team
+    .map(
+      (t) => `
+        <tr>
+          <td style="font-size:13px;color:${NOTIF.textPrimary};padding:8px;border-top:1px solid ${NOTIF.border};">${t.name ?? t.email}</td>
+          <td style="font-size:13px;color:${NOTIF.textPrimary};padding:8px;border-top:1px solid ${NOTIF.border};text-align:center;">${t.calls_count}</td>
+          <td style="font-size:13px;color:${NOTIF.textPrimary};padding:8px;border-top:1px solid ${NOTIF.border};text-align:center;">${t.briefs_count}</td>
+          <td style="font-size:13px;color:${NOTIF.textPrimary};padding:8px;border-top:1px solid ${NOTIF.border};text-align:center;">${formatScore(t.avg_score)} ${scoreTrendHtml(t.avg_score, t.prev_avg_score)}</td>
+        </tr>`
+    )
+    .join("");
+
+  const body = `
+    <h1 style="font-size:20px;font-weight:700;color:${NOTIF.textPrimary};margin:0 0 4px;">📬 La semaine de votre équipe</h1>
+    <p style="font-size:14px;color:${NOTIF.textSecondary};margin:0 0 24px;">${periodLabel}${userName ? ` — ${userName}` : ""}</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+      <tr>
+        ${statCellHtml("Calls (équipe)", String(totalCalls), "50%")}
+        <td width="8"></td>
+        ${statCellHtml("Briefs (équipe)", String(totalBriefs), "50%")}
+      </tr>
+    </table>
+    ${
+      team.length > 0
+        ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+            <thead><tr>
+              <th style="text-align:left;font-size:11px;text-transform:uppercase;color:${NOTIF.textSecondary};padding:6px 8px;border-bottom:1px solid ${NOTIF.border};">Commercial</th>
+              <th style="text-align:center;font-size:11px;text-transform:uppercase;color:${NOTIF.textSecondary};padding:6px 8px;border-bottom:1px solid ${NOTIF.border};">Calls</th>
+              <th style="text-align:center;font-size:11px;text-transform:uppercase;color:${NOTIF.textSecondary};padding:6px 8px;border-bottom:1px solid ${NOTIF.border};">Briefs</th>
+              <th style="text-align:center;font-size:11px;text-transform:uppercase;color:${NOTIF.textSecondary};padding:6px 8px;border-bottom:1px solid ${NOTIF.border};">Score</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>`
+        : `<p style="font-size:14px;color:${NOTIF.textSecondary};margin:0 0 24px;">Aucun commercial rattaché pour le moment.</p>`
+    }
+    ${ctaButtonHtml("Voir mon équipe", teamUrl)}`;
+
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const { error } = await resend.emails.send({
+    from: process.env.RESEND_FROM_EMAIL!,
+    to,
+    subject: `📬 La semaine de votre équipe — ${periodLabel}`,
+    html: emailShellHtml(body),
+  });
+
+  if (error) {
+    throw new Error(`sendManagerWeeklyDigestEmail failed: ${error.message}`);
+  }
+}

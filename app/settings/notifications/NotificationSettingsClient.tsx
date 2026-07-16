@@ -11,6 +11,12 @@ import {
   type NotificationChannel,
   type NotificationPreference,
 } from "@/lib/notification-preferences";
+import type { DigestPreference, DigestTiming } from "@/lib/db";
+
+const DIGEST_TIMING_LABELS: Record<DigestTiming, string> = {
+  friday_evening: "Vendredi soir",
+  monday_morning: "Lundi matin",
+};
 
 const SECTIONS: { eventType: NotificationEventType; title: string; description: string }[] = [
   { eventType: "brief_precall", title: "Briefs pré-call", description: "Envoyé avant chaque rendez-vous planifié." },
@@ -23,12 +29,39 @@ function prefKey(eventType: NotificationEventType, channel: NotificationChannel)
 
 export default function NotificationSettingsClient({
   initialPreferences,
+  initialDigestPreference,
 }: {
   initialPreferences: NotificationPreference[];
+  initialDigestPreference: DigestPreference;
 }) {
   const [preferences, setPreferences] = useState<Map<string, boolean>>(
     () => new Map(initialPreferences.map((p) => [prefKey(p.event_type, p.channel), p.enabled]))
   );
+
+  const [digestEnabled, setDigestEnabled] = useState(initialDigestPreference.enabled);
+  const [digestTiming, setDigestTiming] = useState<DigestTiming>(initialDigestPreference.timing);
+  const [digestSaving, setDigestSaving] = useState(false);
+
+  async function saveDigestPreference(nextEnabled: boolean, nextTiming: DigestTiming) {
+    const previousEnabled = digestEnabled;
+    const previousTiming = digestTiming;
+    setDigestEnabled(nextEnabled);
+    setDigestTiming(nextTiming);
+    setDigestSaving(true);
+    try {
+      const res = await fetch("/api/digest-preferences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: nextEnabled, timing: nextTiming }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      setDigestEnabled(previousEnabled);
+      setDigestTiming(previousTiming);
+    } finally {
+      setDigestSaving(false);
+    }
+  }
 
   // null while loading — deliberately not shown as "needs reconnection"
   // until we actually know, to avoid a flash of the warning for users who
@@ -284,6 +317,53 @@ export default function NotificationSettingsClient({
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="mt-8">
+        <h2 className="text-sm font-semibold text-slate-900">Digest hebdomadaire</h2>
+        <p className="text-xs text-slate-400 mt-0.5 mb-3">
+          Un récap par email de votre semaine (ou, pour les managers, de celle de votre équipe).
+        </p>
+        <div className="bg-white rounded-xl border border-slate-200 px-4 py-3.5">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="font-medium text-slate-900 text-sm">Recevoir le digest</p>
+              <p className="text-xs text-slate-500 mt-0.5">Envoyé automatiquement par email chaque semaine.</p>
+            </div>
+            <button
+              onClick={() => saveDigestPreference(!digestEnabled, digestTiming)}
+              disabled={digestSaving}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${
+                digestEnabled ? "bg-indigo-600" : "bg-slate-200"
+              }`}
+              aria-label={digestEnabled ? "Désactiver" : "Activer"}
+            >
+              <span
+                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                  digestEnabled ? "translate-x-[18px]" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
+          {digestEnabled && (
+            <div className="flex items-center gap-2 mt-3">
+              {(Object.keys(DIGEST_TIMING_LABELS) as DigestTiming[]).map((timing) => (
+                <button
+                  key={timing}
+                  onClick={() => saveDigestPreference(digestEnabled, timing)}
+                  disabled={digestSaving}
+                  className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                    digestTiming === timing
+                      ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                      : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
+                  }`}
+                >
+                  {DIGEST_TIMING_LABELS[timing]}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -4336,3 +4336,191 @@ export async function getEffectiveChannelsForUser(
   if (error) throw error;
   return ((data ?? []) as { channel: NotificationChannel }[]).map((r) => r.channel);
 }
+
+// ─── Digest hebdomadaire (module Distribution Flexible, sous-étape 3) ──────
+//
+// Doesn't fit the (event_type, channel, enabled) shape of
+// notification_preferences above: a digest also needs a "when" (Friday
+// evening vs Monday morning), which isn't a channel — a dedicated table
+// (digest_preferences, one row per user) instead of a new NotificationEventType.
+
+export type DigestTiming = "friday_evening" | "monday_morning";
+
+export type DigestPreference = {
+  enabled: boolean;
+  timing: DigestTiming;
+};
+
+const DEFAULT_DIGEST_PREFERENCE: DigestPreference = { enabled: false, timing: "friday_evening" };
+
+export async function getDigestPreference(userId: string): Promise<DigestPreference> {
+  const { data, error } = await supabaseAdmin
+    .from("digest_preferences")
+    .select("enabled, timing")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as DigestPreference | null) ?? DEFAULT_DIGEST_PREFERENCE;
+}
+
+export async function setDigestPreference(userId: string, enabled: boolean, timing: DigestTiming): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("digest_preferences")
+    .upsert({ user_id: userId, enabled, timing, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+  if (error) throw error;
+}
+
+export type DigestRecipient = {
+  id: string;
+  email: string;
+  name: string | null;
+  role: UserRole;
+};
+
+// Feeds the two Inngest crons (lib/inngest-functions.ts) — one call per
+// timing value, each cron only processing the users who opted into that
+// slot.
+export async function getUsersForDigestTiming(timing: DigestTiming): Promise<DigestRecipient[]> {
+  const { data: prefs, error: prefsError } = await supabaseAdmin
+    .from("digest_preferences")
+    .select("user_id")
+    .eq("enabled", true)
+    .eq("timing", timing);
+  if (prefsError) throw prefsError;
+
+  const userIds = (prefs ?? []).map((p) => (p as { user_id: string }).user_id);
+  if (userIds.length === 0) return [];
+
+  const { data, error } = await supabaseAdmin.from("users").select("id, email, name, role").in("id", userIds);
+  if (error) throw error;
+  return (data ?? []) as DigestRecipient[];
+}
+
+export type DigestPeriodStats = {
+  calls_count: number;
+  briefs_count: number;
+  avg_score: number | null;
+  quotes_sent: number;
+  quotes_accepted: number;
+};
+
+async function fetchDigestPeriodStats(
+  userIds: string[],
+  fromISO: string,
+  toISO: string
+): Promise<Map<string, DigestPeriodStats>> {
+  const stats = new Map<string, DigestPeriodStats>(
+    userIds.map((id) => [id, { calls_count: 0, briefs_count: 0, avg_score: null, quotes_sent: 0, quotes_accepted: 0 }])
+  );
+  if (userIds.length === 0) return stats;
+
+  const [briefsRes, callsRes, quotesRes] = await Promise.all([
+    supabaseAdmin
+      .from("briefs")
+      .select("user_id")
+      .in("user_id", userIds)
+      .gte("created_at", fromISO)
+      .lt("created_at", toISO),
+    supabaseAdmin
+      .from("calls")
+      .select("user_id, call_analysis(scores)")
+      .in("user_id", userIds)
+      .gte("created_at", fromISO)
+      .lt("created_at", toISO),
+    supabaseAdmin
+      .from("quotes")
+      .select("user_id, status")
+      .in("user_id", userIds)
+      .gte("created_at", fromISO)
+      .lt("created_at", toISO),
+  ]);
+  if (briefsRes.error) throw briefsRes.error;
+  if (callsRes.error) throw callsRes.error;
+  if (quotesRes.error) throw quotesRes.error;
+
+  for (const row of (briefsRes.data ?? []) as { user_id: string }[]) {
+    const s = stats.get(row.user_id);
+    if (s) s.briefs_count++;
+  }
+
+  const scoresByUser = new Map<string, number[]>();
+  for (const row of (callsRes.data ?? []) as Array<{
+    user_id: string;
+    call_analysis: { scores: AnalysisScores | null } | { scores: AnalysisScores | null }[] | null;
+  }>) {
+    const s = stats.get(row.user_id);
+    if (s) s.calls_count++;
+    const score = normalizeCallAnalysis(row.call_analysis)?.scores?.global_score;
+    if (typeof score === "number") {
+      const arr = scoresByUser.get(row.user_id) ?? [];
+      arr.push(score);
+      scoresByUser.set(row.user_id, arr);
+    }
+  }
+  for (const [userId, scores] of scoresByUser) {
+    const s = stats.get(userId);
+    if (s && scores.length > 0) s.avg_score = scores.reduce((a, b) => a + b, 0) / scores.length;
+  }
+
+  for (const row of (quotesRes.data ?? []) as { user_id: string; status: string }[]) {
+    const s = stats.get(row.user_id);
+    if (!s) continue;
+    if (row.status !== "draft") s.quotes_sent++;
+    if (row.status === "accepted") s.quotes_accepted++;
+  }
+
+  return stats;
+}
+
+export type CommercialDigestData = DigestPeriodStats & { prev_avg_score: number | null };
+
+// Single-user variant for the commercial's own personal digest.
+export async function getCommercialDigestData(
+  userId: string,
+  fromISO: string,
+  toISO: string,
+  prevFromISO: string,
+  prevToISO: string
+): Promise<CommercialDigestData> {
+  const [current, previous] = await Promise.all([
+    fetchDigestPeriodStats([userId], fromISO, toISO),
+    fetchDigestPeriodStats([userId], prevFromISO, prevToISO),
+  ]);
+  const currentStats = current.get(userId)!;
+  const prevStats = previous.get(userId)!;
+  return { ...currentStats, prev_avg_score: prevStats.avg_score };
+}
+
+export type ManagerDigestTeamItem = DigestPeriodStats & {
+  user_id: string;
+  name: string | null;
+  email: string;
+  prev_avg_score: number | null;
+};
+
+// Team-wide variant for the manager's roundup — mirrors getTeamOverview's
+// shape/fetch pattern but date-ranged (see that function's comment: it has
+// no date filtering at all, hence this separate variant rather than adding
+// optional params to it).
+export async function getManagerDigestData(
+  managerId: string,
+  fromISO: string,
+  toISO: string,
+  prevFromISO: string,
+  prevToISO: string
+): Promise<ManagerDigestTeamItem[]> {
+  const commercials = await getCommercialsForManager(managerId);
+  if (commercials.length === 0) return [];
+  const commercialIds = commercials.map((c) => c.id);
+
+  const [current, previous] = await Promise.all([
+    fetchDigestPeriodStats(commercialIds, fromISO, toISO),
+    fetchDigestPeriodStats(commercialIds, prevFromISO, prevToISO),
+  ]);
+
+  return commercials.map((c) => {
+    const currentStats = current.get(c.id)!;
+    const prevStats = previous.get(c.id)!;
+    return { ...currentStats, user_id: c.id, name: c.name, email: c.email, prev_avg_score: prevStats.avg_score };
+  });
+}

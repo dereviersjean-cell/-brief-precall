@@ -8,10 +8,13 @@ import {
   generateTasksFromTemplates,
   getCallsWithUnansweredFollowUps,
   getQuotesAwaitingAcceptance,
+  getUsersForDigestTiming,
   type UnansweredFollowUpCall,
   type UnansweredQuote,
+  type DigestRecipient,
 } from "./db";
 import { syncAndScheduleForUser } from "./recall";
+import { sendWeeklyDigestForUser } from "./digest";
 
 // ─── Text extraction ──────────────────────────────────────────────────────────
 
@@ -316,6 +319,80 @@ export const checkQuotesWithoutAcceptance = inngest.createFunction(
 
     const summary = { checked: quotes.length, created: totalCreated };
     console.log("[check-quotes-without-acceptance] done —", JSON.stringify(summary));
+    return summary;
+  }
+);
+
+// ─── Digest hebdomadaire (module Distribution Flexible, sous-étape 3) ─────
+//
+// Two crons, one per opt-in timing — each only processes the users who
+// chose that slot (getUsersForDigestTiming), so a user who picked Monday
+// morning never gets a Friday cron run for them at all, not just a
+// no-op. TZ=Europe/Paris since Inngest cron is UTC by default otherwise
+// (unlike every other cron in this file, which doesn't care about wall-clock
+// time) — verified against Inngest's docs for the "TZ=<IANA name> <cron>"
+// prefix syntax.
+
+export const sendFridayEveningDigests = inngest.createFunction(
+  {
+    id: "send-friday-evening-digests",
+    triggers: [{ cron: "TZ=Europe/Paris 0 18 * * 5" }],
+  },
+  async ({ step }) => {
+    const users = (await step.run("get-digest-users", async () => {
+      return getUsersForDigestTiming("friday_evening");
+    })) as DigestRecipient[];
+
+    console.log("[send-friday-evening-digests] users opted in:", users.length);
+
+    const now = new Date();
+    let sent = 0;
+    let failed = 0;
+    for (const user of users) {
+      const result = await step.run(`send-digest-${user.id}`, async () => {
+        return sendWeeklyDigestForUser(user, "friday_evening", now);
+      });
+      if (result.outcome === "sent") sent++;
+      else {
+        failed++;
+        console.error("[send-friday-evening-digests] digest failed for user", user.id, ":", result.detail);
+      }
+    }
+
+    const summary = { users: users.length, sent, failed };
+    console.log("[send-friday-evening-digests] done —", JSON.stringify(summary));
+    return summary;
+  }
+);
+
+export const sendMondayMorningDigests = inngest.createFunction(
+  {
+    id: "send-monday-morning-digests",
+    triggers: [{ cron: "TZ=Europe/Paris 0 8 * * 1" }],
+  },
+  async ({ step }) => {
+    const users = (await step.run("get-digest-users", async () => {
+      return getUsersForDigestTiming("monday_morning");
+    })) as DigestRecipient[];
+
+    console.log("[send-monday-morning-digests] users opted in:", users.length);
+
+    const now = new Date();
+    let sent = 0;
+    let failed = 0;
+    for (const user of users) {
+      const result = await step.run(`send-digest-${user.id}`, async () => {
+        return sendWeeklyDigestForUser(user, "monday_morning", now);
+      });
+      if (result.outcome === "sent") sent++;
+      else {
+        failed++;
+        console.error("[send-monday-morning-digests] digest failed for user", user.id, ":", result.detail);
+      }
+    }
+
+    const summary = { users: users.length, sent, failed };
+    console.log("[send-monday-morning-digests] done —", JSON.stringify(summary));
     return summary;
   }
 );

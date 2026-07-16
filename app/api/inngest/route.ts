@@ -5,9 +5,18 @@ import {
   syncRecallCalendars,
   checkEmailsWithoutReply,
   checkQuotesWithoutAcceptance,
+  sendFridayEveningDigests,
+  sendMondayMorningDigests,
 } from "@/lib/inngest-functions";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
-  functions: [processReferencesImport, syncRecallCalendars, checkEmailsWithoutReply, checkQuotesWithoutAcceptance],
+  functions: [
+    processReferencesImport,
+    syncRecallCalendars,
+    checkEmailsWithoutReply,
+    checkQuotesWithoutAcceptance,
+    sendFridayEveningDigests,
+    sendMondayMorningDigests,
+  ],
 });
