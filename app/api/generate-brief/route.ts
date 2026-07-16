@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { getServerSession } from "next-auth/next";
 import Anthropic from "@anthropic-ai/sdk";
 import { authOptions } from "@/lib/auth";
@@ -121,23 +121,34 @@ export async function POST(request: NextRequest) {
     const brief = await generateBrief(trimmed, config, userContext, pappersData, newsArticles, userId ?? undefined, contactEmail);
 
     if (userId) {
-      withRetry(() => saveBrief(userId, trimmed, contactEmail, calendarEventId, brief, config.model)).catch(
-        (err) => console.error("[generate-brief] saveBrief failed after retries:", err)
-      );
+      // Wrapped in after() instead of plain fire-and-forget: Vercel can
+      // freeze the serverless function as soon as the response below is
+      // sent, killing an unawaited promise before it completes — this is
+      // what silently dropped saveBrief/dispatchBriefPreCall (confirmed live:
+      // "[generate-brief] contactEmail:" logged, but the subsequent
+      // "dispatchBriefPreCall results:" line never did, for several minutes
+      // after the request). after() keeps the function alive until this
+      // callback settles without delaying the response itself.
+      after(async () => {
+        const savePromise = withRetry(() =>
+          saveBrief(userId, trimmed, contactEmail, calendarEventId, brief, config.model)
+        ).catch((err) => console.error("[generate-brief] saveBrief failed after retries:", err));
 
-      // Non-blocking — never delays the response back to the front end, and
-      // a dispatch failure must never surface as a brief-generation error
-      // (dispatchBriefPreCall itself never throws; this catch is just a
-      // last-resort safety net).
-      dispatchBriefPreCall(userId, brief as GeneratedBriefJson, {
-        calendarEventId,
-        meetingTitle: trimmed,
-        meetingStartsAt,
-        contactName: contactEmail ? formatContactDisplayName(null, contactEmail) : null,
-        contactEmail,
-      })
-        .then((results) => console.log("[generate-brief] dispatchBriefPreCall results:", results))
-        .catch((err) => console.error("[generate-brief] dispatchBriefPreCall failed:", err));
+        // A dispatch failure must never surface as a brief-generation error
+        // (dispatchBriefPreCall itself never throws; this catch is just a
+        // last-resort safety net).
+        const dispatchPromise = dispatchBriefPreCall(userId, brief as GeneratedBriefJson, {
+          calendarEventId,
+          meetingTitle: trimmed,
+          meetingStartsAt,
+          contactName: contactEmail ? formatContactDisplayName(null, contactEmail) : null,
+          contactEmail,
+        })
+          .then((results) => console.log("[generate-brief] dispatchBriefPreCall results:", results))
+          .catch((err) => console.error("[generate-brief] dispatchBriefPreCall failed:", err));
+
+        await Promise.all([savePromise, dispatchPromise]);
+      });
     }
 
     return NextResponse.json(brief);
