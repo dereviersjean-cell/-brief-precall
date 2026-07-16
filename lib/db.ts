@@ -4603,3 +4603,46 @@ export async function getDigestPendingQuotes(userIds: string[]): Promise<DigestP
   if (error) throw error;
   return (data ?? []) as DigestPendingQuote[];
 }
+
+// ─── Playbook via Notion (module Team, sous-étape import) ───────────────────
+//
+// One connection per ORGANIZATION, not per user — the playbook itself is
+// one-per-org (see getTeamOverview's comment elsewhere), so this can't reuse
+// the per-user crm_connections table the way lib/slack.ts does. Internal
+// Integration token (not OAuth): Notion's public/OAuth integrations require
+// a Notion security review before they work for real users, which would
+// block this feature indefinitely — see lib/notion.ts for the full rationale.
+
+export type PlaybookNotionConnection = { access_token: string; connected_by_user_id: string | null };
+
+export async function getPlaybookNotionConnection(organizationId: string): Promise<PlaybookNotionConnection | null> {
+  const { data, error } = await supabaseAdmin
+    .from("playbook_notion_connections")
+    .select("access_token, connected_by_user_id")
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  if (error) throw error;
+  return data as PlaybookNotionConnection | null;
+}
+
+export async function savePlaybookNotionConnection(
+  organizationId: string,
+  accessToken: string,
+  connectedByUserId: string
+): Promise<void> {
+  const { error } = await supabaseAdmin.from("playbook_notion_connections").upsert(
+    {
+      organization_id: organizationId,
+      access_token: accessToken,
+      connected_by_user_id: connectedByUserId,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "organization_id" }
+  );
+  if (error) throw error;
+}
+
+export async function deletePlaybookNotionConnection(organizationId: string): Promise<void> {
+  const { error } = await supabaseAdmin.from("playbook_notion_connections").delete().eq("organization_id", organizationId);
+  if (error) throw error;
+}

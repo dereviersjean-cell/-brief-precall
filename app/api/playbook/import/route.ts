@@ -22,6 +22,52 @@ async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   return (data.text as string) ?? "";
 }
 
+async function extractTextFromDocx(buffer: Buffer): Promise<string> {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const mammoth = require("mammoth");
+  const result = await mammoth.extractRawText({ buffer });
+  return (result.value as string) ?? "";
+}
+
+async function extractTextFromUploadedFile(file: File): Promise<string> {
+  const name = file.name.toLowerCase();
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  if (file.type.includes("pdf") || name.endsWith(".pdf")) {
+    return extractTextFromPdf(buffer);
+  }
+  if (
+    file.type.includes("word") ||
+    file.type.includes("officedocument.wordprocessing") ||
+    name.endsWith(".docx") ||
+    name.endsWith(".doc")
+  ) {
+    return extractTextFromDocx(buffer);
+  }
+  throw new Error("UNSUPPORTED_FILE_TYPE");
+}
+
+// Shared by both import sources (this route's paste/file upload, and
+// /api/playbook/notion/import) — the Claude extraction step is identical
+// regardless of where the raw text came from.
+export async function extractPlaybookDimensions(text: string): Promise<PlaybookExtractionDimension[]> {
+  const systemPrompt = (await readPromptConfig("playbook_extraction_prompt")) ?? DEFAULT_PLAYBOOK_EXTRACTION_PROMPT;
+
+  const client = new Anthropic();
+  const message = await client.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 3000,
+    system: systemPrompt,
+    messages: [{ role: "user", content: text.trim() }],
+  });
+
+  const textBlock = message.content.find((b) => b.type === "text");
+  const raw = textBlock?.type === "text" ? textBlock.text : "";
+  const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+  const parsed = JSON.parse(cleaned) as { dimensions?: PlaybookExtractionDimension[] };
+  return parsed.dimensions ?? [];
+}
+
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
   const auth = await requireActiveUser(session);
@@ -48,11 +94,14 @@ export async function POST(request: NextRequest) {
       if (!(file instanceof File)) {
         return NextResponse.json({ error: "Fichier requis." }, { status: 400 });
       }
-      if (!file.type.includes("pdf") && !file.name.toLowerCase().endsWith(".pdf")) {
-        return NextResponse.json({ error: "Seul le format PDF est accepté pour l'upload de fichier." }, { status: 400 });
+      try {
+        text = await extractTextFromUploadedFile(file);
+      } catch (err) {
+        if (err instanceof Error && err.message === "UNSUPPORTED_FILE_TYPE") {
+          return NextResponse.json({ error: "Formats acceptés : PDF, Word (.doc, .docx)." }, { status: 400 });
+        }
+        throw err;
       }
-      const buffer = Buffer.from(await file.arrayBuffer());
-      text = await extractTextFromPdf(buffer);
     } else {
       const body = (await request.json()) as { text?: string };
       text = body.text ?? "";
@@ -66,25 +115,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Aucun texte à analyser." }, { status: 400 });
   }
 
-  const systemPrompt = (await readPromptConfig("playbook_extraction_prompt")) ?? DEFAULT_PLAYBOOK_EXTRACTION_PROMPT;
-
   try {
-    const client = new Anthropic();
-    const message = await client.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 3000,
-      system: systemPrompt,
-      messages: [{ role: "user", content: text.trim() }],
-    });
-
-    const textBlock = message.content.find((b) => b.type === "text");
-    const raw = textBlock?.type === "text" ? textBlock.text : "";
-    const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    const parsed = JSON.parse(cleaned) as { dimensions?: PlaybookExtractionDimension[] };
-
+    const dimensions = await extractPlaybookDimensions(text);
     // Returned to the client for review only — nothing is applied to the
     // playbook here (see /api/playbook/apply-import).
-    return NextResponse.json({ dimensions: parsed.dimensions ?? [] });
+    return NextResponse.json({ dimensions });
   } catch (err) {
     console.error("[playbook/import] extraction failed:", err instanceof Error ? err.message : String(err));
     return NextResponse.json(

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { FileText, Video, History, FileCheck, CheckSquare, Bell, Users, Settings, LogOut } from "lucide-react";
+import { FileText, Video, History, FileCheck, CheckSquare, Bell, Users, Settings, LogOut, ChevronDown } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export default function AppSidebar() {
@@ -54,6 +54,14 @@ export default function AppSidebar() {
   const teamActive = pathname.startsWith("/team") && !playbookActive && !emailTemplatesActive;
   const settingsActive = pathname.startsWith("/settings");
 
+  // Collapsed by default, expanded automatically whenever a sub-page is
+  // active (direct nav or refresh lands there) — manual toggling otherwise
+  // persists as the user navigates around the rest of the app.
+  const [teamMenuOpen, setTeamMenuOpen] = useState(teamActive || playbookActive || emailTemplatesActive);
+  useEffect(() => {
+    if (playbookActive || emailTemplatesActive) setTeamMenuOpen(true);
+  }, [playbookActive, emailTemplatesActive]);
+
   const navItems: { href: string; label: string; icon: LucideIcon; active: boolean; badge?: number }[] = [
     { href: "/dashboard", label: "Brief", icon: FileText, active: briefActive },
     { href: "/feedback", label: "Analyse rendez-vous", icon: Video, active: feedbackActive },
@@ -101,43 +109,54 @@ export default function AppSidebar() {
           );
         })}
 
-        {/* Équipe + sous-pages (manager only) */}
+        {/* Équipe + sous-pages (manager only) — collapsible dropdown */}
         {isManager && (
           <div>
-            <Link
-              href="/team"
-              className={`relative flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
+            <div
+              className={`relative flex items-center rounded-lg text-sm font-medium transition-colors duration-200 ${
                 teamActive ? "bg-[#F5F3FF] text-primary" : "text-gray-600 hover:bg-gray-50"
               }`}
             >
               {teamActive && (
                 <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-sm bg-primary" />
               )}
-              <Users className="w-4 h-4 shrink-0" />
-              Équipe
-            </Link>
+              <Link href="/team" className="flex items-center gap-3 flex-1 min-w-0 px-3.5 py-2.5">
+                <Users className="w-4 h-4 shrink-0" />
+                Équipe
+              </Link>
+              <button
+                onClick={() => setTeamMenuOpen((open) => !open)}
+                aria-label={teamMenuOpen ? "Réduire Équipe" : "Développer Équipe"}
+                aria-expanded={teamMenuOpen}
+                className="pr-3.5 pl-1 py-2.5 shrink-0 text-gray-400 hover:text-gray-600"
+              >
+                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${teamMenuOpen ? "rotate-0" : "-rotate-90"}`} />
+              </button>
+            </div>
 
             {/* Nested under Équipe — indented to align under its icon, with a
                 connecting guide line so the grouping reads visually instead
                 of the sub-links floating disconnected from their parent. */}
-            <div className="ml-[22px] pl-4 border-l border-gray-200 mt-0.5 space-y-0.5">
-              <Link
-                href="/team/playbook"
-                className={`block px-2.5 py-1.5 rounded-md text-sm transition-colors duration-200 ${
-                  playbookActive ? "text-primary font-medium bg-[#F5F3FF]" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
-                }`}
-              >
-                Playbook
-              </Link>
-              <Link
-                href="/team/email-templates"
-                className={`block px-2.5 py-1.5 rounded-md text-sm transition-colors duration-200 ${
-                  emailTemplatesActive ? "text-primary font-medium bg-[#F5F3FF]" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
-                }`}
-              >
-                Templates emails
-              </Link>
-            </div>
+            {teamMenuOpen && (
+              <div className="ml-[22px] pl-4 border-l border-gray-200 mt-0.5 space-y-0.5">
+                <Link
+                  href="/team/playbook"
+                  className={`block px-2.5 py-1.5 rounded-md text-sm transition-colors duration-200 ${
+                    playbookActive ? "text-primary font-medium bg-[#F5F3FF]" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                  }`}
+                >
+                  Playbook
+                </Link>
+                <Link
+                  href="/team/email-templates"
+                  className={`block px-2.5 py-1.5 rounded-md text-sm transition-colors duration-200 ${
+                    emailTemplatesActive ? "text-primary font-medium bg-[#F5F3FF]" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                  }`}
+                >
+                  Templates emails
+                </Link>
+              </div>
+            )}
           </div>
         )}
       </nav>
