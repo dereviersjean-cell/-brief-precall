@@ -20,6 +20,7 @@ Distribution in-context : Brief livre ses outputs (briefs, analyses) là où le 
 | **Voyage AI** | Embeddings 1024 dim (voyage-3) pour similarité références clients via pgvector. |
 | **Resend** | Emails transactionnels depuis jean@lartisangroupe.com — jamais le Gmail du commercial. |
 | **react-pdf** | Génération PDF devis côté serveur. |
+| **Notion (token intégration interne)** | Connexion playbook Notion. Pas OAuth : les intégrations publiques Notion nécessitent une review de sécurité Notion avant de fonctionner (bloquant pour un "connecte et utilise immédiatement"). Connexion **par organisation** (table `playbook_notion_connections`), pas par user — le playbook est un par organisation. |
 
 ## Architecture multi-tenant
 
@@ -74,6 +75,7 @@ Distribution in-context : Brief livre ses outputs (briefs, analyses) là où le 
 9. **Calls dupliqués webhook retry** : contrainte UNIQUE sur `recall_bot_id` + upsert.
 10. **Claude Code silencieux** : peut modifier des fichiers sans les commiter. Toujours `git status` avant `git push`.
 11. **URL vidéo Recall** : signée S3, expire ~5h — ne jamais stocker en base.
+12. **Fuite bundle client via import transitif** : `lib/dashboard.ts` (consommé par des composants client animés) importait une fonction de `lib/digest.ts`, qui charge le SDK Anthropic — aurait fait fuiter le SDK (et potentiellement la clé API) dans le bundle client. `lib/dashboard.ts` doit rester dépendance-free (pas de `lib/digest.ts`, pas de `lib/db.ts`) ; la logique métier partagée (bucketing par semaine) vit dans `lib/paris-week.ts`, sans dépendance non plus.
 
 ## Règles — NE JAMAIS faire
 
@@ -107,15 +109,14 @@ git add . && git commit -m "..." && git push
 
 ## Roadmap prioritaire
 
-1. Distribution C2 — Pipedrive en écriture (même logique HubSpot C1)
-2. Distribution D — Slack (from scratch)
-3. Digest hebdo — commercial + manager, vendredi soir ou lundi matin
-4. Protections IA — uniformiser max_tokens 1500 + extractJsonObject sur toutes les routes génération
-5. Sellsy CRM — lecture
-6. Stripe — facturation
-7. Google OAuth — sortir du mode Testing
-8. Ringover/Aircall — téléphonie (pas juste visio)
-9. Proxycurl LinkedIn — enrichissement contact
+Fait depuis la dernière mise à jour (16 juillet 2026) : Distribution C2 (Pipedrive écriture), Distribution D (Slack), Digest hebdo, connexion Notion pour le playbook (import), nouveau `/dashboard` (page d'accueil réelle, ancien outil de brief déplacé vers `/brief`), refonte `/feedback` (layout deux colonnes + liste table triable), landing/login à jour.
+
+1. Protections IA — uniformiser max_tokens 1500 + extractJsonObject sur toutes les routes génération
+2. Sellsy CRM — lecture
+3. Stripe — facturation
+4. Google OAuth — sortir du mode Testing
+5. Ringover/Aircall — téléphonie (pas juste visio)
+6. Proxycurl LinkedIn — enrichissement contact
 
 ## Comptes de test
 - Jean (manager) : `jean.dereviers@oliverlist.com` — user_id `ee6772b4-423f-4091-a140-bf3991919c8b`

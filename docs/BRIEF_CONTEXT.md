@@ -1,4 +1,4 @@
-﻿Contexte Brief — reprise de session (version complète unifiée) — MàJ 15 juillet 2026
+﻿Contexte Brief — reprise de session (version complète unifiée) — MàJ 16 juillet 2026
 Je continue le développement de Brief avec toi sur plusieurs sessions successives. Ce document contient l'intégralité de l'état du projet depuis le début.
 
 
@@ -88,8 +88,9 @@ Landing et auth
 Modules utilisateur
 
 
-* app/dashboard/DashboardClient.tsx — liste RDV avec badges "Brief généré" et bouton "Revoir". getExternalAttendee(event) filtre via GENERIC_DOMAINS.
+* app/brief/page.tsx + BriefToolClient.tsx — outil de génération de brief (ancien contenu de /dashboard, déplacé le 16 juillet 2026 pour libérer /dashboard). Liste RDV avec badges "Brief généré" et bouton "Revoir". getExternalAttendee(event) filtre via GENERIC_DOMAINS.
 * app/brief/[id]/page.tsx + BriefClient.tsx — affichage brief complet + section "Calls précédents"
+* app/dashboard/page.tsx — nouveau tableau de bord (page d'accueil réelle post-connexion, depuis le 16 juillet 2026), deux vues selon le rôle. Composants : AnimatedNumber, CommercialOverview, ManagerOverview, ConnectionsStatus, DimensionScores, RecentCallsList, ScoreTrendChart, StatTile, TasksList, TeamRosterTable, FadeIn. Animé avec `motion`.
 * app/onboarding/ — 4 étapes
 * app/feedback/page.tsx + FeedbackClient.tsx — liste des calls avec badges (durée, caméra, sentiment, score)
 * app/feedback/[id]/page.tsx + FeedbackDetailClient.tsx — détail call complet : bloc 💡 Points clés en tête, bloc vidéo, bloc 🎧 Analyse de la conversation (analytics), transcript enrichi avec édition speakers, scores dynamiques (playbook), email de suivi éditable avec dropdown "Type de call"
@@ -124,7 +125,7 @@ Module Équipe
 * app/team/page.tsx + TeamClient.tsx — dashboard manager
 * app/team/[commercialId]/page.tsx + TeamMemberDetailClient.tsx
 * app/team/[commercialId]/calls/[callId]/page.tsx + CallDetailClient.tsx — vue readOnly manager
-* app/team/playbook/page.tsx + PlaybookClient.tsx + ImportPlaybookModal.tsx — playbook manager
+* app/team/playbook/page.tsx + PlaybookClient.tsx + ImportPlaybookModal.tsx — playbook manager. Import via 3 onglets dans la modale : "Coller le texte", "Fichier" (PDF + Word .doc/.docx via mammoth), "Depuis Notion" (recherche pages partagées avec l'intégration → confirmation titre → extraction Claude partagée)
 * app/team/email-templates/page.tsx + EmailTemplatesClient.tsx — templates emails manager
 * app/team/ManageTeamModal.tsx — gestion rattachements
 * app/team/InviteCommercialModal.tsx — invitation commercial
@@ -208,7 +209,7 @@ Intégrations externes
 CRM
 
 
-* lib/crm/pipedrive.ts — OAuth + lecture. api_domain contient déjà https://, ne jamais préfixer.
+* lib/crm/pipedrive.ts — OAuth + lecture + écriture (sous-étape C2). api_domain contient déjà https://, ne jamais préfixer. hasPipedriveWriteAccess, findPipedriveContactForEmail, findPipedriveDealForEmail, findPipedriveActivityForEmail, appendToPipedriveActivityNote, createPipedriveNoteOnDeal, createPipedriveNoteOnContact, writeToPipedriveCascade (activity → deal → contact), htmlBodyForPipedrive
 * lib/crm/hubspot.ts — OAuth + lecture + écriture (sous-étape C1). hasHubSpotWriteAccess, findHubSpotContactForEmail, findHubSpotDealForEmail (filtre closedwon/closedlost), findHubSpotMeetingForEmail, appendToHubSpotMeetingBody (écrit dans hs_meeting_body — pas d'association note↔meeting côté HubSpot), createHubSpotNoteOnDeal, createHubSpotNoteOnContact, writeToHubSpotCascade (meeting → deal → contact), htmlBodyForHubSpot (markdown → HTML + tables → listes à puces), idempotence via marqueur invisible <!-- brief-note-uid:{uid} -->
 * lib/crm/enrichment.ts — enrichFromCRM(userId, companyName) : Pipedrive puis HubSpot fallback
 
@@ -216,8 +217,13 @@ CRM
 Distribution & notifications
 
 
-* lib/notification-preferences.ts — types, CHANNEL_META, expandPreferences
-* lib/notifications-dispatcher.ts — dispatchBriefPreCall, dispatchCallAnalysis
+* lib/notification-preferences.ts — types, CHANNEL_META, expandPreferences. NotificationChannel = email | calendar | hubspot | pipedrive | slack
+* lib/notifications-dispatcher.ts — dispatchBriefPreCall, dispatchCallAnalysis (orchestration au-dessus de lib/crm/*.ts, lib/slack.ts, lib/email.ts)
+* lib/slack.ts — OAuth Slack + DM par user (pas de canal partagé). hasSlackConnection, saveSlackConnection, disconnectSlack, sendSlackDirectMessage, writeToSlackDM, mrkdwnMessageForSlack (markdown → mrkdwn Slack)
+* lib/digest.ts — orchestration digest hebdo (2 crons Inngest, un par timing). Charge le SDK Anthropic — ne jamais importer depuis un composant client (cf bug #39)
+* lib/dashboard.ts — helpers purs partagés par les composants client du nouveau /dashboard (StatTile, ScoreTrendChart, RecentCallsList, TeamRosterTable, DimensionScores). Volontairement dépendance-free (pas de lib/digest.ts, pas de lib/db.ts) pour ne pas faire fuiter le SDK Anthropic/supabaseAdmin dans le bundle client
+* lib/paris-week.ts — mostRecentParisMonday, bucketScoresByWeek : logique de bucketing par semaine (Europe/Paris) partagée entre lib/digest.ts et lib/dashboard.ts, sans dépendance
+* lib/notion.ts — token d'intégration interne Notion (pas OAuth). validateNotionToken, searchNotionPages, getNotionPageText
 
 
 Autres
@@ -296,8 +302,11 @@ Routes Playbook
 * app/api/playbook/route.ts (GET/PATCH)
 * app/api/playbook/dimensions/route.ts + [dimensionId]/route.ts + reorder/route.ts
 * app/api/playbook/criteria/route.ts + [criterionId]/route.ts
-* app/api/playbook/import/route.ts (POST PDF ou texte)
+* app/api/playbook/import/route.ts (POST PDF, Word ou texte) — extractPlaybookDimensions exportée pour être réutilisée par notion/import
 * app/api/playbook/apply-import/route.ts
+* app/api/playbook/notion/connect/route.ts + status/route.ts + disconnect/route.ts — connexion token d'intégration interne, par organisation
+* app/api/playbook/notion/pages/route.ts — recherche des pages partagées avec l'intégration
+* app/api/playbook/notion/import/route.ts — extraction d'une page Notion vers le format playbook
 
 
 Routes Email templates
@@ -313,6 +322,10 @@ Routes Notifications préférences
 * app/api/notification-preferences/route.ts (GET/POST)
 * app/api/notification-preferences/calendar-status/route.ts
 * app/api/notification-preferences/hubspot-status/route.ts
+* app/api/notification-preferences/slack-status/route.ts
+* app/api/slack/start|callback|disconnect/route.ts — OAuth Slack
+* app/api/digest-preferences/route.ts (GET/POST enabled + timing)
+* app/api/digest-preferences/send-preview/route.ts — aperçu à la demande
 
 
 Routes Admin
@@ -522,7 +535,7 @@ CREATE TABLE crm_connections (
   user_id uuid REFERENCES users(id) ON DELETE CASCADE,
 
 
-  provider text NOT NULL, -- 'pipedrive', 'hubspot', 'sellsy'
+  provider text NOT NULL, -- 'pipedrive', 'hubspot', 'sellsy', 'slack' (api_domain détourné pour le slackUserId)
 
 
   access_token text,
@@ -858,6 +871,61 @@ CREATE TABLE notification_preferences (
 );
 
 
+-- digest_preferences (1 par user)
+
+
+CREATE TABLE digest_preferences (
+
+
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+
+
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+
+
+  enabled boolean NOT NULL DEFAULT false,
+
+
+  timing text NOT NULL DEFAULT 'friday_evening',  -- 'friday_evening' | 'monday_morning'
+
+
+  updated_at timestamptz DEFAULT now()
+
+
+);
+
+
+-- playbook_notion_connections (1 par organisation, pas par user)
+
+
+CREATE TABLE playbook_notion_connections (
+
+
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+
+
+  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE UNIQUE,
+
+
+  access_token text NOT NULL,  -- token d'intégration interne Notion, pas OAuth
+
+
+  connected_by_user_id uuid REFERENCES users(id) ON DELETE SET NULL,
+
+
+  updated_at timestamptz DEFAULT now()
+
+
+);
+
+
+-- Slack : pas de table dédiée. Réutilise crm_connections avec provider='slack'
+-- (même forme access_token + un champ texte en plus) : api_domain est détourné
+-- pour stocker le slackUserId (cible du DM chat.postMessage), pas un domaine
+-- — même logique de réutilisation que Pipedrive détournant api_domain pour
+-- une URL complète https://... au lieu d'un simple domaine.
+
+
 ________________
 
 
@@ -1124,6 +1192,79 @@ Sous-étape C1 terminée — HubSpot en écriture
 * Testé end-to-end : brief bien affiché dans hs_meeting_body
 
 
+Sous-étape C2 terminée — Pipedrive en écriture
+
+
+* Même logique que HubSpot C1, adaptée à l'API Pipedrive : hasPipedriveWriteAccess
+* writeToPipedriveCascade : activity (note) → deal (note) → contact (note)
+* findPipedriveActivityForEmail, findPipedriveDealForEmail, findPipedriveContactForEmail
+* htmlBodyForPipedrive + appendToPipedriveActivityNote, createPipedriveNoteOnDeal, createPipedriveNoteOnContact
+* Fix trouvé au passage : le dispatch de brief (sauvegarde + écriture CRM/calendar) était silencieusement droppé par Vercel dans certains cas (fix dédié)
+
+
+Sous-étape D terminée — Slack (from scratch)
+
+
+* Intégration complète construite de zéro, aucune existante avant
+* OAuth Slack per-user (user_scope=chat:write, pas de scope bot workspace-wide)
+* Réutilise crm_connections (provider='slack') plutôt qu'une table dédiée — api_domain détourné pour stocker le slackUserId
+* Pas de refresh token : les tokens utilisateur xoxp- n'expirent pas côté Slack (pas de rotation activée), donc pas de wrapper retry-on-401 comme les CRM
+* DM per-user uniquement (chat.postMessage avec channel = l'ID de l'utilisateur autorisé, pas de canal partagé)
+* mrkdwnMessageForSlack : conversion markdown → mrkdwn Slack
+* writeToSlackDM : point d'entrée pour le dispatcher, même rôle que writeToHubSpotCascade/writeToPipedriveCascade
+
+
+Digest hebdomadaire terminé (module Distribution Flexible, sous-étape 3)
+
+
+* Table digest_preferences (1 par user) : enabled + timing ('friday_evening' | 'monday_morning')
+* Page /settings/notifications étendue avec le choix du timing
+* 2 crons Inngest séparés, un par timing (TZ=Europe/Paris explicite dans le cron — contrairement aux autres crons du fichier qui n'ont pas besoin de wall-clock time) : sendFridayEveningDigests (vendredi 18h), sendMondayMorningDigests (lundi 8h)
+* lib/digest.ts : orchestration au-dessus de lib/db.ts (queries) et lib/email.ts (rendu/envoi), même pattern que lib/notifications-dispatcher.ts au-dessus de lib/crm/*.ts
+* Version commercial : calls/briefs/score de la semaine, insights calls, tasks en attente, devis en attente
+* Version manager : mêmes stats agrégées sur toute l'équipe (via getCommercialsForManager)
+* Narratif généré par IA (prompts éditables DEFAULT_DIGEST_COMMERCIAL_PROMPT / DEFAULT_DIGEST_MANAGER_PROMPT dans admin-config.ts)
+* Aperçu à la demande : route /api/digest-preferences/send-preview
+* lib/paris-week.ts extrait comme module pur (mostRecentParisMonday, bucketScoresByWeek) — dépendance-free, réutilisé ensuite par lib/dashboard.ts
+
+
+Connexion Notion pour le playbook (module Team, sous-étape import)
+
+
+* Token d'intégration interne Notion, pas OAuth — les intégrations publiques Notion nécessitent une review de sécurité par Notion avant de fonctionner, ce qui aurait rendu impossible un "connecte et utilise immédiatement" (confirmé contre developers.notion.com/docs/authorization)
+* Connexion par ORGANISATION (table dédiée playbook_notion_connections), pas par user comme crm_connections, puisque le playbook est un par organisation
+* Flow : onglet "Depuis Notion" dans ImportPlaybookModal → recherche auto des pages partagées avec l'intégration (searchNotionPages) → confirmation "Est-ce bien cette page : [titre] ?" → extraction (getNotionPageText + extractPlaybookDimensions, la même fonction d'extraction Claude que les flows coller/fichier, exportée depuis /api/playbook/import pour être réutilisée par /api/playbook/notion/import)
+* Import playbook aussi étendu au format Word (.doc/.docx via mammoth, même pattern que lib/inngest-functions.ts) — le PDF était déjà supporté côté backend (extractTextFromPdf) mais restait caché derrière un texte "arrive prochainement" dans la modale
+
+
+Nouveau /dashboard (page d'accueil réelle post-connexion)
+
+
+* L'ancien outil de génération de brief occupait /dashboard, qui est aussi la page d'atterrissage post-connexion — déplacé vers /brief (symétrique avec /brief/[id]) pour libérer /dashboard pour un vrai tableau de bord. Tous les liens de connexion/onboarding/retour mis à jour en conséquence
+* Deux vues selon le rôle, entièrement basées sur des données réelles (aucune stat inventée), réutilisant au maximum les fonctions déjà construites pour le digest hebdo (mêmes plages "cette semaine", mêmes seuils de couleur vert/orange/rouge)
+* Commercial : calls/briefs/score/devis cette semaine, tendance de score sur 6 semaines, calls récents, tâches en attente, état des connexions (HubSpot/Pipedrive/Slack/Digest)
+* Manager : mêmes indicateurs agrégés équipe, table de l'équipe avec statut "Actif"/"À suivre", scores moyens par dimension, dernière activité par commercial
+* Animé avec `motion` (nouvelle dépendance) : chiffres qui comptent au chargement, entrées échelonnées, barres qui poussent, hover
+* Bug trouvé et corrigé au passage : lib/dashboard.ts importait une fonction de lib/digest.ts, qui charge le SDK Anthropic — aurait fait fuiter le SDK (et potentiellement la clé API) dans le bundle client vu que ces stats sont consommées par des composants client animés. Extrait dans lib/paris-week.ts (dépendance-free) ce qui pouvait l'être
+
+
+Refonte /feedback (session actuelle)
+
+
+* Refonte UX /feedback/[id] : layout deux colonnes, vidéo/transcript synchronisés
+* Liste /feedback passée en table triable + recherche, inspirée de Claap
+
+
+Landing + login mis à jour (session actuelle)
+
+
+* Contenu à jour avec les features construites cette session : Distribution automatique, Digest hebdomadaire par IA, Playbook coaching sur-mesure (3 nouvelles cartes features)
+* Carte Analyse enrichie mise à jour (relecture vidéo synchronisée au transcript)
+* Intégrations : ajout Slack + Notion à la liste
+* Étape "Après le RDV" : mentionne la distribution CRM/Slack
+* Login : accroche du panneau droit mise à jour ("distribue" ajouté)
+
+
 ________________
 
 
@@ -1197,6 +1338,15 @@ Bugs documentés (numérotation continue depuis session 1)
 38. Recall descarte les timestamps dans transcriptToText (garde juste le texte). Pour les analytics conversation, il faut passer par transcript_json.
 
 
+39. Fuite bundle client via import transitif : lib/dashboard.ts (consommé par des composants client animés) importait une fonction de lib/digest.ts, qui charge le SDK Anthropic — aurait fait fuiter le SDK (et potentiellement la clé API) dans le bundle client. Fix : lib/dashboard.ts reste dépendance-free (pas de lib/digest.ts, pas de lib/db.ts), la logique de bucketing par semaine partagée vit dans lib/paris-week.ts sans dépendance.
+
+
+40. Brief dispatch silencieusement droppé par Vercel : la sauvegarde + écriture CRM/calendar du dispatch de brief pouvait échouer silencieusement dans certains cas sur Vercel. Fix dédié (commit 7050edb).
+
+
+41. Notion : les intégrations publiques/OAuth nécessitent une review de sécurité Notion avant de fonctionner pour de vrais utilisateurs — bloquant pour un "connecte et utilise immédiatement". Solution : token d'intégration interne, pas OAuth (confirmé contre developers.notion.com/docs/authorization).
+
+
 ________________
 
 
@@ -1207,7 +1357,7 @@ Décisions produit explicites
 * Réponses prospects : stockées en base pour éviter appels Gmail répétés
 * Prompts éditables depuis le backoffice sans déploiement (admin_config table key/value)
 * Vision distribution in-context : Brief livre ses outputs dans les outils clients (CRM, agenda, email)
-* HubSpot en lecture + écriture (contacts.write + deals.write), Pipedrive à venir
+* HubSpot en lecture + écriture (contacts.write + deals.write) ; Pipedrive en lecture + écriture (cascade activity/deal/contact) ; Slack en écriture (DM per-user)
 * Brief est invitation only (pas d'inscription libre)
 * Signature devis : simple (tracking + clic accepter/refuser), pas de signature qualifiée pour l'instant
 * Emails de brief/analyse envoyés via Resend depuis jean@lartisangroupe.com, pas Gmail du commercial
@@ -1237,12 +1387,9 @@ Workflow de développement habituel
 ________________
 
 
-Roadmap restante (au 15 juillet 2026)
-En cours
-* Distribution flexible — Sous-étape C2 : Pipedrive en écriture (même logique que HubSpot, adaptée API Pipedrive)
-* Distribution flexible — Sous-étape D : Slack (intégration complète à partir de zéro, aucune existante)
+Roadmap restante (au 16 juillet 2026)
+Fait depuis la dernière mise à jour : Distribution C2 (Pipedrive écriture), Distribution D (Slack), Digest hebdo, connexion Notion pour le playbook, nouveau /dashboard, refonte /feedback, landing/login à jour — voir "Modules terminés" ci-dessus.
 Court terme (haute valeur produit)
-* Digest hebdo commercial + manager : envoi auto vendredi soir OU lundi matin avec résumé de la semaine (ce qui a bien marché, prospects en retard, etc.). Version manager avec vue équipe + stats mois.
 * Backfill de tous les calls historiques restants avec le script (aujourd'hui seul Ravachol/Hubert est backfilé)
 Améliorations techniques
 * Appliquer les 3 protections IA (max_tokens 1500, extractJsonObject, log réponse brute) à toutes les routes de génération IA restantes (generate-brief, generate-quote, etc.)
