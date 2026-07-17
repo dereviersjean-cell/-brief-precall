@@ -22,6 +22,11 @@ export default function CrmSettingsClient({
   const [hubspotImporting, setHubspotImporting] = useState(false);
   const [hubspotImportResult, setHubspotImportResult] = useState<{ count: number } | { error: string } | null>(null);
 
+  // Bumped after any reference import (file, Pipedrive, HubSpot) so
+  // ClientReferencesTable refetches without the three import flows needing
+  // to know about each other.
+  const [referencesVersion, setReferencesVersion] = useState(0);
+
   const searchParams = useSearchParams();
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
@@ -97,6 +102,7 @@ export default function CrmSettingsClient({
                           setPipedriveImportResult({ error: data.error ?? "Erreur lors de l'import." });
                         } else {
                           setPipedriveImportResult({ count: data.count ?? 0 });
+                          setReferencesVersion((v) => v + 1);
                         }
                       } catch {
                         setPipedriveImportResult({ error: "Une erreur est survenue." });
@@ -181,6 +187,7 @@ export default function CrmSettingsClient({
                           setHubspotImportResult({ error: data.error ?? "Erreur lors de l'import." });
                         } else {
                           setHubspotImportResult({ count: data.count ?? 0 });
+                          setReferencesVersion((v) => v + 1);
                         }
                       } catch {
                         setHubspotImportResult({ error: "Une erreur est survenue." });
@@ -243,7 +250,7 @@ export default function CrmSettingsClient({
         </div>
       </div>
 
-      <ClientReferencesSection />
+      <ClientReferencesSection version={referencesVersion} onImported={() => setReferencesVersion((v) => v + 1)} />
     </div>
   );
 }

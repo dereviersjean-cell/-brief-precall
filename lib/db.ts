@@ -415,6 +415,17 @@ export async function getClientReferencesCount(userId: string): Promise<number> 
   return count ?? 0;
 }
 
+// Scoped to userId (not just the reference id) so a request can't delete
+// another user's reference by guessing an id.
+export async function deleteClientReference(userId: string, referenceId: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("client_references")
+    .delete()
+    .eq("id", referenceId)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
 export type ImportJob = {
   id: string;
   user_id: string;
