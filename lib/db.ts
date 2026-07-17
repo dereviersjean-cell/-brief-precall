@@ -426,6 +426,79 @@ export async function deleteClientReference(userId: string, referenceId: string)
   if (error) throw error;
 }
 
+// Manual single-reference creation (the "+ Ajouter une référence" form) —
+// distinct from saveClientReferences (bulk import from a file or CRM) since
+// callers here want the created row back immediately (id + embedding
+// presence) to render it without a full refetch.
+export async function createClientReference(
+  userId: string,
+  ref: Omit<ClientReference, "id" | "user_id" | "created_at" | "embedding">
+): Promise<ClientReference> {
+  const embeddingText = [ref.sector, ref.problem, ref.solution, ref.result, ref.client_name].filter(Boolean).join(" ");
+  let embedding: number[] | null = null;
+  if (embeddingText.trim()) {
+    try {
+      embedding = await generateEmbedding(embeddingText);
+    } catch (err) {
+      console.warn("[db] generateEmbedding failed, saving without embedding:", err);
+    }
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("client_references")
+    .insert({ ...ref, user_id: userId, embedding })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as ClientReference;
+}
+
+// Editing a reference changes the very text the embedding is derived from
+// (sector/problem/solution/result/client_name — see saveClientReferences),
+// so the embedding is always regenerated here rather than left stale. If
+// regeneration fails, the previous embedding is kept rather than nulled out
+// — a transient Voyage AI error shouldn't silently drop a reference from
+// future brief matching.
+export async function updateClientReference(
+  userId: string,
+  referenceId: string,
+  patch: Partial<Pick<ClientReference, "client_name" | "sector" | "company_size" | "problem" | "solution" | "result">>
+): Promise<ClientReference> {
+  const { data: current, error: fetchError } = await supabaseAdmin
+    .from("client_references")
+    .select("client_name, sector, company_size, problem, solution, result, embedding")
+    .eq("id", referenceId)
+    .eq("user_id", userId)
+    .single();
+  if (fetchError) throw fetchError;
+
+  const merged = { ...(current as Record<string, unknown>), ...patch } as ClientReference;
+  const embeddingText = [merged.sector, merged.problem, merged.solution, merged.result, merged.client_name]
+    .filter(Boolean)
+    .join(" ");
+
+  let embedding = current.embedding as number[] | null;
+  if (embeddingText.trim()) {
+    try {
+      embedding = await generateEmbedding(embeddingText);
+    } catch (err) {
+      console.warn("[db] generateEmbedding failed on update, keeping previous embedding:", err);
+    }
+  } else {
+    embedding = null;
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("client_references")
+    .update({ ...patch, embedding })
+    .eq("id", referenceId)
+    .eq("user_id", userId)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as ClientReference;
+}
+
 export type ImportJob = {
   id: string;
   user_id: string;
