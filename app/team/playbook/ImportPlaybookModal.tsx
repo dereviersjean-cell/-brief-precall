@@ -164,16 +164,16 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
     (inputMode === "notion" && !!notionSelectedPageId);
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 px-4" onClick={onClose}>
       <div
-        className="bg-white rounded-lg w-full max-w-2xl shadow-lg max-h-[85vh] flex flex-col"
+        className="bg-white rounded-2xl border border-slate-200 w-full max-w-2xl shadow-xl max-h-[85vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
-          <h2 className="font-semibold text-gray-900">Importer depuis un document</h2>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
+          <h2 className="font-semibold text-slate-900">Importer depuis un document</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors duration-200"
+            className="text-slate-400 hover:text-slate-600 transition-colors duration-200"
             aria-label="Fermer"
           >
             <X className="w-5 h-5" />
@@ -183,12 +183,12 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
         <div className="px-6 py-5 overflow-y-auto flex-1">
           {step === "paste" ? (
             <div>
-              <div className="inline-flex items-center gap-1 bg-gray-100 rounded-lg p-1 mb-4">
+              <div className="inline-flex items-center gap-1 bg-slate-100 rounded-lg p-1 mb-4">
                 <button
                   type="button"
                   onClick={() => selectInputMode("paste")}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors duration-200 ${
-                    inputMode === "paste" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors duration-200 ${
+                    inputMode === "paste" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
                   }`}
                 >
                   Coller le texte
@@ -196,8 +196,8 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
                 <button
                   type="button"
                   onClick={() => selectInputMode("file")}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors duration-200 ${
-                    inputMode === "file" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors duration-200 ${
+                    inputMode === "file" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
                   }`}
                 >
                   Importer un fichier
@@ -205,8 +205,8 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
                 <button
                   type="button"
                   onClick={() => selectInputMode("notion")}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors duration-200 ${
-                    inputMode === "notion" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors duration-200 ${
+                    inputMode === "notion" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
                   }`}
                 >
                   Depuis Notion
@@ -215,7 +215,7 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
 
               {inputMode === "paste" ? (
                 <>
-                  <p className="text-sm text-gray-500 mb-3">
+                  <p className="text-sm text-slate-500 mb-3">
                     Collez ici le contenu de votre playbook — Google Docs, Word, ou texte brut.
                   </p>
                   <textarea
@@ -224,12 +224,12 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
                     autoFocus
                     rows={16}
                     placeholder="Collez ici votre playbook"
-                    className="w-full px-3.5 py-3 border border-gray-200 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-y"
+                    className="w-full px-3.5 py-3 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-y"
                   />
                 </>
               ) : inputMode === "file" ? (
                 <div>
-                  <p className="text-sm text-gray-500 mb-3">Formats acceptés : PDF, Word (.doc, .docx).</p>
+                  <p className="text-sm text-slate-500 mb-3">Formats acceptés : PDF, Word (.doc, .docx).</p>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -238,13 +238,13 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
                     onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                   />
                   {file ? (
-                    <div className="flex items-center gap-3 px-4 py-3 bg-primary/5 border border-primary/20 rounded-lg">
-                      <Upload className="w-4 h-4 text-primary shrink-0" />
-                      <p className="text-sm text-gray-800 font-medium flex-1 truncate">{file.name}</p>
+                    <div className="flex items-center gap-3 px-4 py-3 bg-indigo-50 border border-indigo-100 rounded-lg">
+                      <Upload className="w-4 h-4 text-indigo-600 shrink-0" />
+                      <p className="text-sm text-slate-700 font-medium flex-1 truncate">{file.name}</p>
                       <button
                         type="button"
                         onClick={() => setFile(null)}
-                        className="text-xs text-gray-400 hover:text-gray-600"
+                        className="text-xs text-slate-400 hover:text-slate-600"
                       >
                         Changer
                       </button>
@@ -253,9 +253,9 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="w-full flex flex-col items-center gap-2 px-4 py-10 border-2 border-dashed border-gray-200 rounded-xl hover:border-primary/40 hover:bg-primary/5 transition-all text-gray-500 text-sm"
+                      className="w-full flex flex-col items-center gap-2 px-4 py-10 border-2 border-dashed border-slate-200 rounded-xl hover:border-indigo-300 hover:bg-indigo-50 transition-all text-slate-500 text-sm"
                     >
-                      <Upload className="w-6 h-6 text-gray-400" />
+                      <Upload className="w-6 h-6 text-slate-400" />
                       Cliquez pour sélectionner un fichier
                     </button>
                   )}
@@ -263,10 +263,10 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
               ) : (
                 <div>
                   {notionConnected === null ? (
-                    <p className="text-sm text-gray-400">Chargement…</p>
+                    <p className="text-sm text-slate-400">Chargement…</p>
                   ) : !notionConnected ? (
                     <div>
-                      <p className="text-sm text-gray-500 mb-1">
+                      <p className="text-sm text-slate-500 mb-1">
                         Créez une <strong>intégration interne</strong> dans Notion (Settings → Connections →
                         Develop or manage integrations), partagez votre page playbook avec elle (bouton{" "}
                         <strong>Share</strong> sur la page → recherchez le nom de votre intégration), puis collez
@@ -276,7 +276,7 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
                         href="https://www.notion.so/profile/integrations"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm text-primary hover:underline"
+                        className="text-sm text-indigo-600 hover:underline"
                       >
                         Ouvrir mes intégrations Notion ↗
                       </a>
@@ -286,65 +286,65 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
                           value={notionToken}
                           onChange={(e) => setNotionToken(e.target.value)}
                           placeholder="secret_..."
-                          className="flex-1 px-3.5 py-2 border border-gray-200 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                          className="flex-1 px-3.5 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                         />
                         <button
                           type="button"
                           onClick={handleNotionConnect}
                           disabled={!notionToken.trim() || notionConnecting}
-                          className="h-9 px-4 text-sm font-medium text-white bg-gray-900 rounded-md hover:bg-primary transition-colors duration-200 disabled:opacity-50 shrink-0"
+                          className="h-9 px-4 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors duration-200 disabled:opacity-50 shrink-0"
                         >
                           {notionConnecting ? "Connexion…" : "Connecter"}
                         </button>
                       </div>
                     </div>
                   ) : notionLoadingPages ? (
-                    <p className="text-sm text-gray-400">Recherche de votre page playbook…</p>
+                    <p className="text-sm text-slate-400">Recherche de votre page playbook…</p>
                   ) : notionPages === null ? (
                     <button
                       type="button"
                       onClick={handleNotionFetchPages}
-                      className="h-9 px-4 text-sm font-medium text-white bg-gray-900 rounded-md hover:bg-primary transition-colors duration-200"
+                      className="h-9 px-4 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors duration-200"
                     >
                       Ajouter mon playbook depuis Notion
                     </button>
                   ) : notionPages.length === 0 ? (
                     <div>
-                      <p className="text-sm text-gray-700 font-medium mb-1">Aucune page partagée trouvée.</p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-slate-700 font-medium mb-1">Aucune page partagée trouvée.</p>
+                      <p className="text-sm text-slate-500">
                         Dans Notion, ouvrez votre page playbook → <strong>Share</strong> → recherchez et ajoutez
                         votre intégration, puis réessayez.
                       </p>
                       <button
                         type="button"
                         onClick={handleNotionFetchPages}
-                        className="text-sm text-primary hover:underline mt-2"
+                        className="text-sm text-indigo-600 hover:underline mt-2"
                       >
                         Réessayer
                       </button>
                     </div>
                   ) : notionPages.length === 1 ? (
                     <div>
-                      <p className="text-sm text-gray-700 mb-3">
+                      <p className="text-sm text-slate-700 mb-3">
                         Est-ce bien cette page ? <strong>{notionPages[0].title}</strong>
                       </p>
-                      <div className="flex items-center gap-2 px-4 py-3 bg-primary/5 border border-primary/20 rounded-lg">
-                        <span className="text-sm text-gray-800 font-medium flex-1 truncate">{notionPages[0].title}</span>
+                      <div className="flex items-center gap-2 px-4 py-3 bg-indigo-50 border border-indigo-100 rounded-lg">
+                        <span className="text-sm text-slate-700 font-medium flex-1 truncate">{notionPages[0].title}</span>
                       </div>
                     </div>
                   ) : (
                     <div>
-                      <p className="text-sm text-gray-500 mb-3">Plusieurs pages partagées trouvées — laquelle est votre playbook ?</p>
+                      <p className="text-sm text-slate-500 mb-3">Plusieurs pages partagées trouvées — laquelle est votre playbook ?</p>
                       <div className="space-y-1.5">
                         {notionPages.map((page) => (
                           <button
                             key={page.id}
                             type="button"
                             onClick={() => setNotionSelectedPageId(page.id)}
-                            className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-md text-sm text-left border transition-colors duration-200 ${
+                            className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg text-sm text-left border transition-colors duration-200 ${
                               notionSelectedPageId === page.id
-                                ? "border-primary bg-primary/5 text-gray-900 font-medium"
-                                : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                                ? "border-indigo-500 bg-indigo-50 text-slate-900 font-medium"
+                                : "border-slate-200 text-slate-600 hover:bg-slate-50"
                             }`}
                           >
                             {page.title}
@@ -358,29 +358,29 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
             </div>
           ) : dimensions && dimensions.length === 0 ? (
             <div className="text-center py-10">
-              <p className="text-gray-700 font-medium mb-1">
+              <p className="text-slate-700 font-medium mb-1">
                 Brief n&apos;a pas pu extraire de structure claire de ce document.
               </p>
-              <p className="text-sm text-gray-500">Réessayez avec un texte plus détaillé, ou saisissez manuellement.</p>
+              <p className="text-sm text-slate-500">Réessayez avec un texte plus détaillé, ou saisissez manuellement.</p>
             </div>
           ) : (
             <div>
-              <p className="text-sm text-gray-500 mb-4">
+              <p className="text-sm text-slate-500 mb-4">
                 Voici ce que Brief a extrait de votre document. Vous pourrez affiner ensuite chaque élément.
               </p>
               <div className="space-y-3">
                 {(dimensions ?? []).map((dim, i) => (
-                  <div key={i} className="bg-gray-50 rounded-lg border border-gray-200 p-4">
+                  <div key={i} className="bg-slate-50 rounded-lg border border-slate-200 p-4">
                     <div className="flex items-start justify-between gap-3">
-                      <h3 className="font-semibold text-gray-900">{dim.label}</h3>
-                      <span className="text-xs text-gray-500 shrink-0">Poids : {dim.weight}</span>
+                      <h3 className="font-semibold text-slate-900">{dim.label}</h3>
+                      <span className="text-xs text-slate-500 shrink-0">Poids : {dim.weight}</span>
                     </div>
-                    {dim.description && <p className="text-sm text-gray-500 mt-1">{dim.description}</p>}
+                    {dim.description && <p className="text-sm text-slate-500 mt-1">{dim.description}</p>}
                     {dim.criteria.length > 0 && (
                       <ul className="mt-3 space-y-1">
                         {dim.criteria.map((q, qi) => (
-                          <li key={qi} className="text-sm text-gray-700 flex items-start gap-2">
-                            <span className="text-gray-300 shrink-0">•</span>
+                          <li key={qi} className="text-sm text-slate-700 flex items-start gap-2">
+                            <span className="text-slate-300 shrink-0">•</span>
                             {q}
                           </li>
                         ))}
@@ -395,19 +395,19 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
           {error && <p className="text-sm text-red-600 mt-4">{error}</p>}
         </div>
 
-        <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-gray-100 shrink-0">
+        <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-slate-100 shrink-0">
           {step === "paste" ? (
             <>
               <button
                 onClick={onClose}
-                className="h-8 px-4 text-sm font-medium text-gray-600 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors duration-200"
+                className="h-8 px-4 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors duration-200"
               >
                 Annuler
               </button>
               <button
                 onClick={handleExtract}
                 disabled={!canExtract || extracting}
-                className="h-8 px-4 inline-flex items-center gap-1.5 text-sm font-medium text-white bg-gray-900 rounded-md hover:bg-primary transition-colors duration-200 disabled:opacity-50"
+                className="h-8 px-4 inline-flex items-center gap-1.5 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors duration-200 disabled:opacity-50"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 {extracting ? "Extraction en cours…" : "Extraire avec Brief"}
@@ -417,7 +417,7 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
             <>
               <button
                 onClick={() => setStep("paste")}
-                className="h-8 px-4 inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors duration-200"
+                className="h-8 px-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors duration-200"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 Modifier le texte
@@ -425,7 +425,7 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
               <div className="flex items-center gap-2">
                 <button
                   onClick={onClose}
-                  className="h-8 px-4 text-sm font-medium text-gray-600 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors duration-200"
+                  className="h-8 px-4 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors duration-200"
                 >
                   Annuler
                 </button>
@@ -433,7 +433,7 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
                   <button
                     onClick={handleApply}
                     disabled={applying}
-                    className="h-8 px-4 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors duration-200 disabled:opacity-50"
+                    className="h-8 px-4 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors duration-200 disabled:opacity-50"
                   >
                     {applying ? "Application…" : "Remplacer mon playbook actuel"}
                   </button>
