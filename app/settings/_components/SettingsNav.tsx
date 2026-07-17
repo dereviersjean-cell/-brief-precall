@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Settings, Link as LinkIcon, Database } from "lucide-react";
+import { Settings, Link as LinkIcon, Database, Library } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 // Notifications moved out to its own top-level sidebar item (AppSidebar.tsx,
@@ -12,6 +12,7 @@ const NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/settings/general", label: "Général", icon: Settings },
   { href: "/settings/connexions", label: "Connexions", icon: LinkIcon },
   { href: "/settings/crm", label: "CRM", icon: Database },
+  { href: "/settings/references", label: "Références clients", icon: Library },
 ];
 
 export default function SettingsNav() {
