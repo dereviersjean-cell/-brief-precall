@@ -42,14 +42,25 @@ function ActionBadge({ actionType }: { actionType: string }) {
   );
 }
 
+function HubSpotBadge({ pushToHubspot }: { pushToHubspot: boolean }) {
+  if (!pushToHubspot) return null;
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-50 text-orange-700">
+      🟠 Poussée vers HubSpot
+    </span>
+  );
+}
+
 function TaskTemplateModal({
   triggerType,
   template,
+  hubspotConnected,
   onClose,
   onSaved,
 }: {
   triggerType: TaskTriggerType;
   template: TaskTemplate | null;
+  hubspotConnected: boolean;
   onClose: () => void;
   onSaved: (template: TaskTemplate) => void;
 }) {
@@ -58,6 +69,7 @@ function TaskTemplateModal({
   const [offsetHours, setOffsetHours] = useState(template ? String(template.offset_hours) : "0");
   const [taskType, setTaskType] = useState(template?.task_type ?? "relance_email");
   const [actionType, setActionType] = useState(template?.action_type ?? "open_gmail_draft");
+  const [pushToHubspot, setPushToHubspot] = useState(template?.push_to_hubspot ?? false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -76,6 +88,7 @@ function TaskTemplateModal({
         offset_hours: hours,
         task_type: taskType.trim() || "relance_email",
         action_type: actionType,
+        push_to_hubspot: pushToHubspot,
       };
 
       const res = await fetch(
@@ -105,6 +118,7 @@ function TaskTemplateModal({
           description: body.description,
           action_type: actionType,
           enabled: true,
+          push_to_hubspot: pushToHubspot,
           sort_order: 0,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -186,6 +200,31 @@ function TaskTemplateModal({
               ))}
             </select>
           </div>
+          <div className="flex items-center justify-between gap-3 pt-1">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-slate-700">Pousser vers HubSpot</p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {hubspotConnected
+                  ? "Chaque task générée par ce template crée aussi une task HubSpot, synchronisée dans les deux sens."
+                  : "Connectez HubSpot (Paramètres → CRM) pour activer cette option."}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPushToHubspot((v) => !v)}
+              disabled={!hubspotConnected}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${
+                pushToHubspot ? "bg-orange-500" : "bg-slate-200"
+              }`}
+              aria-label={pushToHubspot ? "Désactiver" : "Activer"}
+            >
+              <span
+                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                  pushToHubspot ? "translate-x-[18px]" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
         </div>
 
         {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
@@ -227,6 +266,7 @@ function TemplateCard({
         <div className="flex items-center gap-2 flex-wrap mb-1">
           <p className="font-medium text-slate-900">{template.title}</p>
           <ActionBadge actionType={template.action_type} />
+          <HubSpotBadge pushToHubspot={template.push_to_hubspot} />
         </div>
         {template.description && <p className="text-sm text-slate-500 mb-1.5">{template.description}</p>}
         <p className="text-xs text-slate-400">{formatDelay(template.offset_hours)}</p>
@@ -256,7 +296,13 @@ function TemplateCard({
   );
 }
 
-export default function TaskTemplatesClient({ initialTemplates }: { initialTemplates: TaskTemplate[] }) {
+export default function TaskTemplatesClient({
+  initialTemplates,
+  hubspotConnected,
+}: {
+  initialTemplates: TaskTemplate[];
+  hubspotConnected: boolean;
+}) {
   const [templates, setTemplates] = useState<TaskTemplate[]>(initialTemplates);
   const [modalState, setModalState] = useState<{ triggerType: TaskTriggerType; template: TaskTemplate | null } | null>(
     null
@@ -352,6 +398,7 @@ export default function TaskTemplatesClient({ initialTemplates }: { initialTempl
         <TaskTemplateModal
           triggerType={modalState.triggerType}
           template={modalState.template}
+          hubspotConnected={hubspotConnected}
           onClose={() => setModalState(null)}
           onSaved={handleSaved}
         />

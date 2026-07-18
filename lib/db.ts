@@ -3097,6 +3097,7 @@ export type TaskTemplate = {
   description: string | null;
   action_type: string;
   enabled: boolean;
+  push_to_hubspot: boolean;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -3122,6 +3123,7 @@ export type TaskTemplateInput = {
   action_type: string;
   sort_order?: number;
   enabled?: boolean;
+  push_to_hubspot?: boolean;
 };
 
 export async function createTaskTemplate(userId: string, data: TaskTemplateInput): Promise<string> {
@@ -3137,6 +3139,7 @@ export async function createTaskTemplate(userId: string, data: TaskTemplateInput
       action_type: data.action_type,
       sort_order: data.sort_order ?? 0,
       enabled: data.enabled ?? true,
+      push_to_hubspot: data.push_to_hubspot ?? false,
     })
     .select("id")
     .single();
@@ -3256,22 +3259,38 @@ export type TaskContactData = {
   contact_name: string | null;
 };
 
+export type CreatedTaskForHubSpot = {
+  id: string;
+  title: string;
+  description: string | null;
+  due_at: string;
+};
+
+export type GenerateTasksResult = {
+  createdCount: number;
+  // Subset of the newly-created rows whose template has push_to_hubspot
+  // enabled — the caller (bot-webhook route, Inngest crons) pushes these to
+  // HubSpot itself, since that's an external API call and doesn't belong in
+  // this DB-only module.
+  toPushToHubSpot: CreatedTaskForHubSpot[];
+};
+
 // Idempotent — relies on the UNIQUE (user_id, template_id, source_type,
 // source_id) constraint + upsert/ignoreDuplicates, so calling this twice for
-// the same source (e.g. a retried webhook) never creates duplicate tasks.
-// Returns the number of tasks actually created (ignored/duplicate rows are
-// not returned by a select() after an ignoreDuplicates upsert).
+// the same source (e.g. a retried webhook) never creates duplicate tasks
+// (and never double-pushes to HubSpot, since ignored duplicates are absent
+// from the returned/toPushToHubSpot rows).
 export async function generateTasksFromTemplates(
   userId: string,
   sourceType: TaskSourceType,
   sourceId: string,
   contactData: TaskContactData
-): Promise<number> {
+): Promise<GenerateTasksResult> {
   const triggerType = TRIGGER_TYPE_BY_SOURCE[sourceType];
 
   const { data: templates, error } = await supabaseAdmin
     .from("task_templates")
-    .select("id, offset_hours, task_type, title, description, action_type")
+    .select("id, offset_hours, task_type, title, description, action_type, push_to_hubspot")
     .eq("user_id", userId)
     .eq("trigger_type", triggerType)
     .eq("enabled", true);
@@ -3284,10 +3303,13 @@ export async function generateTasksFromTemplates(
     title: string;
     description: string | null;
     action_type: string;
+    push_to_hubspot: boolean;
   }>;
-  if (rows.length === 0) return 0;
+  if (rows.length === 0) return { createdCount: 0, toPushToHubSpot: [] };
 
   const now = Date.now();
+  const pushableTemplateIds = new Set(rows.filter((t) => t.push_to_hubspot).map((t) => t.id));
+
   const { data: inserted, error: insertError } = await supabaseAdmin
     .from("tasks")
     .upsert(
@@ -3307,10 +3329,30 @@ export async function generateTasksFromTemplates(
       })),
       { onConflict: "user_id,template_id,source_type,source_id", ignoreDuplicates: true }
     )
-    .select("id");
+    .select("id, template_id, title, description, due_at");
   if (insertError) throw insertError;
 
-  return (inserted ?? []).length;
+  const insertedRows = (inserted ?? []) as Array<{
+    id: string;
+    template_id: string;
+    title: string;
+    description: string | null;
+    due_at: string;
+  }>;
+
+  return {
+    createdCount: insertedRows.length,
+    toPushToHubSpot: insertedRows
+      .filter((r) => pushableTemplateIds.has(r.template_id))
+      .map((r) => ({ id: r.id, title: r.title, description: r.description, due_at: r.due_at })),
+  };
+}
+
+// Called once a task has been pushed to HubSpot (see lib/tasks-hubspot-sync.ts)
+// so later completion/dismissal/polling knows which HubSpot object to update.
+export async function linkHubSpotTaskId(taskId: string, hubspotTaskId: string): Promise<void> {
+  const { error } = await supabaseAdmin.from("tasks").update({ hubspot_task_id: hubspotTaskId }).eq("id", taskId);
+  if (error) throw error;
 }
 
 export type TaskListItem = {
@@ -3329,6 +3371,7 @@ export type TaskListItem = {
   due_at: string;
   completed_at: string | null;
   dismissed_at: string | null;
+  hubspot_task_id: string | null;
   created_at: string;
 };
 
@@ -3352,22 +3395,34 @@ export async function listTasksForUser(
   return (data ?? []) as TaskListItem[];
 }
 
-export async function completeTask(taskId: string, userId: string): Promise<void> {
-  const { error } = await supabaseAdmin
+// Returns the linked hubspot_task_id (or null) so the caller (the
+// /api/tasks/[taskId]/complete route) knows whether there's a HubSpot task
+// to also mark COMPLETED — kept out of this function itself since that's an
+// external API call, not a DB concern.
+export async function completeTask(taskId: string, userId: string): Promise<{ hubspot_task_id: string | null }> {
+  const { data, error } = await supabaseAdmin
     .from("tasks")
     .update({ completed_at: new Date().toISOString() })
     .eq("id", taskId)
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .select("hubspot_task_id")
+    .single();
   if (error) throw error;
+  return data as { hubspot_task_id: string | null };
 }
 
-export async function dismissTask(taskId: string, userId: string): Promise<void> {
-  const { error } = await supabaseAdmin
+// Same shape as completeTask — the /api/tasks/[taskId]/dismiss route uses
+// hubspot_task_id to also delete the linked HubSpot task.
+export async function dismissTask(taskId: string, userId: string): Promise<{ hubspot_task_id: string | null }> {
+  const { data, error } = await supabaseAdmin
     .from("tasks")
     .update({ dismissed_at: new Date().toISOString() })
     .eq("id", taskId)
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .select("hubspot_task_id")
+    .single();
   if (error) throw error;
+  return data as { hubspot_task_id: string | null };
 }
 
 export async function countPendingTasksDueToday(userId: string): Promise<number> {
@@ -3424,6 +3479,24 @@ export async function getQuotesAwaitingAcceptance(): Promise<UnansweredQuote[]> 
     .gte("sent_at", cutoff);
   if (error) throw error;
   return (data ?? []) as UnansweredQuote[];
+}
+
+export type OpenHubSpotLinkedTask = { id: string; user_id: string; hubspot_task_id: string };
+
+// Feeds the HubSpot task status polling cron (lib/inngest-functions.ts) —
+// HubSpot's Webhooks API doesn't support subscribing to task/engagement
+// changes, so this is the only way to learn a task was completed or deleted
+// on the HubSpot side. Only still-open tasks matter here: once a task is
+// completed/dismissed on the Brief side there's nothing left to reconcile.
+export async function getOpenTasksWithHubSpotLink(): Promise<OpenHubSpotLinkedTask[]> {
+  const { data, error } = await supabaseAdmin
+    .from("tasks")
+    .select("id, user_id, hubspot_task_id")
+    .not("hubspot_task_id", "is", null)
+    .is("completed_at", null)
+    .is("dismissed_at", null);
+  if (error) throw error;
+  return (data ?? []) as OpenHubSpotLinkedTask[];
 }
 
 // ─── Tasks module — list views (sous-étape C) ──────────────────────────────────

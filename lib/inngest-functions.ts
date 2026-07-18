@@ -9,12 +9,17 @@ import {
   getCallsWithUnansweredFollowUps,
   getQuotesAwaitingAcceptance,
   getUsersForDigestTiming,
+  getOpenTasksWithHubSpotLink,
+  completeTask,
+  dismissTask,
   type UnansweredFollowUpCall,
   type UnansweredQuote,
   type DigestRecipient,
 } from "./db";
 import { syncAndScheduleForUser } from "./recall";
 import { sendWeeklyDigestForUser } from "./digest";
+import { pushNewTasksToHubSpot } from "./tasks-hubspot-sync";
+import { batchGetHubSpotTaskStatuses } from "./crm/hubspot";
 
 // ─── Text extraction ──────────────────────────────────────────────────────────
 
@@ -277,14 +282,16 @@ export const checkEmailsWithoutReply = inngest.createFunction(
 
     let totalCreated = 0;
     for (const call of calls) {
-      const created = (await step.run(`generate-tasks-call-${call.id}`, async () => {
-        return generateTasksFromTemplates(call.user_id, "email", call.id, {
+      const { createdCount } = await step.run(`generate-tasks-call-${call.id}`, async () => {
+        const result = await generateTasksFromTemplates(call.user_id, "email", call.id, {
           contact_id: null,
           contact_email: call.contact_email,
           contact_name: null,
         });
-      })) as number;
-      totalCreated += created;
+        await pushNewTasksToHubSpot(call.user_id, result.toPushToHubSpot, call.contact_email);
+        return result;
+      });
+      totalCreated += createdCount;
     }
 
     const summary = { checked: calls.length, created: totalCreated };
@@ -307,18 +314,89 @@ export const checkQuotesWithoutAcceptance = inngest.createFunction(
 
     let totalCreated = 0;
     for (const quote of quotes) {
-      const created = (await step.run(`generate-tasks-quote-${quote.id}`, async () => {
-        return generateTasksFromTemplates(quote.user_id, "quote", quote.id, {
+      const { createdCount } = await step.run(`generate-tasks-quote-${quote.id}`, async () => {
+        const result = await generateTasksFromTemplates(quote.user_id, "quote", quote.id, {
           contact_id: quote.contact_id,
           contact_email: quote.client_email,
           contact_name: quote.client_name,
         });
-      })) as number;
-      totalCreated += created;
+        await pushNewTasksToHubSpot(quote.user_id, result.toPushToHubSpot, quote.client_email);
+        return result;
+      });
+      totalCreated += createdCount;
     }
 
     const summary = { checked: quotes.length, created: totalCreated };
     console.log("[check-quotes-without-acceptance] done —", JSON.stringify(summary));
+    return summary;
+  }
+);
+
+// ─── Sync statut tasks HubSpot (module HubSpot tasks) ──────────────────────
+//
+// HubSpot's Webhooks API doesn't support subscribing to engagement objects
+// (notes, meetings, calls, emails, tasks — confirmed against HubSpot's own
+// docs/community answers), so there's no way to be notified in real time
+// when a rep completes or deletes a task on the HubSpot side. This cron is
+// the only way to reconcile: for every Brief task still open locally with a
+// linked hubspot_task_id, check its current HubSpot status. A task missing
+// from the batch/read response was deleted on the HubSpot side (HubSpot
+// silently omits unknown ids rather than erroring) and is dismissed here;
+// hs_task_status === "COMPLETED" is completed here. Same 30-minute cadence
+// as the other "not urgent" task crons above.
+export const syncHubSpotTaskStatuses = inngest.createFunction(
+  {
+    id: "sync-hubspot-task-statuses",
+    triggers: [{ cron: "*/30 * * * *" }],
+  },
+  async ({ step }) => {
+    const openTasks = await step.run("get-open-hubspot-linked-tasks", async () => {
+      return getOpenTasksWithHubSpotLink();
+    });
+
+    const byUser = new Map<string, typeof openTasks>();
+    for (const task of openTasks) {
+      const list = byUser.get(task.user_id) ?? [];
+      list.push(task);
+      byUser.set(task.user_id, list);
+    }
+
+    let totalCompleted = 0;
+    let totalDismissed = 0;
+
+    for (const [userId, tasks] of byUser) {
+      await step.run(`sync-hubspot-tasks-user-${userId}`, async () => {
+        const statuses = await batchGetHubSpotTaskStatuses(
+          userId,
+          tasks.map((t) => t.hubspot_task_id)
+        ).catch((err) => {
+          console.warn(
+            `[sync-hubspot-task-statuses] batchGetHubSpotTaskStatuses failed for user ${userId} (non-blocking):`,
+            err instanceof Error ? err.message : String(err)
+          );
+          return new Map<string, string | null>();
+        });
+
+        for (const task of tasks) {
+          const status = statuses.get(task.hubspot_task_id);
+          if (status === undefined) {
+            // Missing from the response — deleted on the HubSpot side.
+            await dismissTask(task.id, userId).catch((err) =>
+              console.warn(`[sync-hubspot-task-statuses] dismissTask failed for ${task.id}:`, err)
+            );
+            totalDismissed += 1;
+          } else if (status === "COMPLETED") {
+            await completeTask(task.id, userId).catch((err) =>
+              console.warn(`[sync-hubspot-task-statuses] completeTask failed for ${task.id}:`, err)
+            );
+            totalCompleted += 1;
+          }
+        }
+      });
+    }
+
+    const summary = { checked: openTasks.length, completed: totalCompleted, dismissed: totalDismissed };
+    console.log("[sync-hubspot-task-statuses] done —", JSON.stringify(summary));
     return summary;
   }
 );

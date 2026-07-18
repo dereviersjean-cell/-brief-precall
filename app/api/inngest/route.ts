@@ -5,6 +5,7 @@ import {
   syncRecallCalendars,
   checkEmailsWithoutReply,
   checkQuotesWithoutAcceptance,
+  syncHubSpotTaskStatuses,
   sendFridayEveningDigests,
   sendMondayMorningDigests,
 } from "@/lib/inngest-functions";
@@ -16,6 +17,7 @@ export const { GET, POST, PUT } = serve({
     syncRecallCalendars,
     checkEmailsWithoutReply,
     checkQuotesWithoutAcceptance,
+    syncHubSpotTaskStatuses,
     sendFridayEveningDigests,
     sendMondayMorningDigests,
   ],

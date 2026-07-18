@@ -578,3 +578,127 @@ export async function writeToHubSpotCascade(
 
   return { target: "none" };
 }
+
+// ─── Tasks (Brief <-> HubSpot task sync) ────────────────────────────────────
+//
+// Unlike notes/meeting-body writes above (content pushed into an existing
+// engagement), this creates/updates/deletes first-class HubSpot Task
+// objects (crm/v3/objects/tasks) so they show up in the rep's HubSpot task
+// queue, not just as a note. Same crm.objects.contacts.* scopes already
+// granted today cover this — HubSpot's Tasks API doesn't have its own scope.
+
+// Per HubSpot's documented default association types (task -> contact = 204,
+// contact -> task = 203) — NOT verified live against a real portal the way
+// the note association IDs above were (no live HubSpot connection available
+// while building this); confirm against a real create call before relying
+// on it, and switch to a live-verified value if it turns out wrong.
+const TASK_TO_CONTACT_ASSOCIATION_TYPE_ID = 204;
+
+export type HubspotTaskStatus = "NOT_STARTED" | "COMPLETED";
+
+// Returns the created task's id, or null if the contact can't be resolved
+// (best-effort — callers treat a null return the same as a caught error:
+// skip silently, task stays HubSpot-less rather than failing the whole
+// dispatch).
+export async function createHubSpotTask(
+  userId: string,
+  params: { contactEmail: string; title: string; description: string | null; dueAt: string }
+): Promise<string | null> {
+  return withHubspotAuth(userId, async (accessToken) => {
+    const contactId = await resolveContactId(accessToken, params.contactEmail);
+    if (!contactId) return null;
+
+    const res = await fetch("https://api.hubapi.com/crm/v3/objects/tasks", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        properties: {
+          hs_task_subject: params.title,
+          hs_task_body: params.description ?? "",
+          hs_timestamp: new Date(params.dueAt).toISOString(),
+          hs_task_status: "NOT_STARTED",
+          hs_task_type: "TODO",
+        },
+        associations: [
+          {
+            to: { id: contactId },
+            types: [{ associationCategory: "HUBSPOT_DEFINED", associationTypeId: TASK_TO_CONTACT_ASSOCIATION_TYPE_ID }],
+          },
+        ],
+      }),
+    });
+    if (res.status === 401) throw new Error("createHubSpotTask auth failed: 401");
+    if (!res.ok) throw new Error(`HubSpot task creation failed (${res.status}): ${await res.text()}`);
+    const data = (await res.json()) as { id: string };
+    return data.id;
+  });
+}
+
+export async function updateHubSpotTaskStatus(
+  userId: string,
+  hubspotTaskId: string,
+  status: HubspotTaskStatus
+): Promise<void> {
+  return withHubspotAuth(userId, async (accessToken) => {
+    const res = await fetch(`https://api.hubapi.com/crm/v3/objects/tasks/${hubspotTaskId}`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ properties: { hs_task_status: status } }),
+    });
+    if (res.status === 401) throw new Error("updateHubSpotTaskStatus auth failed: 401");
+    // A task already deleted on the HubSpot side 404s here — treat that the
+    // same as success rather than surfacing an error the caller can't act on.
+    if (!res.ok && res.status !== 404) {
+      throw new Error(`HubSpot task update failed (${res.status}): ${await res.text()}`);
+    }
+  });
+}
+
+export async function deleteHubSpotTask(userId: string, hubspotTaskId: string): Promise<void> {
+  return withHubspotAuth(userId, async (accessToken) => {
+    const res = await fetch(`https://api.hubapi.com/crm/v3/objects/tasks/${hubspotTaskId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (res.status === 401) throw new Error("deleteHubSpotTask auth failed: 401");
+    if (!res.ok && res.status !== 404) {
+      throw new Error(`HubSpot task delete failed (${res.status}): ${await res.text()}`);
+    }
+  });
+}
+
+export type HubspotTaskStatusResult = { id: string; status: string | null };
+
+// Batched status check for the polling cron (lib/inngest-functions.ts) —
+// one call per user covers every Brief task linked to a HubSpot task id,
+// rather than one round trip per task. Ids missing from the response were
+// deleted on the HubSpot side (batch/read silently omits unknown ids rather
+// than erroring), which the caller treats as "dismissed".
+export async function batchGetHubSpotTaskStatuses(
+  userId: string,
+  hubspotTaskIds: string[]
+): Promise<Map<string, string | null>> {
+  if (hubspotTaskIds.length === 0) return new Map();
+
+  return withHubspotAuth(userId, async (accessToken) => {
+    const res = await fetch("https://api.hubapi.com/crm/v3/objects/tasks/batch/read", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        inputs: hubspotTaskIds.map((id) => ({ id })),
+        properties: ["hs_task_status"],
+      }),
+    });
+    if (res.status === 401) throw new Error("batchGetHubSpotTaskStatuses auth failed: 401");
+    if (!res.ok) throw new Error(`HubSpot task batch read failed (${res.status}): ${await res.text()}`);
+
+    const data = (await res.json()) as {
+      results?: Array<{ id: string; properties: { hs_task_status?: string | null } }>;
+    };
+    const map = new Map<string, string | null>();
+    for (const r of data.results ?? []) {
+      map.set(r.id, r.properties.hs_task_status ?? null);
+    }
+    return map;
+  });
+}

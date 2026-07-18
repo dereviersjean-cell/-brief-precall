@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { createAsyncTranscript, getBotInfo, getTranscriptContent, transcriptToText, buildTranscriptJson, resolveSpeakerNames } from "@/lib/recall";
 import { createCall, getUserProfile, getUserName, getUserEmail, saveCallAnalysis, updateCallAnalysisKeyPoints, getGoogleTokens, updateCallFollowUp, getContact, createContact, updateContact, generateTasksFromTemplates, getPlaybookSnapshotForUser } from "@/lib/db";
+import { pushNewTasksToHubSpot } from "@/lib/tasks-hubspot-sync";
 import { analyzeCall } from "@/lib/call-analysis";
 import { refreshGoogleAccessToken, getEmailHistory } from "@/lib/gmail";
 import { generateFollowUpEmail } from "@/lib/email-followup";
@@ -217,12 +218,18 @@ export async function POST(request: NextRequest) {
             console.log("[bot-webhook] call analysis saved, global_score:", savedAnalysis.scores.global_score);
 
             try {
-              const createdCount = await generateTasksFromTemplates(userId, "call", call.id, {
+              const { createdCount, toPushToHubSpot } = await generateTasksFromTemplates(userId, "call", call.id, {
                 contact_id: null,
                 contact_email: contactEmail,
                 contact_name: null,
               });
               console.log("[bot-webhook] tasks generated from post_call templates:", createdCount);
+              await pushNewTasksToHubSpot(userId, toPushToHubSpot, contactEmail).catch((hubspotErr) =>
+                console.warn(
+                  "[bot-webhook] pushNewTasksToHubSpot failed (non-blocking):",
+                  hubspotErr instanceof Error ? hubspotErr.message : String(hubspotErr)
+                )
+              );
             } catch (taskErr) {
               console.warn(
                 "[bot-webhook] generateTasksFromTemplates failed (non-blocking):",

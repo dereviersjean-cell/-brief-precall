@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { ensureDefaultTaskTemplates, listTaskTemplates } from "@/lib/db";
 import { getEffectiveUserId } from "@/lib/session-user";
+import { hasHubSpotWriteAccess } from "@/lib/crm/hubspot";
 import TaskTemplatesClient from "./TaskTemplatesClient";
 
 export default async function TaskSettingsPage() {
@@ -10,7 +11,10 @@ export default async function TaskSettingsPage() {
   }
 
   await ensureDefaultTaskTemplates(userId);
-  const templates = await listTaskTemplates(userId);
+  const [templates, hubspotConnected] = await Promise.all([
+    listTaskTemplates(userId),
+    hasHubSpotWriteAccess(userId),
+  ]);
 
-  return <TaskTemplatesClient initialTemplates={templates} />;
+  return <TaskTemplatesClient initialTemplates={templates} hubspotConnected={hubspotConnected} />;
 }
