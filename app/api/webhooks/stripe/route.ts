@@ -100,6 +100,14 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
   });
 }
 
+// Ne doit gérer QUE la sortie de fenêtre de grâce (paiement qui échoue puis
+// finit par passer). Stripe émet aussi un invoice.payment_succeeded pour la
+// facture à 0€ générée au démarrage d'un essai (rien à payer, "payée"
+// automatiquement) — sans le garde ci-dessous, ça écrasait billing_status en
+// 'active' dès le début de l'essai, court-circuitant 'trialing' et laissant
+// current_period_start/end et billing_interval jamais renseignés puisque
+// seul customer.subscription.updated (source de vérité pour le statut de
+// l'abonnement) les fixe.
 async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
   const subscriptionId = typeof invoice.parent?.subscription_details?.subscription === "string"
     ? invoice.parent.subscription_details.subscription
@@ -108,6 +116,7 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
 
   const org = await getOrganizationByStripeSubscriptionId(subscriptionId);
   if (!org) return;
+  if (org.billing_status !== "grace_period") return;
 
   await updateOrganizationBilling(org.id, { billing_status: "active", grace_period_ends_at: null });
 }
