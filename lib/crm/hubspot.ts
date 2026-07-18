@@ -14,8 +14,15 @@ const REDIRECT_URI = "https://brief-precall.vercel.app/api/crm/hubspot/callback"
 // grant it to tokens already issued; existing users must reconnect (see
 // hasHubSpotWriteAccess below, and /api/crm/hubspot/start which they can
 // re-run) before writes will work for them.
+// crm.objects.owners.read added for the HubSpot -> Brief task import
+// (module HubSpot tasks, reverse direction): resolving which HubSpot owner
+// a connecting user corresponds to (so a native HubSpot task only imports
+// into the Brief account of the rep it's actually assigned to, not every
+// connected rep on a shared portal) requires GET /crm/v3/owners. Same
+// reconnection caveat as the deals/contacts.write upgrade above — existing
+// tokens don't retroactively gain this scope.
 const SCOPES =
-  "oauth crm.objects.deals.read crm.objects.deals.write crm.objects.contacts.read crm.objects.contacts.write crm.objects.companies.read";
+  "oauth crm.objects.deals.read crm.objects.deals.write crm.objects.contacts.read crm.objects.contacts.write crm.objects.companies.read crm.objects.owners.read";
 
 export function getHubspotAuthUrl(state: string): string {
   const params = new URLSearchParams({
@@ -700,5 +707,121 @@ export async function batchGetHubSpotTaskStatuses(
       map.set(r.id, r.properties.hs_task_status ?? null);
     }
     return map;
+  });
+}
+
+// ─── HubSpot -> Brief task import (reverse direction) ───────────────────────
+//
+// A task created natively in HubSpot (not by Brief) has no Brief-side
+// origin to key off, so importing it has to start from "which HubSpot owner
+// does this connecting user correspond to" — otherwise, on a portal shared
+// by multiple reps, every connected rep's token could see the same tasks
+// and each would import a copy into their own Brief account. Resolving that
+// owner id needs the Owners API (crm.objects.owners.read, added above),
+// which existing connections don't have until they reconnect.
+
+// The token-info endpoint (already used by hasHubSpotWriteAccess) returns
+// the connecting HubSpot user's email under `user` — confirmed against
+// HubSpot's OAuth v1 access-tokens response fields. That's matched against
+// the Owners API by email rather than assuming userId === ownerId (HubSpot
+// documents owners and users as related but distinct concepts; not
+// verified live against a real portal that the two ids are interchangeable).
+export async function getHubSpotOwnerId(userId: string): Promise<string | null> {
+  return withHubspotAuth(userId, async (accessToken) => {
+    const tokenInfoRes = await fetch(`https://api.hubapi.com/oauth/v1/access-tokens/${accessToken}`);
+    if (!tokenInfoRes.ok) return null;
+    const tokenInfo = (await tokenInfoRes.json()) as { user?: string };
+    if (!tokenInfo.user) return null;
+
+    const ownersRes = await fetch(`https://api.hubapi.com/crm/v3/owners?email=${encodeURIComponent(tokenInfo.user)}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (ownersRes.status === 401) throw new Error("getHubSpotOwnerId auth failed: 401");
+    if (!ownersRes.ok) return null;
+    const ownersData = (await ownersRes.json()) as { results?: Array<{ id: string }> };
+    return ownersData.results?.[0]?.id ?? null;
+  });
+}
+
+export type HubspotNativeTask = {
+  id: string;
+  title: string | null;
+  description: string | null;
+  dueAt: string | null;
+  contactEmail: string | null;
+};
+
+// Only tasks: owned by `ownerId`, created after `sinceIso`, and still
+// NOT_STARTED — completed/deleted-on-arrival tasks aren't useful "things to
+// do" to import into Brief. Tasks with no associated contact are dropped by
+// the caller (lib/tasks-hubspot-sync.ts), since Brief's task model assumes
+// a contact_email.
+export async function findNewHubSpotTasksForOwner(
+  userId: string,
+  ownerId: string,
+  sinceIso: string
+): Promise<HubspotNativeTask[]> {
+  return withHubspotAuth(userId, async (accessToken) => {
+    const searchRes = await fetch("https://api.hubapi.com/crm/v3/objects/tasks/search", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        filterGroups: [
+          {
+            filters: [
+              { propertyName: "hubspot_owner_id", operator: "EQ", value: ownerId },
+              { propertyName: "hs_createdate", operator: "GT", value: sinceIso },
+              { propertyName: "hs_task_status", operator: "EQ", value: "NOT_STARTED" },
+            ],
+          },
+        ],
+        properties: ["hs_task_subject", "hs_task_body", "hs_timestamp"],
+        limit: 100,
+      }),
+    });
+    if (searchRes.status === 401) throw new Error("findNewHubSpotTasksForOwner auth failed: 401");
+    if (!searchRes.ok) throw new Error(`HubSpot task search failed (${searchRes.status}): ${await searchRes.text()}`);
+
+    const searchData = (await searchRes.json()) as {
+      results?: Array<{
+        id: string;
+        properties: { hs_task_subject?: string | null; hs_task_body?: string | null; hs_timestamp?: string | null };
+      }>;
+    };
+    const tasks = searchData.results ?? [];
+    if (tasks.length === 0) return [];
+
+    // One associations + contacts lookup per task — search results don't
+    // include associations, and there's no batch-associations endpoint for
+    // a mixed list of object ids the way batch/read works for properties.
+    const withContacts = await Promise.all(
+      tasks.map(async (t) => {
+        const assocRes = await fetch(`https://api.hubapi.com/crm/v4/objects/tasks/${t.id}/associations/contacts`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const assocData = assocRes.ok ? ((await assocRes.json()) as { results?: Array<{ toObjectId: string }> }) : null;
+        const contactId = assocData?.results?.[0]?.toObjectId;
+        let contactEmail: string | null = null;
+        if (contactId) {
+          const contactRes = await fetch(
+            `https://api.hubapi.com/crm/v3/objects/contacts/${contactId}?properties=email`,
+            { headers: { Authorization: `Bearer ${accessToken}` } }
+          );
+          if (contactRes.ok) {
+            const contactData = (await contactRes.json()) as { properties?: { email?: string | null } };
+            contactEmail = contactData.properties?.email ?? null;
+          }
+        }
+        return {
+          id: t.id,
+          title: t.properties.hs_task_subject ?? null,
+          description: t.properties.hs_task_body ?? null,
+          dueAt: t.properties.hs_timestamp ?? null,
+          contactEmail,
+        };
+      })
+    );
+
+    return withContacts;
   });
 }

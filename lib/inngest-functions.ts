@@ -10,6 +10,8 @@ import {
   getQuotesAwaitingAcceptance,
   getUsersForDigestTiming,
   getOpenTasksWithHubSpotLink,
+  getUsersImportingHubSpotTasks,
+  createTaskFromHubSpot,
   completeTask,
   dismissTask,
   type UnansweredFollowUpCall,
@@ -19,7 +21,7 @@ import {
 import { syncAndScheduleForUser } from "./recall";
 import { sendWeeklyDigestForUser } from "./digest";
 import { pushNewTasksToHubSpot } from "./tasks-hubspot-sync";
-import { batchGetHubSpotTaskStatuses } from "./crm/hubspot";
+import { batchGetHubSpotTaskStatuses, getHubSpotOwnerId, findNewHubSpotTasksForOwner } from "./crm/hubspot";
 
 // ─── Text extraction ──────────────────────────────────────────────────────────
 
@@ -395,7 +397,55 @@ export const syncHubSpotTaskStatuses = inngest.createFunction(
       });
     }
 
-    const summary = { checked: openTasks.length, completed: totalCompleted, dismissed: totalDismissed };
+    const importUsers = await step.run("get-users-importing-hubspot-tasks", async () => {
+      return getUsersImportingHubSpotTasks();
+    });
+
+    let totalImported = 0;
+
+    for (const { id: userId } of importUsers) {
+      await step.run(`import-hubspot-tasks-user-${userId}`, async () => {
+        const ownerId = await getHubSpotOwnerId(userId).catch((err) => {
+          console.warn(
+            `[sync-hubspot-task-statuses] getHubSpotOwnerId failed for user ${userId} (non-blocking):`,
+            err instanceof Error ? err.message : String(err)
+          );
+          return null;
+        });
+        if (!ownerId) return;
+
+        const sinceIso = new Date(Date.now() - 35 * 60 * 1000).toISOString();
+        const nativeTasks = await findNewHubSpotTasksForOwner(userId, ownerId, sinceIso).catch((err) => {
+          console.warn(
+            `[sync-hubspot-task-statuses] findNewHubSpotTasksForOwner failed for user ${userId} (non-blocking):`,
+            err instanceof Error ? err.message : String(err)
+          );
+          return [];
+        });
+
+        for (const t of nativeTasks) {
+          if (!t.contactEmail) continue;
+          const created = await createTaskFromHubSpot(userId, {
+            hubspotTaskId: t.id,
+            title: t.title ?? "Task HubSpot",
+            description: t.description,
+            dueAt: t.dueAt ?? new Date().toISOString(),
+            contactEmail: t.contactEmail,
+          }).catch((err) => {
+            console.warn(`[sync-hubspot-task-statuses] createTaskFromHubSpot failed for ${t.id}:`, err);
+            return false;
+          });
+          if (created) totalImported += 1;
+        }
+      });
+    }
+
+    const summary = {
+      checked: openTasks.length,
+      completed: totalCompleted,
+      dismissed: totalDismissed,
+      imported: totalImported,
+    };
     console.log("[sync-hubspot-task-statuses] done —", JSON.stringify(summary));
     return summary;
   }

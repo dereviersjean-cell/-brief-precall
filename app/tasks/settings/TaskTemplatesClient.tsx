@@ -299,14 +299,36 @@ function TemplateCard({
 export default function TaskTemplatesClient({
   initialTemplates,
   hubspotConnected,
+  initialImportHubspotTasks,
 }: {
   initialTemplates: TaskTemplate[];
   hubspotConnected: boolean;
+  initialImportHubspotTasks: boolean;
 }) {
   const [templates, setTemplates] = useState<TaskTemplate[]>(initialTemplates);
   const [modalState, setModalState] = useState<{ triggerType: TaskTriggerType; template: TaskTemplate | null } | null>(
     null
   );
+  const [importHubspotTasks, setImportHubspotTasks] = useState(initialImportHubspotTasks);
+  const [importSaving, setImportSaving] = useState(false);
+
+  async function handleToggleImport() {
+    const next = !importHubspotTasks;
+    setImportHubspotTasks(next);
+    setImportSaving(true);
+    try {
+      const res = await fetch("/api/tasks/import-hubspot-setting", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: next }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      setImportHubspotTasks(!next);
+    } finally {
+      setImportSaving(false);
+    }
+  }
 
   async function handleToggle(template: TaskTemplate) {
     const nextEnabled = !template.enabled;
@@ -351,6 +373,32 @@ export default function TaskTemplatesClient({
           <p className="text-slate-500 mt-1 text-sm">
             Règles automatiques déclenchant des tasks de suivi selon les échanges avec vos prospects.
           </p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center justify-between gap-4 mb-8">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-slate-700">Importer les tasks HubSpot</p>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {hubspotConnected
+                ? "Toute task créée nativement dans HubSpot (assignée à vous) est aussi créée sur Brief, synchronisée dans les deux sens."
+                : "Connectez HubSpot (Paramètres → CRM) pour activer cette option."}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleToggleImport}
+            disabled={!hubspotConnected || importSaving}
+            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${
+              importHubspotTasks ? "bg-orange-500" : "bg-slate-200"
+            }`}
+            aria-label={importHubspotTasks ? "Désactiver" : "Activer"}
+          >
+            <span
+              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                importHubspotTasks ? "translate-x-[18px]" : "translate-x-1"
+              }`}
+            />
+          </button>
         </div>
 
         <div className="space-y-8">

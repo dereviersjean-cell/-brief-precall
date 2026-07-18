@@ -3499,6 +3499,73 @@ export async function getOpenTasksWithHubSpotLink(): Promise<OpenHubSpotLinkedTa
   return (data ?? []) as OpenHubSpotLinkedTask[];
 }
 
+// ─── HubSpot -> Brief task import (reverse direction) ───────────────────────
+
+export async function getUsersImportingHubSpotTasks(): Promise<{ id: string }[]> {
+  const { data, error } = await supabaseAdmin.from("users").select("id").eq("import_hubspot_tasks", true);
+  if (error) throw error;
+  return (data ?? []) as { id: string }[];
+}
+
+export async function setImportHubSpotTasksSetting(userId: string, enabled: boolean): Promise<void> {
+  const { error } = await supabaseAdmin.from("users").update({ import_hubspot_tasks: enabled }).eq("id", userId);
+  if (error) throw error;
+}
+
+export async function getImportHubSpotTasksSetting(userId: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("import_hubspot_tasks")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return Boolean(data?.import_hubspot_tasks);
+}
+
+export type CreateTaskFromHubSpotParams = {
+  hubspotTaskId: string;
+  title: string;
+  description: string | null;
+  dueAt: string;
+  contactEmail: string;
+};
+
+// Idempotency here is an application-level check-then-insert rather than a
+// DB constraint: the existing (user_id, template_id, source_type,
+// source_id) UNIQUE constraint doesn't help since template_id is NULL for
+// every HubSpot-native task (NULLs never conflict with each other in
+// Postgres uniqueness). Safe in practice — this only ever runs sequentially
+// within a single cron invocation for a given user, never concurrently.
+// Returns false (no-op) if a task for this hubspot_task_id already exists.
+export async function createTaskFromHubSpot(userId: string, params: CreateTaskFromHubSpotParams): Promise<boolean> {
+  const { data: existing, error: existingError } = await supabaseAdmin
+    .from("tasks")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("hubspot_task_id", params.hubspotTaskId)
+    .maybeSingle();
+  if (existingError) throw existingError;
+  if (existing) return false;
+
+  const { error } = await supabaseAdmin.from("tasks").insert({
+    user_id: userId,
+    template_id: null,
+    contact_id: null,
+    contact_email: params.contactEmail,
+    contact_name: null,
+    source_type: "hubspot",
+    source_id: params.hubspotTaskId,
+    task_type: "hubspot_task",
+    title: params.title,
+    description: params.description,
+    action_type: "none",
+    due_at: params.dueAt,
+    hubspot_task_id: params.hubspotTaskId,
+  });
+  if (error) throw error;
+  return true;
+}
+
 // ─── Tasks module — list views (sous-étape C) ──────────────────────────────────
 
 export type TaskUrgencyGroup = "overdue" | "today" | "this_week" | "later";
