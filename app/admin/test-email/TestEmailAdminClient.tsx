@@ -1,95 +1,15 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import type { FormEvent } from "react";
-import { AdminNav } from "../AdminNav";
-
-type PageState = "loading" | "login" | "ready";
+import { Mail } from "lucide-react";
+import { Spinner, AdminPageShell, AdminPageHeader } from "../AdminShell";
+import FadeIn from "@/app/dashboard/FadeIn";
 
 type EmailResult = {
   email: { subject: string; body: string };
   prompt_used: string;
 };
-
-// ─── Spinner ─────────────────────────────────────────────────────────────────
-
-function Spinner({ className = "w-4 h-4" }: { className?: string }) {
-  return (
-    <svg className={`${className} animate-spin`} fill="none" viewBox="0 0 24 24">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-    </svg>
-  );
-}
-
-// ─── Login form ───────────────────────────────────────────────────────────────
-
-function LoginForm({ onSuccess }: { onSuccess: () => void }) {
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
-      if (res.ok) {
-        onSuccess();
-      } else {
-        const data = await res.json();
-        setError((data as { error?: string }).error ?? "Erreur inconnue.");
-      }
-    } catch {
-      setError("Impossible de contacter le serveur.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-white text-xl font-bold">B</span>
-          </div>
-          <h1 className="text-xl font-bold text-slate-900">Administration</h1>
-          <p className="text-sm text-slate-500 mt-1">Accès réservé</p>
-        </div>
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-md p-8 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Mot de passe admin</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoFocus
-              placeholder="••••••••"
-              className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
-          </div>
-          {error && (
-            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
-          )}
-          <button
-            type="submit"
-            disabled={loading || !password}
-            className="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
-          >
-            {loading && <Spinner />}
-            {loading ? "Connexion…" : "Se connecter"}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
 
 // ─── Email display ────────────────────────────────────────────────────────────
 
@@ -150,26 +70,12 @@ function PromptViewer({ prompt }: { prompt: string }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function TestEmailAdminClient() {
-  const [pageState, setPageState] = useState<PageState>("loading");
   const [transcript, setTranscript] = useState("");
   const [nextStepsRaw, setNextStepsRaw] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState<EmailResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const checkAuth = useCallback(async () => {
-    try {
-      const res = await fetch("/api/admin/config");
-      setPageState(res.ok ? "ready" : "login");
-    } catch {
-      setPageState("login");
-    }
-  }, []);
-
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
 
   async function handleGenerate(e: FormEvent) {
     e.preventDefault();
@@ -206,32 +112,20 @@ export default function TestEmailAdminClient() {
     }
   }
 
-  if (pageState === "loading") {
-    return (
-      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
-        <Spinner className="w-8 h-8 text-indigo-600" />
-      </div>
-    );
-  }
-
-  if (pageState === "login") {
-    return <LoginForm onSuccess={checkAuth} />;
-  }
-
   return (
-    <div className="min-h-screen bg-[#F8F9FA] ml-48">
-      <AdminNav />
-      <div className="py-10 px-6">
-      <div className="max-w-3xl mx-auto space-y-6">
+    <AdminPageShell maxWidth="max-w-3xl">
+      <FadeIn>
+        <AdminPageHeader
+          icon={Mail}
+          eyebrow="Outil de test"
+          title="Test email de suivi"
+          subtitle="Historique email vide — ton par défaut"
+        />
+      </FadeIn>
 
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Test email de suivi</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Historique email vide — ton par défaut</p>
-        </div>
-
+      <div className="space-y-6">
         {/* Form */}
-        <form onSubmit={handleGenerate} className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 space-y-5">
+        <form onSubmit={handleGenerate} className="bg-white rounded-2xl border border-slate-200 p-6 space-y-5">
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
               Transcription *
@@ -299,7 +193,6 @@ export default function TestEmailAdminClient() {
           </>
         )}
       </div>
-      </div>
-    </div>
+    </AdminPageShell>
   );
 }

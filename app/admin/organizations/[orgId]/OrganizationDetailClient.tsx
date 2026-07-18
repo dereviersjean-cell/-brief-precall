@@ -3,8 +3,10 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ArrowLeft, Pencil } from "lucide-react";
 import type { Organization, OrganizationMember, UserRole } from "@/lib/db";
-import { AdminNav } from "@/app/admin/AdminNav";
+import { AdminPageShell } from "@/app/admin/AdminShell";
+import FadeIn from "@/app/dashboard/FadeIn";
 import { RoleBadge } from "@/app/admin/dashboard/AdminBadges";
 
 type MemberRow = OrganizationMember & { pending: boolean; error: string | null };
@@ -217,70 +219,75 @@ export default function OrganizationDetailClient({
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] ml-48">
-      <AdminNav />
-      <div className="py-10 px-6">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <Link
-            href="/admin/organizations"
-            className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-            </svg>
-            Retour aux organisations
-          </Link>
+    <AdminPageShell maxWidth="max-w-4xl">
+      <div className="space-y-6">
+        <Link
+          href="/admin/organizations"
+          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Retour aux organisations
+        </Link>
 
-          <div>
-            {editingName ? (
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={nameValue}
-                  onChange={(e) => setNameValue(e.target.value)}
-                  autoFocus
-                  className="text-2xl font-bold text-slate-900 border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSaveName();
-                    if (e.key === "Escape") {
+        <FadeIn>
+          <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-indigo-200/50 via-violet-200/40 to-transparent blur-3xl"
+            />
+            <div className="relative">
+              {editingName ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={nameValue}
+                    onChange={(e) => setNameValue(e.target.value)}
+                    autoFocus
+                    className="text-2xl font-bold text-slate-900 border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveName();
+                      if (e.key === "Escape") {
+                        setEditingName(false);
+                        setNameValue(organization.name);
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={handleSaveName}
+                    disabled={nameSaving}
+                    className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                  >
+                    Enregistrer
+                  </button>
+                  <button
+                    onClick={() => {
                       setEditingName(false);
                       setNameValue(organization.name);
-                    }
-                  }}
-                />
-                <button
-                  onClick={handleSaveName}
-                  disabled={nameSaving}
-                  className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                    }}
+                    className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              ) : (
+                <h1
+                  onClick={() => setEditingName(true)}
+                  className="text-2xl font-bold text-slate-900 inline-flex items-center gap-2 cursor-pointer hover:text-indigo-600 transition-colors"
+                  title="Cliquer pour renommer"
                 >
-                  Enregistrer
-                </button>
-                <button
-                  onClick={() => {
-                    setEditingName(false);
-                    setNameValue(organization.name);
-                  }}
-                  className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-                >
-                  Annuler
-                </button>
-              </div>
-            ) : (
-              <h1
-                onClick={() => setEditingName(true)}
-                className="text-2xl font-bold text-slate-900 inline-flex items-center gap-2 cursor-pointer hover:text-indigo-600 transition-colors"
-                title="Cliquer pour renommer"
-              >
-                {organization.name}
-                <svg className="w-4 h-4 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
-                </svg>
-              </h1>
-            )}
-            {nameError && <p className="text-xs text-red-600 mt-1">{nameError}</p>}
+                  {organization.name}
+                  <Pencil className="w-4 h-4 text-slate-300" />
+                </h1>
+              )}
+              {nameError && <p className="text-xs text-red-600 mt-1">{nameError}</p>}
+              <p className="text-sm text-slate-500 mt-1">
+                {members.length} membre{members.length > 1 ? "s" : ""}
+              </p>
+            </div>
           </div>
+        </FadeIn>
 
-          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+          <div className="bg-white rounded-2xl border border-slate-200 p-6">
             <h2 className="text-sm font-semibold text-slate-900 mb-4">Membres ({members.length})</h2>
             {members.length === 0 ? (
               <p className="text-slate-400 text-sm text-center py-8">Aucun membre dans cette organisation.</p>
@@ -332,7 +339,7 @@ export default function OrganizationDetailClient({
             )}
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+          <div className="bg-white rounded-2xl border border-slate-200 p-6">
             <h2 className="text-sm font-semibold text-slate-900 mb-4">Ajouter un membre</h2>
             {availableUsers.length === 0 ? (
               <p className="text-slate-400 text-sm">
@@ -372,7 +379,7 @@ export default function OrganizationDetailClient({
             {addError && <p className="text-xs text-red-600 mt-2">{addError}</p>}
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+          <div className="bg-white rounded-2xl border border-slate-200 p-6">
             <h2 className="text-sm font-semibold text-slate-900 mb-4">Créer et inviter un nouveau membre</h2>
             <div className="flex items-center gap-2 flex-wrap">
               <input
@@ -409,7 +416,7 @@ export default function OrganizationDetailClient({
             {inviteSuccess && <p className="text-xs text-emerald-600 mt-2">{inviteSuccess}</p>}
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+          <div className="bg-white rounded-2xl border border-slate-200 p-6">
             <h2 className="text-sm font-semibold text-slate-900 mb-1">Zone dangereuse</h2>
             <p className="text-xs text-slate-400 mb-4">
               La suppression est définitive et impossible tant que l&apos;organisation a des membres.
@@ -428,8 +435,7 @@ export default function OrganizationDetailClient({
             </button>
             {deleteOrgError && <p className="text-xs text-red-600 mt-2">{deleteOrgError}</p>}
           </div>
-        </div>
       </div>
-    </div>
+    </AdminPageShell>
   );
 }

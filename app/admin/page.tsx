@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import type { ReactNode, FormEvent } from "react";
+import type { ReactNode } from "react";
+import { Settings2, Sparkles, RotateCcw, Check } from "lucide-react";
 import { AdminConfig, DEFAULT_CONFIG } from "@/lib/admin-config";
-import { AdminNav } from "./AdminNav";
+import { Spinner, AdminLoginForm, AdminPageShell, AdminPageHeader } from "./AdminShell";
+import FadeIn from "@/app/dashboard/FadeIn";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -40,18 +42,9 @@ function formatDate(iso: string) {
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
 
-function Spinner({ className = "w-4 h-4" }: { className?: string }) {
-  return (
-    <svg className={`${className} animate-spin`} fill="none" viewBox="0 0 24 24">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-    </svg>
-  );
-}
-
 function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`bg-white rounded-xl shadow-md p-6 ${className}`}>{children}</div>
+    <div className={`bg-white rounded-2xl border border-slate-200 p-6 ${className}`}>{children}</div>
   );
 }
 
@@ -267,7 +260,7 @@ function HistoryItem({
   onToggle: () => void;
 }) {
   return (
-    <div className="bg-white rounded-xl shadow-md overflow-hidden">
+    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
       <button
         onClick={onToggle}
         className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-slate-50 transition-colors"
@@ -298,79 +291,6 @@ function HistoryItem({
           <BriefDisplay brief={entry.brief} />
         </div>
       )}
-    </div>
-  );
-}
-
-// ─── Login form ───────────────────────────────────────────────────────────────
-
-function LoginForm({ onSuccess }: { onSuccess: () => void }) {
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
-      if (res.ok) {
-        onSuccess();
-      } else {
-        const data = await res.json();
-        setError((data as { error?: string }).error ?? "Erreur inconnue.");
-      }
-    } catch {
-      setError("Impossible de contacter le serveur.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-white text-xl font-bold">B</span>
-          </div>
-          <h1 className="text-xl font-bold text-slate-900">Administration</h1>
-          <p className="text-sm text-slate-500 mt-1">Accès réservé</p>
-        </div>
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-md p-8 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              Mot de passe admin
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoFocus
-              placeholder="••••••••"
-              className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
-          </div>
-          {error && (
-            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-              {error}
-            </p>
-          )}
-          <button
-            type="submit"
-            disabled={loading || !password}
-            className="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
-          >
-            {loading && <Spinner />}
-            {loading ? "Connexion…" : "Se connecter"}
-          </button>
-        </form>
-      </div>
     </div>
   );
 }
@@ -487,9 +407,17 @@ function AdminPanel({ initialConfig }: { initialConfig: AdminConfig }) {
   const previousEntries = history.filter((h) => h.id !== displayEntry?.id).slice(0, 2);
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] ml-48">
-      <AdminNav />
-      <div className="max-w-7xl mx-auto px-6 py-8">
+    <AdminPageShell>
+      <FadeIn>
+        <AdminPageHeader
+          icon={Settings2}
+          eyebrow="Configuration"
+          title="Config & test du brief"
+          subtitle="Paramètres de génération appliqués à tous les utilisateurs"
+        />
+      </FadeIn>
+
+      <div>
         <div className="grid grid-cols-5 gap-8 items-start">
 
           {/* ── Left column: config (40%) ── */}
@@ -586,9 +514,7 @@ function AdminPanel({ initialConfig }: { initialConfig: AdminConfig }) {
               </span>
               {saveStatus === "ok" && (
                 <span className="text-sm text-emerald-600 font-medium flex items-center gap-1.5">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                  </svg>
+                  <Check className="w-4 h-4" strokeWidth={2.5} />
                   Sauvegardé
                 </span>
               )}
@@ -597,8 +523,9 @@ function AdminPanel({ initialConfig }: { initialConfig: AdminConfig }) {
               )}
               <button
                 onClick={handleReset}
-                className="ml-auto text-sm text-slate-400 hover:text-slate-600 transition-colors"
+                className="ml-auto flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors"
               >
+                <RotateCcw className="w-3.5 h-3.5" />
                 Réinitialiser
               </button>
             </div>
@@ -671,11 +598,7 @@ function AdminPanel({ initialConfig }: { initialConfig: AdminConfig }) {
                     disabled={testLoading || !testCompany.trim()}
                     className="flex items-center gap-2 bg-indigo-600 text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 shrink-0"
                   >
-                    {testLoading ? <Spinner /> : (
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                    )}
+                    {testLoading ? <Spinner /> : <Sparkles className="w-4 h-4" />}
                     {testLoading ? "Génération…" : "Tester"}
                   </button>
                 </div>
@@ -731,7 +654,7 @@ function AdminPanel({ initialConfig }: { initialConfig: AdminConfig }) {
 
         </div>
       </div>
-    </div>
+    </AdminPageShell>
   );
 }
 
@@ -763,14 +686,14 @@ export default function AdminPage() {
 
   if (state === "loading") {
     return (
-      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <Spinner className="w-6 h-6 text-indigo-600" />
       </div>
     );
   }
 
   if (state === "login") {
-    return <LoginForm onSuccess={fetchConfig} />;
+    return <AdminLoginForm onSuccess={fetchConfig} />;
   }
 
   return <AdminPanel initialConfig={config ?? DEFAULT_CONFIG} />;

@@ -3,8 +3,10 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { Building2, Plus, Trash2 } from "lucide-react";
 import type { OrganizationWithCounts } from "@/lib/db";
-import { AdminNav } from "@/app/admin/AdminNav";
+import { AdminPageShell, AdminPageHeader } from "@/app/admin/AdminShell";
+import FadeIn from "@/app/dashboard/FadeIn";
 
 function NewOrganizationForm({ onCreated }: { onCreated: () => void }) {
   const [open, setOpen] = useState(false);
@@ -43,7 +45,8 @@ function NewOrganizationForm({ onCreated }: { onCreated: () => void }) {
         onClick={() => setOpen(true)}
         className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
       >
-        + Nouvelle organisation
+        <Plus className="w-4 h-4" />
+        Nouvelle organisation
       </button>
     );
   }
@@ -119,73 +122,70 @@ export default function OrganizationsAdminClient({
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] ml-48">
-      <AdminNav />
-      <div className="py-10 px-6">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">Organisations</h1>
-              <p className="text-sm text-slate-500 mt-0.5">
-                {organizations.length} organisation{organizations.length > 1 ? "s" : ""}
-              </p>
-            </div>
-            <NewOrganizationForm onCreated={() => router.refresh()} />
-          </div>
+    <AdminPageShell maxWidth="max-w-4xl">
+      <FadeIn>
+        <AdminPageHeader
+          icon={Building2}
+          eyebrow="Multi-tenant"
+          title="Organisations"
+          subtitle={`${organizations.length} organisation${organizations.length > 1 ? "s" : ""}`}
+          actions={<NewOrganizationForm onCreated={() => router.refresh()} />}
+        />
+      </FadeIn>
 
-          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-            {organizations.length === 0 ? (
-              <p className="text-slate-400 text-sm text-center py-12">Aucune organisation pour l&apos;instant.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-200">
-                      <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Nom</th>
-                      <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Managers</th>
-                      <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Commerciaux</th>
-                      <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Total</th>
-                      <th className="py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right"></th>
+      <FadeIn delay={0.1}>
+        <div className="bg-white rounded-2xl border border-slate-200 p-6">
+          {organizations.length === 0 ? (
+            <p className="text-slate-400 text-sm text-center py-12">Aucune organisation pour l&apos;instant.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200">
+                    <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Nom</th>
+                    <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Managers</th>
+                    <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Commerciaux</th>
+                    <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Total</th>
+                    <th className="py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {organizations.map((org) => (
+                    <tr
+                      key={org.id}
+                      onClick={() => router.push(`/admin/organizations/${org.id}`)}
+                      className="border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer"
+                    >
+                      <td className="py-3 pr-4 text-slate-800 font-medium">{org.name}</td>
+                      <td className="py-3 pr-4 text-slate-700 text-right font-mono">{org.managers_count}</td>
+                      <td className="py-3 pr-4 text-slate-700 text-right font-mono">{org.commercials_count}</td>
+                      <td className="py-3 pr-4 text-slate-700 text-right font-mono">{org.total_count}</td>
+                      <td className="py-3 text-right">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(org);
+                          }}
+                          disabled={deletingId === org.id}
+                          title="Supprimer l'organisation"
+                          className="text-slate-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        {deleteErrors[org.id] && (
+                          <p className="text-xs text-red-600 mt-1 max-w-[180px] ml-auto text-left">
+                            {deleteErrors[org.id]}
+                          </p>
+                        )}
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {organizations.map((org) => (
-                      <tr
-                        key={org.id}
-                        onClick={() => router.push(`/admin/organizations/${org.id}`)}
-                        className="border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer"
-                      >
-                        <td className="py-3 pr-4 text-slate-800 font-medium">{org.name}</td>
-                        <td className="py-3 pr-4 text-slate-700 text-right font-mono">{org.managers_count}</td>
-                        <td className="py-3 pr-4 text-slate-700 text-right font-mono">{org.commercials_count}</td>
-                        <td className="py-3 pr-4 text-slate-700 text-right font-mono">{org.total_count}</td>
-                        <td className="py-3 text-right">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(org);
-                            }}
-                            disabled={deletingId === org.id}
-                            title="Supprimer l'organisation"
-                            className="text-slate-400 hover:text-red-600 transition-colors disabled:opacity-50"
-                          >
-                            🗑️
-                          </button>
-                          {deleteErrors[org.id] && (
-                            <p className="text-xs text-red-600 mt-1 max-w-[180px] ml-auto text-left">
-                              {deleteErrors[org.id]}
-                            </p>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
-      </div>
-    </div>
+      </FadeIn>
+    </AdminPageShell>
   );
 }

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { RefreshCw } from "lucide-react";
+import { Spinner } from "../AdminShell";
 import { UpcomingMeetingsTable, FailedRecordingsTable } from "./RecallStatusTables";
 import type { UpcomingMeeting, FailedRecording } from "./RecallStatusTables";
 
@@ -10,15 +12,6 @@ type RecallStatusData = {
 };
 
 type LoadState = "loading" | "error" | "ready";
-
-function Spinner({ className = "w-4 h-4" }: { className?: string }) {
-  return (
-    <svg className={`${className} animate-spin`} fill="none" viewBox="0 0 24 24">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-    </svg>
-  );
-}
 
 export default function RecallStatusSection() {
   const [state, setState] = useState<LoadState>("loading");
@@ -50,7 +43,7 @@ export default function RecallStatusSection() {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 space-y-8">
+    <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-8">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-slate-900">Statut Recall</h2>
         <button
@@ -58,7 +51,7 @@ export default function RecallStatusSection() {
           disabled={refreshing || state === "loading"}
           className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
         >
-          {refreshing && <Spinner />}
+          {refreshing ? <Spinner /> : <RefreshCw className="w-4 h-4" />}
           Actualiser
         </button>
       </div>

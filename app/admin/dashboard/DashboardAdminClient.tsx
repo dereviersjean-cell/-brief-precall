@@ -1,96 +1,16 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { LayoutDashboard, RefreshCw, FileText, PhoneCall, Mail } from "lucide-react";
 import type { UserDashboardStat, UserRole } from "@/lib/db";
-import { AdminNav } from "../AdminNav";
+import { Spinner, AdminPageShell, AdminPageHeader } from "../AdminShell";
+import StatTile from "@/app/dashboard/StatTile";
+import FadeIn from "@/app/dashboard/FadeIn";
 import RecallStatusSection from "./RecallStatusSection";
 import { RoleBadge, CrmBadge, formatAdminDate } from "./AdminBadges";
 
 type RoleFilter = "all" | UserRole;
-
-type DashboardState = "loading" | "login" | "ready";
-
-function Spinner({ className = "w-4 h-4" }: { className?: string }) {
-  return (
-    <svg className={`${className} animate-spin`} fill="none" viewBox="0 0 24 24">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-    </svg>
-  );
-}
-
-function LoginForm({ onSuccess }: { onSuccess: () => void }) {
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
-      if (res.ok) {
-        onSuccess();
-      } else {
-        const data = await res.json();
-        setError((data as { error?: string }).error ?? "Erreur inconnue.");
-      }
-    } catch {
-      setError("Impossible de contacter le serveur.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-white text-xl font-bold">B</span>
-          </div>
-          <h1 className="text-xl font-bold text-slate-900">Administration</h1>
-          <p className="text-sm text-slate-500 mt-1">Accès réservé</p>
-        </div>
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-md p-8 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              Mot de passe admin
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoFocus
-              placeholder="••••••••"
-              className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
-          </div>
-          {error && (
-            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-              {error}
-            </p>
-          )}
-          <button
-            type="submit"
-            disabled={loading || !password}
-            className="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
-          >
-            {loading && <Spinner />}
-            {loading ? "Connexion…" : "Se connecter"}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
 
 const ROLE_FILTERS: { value: RoleFilter; label: string }[] = [
   { value: "all", label: "Tous" },
@@ -114,9 +34,7 @@ function RoleFilterBar({
           key={f.value}
           onClick={() => onChange(f.value)}
           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-            value === f.value
-              ? "bg-indigo-600 text-white"
-              : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            value === f.value ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
           }`}
         >
           {f.label} ({counts[f.value]})
@@ -324,27 +242,17 @@ function DashboardTable({ stats, onChanged }: { stats: UserDashboardStat[]; onCh
 }
 
 export default function DashboardAdminClient() {
-  const [state, setState] = useState<DashboardState>("loading");
   const [stats, setStats] = useState<UserDashboardStat[]>([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
 
   const fetchStats = useCallback(async () => {
     try {
-      const authRes = await fetch("/api/admin/config");
-      if (!authRes.ok) {
-        setState("login");
-        return;
-      }
-      const statsRes = await fetch("/api/admin/dashboard-stats");
-      if (!statsRes.ok) {
-        setState("login");
-        return;
-      }
-      setStats(await statsRes.json());
-      setState("ready");
-    } catch {
-      setState("login");
+      const res = await fetch("/api/admin/dashboard-stats");
+      if (res.ok) setStats(await res.json());
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -358,16 +266,12 @@ export default function DashboardAdminClient() {
     setRefreshing(false);
   }
 
-  if (state === "loading") {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <Spinner className="w-8 h-8 text-indigo-600" />
       </div>
     );
-  }
-
-  if (state === "login") {
-    return <LoginForm onSuccess={fetchStats} />;
   }
 
   const totalBriefs = stats.reduce((s, u) => s + u.briefs_count, 0);
@@ -382,48 +286,42 @@ export default function DashboardAdminClient() {
   const filteredStats = roleFilter === "all" ? stats : stats.filter((u) => u.role === roleFilter);
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] ml-48">
-      <AdminNav />
-      <div className="py-10 px-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Dashboard utilisateurs</h1>
-            <p className="text-sm text-slate-500 mt-0.5">{stats.length} utilisateur{stats.length > 1 ? "s" : ""}</p>
-          </div>
-          <div className="flex items-center gap-3">
+    <AdminPageShell>
+      <FadeIn>
+        <AdminPageHeader
+          icon={LayoutDashboard}
+          eyebrow="Vue d'ensemble"
+          title="Dashboard utilisateurs"
+          subtitle={`${stats.length} utilisateur${stats.length > 1 ? "s" : ""} sur la plateforme`}
+          actions={
             <button
               onClick={handleRefresh}
               disabled={refreshing}
               className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
             >
-              {refreshing && <Spinner />}
+              {refreshing ? <Spinner /> : <RefreshCw className="w-4 h-4" />}
               Actualiser
             </button>
-          </div>
-        </div>
+          }
+        />
+      </FadeIn>
 
-        <div className="grid grid-cols-3 gap-4">
-          {[
-            { label: "Briefs générés", value: totalBriefs },
-            { label: "Appels analysés", value: totalCalls },
-            { label: "Emails envoyés", value: totalEmails },
-          ].map(({ label, value }) => (
-            <div key={label} className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{label}</p>
-              <p className="text-3xl font-bold text-slate-900 mt-1">{value}</p>
-            </div>
-          ))}
-        </div>
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        <StatTile label="Briefs générés" value={totalBriefs} icon={<FileText className="w-4 h-4" />} accent="indigo" index={0} />
+        <StatTile label="Appels analysés" value={totalCalls} icon={<PhoneCall className="w-4 h-4" />} accent="violet" index={1} />
+        <StatTile label="Emails envoyés" value={totalEmails} icon={<Mail className="w-4 h-4" />} accent="emerald" index={2} />
+      </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+      <FadeIn delay={0.1}>
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
           <RoleFilterBar value={roleFilter} onChange={setRoleFilter} counts={roleCounts} />
           <DashboardTable stats={filteredStats} onChanged={fetchStats} />
         </div>
+      </FadeIn>
 
+      <FadeIn delay={0.15}>
         <RecallStatusSection />
-      </div>
-      </div>
-    </div>
+      </FadeIn>
+    </AdminPageShell>
   );
 }
