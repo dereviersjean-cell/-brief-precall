@@ -1381,6 +1381,80 @@ export async function setUserOrganization(userId: string, orgId: string | null):
   if (error) throw error;
 }
 
+// ─── Facturation (Stripe) ─────────────────────────────────────────────────
+
+export type OrganizationBilling = {
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  stripe_seat_item_id: string | null;
+  billing_status: string; // 'none' | 'trialing' | 'active' | 'grace_period' | 'blocked' | 'canceled'
+  trial_ends_at: string | null;
+  grace_period_ends_at: string | null;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  last_usage_reported_at: string | null;
+};
+
+const ORGANIZATION_BILLING_COLUMNS =
+  "stripe_customer_id, stripe_subscription_id, stripe_seat_item_id, billing_status, trial_ends_at, grace_period_ends_at, current_period_start, current_period_end, last_usage_reported_at";
+
+export async function getOrganizationBillingRow(orgId: string): Promise<OrganizationBilling | null> {
+  const { data, error } = await supabaseAdmin
+    .from("organizations")
+    .select(ORGANIZATION_BILLING_COLUMNS)
+    .eq("id", orgId)
+    .maybeSingle();
+  if (error) throw error;
+  return data as OrganizationBilling | null;
+}
+
+export async function getOrganizationByStripeSubscriptionId(
+  subscriptionId: string
+): Promise<(Organization & OrganizationBilling) | null> {
+  const { data, error } = await supabaseAdmin
+    .from("organizations")
+    .select(`id, name, created_at, ${ORGANIZATION_BILLING_COLUMNS}`)
+    .eq("stripe_subscription_id", subscriptionId)
+    .maybeSingle();
+  if (error) throw error;
+  return data as (Organization & OrganizationBilling) | null;
+}
+
+export async function updateOrganizationBilling(orgId: string, patch: Partial<OrganizationBilling>): Promise<void> {
+  const { error } = await supabaseAdmin.from("organizations").update(patch).eq("id", orgId);
+  if (error) throw error;
+}
+
+// Sièges facturables = users actifs (non désactivés) rattachés à l'org.
+// Mêmes filtres que deleteOrganization ci-dessus, plus disabled_at IS NULL.
+export async function getActiveSeatCountForOrganization(orgId: string): Promise<number> {
+  const { count, error } = await supabaseAdmin
+    .from("users")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", orgId)
+    .is("disabled_at", null);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+// Insertion idempotente pour le ledger d'événements webhook Stripe — un
+// événement Stripe n'a pas toujours de ligne métier naturelle sur laquelle
+// upserter (contrairement aux webhooks Recall), donc UNIQUE(stripe_event_id)
+// + upsert ignoreDuplicates (même pattern que manager_commercial_links) plutôt
+// qu'un upsert business-row classique.
+// Retourne true si l'événement est nouveau (à traiter), false s'il a déjà été vu.
+export async function recordBillingEventIfNew(stripeEventId: string, type: string, organizationId: string | null): Promise<boolean> {
+  const { data, error } = await supabaseAdmin
+    .from("billing_events")
+    .upsert(
+      { stripe_event_id: stripeEventId, type, organization_id: organizationId },
+      { onConflict: "stripe_event_id", ignoreDuplicates: true }
+    )
+    .select("id");
+  if (error) throw error;
+  return (data?.length ?? 0) > 0;
+}
+
 export type OrganizationMember = {
   id: string;
   name: string | null;
