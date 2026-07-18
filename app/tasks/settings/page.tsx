@@ -14,7 +14,14 @@ export default async function TaskSettingsPage() {
   const [templates, hubspotConnected, importHubspotTasks] = await Promise.all([
     listTaskTemplates(userId),
     hasHubSpotWriteAccess(userId),
-    getImportHubSpotTasksSetting(userId),
+    // Falls back to false instead of crashing the whole page — protects
+    // against the users.import_hubspot_tasks migration not having run yet
+    // on this environment (see CLAUDE.md: migrations are handed over as
+    // SQL, not committed, so prod can briefly lag behind this code path).
+    getImportHubSpotTasksSetting(userId).catch((err) => {
+      console.error("[tasks/settings] getImportHubSpotTasksSetting failed:", err);
+      return false;
+    }),
   ]);
 
   return (
