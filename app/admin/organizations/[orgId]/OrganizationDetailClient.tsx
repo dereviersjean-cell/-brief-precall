@@ -3,13 +3,43 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Pencil } from "lucide-react";
+import { ArrowLeft, Pencil, Users, UserPlus, ShieldAlert } from "lucide-react";
 import type { Organization, OrganizationMember, UserRole } from "@/lib/db";
 import { AdminPageShell } from "@/app/admin/AdminShell";
 import FadeIn from "@/app/dashboard/FadeIn";
 import { RoleBadge } from "@/app/admin/dashboard/AdminBadges";
 
 type MemberRow = OrganizationMember & { pending: boolean; error: string | null };
+
+type DetailTab = "membres" | "ajouter" | "danger";
+
+const DETAIL_TABS: { key: DetailTab; label: string; icon: typeof Users }[] = [
+  { key: "membres", label: "Membres", icon: Users },
+  { key: "ajouter", label: "Ajouter un membre", icon: UserPlus },
+  { key: "danger", label: "Zone dangereuse", icon: ShieldAlert },
+];
+
+function DetailTabs({ active, onSelect }: { active: DetailTab; onSelect: (tab: DetailTab) => void }) {
+  return (
+    <div className="inline-flex items-center gap-1 bg-white rounded-xl border border-slate-200 p-1 flex-wrap">
+      {DETAIL_TABS.map(({ key, label, icon: Icon }) => {
+        const isActive = key === active;
+        return (
+          <button
+            key={key}
+            onClick={() => onSelect(key)}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
+              isActive ? "bg-indigo-600 text-white" : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function OrganizationDetailClient({
   organization,
@@ -21,6 +51,7 @@ export default function OrganizationDetailClient({
   availableUsers: OrganizationMember[];
 }) {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<DetailTab>("membres");
 
   const [members, setMembers] = useState<MemberRow[]>(
     initialMembers.map((m) => ({ ...m, pending: false, error: null }))
@@ -287,6 +318,9 @@ export default function OrganizationDetailClient({
           </div>
         </FadeIn>
 
+        <DetailTabs active={activeTab} onSelect={setActiveTab} />
+
+        {activeTab === "membres" && (
           <div className="bg-white rounded-2xl border border-slate-200 p-6">
             <h2 className="text-sm font-semibold text-slate-900 mb-4">Membres ({members.length})</h2>
             {members.length === 0 ? (
@@ -338,9 +372,12 @@ export default function OrganizationDetailClient({
               </div>
             )}
           </div>
+        )}
 
+        {activeTab === "ajouter" && (
+          <div className="space-y-6">
           <div className="bg-white rounded-2xl border border-slate-200 p-6">
-            <h2 className="text-sm font-semibold text-slate-900 mb-4">Ajouter un membre</h2>
+            <h2 className="text-sm font-semibold text-slate-900 mb-4">Ajouter un membre existant</h2>
             {availableUsers.length === 0 ? (
               <p className="text-slate-400 text-sm">
                 Aucun utilisateur disponible — tous sont déjà rattachés à une organisation.
@@ -415,7 +452,10 @@ export default function OrganizationDetailClient({
             {inviteError && <p className="text-xs text-red-600 mt-2">{inviteError}</p>}
             {inviteSuccess && <p className="text-xs text-emerald-600 mt-2">{inviteSuccess}</p>}
           </div>
+          </div>
+        )}
 
+        {activeTab === "danger" && (
           <div className="bg-white rounded-2xl border border-slate-200 p-6">
             <h2 className="text-sm font-semibold text-slate-900 mb-1">Zone dangereuse</h2>
             <p className="text-xs text-slate-400 mb-4">
@@ -435,6 +475,7 @@ export default function OrganizationDetailClient({
             </button>
             {deleteOrgError && <p className="text-xs text-red-600 mt-2">{deleteOrgError}</p>}
           </div>
+        )}
       </div>
     </AdminPageShell>
   );

@@ -46,54 +46,64 @@ const DEFAULTS: Prompts = {
   digest_manager_prompt: DEFAULT_DIGEST_MANAGER_PROMPT,
 };
 
-const PROMPT_META: { key: PromptKey; title: string; description: string }[] = [
+const PROMPT_META: { key: PromptKey; tabLabel: string; title: string; description: string }[] = [
   {
     key: "systemPrompt",
+    tabLabel: "Brief",
     title: "Prompt Brief",
     description: "Définit le rôle et le style du modèle lors de la génération du brief pré-call (ton, format JSON, expertise attendue).",
   },
   {
     key: "call_analysis_system_prompt",
+    tabLabel: "Analyse de call",
     title: "Prompt Analyse de call",
     description: "Instruction système utilisée pour noter et analyser les transcriptions d'appels (scoring 0-5 sur 4 dimensions, JSON de sortie).",
   },
   {
     key: "email_followup_prompt",
+    tabLabel: "Email de suivi",
     title: "Prompt Email de suivi",
     description: "Mission et format injectés lors de la génération de l'email de suivi post-call envoyé au prospect.",
   },
   {
     key: "reply_suggestion_prompt",
+    tabLabel: "Réponse prospect",
     title: "Prompt Réponse prospect",
     description: "Instructions pour rédiger une réponse à un email entrant du prospect, en continuité du fil de conversation.",
   },
   {
     key: "quote_generation_prompt",
+    tabLabel: "Génération de devis",
     title: "Prompt Génération de devis",
     description: "Instructions pour pré-remplir un devis (lignes, réduction argumentée, notes) à partir des calls analysés et emails échangés avec un contact.",
   },
   {
     key: "quote_email_prompt",
+    tabLabel: "Email de devis",
     title: "Prompt Email d'envoi de devis",
     description: "Instructions pour rédiger le sujet et le corps de l'email d'envoi d'un devis, personnalisé selon l'historique des échanges avec le prospect.",
   },
   {
     key: "task_email_prompt",
+    tabLabel: "Email de task",
     title: "Prompt Email de task",
     description: "Instructions pour rédiger le sujet et le corps de l'email généré depuis une task (récap post-call, relance email, relance devis), ton adapté au type de task.",
   },
   {
     key: "playbook_extraction_prompt",
+    tabLabel: "Extraction playbook",
     title: "Prompt Extraction de playbook",
     description: "Instructions pour extraire une structure de dimensions/questions à partir d'un document playbook collé par un manager (page /team/playbook, import).",
   },
   {
     key: "digest_commercial_prompt",
+    tabLabel: "Digest — Commercial",
     title: "Prompt Digest hebdo — Commercial",
     description: "Narratif qualitatif (bien fait / à améliorer / à ne pas oublier, ou pour lundi : à faire cette semaine) du digest hebdomadaire personnel d'un commercial.",
   },
   {
     key: "digest_manager_prompt",
+    tabLabel: "Digest — Manager",
     title: "Prompt Digest hebdo — Manager",
     description: "Narratif qualitatif du digest hebdomadaire équipe d'un manager, à partir des points forts/faibles de chaque commercial rattaché.",
   },
@@ -196,11 +206,46 @@ function PromptSection({
   );
 }
 
+// ─── Tab bar ──────────────────────────────────────────────────────────────────
+
+function PromptTabs({
+  activeKey,
+  onSelect,
+  dirtyKeys,
+}: {
+  activeKey: PromptKey;
+  onSelect: (key: PromptKey) => void;
+  dirtyKeys: Set<PromptKey>;
+}) {
+  return (
+    <div className="inline-flex items-center gap-1 bg-white rounded-xl border border-slate-200 p-1 flex-wrap">
+      {PROMPT_META.map(({ key, tabLabel }) => {
+        const active = key === activeKey;
+        return (
+          <button
+            key={key}
+            onClick={() => onSelect(key)}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
+              active ? "bg-indigo-600 text-white" : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            {tabLabel}
+            {dirtyKeys.has(key) && (
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${active ? "bg-white" : "bg-amber-500"}`} />
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function PromptsAdminClient() {
   const [loading, setLoading] = useState(true);
   const [prompts, setPrompts] = useState<Prompts>({ ...DEFAULTS });
+  const [activeKey, setActiveKey] = useState<PromptKey>(PROMPT_META[0].key);
 
   const fetchPrompts = useCallback(async () => {
     try {
@@ -227,8 +272,11 @@ export default function PromptsAdminClient() {
     );
   }
 
+  const dirtyKeys = new Set(PROMPT_META.filter(({ key }) => prompts[key] !== DEFAULTS[key]).map(({ key }) => key));
+  const active = PROMPT_META.find(({ key }) => key === activeKey) ?? PROMPT_META[0];
+
   return (
-    <AdminPageShell maxWidth="max-w-3xl">
+    <AdminPageShell maxWidth="max-w-4xl">
       <FadeIn>
         <AdminPageHeader
           icon={PenLine}
@@ -238,18 +286,17 @@ export default function PromptsAdminClient() {
         />
       </FadeIn>
 
-      <div className="space-y-6">
-        {PROMPT_META.map(({ key, title, description }) => (
-          <PromptSection
-            key={key}
-            promptKey={key}
-            title={title}
-            description={description}
-            value={prompts[key]}
-            defaultValue={DEFAULTS[key]}
-            onChange={handleChange}
-          />
-        ))}
+      <div className="space-y-4">
+        <PromptTabs activeKey={activeKey} onSelect={setActiveKey} dirtyKeys={dirtyKeys} />
+        <PromptSection
+          key={active.key}
+          promptKey={active.key}
+          title={active.title}
+          description={active.description}
+          value={prompts[active.key]}
+          defaultValue={DEFAULTS[active.key]}
+          onChange={handleChange}
+        />
       </div>
     </AdminPageShell>
   );
