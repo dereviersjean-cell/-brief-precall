@@ -27,6 +27,7 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState<ExtractedDimension[] | null>(null);
+  const [dragActive, setDragActive] = useState(false);
 
   // Notion tab state — separate from the paste/file flow above since it has
   // its own connect → search → confirm sub-steps before extraction can run.
@@ -253,10 +254,35 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="w-full flex flex-col items-center gap-2 px-4 py-10 border-2 border-dashed border-slate-200 rounded-xl hover:border-indigo-300 hover:bg-indigo-50 transition-all text-slate-500 text-sm"
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setDragActive(true);
+                      }}
+                      onDragLeave={(e) => {
+                        e.preventDefault();
+                        setDragActive(false);
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setDragActive(false);
+                        const dropped = e.dataTransfer.files?.[0];
+                        if (!dropped) return;
+                        const name = dropped.name.toLowerCase();
+                        if (!/\.(pdf|docx?)$/i.test(name)) {
+                          setError("Formats acceptés : PDF, Word (.doc, .docx).");
+                          return;
+                        }
+                        setError(null);
+                        setFile(dropped);
+                      }}
+                      className={`w-full flex flex-col items-center gap-2 px-4 py-10 border-2 border-dashed rounded-xl transition-all text-sm ${
+                        dragActive
+                          ? "border-indigo-400 bg-indigo-50 text-indigo-600"
+                          : "border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 text-slate-500"
+                      }`}
                     >
-                      <Upload className="w-6 h-6 text-slate-400" />
-                      Cliquez pour sélectionner un fichier
+                      <Upload className={`w-6 h-6 ${dragActive ? "text-indigo-500" : "text-slate-400"}`} />
+                      {dragActive ? "Déposez le fichier ici" : "Glissez-déposez un fichier ou cliquez pour en sélectionner un"}
                     </button>
                   )}
                 </div>

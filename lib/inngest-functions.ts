@@ -29,10 +29,18 @@ async function extractTextFromFile(base64: string, fileType: string): Promise<st
   const buffer = Buffer.from(base64, "base64");
 
   if (fileType.includes("pdf")) {
+    // pdf-parse v2 dropped the v1 callable-function export in favor of a
+    // PDFParse class (new PDFParse({ data }).getText()) — do not revert to
+    // require("pdf-parse")(buffer), it throws "pdfParse is not a function".
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse = require("pdf-parse");
-    const data = await pdfParse(buffer);
-    return (data.text as string) ?? "";
+    const { PDFParse } = require("pdf-parse");
+    const parser = new PDFParse({ data: buffer });
+    try {
+      const result = await parser.getText();
+      return result.text ?? "";
+    } finally {
+      await parser.destroy();
+    }
   }
 
   if (
