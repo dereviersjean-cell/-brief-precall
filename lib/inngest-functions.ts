@@ -14,6 +14,9 @@ import {
   createTaskFromHubSpot,
   completeTask,
   dismissTask,
+  getOrganizationsForUsageBilling,
+  getOrganizationsInExpiredGracePeriod,
+  updateOrganizationBilling,
   type UnansweredFollowUpCall,
   type UnansweredQuote,
   type DigestRecipient,
@@ -22,6 +25,7 @@ import { syncAndScheduleForUser } from "./recall";
 import { sendWeeklyDigestForUser } from "./digest";
 import { pushNewTasksToHubSpot } from "./tasks-hubspot-sync";
 import { batchGetHubSpotTaskStatuses, getHubSpotOwnerId, findNewHubSpotTasksForOwner } from "./crm/hubspot";
+import { reportMonthlyUsageForOrganization } from "./stripe";
 
 // ─── Text extraction ──────────────────────────────────────────────────────────
 
@@ -529,6 +533,60 @@ export const sendMondayMorningDigests = inngest.createFunction(
 
     const summary = { users: users.length, sent, failed };
     console.log("[send-monday-morning-digests] done —", JSON.stringify(summary));
+    return summary;
+  }
+);
+
+// ─── Facturation Stripe (module Facturation, Phase 3) ──────────────────────
+//
+// Deux crons séparés plutôt qu'un seul : le report d'usage est mensuel (le
+// 1er du mois), la vérification de fin de fenêtre de grâce doit être bien
+// plus fréquente (une org bloquée en retard d'une heure n'est pas grave, en
+// retard d'un jour l'est) — même logique de séparation que les deux crons du
+// digest hebdo, un par timing.
+
+export const reportBillingUsage = inngest.createFunction(
+  { id: "report-billing-usage", triggers: [{ cron: "0 3 1 * *" }] },
+  async ({ step }) => {
+    const orgs = await step.run("get-orgs-for-usage-billing", getOrganizationsForUsageBilling);
+
+    let reported = 0;
+    for (const org of orgs) {
+      await step.run(`report-usage-${org.id}`, async () => {
+        try {
+          const { amountCents } = await reportMonthlyUsageForOrganization(org.id);
+          if (amountCents > 0) reported++;
+        } catch (err) {
+          console.warn(`[report-billing-usage] failed for org ${org.id}:`, err);
+        }
+      });
+    }
+
+    const summary = { checked: orgs.length, reported };
+    console.log("[report-billing-usage] done —", JSON.stringify(summary));
+    return summary;
+  }
+);
+
+export const checkBillingGracePeriods = inngest.createFunction(
+  { id: "check-billing-grace-periods", triggers: [{ cron: "0 * * * *" }] },
+  async ({ step }) => {
+    const orgs = await step.run("get-expired-grace-periods", getOrganizationsInExpiredGracePeriod);
+
+    let blocked = 0;
+    for (const org of orgs) {
+      await step.run(`block-org-${org.id}`, async () => {
+        try {
+          await updateOrganizationBilling(org.id, { billing_status: "blocked" });
+          blocked++;
+        } catch (err) {
+          console.warn(`[check-billing-grace-periods] failed to block org ${org.id}:`, err);
+        }
+      });
+    }
+
+    const summary = { checked: orgs.length, blocked };
+    console.log("[check-billing-grace-periods] done —", JSON.stringify(summary));
     return summary;
   }
 );

@@ -1,5 +1,14 @@
 import Stripe from "stripe";
-import { getActiveSeatCountForOrganization, getOrganizationBillingRow } from "./db";
+import {
+  getActiveSeatCountForOrganization,
+  getOrganizationBillingRow,
+  getBillableSecondsForOrganization,
+  updateOrganizationBilling,
+} from "./db";
+
+// 0,50€/h — refacturation directe du coût Recall.AI (voir CLAUDE.md,
+// $0.50/heure de call enregistré), pas une marge produit.
+const USAGE_PRICE_CENTS_PER_HOUR = 50;
 
 let cachedClient: Stripe | null = null;
 
@@ -89,6 +98,37 @@ export async function createUsageInvoiceItem({
     currency: "eur",
     description,
   });
+}
+
+// Facture les secondes d'appel accumulées depuis le dernier report (ou depuis
+// le début de la période Stripe en cours pour le tout premier report — pas
+// depuis toujours, sinon une org qui a des mois de calls avant de souscrire
+// se prendrait une facture rétroactive géante). Avance last_usage_reported_at
+// même quand il n'y a rien à facturer (pas de calls = curseur avancé quand même,
+// rien de perdu puisqu'on repart de "maintenant" au prochain cycle).
+export async function reportMonthlyUsageForOrganization(organizationId: string): Promise<{ reportedSeconds: number; amountCents: number }> {
+  const billing = await getOrganizationBillingRow(organizationId);
+  if (!billing?.stripe_customer_id) return { reportedSeconds: 0, amountCents: 0 };
+
+  const sinceISO = billing.last_usage_reported_at ?? billing.current_period_start ?? new Date().toISOString();
+  const nowISO = new Date().toISOString();
+
+  const seconds = await getBillableSecondsForOrganization(organizationId, sinceISO);
+  let amountCents = 0;
+  if (seconds > 0) {
+    const hours = seconds / 3600;
+    amountCents = Math.round(hours * USAGE_PRICE_CENTS_PER_HOUR);
+    if (amountCents > 0) {
+      await createUsageInvoiceItem({
+        customerId: billing.stripe_customer_id,
+        amountCents,
+        description: `Usage enregistrement d'appels — ${hours.toFixed(1)}h`,
+      });
+    }
+  }
+
+  await updateOrganizationBilling(organizationId, { last_usage_reported_at: nowISO });
+  return { reportedSeconds: seconds, amountCents };
 }
 
 export async function createBillingPortalSession(customerId: string, returnUrl: string): Promise<{ url: string }> {

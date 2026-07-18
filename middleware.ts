@@ -19,8 +19,10 @@ export const config = {
 // Raw REST call rather than the full supabase-js client / lib/db.ts — keeps
 // the middleware bundle minimal and avoids pulling in unrelated dependencies
 // (embeddings, Anthropic SDK, etc.) into the edge runtime.
-async function isUserDisabled(userId: string): Promise<boolean> {
-  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=disabled_at`;
+// Billing status is embedded in the same query (organizations via the FK on
+// organization_id) rather than a second round-trip.
+async function getUserGateInfo(userId: string): Promise<{ disabled: boolean; billingBlocked: boolean }> {
+  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=disabled_at,organizations(billing_status)`;
   try {
     const res = await fetch(url, {
       headers: {
@@ -28,14 +30,18 @@ async function isUserDisabled(userId: string): Promise<boolean> {
         Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
       },
     });
-    // Fail open on infra errors — this is an admin-controlled soft-disable
-    // gate, not the primary auth boundary, so a Supabase hiccup shouldn't
-    // lock everyone out.
-    if (!res.ok) return false;
-    const rows = (await res.json()) as { disabled_at: string | null }[];
-    return rows[0]?.disabled_at != null;
+    // Fail open on infra errors — these are soft gates (admin disable,
+    // billing), not the primary auth boundary, so a Supabase hiccup
+    // shouldn't lock everyone out.
+    if (!res.ok) return { disabled: false, billingBlocked: false };
+    const rows = (await res.json()) as { disabled_at: string | null; organizations: { billing_status: string } | null }[];
+    const row = rows[0];
+    return {
+      disabled: row?.disabled_at != null,
+      billingBlocked: row?.organizations?.billing_status === "blocked",
+    };
   } catch {
-    return false;
+    return { disabled: false, billingBlocked: false };
   }
 }
 
@@ -47,7 +53,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (await isUserDisabled(supabaseUserId)) {
+  const gate = await getUserGateInfo(supabaseUserId);
+
+  if (gate.disabled) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";
@@ -57,6 +65,15 @@ export async function middleware(request: NextRequest) {
     response.cookies.delete("next-auth.session-token");
     response.cookies.delete("__Secure-next-auth.session-token");
     return response;
+  }
+
+  // /settings/billing stays reachable even blocked — otherwise a manager has
+  // no way to update their payment method and unblock the organization.
+  if (gate.billingBlocked && !request.nextUrl.pathname.startsWith("/settings/billing")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/compte-suspendu";
+    url.search = "";
+    return NextResponse.redirect(url);
   }
 
   return NextResponse.next();

@@ -1455,6 +1455,51 @@ export async function recordBillingEventIfNew(stripeEventId: string, type: strin
   return (data?.length ?? 0) > 0;
 }
 
+// Organisations éligibles au cron mensuel de facturation d'usage — tout ce qui
+// a un customer Stripe et n'est ni annulé ni déjà bloqué (l'usage pendant
+// l'essai est facturé aussi : c'est un refacturation directe du coût Recall,
+// pas une feature payante).
+export async function getOrganizationsForUsageBilling(): Promise<
+  { id: string; stripe_customer_id: string; last_usage_reported_at: string | null; current_period_start: string | null }[]
+> {
+  const { data, error } = await supabaseAdmin
+    .from("organizations")
+    .select("id, stripe_customer_id, last_usage_reported_at, current_period_start")
+    .not("stripe_customer_id", "is", null)
+    .in("billing_status", ["trialing", "active", "grace_period"]);
+  if (error) throw error;
+  return (data ?? []) as { id: string; stripe_customer_id: string; last_usage_reported_at: string | null; current_period_start: string | null }[];
+}
+
+// calls n'a pas de organization_id — on résout d'abord les users de l'org
+// (comme getTeamOverview le fait pour les commerciaux d'un manager), puis on
+// somme duration_seconds en JS, cohérent avec le style du reste du fichier
+// (aucune agrégation SQL/RPC n'existe ailleurs dans ce projet).
+export async function getBillableSecondsForOrganization(orgId: string, sinceISO: string): Promise<number> {
+  const members = await getUsersInOrganization(orgId);
+  if (members.length === 0) return 0;
+
+  const { data, error } = await supabaseAdmin
+    .from("calls")
+    .select("duration_seconds")
+    .in("user_id", members.map((m) => m.id))
+    .gte("created_at", sinceISO)
+    .not("duration_seconds", "is", null);
+  if (error) throw error;
+
+  return ((data ?? []) as { duration_seconds: number }[]).reduce((sum, c) => sum + c.duration_seconds, 0);
+}
+
+export async function getOrganizationsInExpiredGracePeriod(): Promise<{ id: string }[]> {
+  const { data, error } = await supabaseAdmin
+    .from("organizations")
+    .select("id")
+    .eq("billing_status", "grace_period")
+    .lt("grace_period_ends_at", new Date().toISOString());
+  if (error) throw error;
+  return (data ?? []) as { id: string }[];
+}
+
 export type OrganizationMember = {
   id: string;
   name: string | null;

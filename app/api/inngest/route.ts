@@ -8,6 +8,8 @@ import {
   syncHubSpotTaskStatuses,
   sendFridayEveningDigests,
   sendMondayMorningDigests,
+  reportBillingUsage,
+  checkBillingGracePeriods,
 } from "@/lib/inngest-functions";
 
 export const { GET, POST, PUT } = serve({
@@ -20,5 +22,7 @@ export const { GET, POST, PUT } = serve({
     syncHubSpotTaskStatuses,
     sendFridayEveningDigests,
     sendMondayMorningDigests,
+    reportBillingUsage,
+    checkBillingGracePeriods,
   ],
 });
