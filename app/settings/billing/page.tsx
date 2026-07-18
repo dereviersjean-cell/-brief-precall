@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getEffectiveUserId } from "@/lib/session-user";
 import { getUserRole, getOrganizationForUser, getOrganizationBillingRow, getActiveSeatCountForOrganization } from "@/lib/db";
-import { getSeatPriceInfo } from "@/lib/stripe";
+import { getSeatPricesInfo } from "@/lib/stripe";
 import BillingSettingsClient from "./BillingSettingsClient";
 
 export default async function BillingSettingsPage() {
@@ -18,16 +18,16 @@ export default async function BillingSettingsPage() {
         organizationName={null}
         billing={null}
         seatCount={0}
-        seatPrice={null}
+        seatPrices={null}
       />
     );
   }
 
-  const [billing, seatCount, seatPrice] = await Promise.all([
+  const [billing, seatCount, seatPrices] = await Promise.all([
     getOrganizationBillingRow(organization.id),
     getActiveSeatCountForOrganization(organization.id),
-    getSeatPriceInfo().catch((err) => {
-      console.error("[settings/billing] getSeatPriceInfo failed:", err);
+    getSeatPricesInfo().catch((err) => {
+      console.error("[settings/billing] getSeatPricesInfo failed:", err);
       return null;
     }),
   ]);
@@ -37,7 +37,7 @@ export default async function BillingSettingsPage() {
       organizationName={organization.name}
       billing={billing}
       seatCount={seatCount}
-      seatPrice={seatPrice}
+      seatPrices={seatPrices}
     />
   );
 }

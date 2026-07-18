@@ -34,6 +34,75 @@ function formatBillingDate(iso: string | null): string {
   return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
 }
 
+// Override côté Brief pour les cas de support (paiement par virement, litige)
+// — n'agit jamais sur le véritable abonnement Stripe, seulement sur l'accès
+// à l'app. Si l'abonnement Stripe est réellement résilié/impayé, un futur
+// webhook peut réécraser ce déblocage.
+function BillingOverrideActions({
+  orgId,
+  status,
+  onDone,
+}: {
+  orgId: string;
+  status: string;
+  onDone: () => void;
+}) {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function runAction(action: "unblock" | "extend_grace") {
+    setPending(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/organizations/${orgId}/billing`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error ?? "Erreur.");
+      }
+      onDone();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <div className="mt-5 pt-5 border-t border-slate-100">
+      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Override support</p>
+      <p className="text-xs text-slate-400 mb-3">
+        N&apos;agit que sur l&apos;accès Brief — ne modifie pas l&apos;abonnement Stripe. À utiliser pour un cas de
+        support (paiement par virement, litige en cours).
+      </p>
+      <div className="flex items-center gap-2">
+        {status === "blocked" && (
+          <button
+            onClick={() => runAction("unblock")}
+            disabled={pending}
+            className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+          >
+            Débloquer manuellement
+          </button>
+        )}
+        {status === "grace_period" && (
+          <button
+            onClick={() => runAction("extend_grace")}
+            disabled={pending}
+            className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+          >
+            Prolonger la grâce de 48h
+          </button>
+        )}
+      </div>
+      {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+    </div>
+  );
+}
+
 function DetailTabs({ active, onSelect }: { active: DetailTab; onSelect: (tab: DetailTab) => void }) {
   return (
     <div className="inline-flex items-center gap-1 bg-white rounded-xl border border-slate-200 p-1 flex-wrap">
@@ -516,6 +585,10 @@ export default function OrganizationDetailClient({
                   )}
                 </tbody>
               </table>
+            )}
+
+            {billing && (billing.billing_status === "blocked" || billing.billing_status === "grace_period") && (
+              <BillingOverrideActions orgId={organization.id} status={billing.billing_status} onDone={() => router.refresh()} />
             )}
           </div>
         )}

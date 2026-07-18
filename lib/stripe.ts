@@ -25,16 +25,32 @@ function getStripeClient(): Stripe {
 // (siège récurrent + usage passé au client via Invoice Items, pas Billing
 // Meters/Metronome — inutile pour une seule métrique simple).
 
-export async function getSeatPriceInfo(): Promise<{ amountCents: number; currency: string }> {
-  const priceId = process.env.STRIPE_PRICE_ID_SEAT;
-  if (!priceId) throw new Error("STRIPE_PRICE_ID_SEAT is not set");
-  const price = await getStripeClient().prices.retrieve(priceId);
-  return { amountCents: price.unit_amount ?? 0, currency: price.currency };
+type SeatPrice = { amountCents: number; currency: string };
+
+// Deux prix pour le même siège — mensuel et annuel (remise ~2 mois offerts) —
+// pour inciter à l'engagement long. Choisi à la souscription (billingInterval
+// ci-dessous), fixe une fois l'abonnement créé (pas de changement de plan
+// self-serve pour l'instant).
+export async function getSeatPricesInfo(): Promise<{ monthly: SeatPrice; annual: SeatPrice }> {
+  const monthlyId = process.env.STRIPE_PRICE_ID_SEAT;
+  const annualId = process.env.STRIPE_PRICE_ID_SEAT_ANNUAL;
+  if (!monthlyId) throw new Error("STRIPE_PRICE_ID_SEAT is not set");
+  if (!annualId) throw new Error("STRIPE_PRICE_ID_SEAT_ANNUAL is not set");
+
+  const [monthly, annual] = await Promise.all([
+    getStripeClient().prices.retrieve(monthlyId),
+    getStripeClient().prices.retrieve(annualId),
+  ]);
+  return {
+    monthly: { amountCents: monthly.unit_amount ?? 0, currency: monthly.currency },
+    annual: { amountCents: annual.unit_amount ?? 0, currency: annual.currency },
+  };
 }
 
 export async function createOrganizationCheckoutSession({
   organizationId,
   seatQuantity,
+  billingInterval,
   managerEmail,
   existingCustomerId,
   successUrl,
@@ -42,19 +58,28 @@ export async function createOrganizationCheckoutSession({
 }: {
   organizationId: string;
   seatQuantity: number;
+  billingInterval: "month" | "year";
   managerEmail: string;
   existingCustomerId: string | null;
   successUrl: string;
   cancelUrl: string;
 }): Promise<{ url: string | null }> {
-  const priceId = process.env.STRIPE_PRICE_ID_SEAT;
-  if (!priceId) throw new Error("STRIPE_PRICE_ID_SEAT is not set");
+  const priceId =
+    billingInterval === "year" ? process.env.STRIPE_PRICE_ID_SEAT_ANNUAL : process.env.STRIPE_PRICE_ID_SEAT;
+  if (!priceId) throw new Error(`STRIPE_PRICE_ID_SEAT${billingInterval === "year" ? "_ANNUAL" : ""} is not set`);
 
   const session = await getStripeClient().checkout.sessions.create({
     mode: "subscription",
     line_items: [{ price: priceId, quantity: seatQuantity }],
     subscription_data: { trial_period_days: 7, metadata: { organization_id: organizationId } },
     payment_method_collection: "always",
+    // TVA (Stripe Tax) — nécessite l'activation côté dashboard (adresse,
+    // enregistrement TVA France, tax code produit) avant que ça calcule
+    // réellement une taxe ; sans ça, ce flag est un no-op silencieux côté API.
+    automatic_tax: { enabled: true },
+    // Autoliquidation UE : un client B2B peut renseigner son numéro de TVA
+    // intracommunautaire, Stripe applique 0% si valide.
+    tax_id_collection: { enabled: true, required: "if_supported" },
     ...(existingCustomerId ? { customer: existingCustomerId } : { customer_email: managerEmail }),
     client_reference_id: organizationId,
     success_url: successUrl,

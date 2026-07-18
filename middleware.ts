@@ -36,9 +36,13 @@ async function getUserGateInfo(userId: string): Promise<{ disabled: boolean; bil
     if (!res.ok) return { disabled: false, billingBlocked: false };
     const rows = (await res.json()) as { disabled_at: string | null; organizations: { billing_status: string } | null }[];
     const row = rows[0];
+    // "canceled" bloque au même titre que "blocked" — une résiliation coupe
+    // l'accès immédiatement, pas de période de grâce (celle-ci ne s'applique
+    // qu'aux échecs de paiement, cf. invoice.payment_failed dans le webhook).
+    const status = row?.organizations?.billing_status;
     return {
       disabled: row?.disabled_at != null,
-      billingBlocked: row?.organizations?.billing_status === "blocked",
+      billingBlocked: status === "blocked" || status === "canceled",
     };
   } catch {
     return { disabled: false, billingBlocked: false };

@@ -1388,6 +1388,7 @@ export type OrganizationBilling = {
   stripe_subscription_id: string | null;
   stripe_seat_item_id: string | null;
   billing_status: string; // 'none' | 'trialing' | 'active' | 'grace_period' | 'blocked' | 'canceled'
+  billing_interval: string | null; // 'month' | 'year'
   trial_ends_at: string | null;
   grace_period_ends_at: string | null;
   current_period_start: string | null;
@@ -1396,7 +1397,7 @@ export type OrganizationBilling = {
 };
 
 const ORGANIZATION_BILLING_COLUMNS =
-  "stripe_customer_id, stripe_subscription_id, stripe_seat_item_id, billing_status, trial_ends_at, grace_period_ends_at, current_period_start, current_period_end, last_usage_reported_at";
+  "stripe_customer_id, stripe_subscription_id, stripe_seat_item_id, billing_status, billing_interval, trial_ends_at, grace_period_ends_at, current_period_start, current_period_end, last_usage_reported_at";
 
 export async function getOrganizationBillingRow(orgId: string): Promise<OrganizationBilling | null> {
   const { data, error } = await supabaseAdmin

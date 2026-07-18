@@ -63,6 +63,9 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   const seatItem = getSeatSubscriptionItem(subscription);
   const patch: Partial<OrganizationBilling> = {
     stripe_seat_item_id: seatItem?.id ?? null,
+    // seatItem.price est toujours l'objet Price complet (pas juste un ID),
+    // pas besoin d'un appel API séparé pour lire l'intervalle mensuel/annuel.
+    billing_interval: seatItem?.price.recurring?.interval ?? null,
     billing_status: billingStatusFromStripeStatus(subscription.status),
     current_period_start: seatItem ? new Date(seatItem.current_period_start * 1000).toISOString() : null,
     current_period_end: seatItem ? new Date(seatItem.current_period_end * 1000).toISOString() : null,

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
@@ -7,7 +7,10 @@ import { createOrganizationCheckoutSession } from "@/lib/stripe";
 
 const BILLING_URL = "https://brief-precall.vercel.app/settings/billing";
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const body = await request.json().catch(() => ({}));
+  const billingInterval = (body as { interval?: string }).interval === "year" ? "year" : "month";
+
   const session = await getServerSession(authOptions);
   const auth = await requireActiveUser(session);
   if (!auth.ok) return auth.response;
@@ -37,6 +40,7 @@ export async function POST() {
     const { url } = await createOrganizationCheckoutSession({
       organizationId: organization.id,
       seatQuantity: Math.max(seatCount, 1),
+      billingInterval,
       managerEmail: email,
       existingCustomerId: billing?.stripe_customer_id ?? null,
       successUrl: `${BILLING_URL}?checkout=success`,
