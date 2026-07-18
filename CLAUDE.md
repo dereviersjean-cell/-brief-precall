@@ -21,6 +21,7 @@ Distribution in-context : Brief livre ses outputs (briefs, analyses) là où le 
 | **Resend** | Emails transactionnels depuis jean@lartisangroupe.com — jamais le Gmail du commercial. |
 | **react-pdf** | Génération PDF devis côté serveur. |
 | **Notion (token intégration interne)** | Connexion playbook Notion. Pas OAuth : les intégrations publiques Notion nécessitent une review de sécurité Notion avant de fonctionner (bloquant pour un "connecte et utilise immédiatement"). Connexion **par organisation** (table `playbook_notion_connections`), pas par user — le playbook est un par organisation. |
+| **Stripe (Checkout + Invoice Items, pas Billing Meters/Metronome)** | Facturation **par organisation** (pas par user) : abonnement par siège (`checkout.sessions.create`, `mode: subscription`) + usage (0,50€/h d'enregistrement, refacturation directe du coût Recall) via `invoiceItems.create` mensuel plutôt que l'API Billing Meters — Stripe pousse tout nouveau usage-based billing vers Metronome (plateforme tierce rachetée), disproportionné pour une seule métrique simple. On calcule le total nous-mêmes (agrégation `duration_seconds`), Stripe ne fait qu'encaisser. |
 
 ## Architecture multi-tenant
 
@@ -42,6 +43,14 @@ Distribution in-context : Brief livre ses outputs (briefs, analyses) là où le 
 ### OAuth — attention critique
 - **RECALL_GOOGLE_CLIENT_ID ≠ GOOGLE_CLIENT_ID** : deux apps Google séparées, deux flows distincts
 - `lib/auth.ts` : scopes Google = `openid email profile calendar.events gmail.readonly gmail.send`
+
+## Facturation (Stripe)
+
+- `billing_status` sur `organizations` : `none` (jamais souscrit) → `trialing` (essai 7j, carte requise dès l'inscription) → `active` ↔ `grace_period` (échec de paiement, 48h de grâce, bannière d'alerte site-wide) → `blocked` (grâce expirée, accès bloqué par middleware sauf `/settings/billing`) → `canceled`
+- Sièges = users actifs (`disabled_at IS NULL`) de l'org, synchronisés vers Stripe en best-effort à chaque mutation de composition (ajout/retrait/changement de rôle admin, invitation self-serve manager) — `syncSeatsForOrganization` dans `lib/stripe.ts`
+- Usage facturé mensuellement (cron `reportBillingUsage`, 1er du mois), depuis `last_usage_reported_at` ou `current_period_start` pour le tout premier report (jamais depuis le début de l'historique — pas de facture rétroactive géante)
+- Webhook `app/api/webhooks/stripe/route.ts` : idempotence via table `billing_events` (`stripe_event_id UNIQUE` + upsert `ignoreDuplicates`), calqué sur le webhook Recall existant (body brut, signature vérifiée avant parsing, `200` même si un effet de bord échoue)
+- `lib/stripe.ts` : un seul subscription item par abonnement (le siège) — `current_period_start/end` vivent sur le `SubscriptionItem`, **pas** sur la `Subscription` elle-même (déplacé dans une version récente de l'API Stripe, vérifié contre le SDK installé avant d'écrire le code, pas supposé)
 
 ## Conventions de code
 
@@ -111,11 +120,11 @@ git add . && git commit -m "..." && git push
 
 ## Roadmap prioritaire
 
-Fait depuis la dernière mise à jour (18 juillet 2026) : sync bidirectionnel tasks Brief↔HubSpot par template + import inverse (task créée nativement dans HubSpot → créée sur Brief, toggle par user, nécessite le scope `crm.objects.owners.read`), fix import PDF playbook (pdf-parse v2) + drag-and-drop sur la zone fichier, refonte design complète de la partie `/admin` (nouveau design system + menus horizontaux sur `/admin/prompts` et détail organisation), fix résilience `/tasks/settings`.
+Fait depuis la dernière mise à jour (18 juillet 2026) : sync bidirectionnel tasks Brief↔HubSpot par template + import inverse (task créée nativement dans HubSpot → créée sur Brief, toggle par user, nécessite le scope `crm.objects.owners.read`), fix import PDF playbook (pdf-parse v2) + drag-and-drop sur la zone fichier, refonte design complète de la partie `/admin` (nouveau design system + menus horizontaux sur `/admin/prompts` et détail organisation), fix résilience `/tasks/settings`, **système de facturation Stripe complet** (abonnement par siège + usage 0,50€/h + essai 7j + fenêtre de grâce 48h + blocage — voir section Facturation ci-dessus).
 
 1. Protections IA — uniformiser max_tokens 1500 + extractJsonObject sur toutes les routes génération
 2. Sellsy CRM — lecture
-3. Stripe — facturation
+3. Sortir Stripe du mode Test — activation compte (vérification entreprise) pour encaisser réellement
 4. Google OAuth — sortir du mode Testing
 5. Ringover/Aircall — téléphonie (pas juste visio)
 6. Proxycurl LinkedIn — enrichissement contact

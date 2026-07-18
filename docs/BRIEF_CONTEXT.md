@@ -52,6 +52,7 @@ Stack technique complète
 * marked — conversion markdown → HTML pour les emails
 * pdf-parse — extraction de texte depuis PDF (import playbook)
 * lucide-react — icônes
+* Stripe (SDK `stripe`) — facturation par organisation. Checkout Session (abonnement par siège) + Invoice Items (usage 0,50€/h, pas Billing Meters/Metronome) + Billing Portal (self-serve). Webhook `app/api/webhooks/stripe/route.ts`
 
 
 ________________
@@ -131,14 +132,15 @@ Module Équipe
 * app/team/InviteCommercialModal.tsx — invitation commercial
 
 
-Settings (avec sub-navigation)
+Settings (onglets horizontaux, app/settings/_components/SettingsTabs.tsx — remplace l'ancienne nav verticale SettingsNav.tsx)
 
 
 * app/settings/page.tsx (redirect vers /general)
-* app/settings/_components/SettingsNav.tsx
 * app/settings/general/page.tsx — profil commercial + références clients
 * app/settings/connexions/page.tsx — Recall Google/Microsoft + bouton "Reconnecter Google Calendar" (scope events)
 * app/settings/crm/page.tsx — HubSpot + Pipedrive
+* app/settings/references/page.tsx — base de références clients modifiable + explication vectorisation
+* app/settings/billing/page.tsx + BillingSettingsClient.tsx — manager-only. Statut d'abonnement, sièges actifs, coût mensuel estimé, essai/renouvellement, bannière alerte fenêtre de grâce, CTA Checkout ou Billing Portal
 * app/settings/notifications/page.tsx + NotificationSettingsClient.tsx — préférences distribution
 
 
@@ -152,13 +154,24 @@ Admin backoffice (refonte design complète le 18 juillet 2026 — voir "Modules 
 * app/admin/dashboard/users/[userId]/page.tsx + UserDetailAdminClient.tsx — détail user avec RDV programmés + rendez-vous sans enregistrement + historique impersonation
 * app/admin/dashboard/RecallStatusSection.tsx + RecallStatusTables.tsx + AdminBadges.tsx
 * app/admin/organizations/page.tsx + OrganizationsAdminClient.tsx
-* app/admin/organizations/[orgId]/page.tsx + OrganizationDetailClient.tsx — détail organisation en 3 onglets horizontaux (Membres / Ajouter un membre / Zone dangereuse)
+* app/admin/organizations/[orgId]/page.tsx + OrganizationDetailClient.tsx — détail organisation en 4 onglets horizontaux (Membres / Ajouter un membre / Facturation / Zone dangereuse)
 * app/admin/prompts/page.tsx + PromptsAdminClient.tsx — éditeur des prompts, 10 prompts en onglets horizontaux (un affiché à la fois, point ambre si valeur ≠ défaut)
 * app/admin/test-brief/page.tsx — test génération brief
 * app/admin/test-analysis/page.tsx — test analyse call
 * app/admin/test-email/page.tsx — test email suivi
 
 Toutes les pages sauf `/admin` (le login) sont gatées côté serveur via `isAdminAuthenticated()` + `redirect("/admin")` (uniforme depuis la refonte — avant, 5 pages géraient leur propre état loading/login/ready côté client).
+
+
+Module Facturation (Stripe, 18 juillet 2026 — voir "Modules terminés" pour le détail des 3 phases)
+
+
+* lib/stripe.ts — client Stripe (instancié au point d'usage, pas de wrapper central, même convention que lib/recall.ts). Checkout Session (essai 7j, carte requise), sync sièges, report usage mensuel (Invoice Items), Billing Portal, vérification webhook
+* app/api/webhooks/stripe/route.ts — idempotent via table billing_events, calqué sur le webhook Recall (body brut, signature avant parsing, 200 même si un effet de bord échoue)
+* app/api/settings/billing/checkout/route.ts + portal/route.ts + status/route.ts — démarrer l'essai, gérer l'abonnement (Portal), statut lecture seule (tout user, pas manager-only — la bannière de grâce doit être visible par toute l'org)
+* app/components/BillingGraceBanner.tsx — bannière site-wide (countdown en heures) pendant la fenêtre de grâce, ajoutée à côté d'ImpersonationBanner dans les 9 layouts applicatifs
+* app/compte-suspendu/page.tsx — page de blocage (middleware), message différent manager (lien vers /settings/billing) vs commercial (contacter le manager)
+* Crons Inngest (lib/inngest-functions.ts) : reportBillingUsage (1er du mois), checkBillingGracePeriods (horaire)
 
 
 Sidebar principale (app/components/AppSidebar.tsx)
@@ -350,6 +363,15 @@ Routes Admin
 * app/api/impersonation-status/route.ts
 
 
+Routes Facturation
+
+
+* app/api/webhooks/stripe/route.ts (POST) — checkout.session.completed, customer.subscription.updated/deleted, invoice.payment_failed/succeeded
+* app/api/settings/billing/checkout/route.ts (POST) — manager-only, démarre l'essai/Checkout pour l'org
+* app/api/settings/billing/portal/route.ts (POST) — manager-only, session Billing Portal
+* app/api/settings/billing/status/route.ts (GET) — tout user actif, statut + fin de grâce (alimente BillingGraceBanner)
+
+
 Routes supprimées (nettoyage historique) check-calendar, connect-google, get-calendar, get-transcript, list-bots, list-events, set-preferences, trigger-transcript, create-calendar-v2, init-prompts, /admin/impersonation-logs (dédoublonné dans /admin/dashboard/users/[userId])
 
 
@@ -405,6 +427,24 @@ CREATE TABLE organizations (
   created_at timestamptz DEFAULT now()
 
 
+);
+
+-- Colonnes facturation (Stripe, 18 juillet 2026) ajoutées à organizations :
+-- stripe_customer_id text, stripe_subscription_id text, stripe_seat_item_id text,
+-- billing_status text NOT NULL DEFAULT 'none',  -- none|trialing|active|grace_period|blocked|canceled
+-- trial_ends_at timestamptz, grace_period_ends_at timestamptz,
+-- current_period_start timestamptz, current_period_end timestamptz,
+-- last_usage_reported_at timestamptz  -- curseur du cron mensuel d'usage, pas de table de ledger séparée
+
+-- billing_events (idempotence webhook Stripe — pas de ligne métier naturelle
+-- sur laquelle upserter pour tous les types d'événements, contrairement aux
+-- webhooks Recall)
+CREATE TABLE billing_events (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  stripe_event_id text NOT NULL UNIQUE,
+  type text NOT NULL,
+  organization_id uuid REFERENCES organizations(id) ON DELETE SET NULL,
+  processed_at timestamptz DEFAULT now()
 );
 
 
@@ -1001,6 +1041,9 @@ HUBSPOT_CLIENT_ID, HUBSPOT_CLIENT_SECRET
 RESEND_API_KEY, RESEND_FROM_EMAIL
 
 
+STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_ID_SEAT
+
+
 ADMIN_TEST_USER_ID=ee6772b4-423f-4091-a140-bf3991919c8b
 
 
@@ -1308,6 +1351,20 @@ Refonte design admin + menus horizontaux (session du 18 juillet 2026)
 * Menus horizontaux là où plusieurs sections étaient empilées : /admin/prompts (10 prompts → onglets) et /admin/organizations/[orgId] (4 blocs → 3 onglets)
 
 
+Facturation Stripe complète (session du 18 juillet 2026, 3 phases)
+
+
+* Facturation par ORGANISATION (pas par user) : un manager souscrit pour son équipe entière, cohérent avec le modèle manager/commerciaux existant
+* Deux composantes : abonnement récurrent par siège (quantité = users actifs non désactivés de l'org, synchronisée vers Stripe en best-effort à chaque mutation de composition) + usage passé au client à 0,50€/h d'enregistrement (refacturation directe du coût Recall.AI, pas une marge produit)
+* Décision technique importante : usage facturé via Invoice Items standard (stripe.invoiceItems.create), PAS via l'API Billing Meters ni Metronome — Stripe pousse désormais tout nouveau usage-based billing vers Metronome (plateforme tierce rachetée par Stripe), disproportionné pour une seule métrique simple à calculer soi-même
+* Essai gratuit 7 jours, carte bancaire collectée dès l'inscription (Checkout Session avec payment_method_collection: 'always' + subscription_data.trial_period_days: 7)
+* Dégradation douce sur échec de paiement : bannière d'alerte site-wide immédiate (BillingGraceBanner, countdown en heures) + fenêtre de grâce de 48h avant blocage total. Blocage effectif au niveau middleware (même pattern que le check disabled_at existant, requête REST unique avec organizations embarqué via la FK), redirige vers /compte-suspendu, /settings/billing explicitement exclu pour que le manager puisse toujours régulariser
+* Webhook idempotent via table billing_events (stripe_event_id UNIQUE + upsert ignoreDuplicates) — un événement Stripe n'a pas toujours de ligne métier naturelle sur laquelle upserter, contrairement aux webhooks Recall
+* Découverte technique vérifiée contre le SDK Stripe installé (pas supposée) : current_period_start/end ont été déplacés de l'objet Subscription vers SubscriptionItem dans une version récente de l'API Stripe
+* Deux crons Inngest, même logique de séparation que les deux crons du digest hebdo (un par fréquence) : reportBillingUsage (1er du mois — facture l'usage depuis last_usage_reported_at ou current_period_start pour le tout premier report, jamais depuis le début de l'historique) et checkBillingGracePeriods (horaire — bascule en blocked les grâces expirées)
+* Onglet "Facturation" ajouté au détail organisation admin (4e onglet), et route /api/settings/billing/status accessible à tout user (pas manager-only) pour que la bannière de grâce soit visible par toute l'organisation
+
+
 ________________
 
 
@@ -1396,6 +1453,12 @@ Bugs documentés (numérotation continue depuis session 1)
 43. Migration SQL pas exécutée en prod → page entière plantée : une nouvelle colonne (users.import_hubspot_tasks) lue dans un Promise.all d'une page serveur fait planter toute la page si la migration n'a pas encore été passée sur Supabase prod (le workflow de ce projet donne la SQL à exécuter manuellement, pas de migrations committées). Pattern : wrapper en .catch() avec fallback les requêtes sur des colonnes récemment ajoutées, le temps que la migration soit confirmée passée.
 
 
+44. Stripe API : current_period_start/end déplacés de Subscription vers SubscriptionItem dans une version récente de l'API — vérifié contre le SDK installé (types TypeScript du package) avant d'écrire le webhook, pas supposé depuis la mémoire/doc générale. Un seul subscription item par abonnement dans ce modèle (le siège), donc items.data[0] suffit pour les récupérer.
+
+
+45. Stripe usage-based billing : Billing Meters (l'ancienne API dédiée à l'usage) n'est pas dépréciée mais n'est plus recommandée pour les nouvelles intégrations — Stripe pousse vers Metronome (plateforme tierce rachetée). Pour une métrique unique et simple (0,50€/h), plus pragmatique de calculer le total soi-même et de pousser un Invoice Item standard (API stable, non concernée par ce virage) plutôt que d'intégrer Metronome ou la mécanique de Meter/meter events.
+
+
 ________________
 
 
@@ -1437,11 +1500,12 @@ ________________
 
 
 Roadmap restante (au 18 juillet 2026)
-Fait depuis la dernière mise à jour : sync bidirectionnel tasks Brief ↔ HubSpot (par template + import inverse natif), fix import PDF playbook (pdf-parse v2) + drag-and-drop, refonte design complète de /admin + menus horizontaux — voir "Modules terminés" ci-dessus.
+Fait depuis la dernière mise à jour : sync bidirectionnel tasks Brief ↔ HubSpot (par template + import inverse natif), fix import PDF playbook (pdf-parse v2) + drag-and-drop, refonte design complète de /admin + menus horizontaux, système de facturation Stripe complet (abonnement par siège + usage 0,50€/h + essai 7j + fenêtre de grâce + blocage) — voir "Modules terminés" ci-dessus.
 
 Actions manuelles en attente côté Jean :
 * Exécuter la migration SQL users.import_hubspot_tasks sur Supabase prod (donnée en session, page /tasks/settings dégrade proprement en attendant mais le toggle reste inopérant)
 * cd Brief && hs project upload pour déployer le nouveau scope crm.objects.owners.read (nécessaire à l'import inverse HubSpot → Brief, les users déjà connectés devront reconnecter HubSpot une fois déployé)
+* Vérifier dans app.inngest.com que reportBillingUsage et checkBillingGracePeriods apparaissent bien dans la liste des fonctions déployées (resync généralement automatique au déploiement Vercel, à confirmer manuellement la première fois)
 Court terme (haute valeur produit)
 * Backfill de tous les calls historiques restants avec le script (aujourd'hui seul Ravachol/Hubert est backfilé)
 Améliorations techniques
@@ -1458,7 +1522,7 @@ Enrichissement
 * Enrichissement Proxycurl LinkedIn — poste, ancienneté, décideur
 * Activer Pappers payant (données légales FR précises en complément du web search)
 Infra & business
-* Stripe — facturation clients Brief
+* Sortir Stripe du mode Test — activation du compte (vérification entreprise, IBAN) pour encaisser réellement, nouveau webhook + price_id en mode Live
 * Sortir Google OAuth du mode Testing — scopes sensibles à justifier, politique confidentialité publique
 * Microsoft OAuth Recall — valider avec un vrai compte Outlook (déployé, jamais testé)
 * Notifications push quand un prospect répond à un email de suivi
