@@ -1,4 +1,4 @@
-﻿Contexte Brief — reprise de session (version complète unifiée) — MàJ 16 juillet 2026
+﻿Contexte Brief — reprise de session (version complète unifiée) — MàJ 18 juillet 2026
 Je continue le développement de Brief avec toi sur plusieurs sessions successives. Ce document contient l'intégralité de l'état du projet depuis le début.
 
 
@@ -142,20 +142,23 @@ Settings (avec sub-navigation)
 * app/settings/notifications/page.tsx + NotificationSettingsClient.tsx — préférences distribution
 
 
-Admin backoffice
+Admin backoffice (refonte design complète le 18 juillet 2026 — voir "Modules terminés")
 
 
-* app/admin/page.tsx + AdminClient.tsx + LoginForm.tsx — interface admin principale
-* app/admin/AdminNav.tsx — sidebar navigation admin
+* app/admin/page.tsx — interface admin principale (config brief + zone de test), auth login inline (seule page qui gère l'état non-authentifié)
+* app/admin/AdminShell.tsx — Spinner + AdminLoginForm + AdminPageShell + AdminPageHeader + AdminCard, partagés par toutes les pages admin (avant : dupliqués dans 6 fichiers)
+* app/admin/AdminNav.tsx — sidebar navigation admin (icônes lucide, largeur 256px)
 * app/admin/dashboard/page.tsx + DashboardAdminClient.tsx — dashboard utilisateurs avec role, filtres, actions (désactiver/réactiver/supprimer/impersonate)
 * app/admin/dashboard/users/[userId]/page.tsx + UserDetailAdminClient.tsx — détail user avec RDV programmés + rendez-vous sans enregistrement + historique impersonation
 * app/admin/dashboard/RecallStatusSection.tsx + RecallStatusTables.tsx + AdminBadges.tsx
 * app/admin/organizations/page.tsx + OrganizationsAdminClient.tsx
-* app/admin/organizations/[orgId]/page.tsx + OrganizationDetailClient.tsx
-* app/admin/prompts/page.tsx + PromptsAdminClient.tsx — éditeur des prompts
+* app/admin/organizations/[orgId]/page.tsx + OrganizationDetailClient.tsx — détail organisation en 3 onglets horizontaux (Membres / Ajouter un membre / Zone dangereuse)
+* app/admin/prompts/page.tsx + PromptsAdminClient.tsx — éditeur des prompts, 10 prompts en onglets horizontaux (un affiché à la fois, point ambre si valeur ≠ défaut)
 * app/admin/test-brief/page.tsx — test génération brief
 * app/admin/test-analysis/page.tsx — test analyse call
 * app/admin/test-email/page.tsx — test email suivi
+
+Toutes les pages sauf `/admin` (le login) sont gatées côté serveur via `isAdminAuthenticated()` + `redirect("/admin")` (uniforme depuis la refonte — avant, 5 pages géraient leur propre état loading/login/ready côté client).
 
 
 Sidebar principale (app/components/AppSidebar.tsx)
@@ -210,7 +213,8 @@ CRM
 
 
 * lib/crm/pipedrive.ts — OAuth + lecture + écriture (sous-étape C2). api_domain contient déjà https://, ne jamais préfixer. hasPipedriveWriteAccess, findPipedriveContactForEmail, findPipedriveDealForEmail, findPipedriveActivityForEmail, appendToPipedriveActivityNote, createPipedriveNoteOnDeal, createPipedriveNoteOnContact, writeToPipedriveCascade (activity → deal → contact), htmlBodyForPipedrive
-* lib/crm/hubspot.ts — OAuth + lecture + écriture (sous-étape C1). hasHubSpotWriteAccess, findHubSpotContactForEmail, findHubSpotDealForEmail (filtre closedwon/closedlost), findHubSpotMeetingForEmail, appendToHubSpotMeetingBody (écrit dans hs_meeting_body — pas d'association note↔meeting côté HubSpot), createHubSpotNoteOnDeal, createHubSpotNoteOnContact, writeToHubSpotCascade (meeting → deal → contact), htmlBodyForHubSpot (markdown → HTML + tables → listes à puces), idempotence via marqueur invisible <!-- brief-note-uid:{uid} -->
+* lib/crm/hubspot.ts — OAuth + lecture + écriture (sous-étape C1). hasHubSpotWriteAccess, findHubSpotContactForEmail, findHubSpotDealForEmail (filtre closedwon/closedlost), findHubSpotMeetingForEmail, appendToHubSpotMeetingBody (écrit dans hs_meeting_body — pas d'association note↔meeting côté HubSpot), createHubSpotNoteOnDeal, createHubSpotNoteOnContact, writeToHubSpotCascade (meeting → deal → contact), htmlBodyForHubSpot (markdown → HTML + tables → listes à puces), idempotence via marqueur invisible <!-- brief-note-uid:{uid} -->. Sync tasks (18 juillet 2026) : createHubSpotTask, updateHubSpotTaskStatus, deleteHubSpotTask, batchGetHubSpotTaskStatuses, getHubSpotOwnerId (résout l'owner HubSpot via token-info email → Owners API), findNewHubSpotTasksForOwner (import inverse). Scope ajouté : crm.objects.owners.read
+* lib/tasks-hubspot-sync.ts — pushNewTasksToHubSpot(userId, tasks, contactEmail) : pousse les tasks générées par un template Brief (push_to_hubspot=true) vers HubSpot
 * lib/crm/enrichment.ts — enrichFromCRM(userId, companyName) : Pipedrive puis HubSpot fallback
 
 
@@ -286,6 +290,7 @@ Routes Tasks
 * app/api/tasks/[taskId]/generate-email/route.ts — accepte email_template_id, contrat JSON forcé côté serveur, max_tokens 1500, extractJsonObject robuste
 * app/api/tasks/[taskId]/send-email/route.ts
 * app/api/tasks/templates/route.ts + [templateId]/route.ts
+* app/api/tasks/import-hubspot-setting/route.ts (PATCH) — toggle users.import_hubspot_tasks
 
 
 Routes Team
@@ -742,7 +747,7 @@ CREATE TABLE tasks (
   contact_email text, contact_name text,
 
 
-  source_type text NOT NULL,  -- 'call' | 'email' | 'quote'
+  source_type text NOT NULL,  -- 'call' | 'email' | 'quote' | 'hubspot' (littéral, pas dans le type TaskSourceType — voir sous-étape sync HubSpot)
 
 
   source_id uuid, task_type text NOT NULL, title text NOT NULL,
@@ -751,13 +756,25 @@ CREATE TABLE tasks (
   description text, action_type text NOT NULL DEFAULT 'none',
 
 
+  hubspot_task_id text,  -- lien vers la task HubSpot correspondante (sync bidirectionnel, 18 juillet 2026)
+
+
   due_at timestamptz NOT NULL, completed_at timestamptz, dismissed_at timestamptz,
 
 
-  UNIQUE(user_id, template_id, source_type, source_id)  -- idempotent
+  UNIQUE(user_id, template_id, source_type, source_id)  -- idempotent (tasks générées par template)
+  -- tasks importées depuis HubSpot (template_id NULL) : idempotence en check-then-insert applicatif,
+  -- pas via cette contrainte (les NULL ne s'entrechoquent jamais entre eux dans une UNIQUE Postgres)
 
 
 );
+
+
+-- task_templates.push_to_hubspot boolean NOT NULL DEFAULT false — toggle par template : chaque task
+-- générée par ce template crée aussi une task HubSpot
+
+-- users.import_hubspot_tasks boolean NOT NULL DEFAULT false — toggle par user : importe les tasks
+-- créées nativement dans HubSpot (assignées à l'owner correspondant) vers Brief
 
 
 -- playbooks + dimensions + criteria (1 par org)
@@ -1265,6 +1282,32 @@ Landing + login mis à jour (session actuelle)
 * Login : accroche du panneau droit mise à jour ("distribue" ajouté)
 
 
+Sync bidirectionnel tasks Brief ↔ HubSpot (session du 18 juillet 2026)
+
+
+* Brief → HubSpot : chaque template de task a un toggle push_to_hubspot. Une task générée par ce template crée aussi une task HubSpot (lib/tasks-hubspot-sync.ts : pushNewTasksToHubSpot)
+* Complétion/suppression synchronisée dans les deux sens : compléter/supprimer côté Brief répercute côté HubSpot (best-effort dans app/api/tasks/[taskId]/complete|dismiss/route.ts) ; côté HubSpot, le cron syncHubSpotTaskStatuses (30 min, lib/inngest-functions.ts) réconcilie le statut via batchGetHubSpotTaskStatuses
+* HubSpot → Brief (import inverse) : une task créée nativement dans HubSpot (assignée à l'owner correspondant à l'utilisateur Brief) est importée automatiquement. Toggle par user (users.import_hubspot_tasks, UI sur /tasks/settings). Le même cron 30 min résout l'owner (getHubSpotOwnerId : token-info email → Owners API) et cherche les nouvelles tasks (findNewHubSpotTasksForOwner) sur une fenêtre de 35 min (léger overlap avec le cron précédent pour ne rater aucune task)
+* Nouveau scope OAuth requis : crm.objects.owners.read — déployé via `cd Brief && hs project upload`
+* Idempotence des tasks importées (template_id NULL, donc la contrainte UNIQUE existante ne les protège pas entre elles) : check-then-insert applicatif dans createTaskFromHubSpot plutôt qu'une contrainte DB
+* TASK_TO_CONTACT_ASSOCIATION_TYPE_ID = 204 : valeur documentée HubSpot, pas vérifiée en live (pas de credentials HubSpot réels disponibles en sandbox de dev)
+
+
+Playbook : fix import PDF + drag-and-drop (session du 18 juillet 2026)
+
+
+* Bug trouvé : pdf-parse était passé en v2 (breaking change), qui remplace l'export fonction callable de la v1 (pdfParse(buffer)) par une classe (new PDFParse({ data: buffer }).getText()). Tout upload PDF plantait silencieusement avec "pdfParse is not a function" depuis la mise à jour du package. Corrigé dans app/api/playbook/import/route.ts et lib/inngest-functions.ts
+* Glisser-déposer ajouté sur la zone d'import fichier de ImportPlaybookModal (feedback visuel au survol, validation du type au drop)
+
+
+Refonte design admin + menus horizontaux (session du 18 juillet 2026)
+
+
+* Nouveau design system sur toute la partie /admin, cohérent avec le reste de l'app (hero headers avec blur blobs, StatTile animés, cartes rounded-2xl, sidebar élargie avec icônes lucide)
+* Nettoyage : suppression d'AdminClient.tsx + LoginForm.tsx (code mort, jamais importés) ; Spinner + formulaire de login dupliqués dans 6 fichiers consolidés dans AdminShell.tsx ; les 5 pages qui géraient leur propre vérification d'auth côté client passent maintenant par isAdminAuthenticated() côté serveur (uniforme avec le reste)
+* Menus horizontaux là où plusieurs sections étaient empilées : /admin/prompts (10 prompts → onglets) et /admin/organizations/[orgId] (4 blocs → 3 onglets)
+
+
 ________________
 
 
@@ -1347,6 +1390,12 @@ Bugs documentés (numérotation continue depuis session 1)
 41. Notion : les intégrations publiques/OAuth nécessitent une review de sécurité Notion avant de fonctionner pour de vrais utilisateurs — bloquant pour un "connecte et utilise immédiatement". Solution : token d'intégration interne, pas OAuth (confirmé contre developers.notion.com/docs/authorization).
 
 
+42. pdf-parse v2 breaking change : export fonction callable (v1, pdfParse(buffer)) remplacé par une classe (v2, new PDFParse({ data: buffer }).getText()). Tout upload PDF plantait silencieusement. Fix dans les deux consommateurs (app/api/playbook/import/route.ts, lib/inngest-functions.ts).
+
+
+43. Migration SQL pas exécutée en prod → page entière plantée : une nouvelle colonne (users.import_hubspot_tasks) lue dans un Promise.all d'une page serveur fait planter toute la page si la migration n'a pas encore été passée sur Supabase prod (le workflow de ce projet donne la SQL à exécuter manuellement, pas de migrations committées). Pattern : wrapper en .catch() avec fallback les requêtes sur des colonnes récemment ajoutées, le temps que la migration soit confirmée passée.
+
+
 ________________
 
 
@@ -1387,8 +1436,12 @@ Workflow de développement habituel
 ________________
 
 
-Roadmap restante (au 16 juillet 2026)
-Fait depuis la dernière mise à jour : Distribution C2 (Pipedrive écriture), Distribution D (Slack), Digest hebdo, connexion Notion pour le playbook, nouveau /dashboard, refonte /feedback, landing/login à jour — voir "Modules terminés" ci-dessus.
+Roadmap restante (au 18 juillet 2026)
+Fait depuis la dernière mise à jour : sync bidirectionnel tasks Brief ↔ HubSpot (par template + import inverse natif), fix import PDF playbook (pdf-parse v2) + drag-and-drop, refonte design complète de /admin + menus horizontaux — voir "Modules terminés" ci-dessus.
+
+Actions manuelles en attente côté Jean :
+* Exécuter la migration SQL users.import_hubspot_tasks sur Supabase prod (donnée en session, page /tasks/settings dégrade proprement en attendant mais le toggle reste inopérant)
+* cd Brief && hs project upload pour déployer le nouveau scope crm.objects.owners.read (nécessaire à l'import inverse HubSpot → Brief, les users déjà connectés devront reconnecter HubSpot une fois déployé)
 Court terme (haute valeur produit)
 * Backfill de tous les calls historiques restants avec le script (aujourd'hui seul Ravachol/Hubert est backfilé)
 Améliorations techniques

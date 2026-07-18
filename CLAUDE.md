@@ -76,6 +76,8 @@ Distribution in-context : Brief livre ses outputs (briefs, analyses) là où le 
 10. **Claude Code silencieux** : peut modifier des fichiers sans les commiter. Toujours `git status` avant `git push`.
 11. **URL vidéo Recall** : signée S3, expire ~5h — ne jamais stocker en base.
 12. **Fuite bundle client via import transitif** : `lib/dashboard.ts` (consommé par des composants client animés) importait une fonction de `lib/digest.ts`, qui charge le SDK Anthropic — aurait fait fuiter le SDK (et potentiellement la clé API) dans le bundle client. `lib/dashboard.ts` doit rester dépendance-free (pas de `lib/digest.ts`, pas de `lib/db.ts`) ; la logique métier partagée (bucketing par semaine) vit dans `lib/paris-week.ts`, sans dépendance non plus.
+13. **`pdf-parse` v2 a cassé l'API v1** : le package est passé d'une fonction callable (`pdfParse(buffer)`) à une classe (`new PDFParse({ data: buffer }).getText()`). Tout upload PDF (import playbook) échouait silencieusement avec `pdfParse is not a function`. Deux consommateurs à surveiller si le package est retouché : `app/api/playbook/import/route.ts` et `lib/inngest-functions.ts`.
+14. **Migration SQL pas encore passée en prod → page entière plantée** : `getImportHubSpotTasksSetting` (nouvelle colonne `users.import_hubspot_tasks`) faisait planter tout `/tasks/settings` via `Promise.all` avant que la migration soit exécutée sur Supabase prod. Pattern à généraliser : toute requête sur une colonne ajoutée récemment doit être wrappée en `.catch()` avec fallback plutôt que de laisser `Promise.all` propager l'erreur et faire tomber toute une page serveur.
 
 ## Règles — NE JAMAIS faire
 
@@ -109,7 +111,7 @@ git add . && git commit -m "..." && git push
 
 ## Roadmap prioritaire
 
-Fait depuis la dernière mise à jour (16 juillet 2026) : Distribution C2 (Pipedrive écriture), Distribution D (Slack), Digest hebdo, connexion Notion pour le playbook (import), nouveau `/dashboard` (page d'accueil réelle, ancien outil de brief déplacé vers `/brief`), refonte `/feedback` (layout deux colonnes + liste table triable), landing/login à jour.
+Fait depuis la dernière mise à jour (18 juillet 2026) : sync bidirectionnel tasks Brief↔HubSpot par template + import inverse (task créée nativement dans HubSpot → créée sur Brief, toggle par user, nécessite le scope `crm.objects.owners.read`), fix import PDF playbook (pdf-parse v2) + drag-and-drop sur la zone fichier, refonte design complète de la partie `/admin` (nouveau design system + menus horizontaux sur `/admin/prompts` et détail organisation), fix résilience `/tasks/settings`.
 
 1. Protections IA — uniformiser max_tokens 1500 + extractJsonObject sur toutes les routes génération
 2. Sellsy CRM — lecture
