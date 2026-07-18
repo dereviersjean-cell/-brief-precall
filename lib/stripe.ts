@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { getActiveSeatCountForOrganization, getOrganizationBillingRow } from "./db";
 
 let cachedClient: Stripe | null = null;
 
@@ -14,6 +15,13 @@ function getStripeClient(): Stripe {
 // équipe entière. Voir CLAUDE.md / docs/BRIEF_CONTEXT.md pour le modèle complet
 // (siège récurrent + usage passé au client via Invoice Items, pas Billing
 // Meters/Metronome — inutile pour une seule métrique simple).
+
+export async function getSeatPriceInfo(): Promise<{ amountCents: number; currency: string }> {
+  const priceId = process.env.STRIPE_PRICE_ID_SEAT;
+  if (!priceId) throw new Error("STRIPE_PRICE_ID_SEAT is not set");
+  const price = await getStripeClient().prices.retrieve(priceId);
+  return { amountCents: price.unit_amount ?? 0, currency: price.currency };
+}
 
 export async function createOrganizationCheckoutSession({
   organizationId,
@@ -47,8 +55,20 @@ export async function createOrganizationCheckoutSession({
   return { url: session.url };
 }
 
-export async function syncOrganizationSeats(subscriptionItemId: string, quantity: number): Promise<void> {
+async function updateSeatQuantity(subscriptionItemId: string, quantity: number): Promise<void> {
   await getStripeClient().subscriptionItems.update(subscriptionItemId, { quantity });
+}
+
+// Recompte les sièges actifs de l'org et pousse la quantité à Stripe. No-op
+// silencieux si l'org n'a pas (encore) d'abonnement — appelé en best-effort
+// depuis chaque point de mutation de la composition d'une org (ajout/retrait
+// de membre, invitation), avant même que la souscription Stripe existe.
+export async function syncSeatsForOrganization(organizationId: string): Promise<void> {
+  const billing = await getOrganizationBillingRow(organizationId);
+  if (!billing?.stripe_seat_item_id) return;
+
+  const seatCount = await getActiveSeatCountForOrganization(organizationId);
+  await updateSeatQuantity(billing.stripe_seat_item_id, Math.max(seatCount, 1));
 }
 
 // Usage (Phase 3) : on calcule le total nous-mêmes (agrégation duration_seconds

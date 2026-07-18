@@ -9,6 +9,7 @@ import {
   removeAllLinksForUser,
   type UserRole,
 } from "@/lib/db";
+import { syncSeatsForOrganization } from "@/lib/stripe";
 
 export async function GET(
   request: NextRequest,
@@ -54,5 +55,17 @@ export async function POST(
 
   await setUserOrganization(userId, orgId);
   await setUserRole(userId, role);
+
+  // Best-effort — le siège Stripe est synchronisé au prochain webhook/cron de
+  // toute façon si ça échoue ici, pas la peine de faire échouer la mutation.
+  await syncSeatsForOrganization(orgId).catch((err) =>
+    console.warn(`[admin/organizations/members] syncSeatsForOrganization(${orgId}) failed:`, err)
+  );
+  if (movingToDifferentOrg && currentOrgId) {
+    await syncSeatsForOrganization(currentOrgId).catch((err) =>
+      console.warn(`[admin/organizations/members] syncSeatsForOrganization(${currentOrgId}) failed:`, err)
+    );
+  }
+
   return NextResponse.json({ ok: true });
 }

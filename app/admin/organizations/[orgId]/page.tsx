@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
-import { getOrganization, getUsersInOrganization, getUsersWithoutOrganization } from "@/lib/db";
+import { getOrganization, getUsersInOrganization, getUsersWithoutOrganization, getOrganizationBillingRow } from "@/lib/db";
 import OrganizationDetailClient from "./OrganizationDetailClient";
 
 export default async function OrganizationDetailAdminPage({
@@ -18,9 +18,10 @@ export default async function OrganizationDetailAdminPage({
     redirect("/admin/organizations");
   }
 
-  const [members, availableUsers] = await Promise.all([
+  const [members, availableUsers, billing] = await Promise.all([
     getUsersInOrganization(orgId),
     getUsersWithoutOrganization(),
+    getOrganizationBillingRow(orgId),
   ]);
 
   return (
@@ -28,6 +29,7 @@ export default async function OrganizationDetailAdminPage({
       organization={organization}
       initialMembers={members}
       availableUsers={availableUsers}
+      billing={billing}
     />
   );
 }

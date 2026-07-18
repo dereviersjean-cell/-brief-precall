@@ -2,25 +2,31 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Settings, Link as LinkIcon, Database, Library } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { Settings, Link as LinkIcon, Database, Library, CreditCard } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 // Notifications moved out to its own top-level sidebar item (AppSidebar.tsx,
 // /notifications) — it's a frequent daily-use setting, not an occasional
 // one, so it doesn't belong buried under Paramètres with the others.
-const NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
+const NAV_ITEMS: { href: string; label: string; icon: LucideIcon; managerOnly?: boolean }[] = [
   { href: "/settings/general", label: "Général", icon: Settings },
   { href: "/settings/connexions", label: "Connexions", icon: LinkIcon },
   { href: "/settings/crm", label: "CRM", icon: Database },
   { href: "/settings/references", label: "Références clients", icon: Library },
+  { href: "/settings/billing", label: "Facturation", icon: CreditCard, managerOnly: true },
 ];
 
 export default function SettingsTabs() {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const isManager = session?.role === "manager";
+
+  const items = NAV_ITEMS.filter((item) => !item.managerOnly || isManager);
 
   return (
     <div className="inline-flex items-center gap-1 bg-white rounded-xl border border-slate-200 p-1 flex-wrap">
-      {NAV_ITEMS.map((item) => {
+      {items.map((item) => {
         const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
         const Icon = item.icon;
         return (

@@ -10,6 +10,7 @@ import {
   getUserForInvitation,
 } from "@/lib/db";
 import { sendInvitationEmail } from "@/lib/email";
+import { syncSeatsForOrganization } from "@/lib/stripe";
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -61,6 +62,12 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     console.error(`[team/invite] linkManagerToCommercial failed for ${commercialId}:`, err);
   }
+
+  // Best-effort — le siège Stripe est synchronisé au prochain webhook/cron de
+  // toute façon si ça échoue ici.
+  await syncSeatsForOrganization(organization.id).catch((err) =>
+    console.warn(`[team/invite] syncSeatsForOrganization(${organization.id}) failed:`, err)
+  );
 
   try {
     const manager = await getUserForInvitation(userId);
