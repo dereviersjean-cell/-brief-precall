@@ -80,7 +80,17 @@ export async function createOrganizationCheckoutSession({
     // Autoliquidation UE : un client B2B peut renseigner son numéro de TVA
     // intracommunautaire, Stripe applique 0% si valide.
     tax_id_collection: { enabled: true, required: "if_supported" },
-    ...(existingCustomerId ? { customer: existingCustomerId } : { customer_email: managerEmail }),
+    ...(existingCustomerId
+      ? {
+          customer: existingCustomerId,
+          // Requis par Stripe dès que tax_id_collection est activé sur un
+          // customer existant (cas d'un réabonnement après résiliation) —
+          // sinon : "Tax ID collection requires updating business name on
+          // the customer." Pas nécessaire avec customer_email puisque
+          // Checkout crée alors un nouveau customer en pleine maîtrise.
+          customer_update: { name: "auto", address: "auto" },
+        }
+      : { customer_email: managerEmail }),
     client_reference_id: organizationId,
     success_url: successUrl,
     cancel_url: cancelUrl,
