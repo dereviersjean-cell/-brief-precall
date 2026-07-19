@@ -128,6 +128,7 @@ Module Équipe
 * app/team/[commercialId]/calls/[callId]/page.tsx + CallDetailClient.tsx — vue readOnly manager
 * app/team/playbook/page.tsx + PlaybookClient.tsx + ImportPlaybookModal.tsx — playbook manager. Import via 3 onglets dans la modale : "Coller le texte", "Fichier" (PDF + Word .doc/.docx via mammoth), "Depuis Notion" (recherche pages partagées avec l'intégration → confirmation titre → extraction Claude partagée)
 * app/team/email-templates/page.tsx + EmailTemplatesClient.tsx — templates emails manager
+* app/team/insights/page.tsx + TeamInsightsClient.tsx — win/loss manager (19 juillet 2026) : objections les plus fréquentes + taux de succès, scores playbook comparés gagné/perdu
 * app/team/ManageTeamModal.tsx — gestion rattachements
 * app/team/InviteCommercialModal.tsx — invitation commercial
 
@@ -175,6 +176,16 @@ Module Facturation (Stripe, 18-19 juillet 2026 — voir "Modules terminés" pour
 * Crons Inngest (lib/inngest-functions.ts) : reportBillingUsage (1er du mois), checkBillingGracePeriods (horaire)
 
 
+Module Bibliothèque d'objections & win/loss (19 juillet 2026 — voir "Modules terminés" pour le détail complet)
+
+
+* lib/objections.ts — indexCallObjections (embed + insert dans call_objections via supabaseAdmin), findSimilarObjections (RPC match_call_objections, même schéma que findSimilarReferences)
+* app/api/objections/similar/route.ts (POST) — recherche à la demande, enrichit chaque résultat avec le badge d'issue (getDealOutcomeForContact)
+* app/api/recall/bot-webhook/route.ts — indexe les objections juste après saveCallAnalysis, non-bloquant
+* scripts/backfill-objections.ts — ré-extrait les objections des calls existants sans re-scorer le reste de l'analyse (extractObjectionsFromTranscript, lib/call-analysis.ts)
+* Cron Inngest syncDealOutcomes (30 min, lib/inngest-functions.ts) : signal win/loss CRM (HubSpot/Pipedrive closedwon/closedlost), complète le signal quote écrit en synchrone
+
+
 Sidebar principale (app/components/AppSidebar.tsx)
 
 
@@ -183,7 +194,7 @@ Sidebar principale (app/components/AppSidebar.tsx)
 * Historique (ancien "Contacts")
 * Devis
 * Tasks (avec pastille rouge compteur)
-* Équipe (avec sous-liens Playbook + Templates emails si manager)
+* Équipe (avec sous-liens Playbook + Templates emails + Insights si manager)
 * Paramètres + Déconnexion en bas
 Lib (logique métier)
 Fichiers principaux
@@ -217,6 +228,7 @@ Intégrations externes
 * lib/pappers.ts — enrichissement légal FR (sans crédits actuellement, fallback mémoire Claude). Bon champ : libelle_code_naf
 * lib/news.ts — Serper API avec fallback NewsAPI
 * lib/embeddings.ts — generateEmbedding, findSimilarReferences via Voyage AI + RPC Supabase match_client_references
+* lib/objections.ts — indexCallObjections, findSimilarObjections (même provider/pattern que lib/embeddings.ts, mais scope organization_id et supabaseAdmin — voir bugs)
 * lib/calendar.ts — getUpcomingMeetings(accessToken, provider, userEmail) (Google Calendar API ou Microsoft Graph)
 * lib/google-calendar.ts — appendBriefToCalendarEvent, hasCalendarWriteAccess (interroge Google tokeninfo)
 * lib/recall.ts — toutes les fonctions Recall EU. buildTranscriptJson, resolveSpeakerNames (heuristique 4 branches), getTranscriptContent, transcriptToText (attention : structure Recall utilise participant.{id,name,email}, pas speaker), getBotInfo, syncAndScheduleForUser, getVideoUrl
@@ -227,8 +239,8 @@ Intégrations externes
 CRM
 
 
-* lib/crm/pipedrive.ts — OAuth + lecture + écriture (sous-étape C2). api_domain contient déjà https://, ne jamais préfixer. hasPipedriveWriteAccess, findPipedriveContactForEmail, findPipedriveDealForEmail, findPipedriveActivityForEmail, appendToPipedriveActivityNote, createPipedriveNoteOnDeal, createPipedriveNoteOnContact, writeToPipedriveCascade (activity → deal → contact), htmlBodyForPipedrive
-* lib/crm/hubspot.ts — OAuth + lecture + écriture (sous-étape C1). hasHubSpotWriteAccess, findHubSpotContactForEmail, findHubSpotDealForEmail (filtre closedwon/closedlost), findHubSpotMeetingForEmail, appendToHubSpotMeetingBody (écrit dans hs_meeting_body — pas d'association note↔meeting côté HubSpot), createHubSpotNoteOnDeal, createHubSpotNoteOnContact, writeToHubSpotCascade (meeting → deal → contact), htmlBodyForHubSpot (markdown → HTML + tables → listes à puces), idempotence via marqueur invisible <!-- brief-note-uid:{uid} -->. Sync tasks (18 juillet 2026) : createHubSpotTask, updateHubSpotTaskStatus, deleteHubSpotTask, batchGetHubSpotTaskStatuses, getHubSpotOwnerId (résout l'owner HubSpot via token-info email → Owners API), findNewHubSpotTasksForOwner (import inverse). Scope ajouté : crm.objects.owners.read
+* lib/crm/pipedrive.ts — OAuth + lecture + écriture (sous-étape C2). api_domain contient déjà https://, ne jamais préfixer. hasPipedriveWriteAccess, findPipedriveContactForEmail, findPipedriveDealForEmail, findClosedDealsForEmail (module win/loss), findPipedriveActivityForEmail, appendToPipedriveActivityNote, createPipedriveNoteOnDeal, createPipedriveNoteOnContact, writeToPipedriveCascade (activity → deal → contact), htmlBodyForPipedrive
+* lib/crm/hubspot.ts — OAuth + lecture + écriture (sous-étape C1). hasHubSpotWriteAccess, findHubSpotContactForEmail, findHubSpotDealForEmail (filtre closedwon/closedlost), findClosedDealsForEmail (inverse — ne garde QUE closedwon/closedlost, module win/loss), findHubSpotMeetingForEmail, appendToHubSpotMeetingBody (écrit dans hs_meeting_body — pas d'association note↔meeting côté HubSpot), createHubSpotNoteOnDeal, createHubSpotNoteOnContact, writeToHubSpotCascade (meeting → deal → contact), htmlBodyForHubSpot (markdown → HTML + tables → listes à puces), idempotence via marqueur invisible <!-- brief-note-uid:{uid} -->. Sync tasks (18 juillet 2026) : createHubSpotTask, updateHubSpotTaskStatus, deleteHubSpotTask, batchGetHubSpotTaskStatuses, getHubSpotOwnerId (résout l'owner HubSpot via token-info email → Owners API), findNewHubSpotTasksForOwner (import inverse). Scope ajouté : crm.objects.owners.read
 * lib/tasks-hubspot-sync.ts — pushNewTasksToHubSpot(userId, tasks, contactEmail) : pousse les tasks générées par un template Brief (push_to_hubspot=true) vers HubSpot
 * lib/crm/enrichment.ts — enrichFromCRM(userId, companyName) : Pipedrive puis HubSpot fallback
 
@@ -375,6 +387,12 @@ Routes Facturation
 * app/api/admin/organizations/[orgId]/billing/route.ts (PATCH) — admin uniquement, override support unblock|extend_grace
 
 
+Routes Objections
+
+
+* app/api/objections/similar/route.ts (POST) — tout user actif, recherche par similarité scope organization_id, enrichit avec le badge d'issue (deal_outcomes)
+
+
 Routes supprimées (nettoyage historique) check-calendar, connect-google, get-calendar, get-transcript, list-bots, list-events, set-preferences, trigger-transcript, create-calendar-v2, init-prompts, /admin/impersonation-logs (dédoublonné dans /admin/dashboard/users/[userId])
 
 
@@ -450,6 +468,43 @@ CREATE TABLE billing_events (
   organization_id uuid REFERENCES organizations(id) ON DELETE SET NULL,
   processed_at timestamptz DEFAULT now()
 );
+
+-- call_objections (bibliothèque d'objections, 19 juillet 2026) — indexation
+-- vectorielle par organisation (pas par user, comme le playbook), RPC
+-- match_call_objections (même schéma que match_client_references)
+CREATE TABLE call_objections (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  call_id uuid NOT NULL REFERENCES calls(id) ON DELETE CASCADE,
+  contact_email text,
+  objection text NOT NULL,
+  response text NOT NULL,
+  embedding vector(1024),
+  created_at timestamptz DEFAULT now()
+);
+CREATE INDEX call_objections_org_idx ON call_objections (organization_id);
+
+-- deal_outcomes (signal win/loss unifié, 19 juillet 2026) — contact_email
+-- comme clé de jointure (pas d'id CRM stocké côté Brief). source='quote'
+-- écrit en synchrone (acceptQuoteByPublicToken/rejectQuoteByPublicToken),
+-- source='hubspot'|'pipedrive' écrit par le cron syncDealOutcomes
+CREATE TABLE deal_outcomes (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  contact_email text NOT NULL,
+  source text NOT NULL,        -- 'quote' | 'hubspot' | 'pipedrive'
+  outcome text NOT NULL,       -- 'won' | 'lost'
+  amount numeric,
+  closed_at timestamptz,
+  synced_at timestamptz DEFAULT now(),
+  UNIQUE(organization_id, contact_email, source)
+);
+
+-- call_analysis.objections (jsonb, colonne préexistante) : contient
+-- désormais {objection, response}[] au lieu de toujours []. Lignes plus
+-- anciennes que le 19 juillet 2026 peuvent encore contenir un format legacy
+-- (string[] brut, voir bug #50) — normalisé à la lecture par
+-- normalizeCallAnalysis (lib/db.ts), pas besoin de migration de données.
 
 
 -- manager_commercial_links (many-to-many)
@@ -1397,6 +1452,18 @@ Protections IA uniformisées (session du 19 juillet 2026)
 * Volontairement laissés hors périmètre : lib/digest.ts et lib/key-points.ts (sortie markdown, pas de contrat JSON à casser) ; les deux appels à max_tokens 1000 dans lib/email-followup.ts (generateReplyToProspect / generateReplyToProspectWithTemplate — texte libre, une troncature raccourcit la réponse mais ne casse pas de parsing)
 
 
+Bibliothèque d'objections & win/loss (session du 19 juillet 2026, 5 phases)
+
+
+* Point de départ : call_analysis.objections (jsonb) existait déjà en base mais était mort — saveCallAnalysis l'écrivait toujours à [], et le type CallAnalysis (sortie Claude) n'avait même pas ce champ. Le bloc "Objections rencontrées" de FeedbackDetailClient.tsx existait déjà côté UI et attendait cette donnée sans jamais la recevoir
+* Phase 1 — extraction + persistance : prompt étendu ({objection, response}[], la réponse effectivement apportée par le commercial dans le transcript, pas inventée), champ ajouté au type CallAnalysis, saveCallAnalysis persiste enfin la vraie valeur
+* Phase 2 — indexation + backfill : table call_objections (par organisation, comme le playbook — un commercial junior bénéficie des objections déjà traitées par toute l'équipe), embeddings Voyage AI via supabaseAdmin (pas le client anon utilisé par lib/embeddings.ts historiquement — écart non reproduit), script scripts/backfill-objections.ts pour l'historique existant
+* Phase 3 — recherche par similarité : app/api/objections/similar (POST, à la demande, pas préchargé), bloc "Cas similaires déjà traités" dans /feedback/[id]
+* Phase 4 — signal win/loss unifié : table deal_outcomes, contact_email comme clé de jointure (aucun id CRM stocké côté Brief nulle part). Source quote écrite en synchrone au moment de l'acceptation/refus du devis (aucun cron requis, signal déjà fiable et persisté) ; sources hubspot/pipedrive via le nouveau cron syncDealOutcomes (30 min) qui n'interroge que les contacts non encore résolus pour cette source — pas tout l'historique à chaque run. findClosedDealsForEmail (lib/crm/hubspot.ts, lib/crm/pipedrive.ts) est l'inverse de findHubSpotDealForEmail/findPipedriveDealForEmail : celles-ci filtrent les deals fermés, celle-là ne garde qu'eux
+* Phase 5 — écran manager : nouvelle page /team/insights (getObjectionStatsForOrganization, getDimensionScoresByOutcome — même pattern d'agrégation JS que getTeamAverageScores, les clés de dimension étant dynamiques par org/playbook donc pas agrégeables proprement en SQL), scopée à toute l'organisation (getUsersInOrganization) et non aux seuls commerciaux liés à un manager
+* Validé en conditions réelles sur le compte Oliverlist : credentials Supabase/Voyage/Anthropic réels ajoutés à .env.local (gitignored), backfill exécuté sur les 9 calls existants, RPC match_call_objections vérifiée, getObjectionStatsForOrganization/getDimensionScoresByOutcome exécutées contre la vraie base et le vrai playbook (7 dimensions). 1 bug de données legacy trouvé et corrigé au passage — voir bug #50
+
+
 ________________
 
 
@@ -1503,6 +1570,9 @@ Bugs documentés (numérotation continue depuis session 1)
 49. Protections IA (max_tokens/extractJsonObject/log réponse brute) présentes sur une seule route : la robustesse JSON introduite pour corriger un bug ponctuel sur app/api/tasks/[taskId]/generate-email/route.ts n'avait jamais été propagée aux 6 autres routes de génération JSON, qui gardaient un JSON.parse nu (aucune tolérance au préambule/postambule ni aux caractères de contrôle bruts) et, pour une, un max_tokens à 1000. Fix : lib/ai-json.ts partagé, appliqué partout, cf "Protections IA uniformisées" ci-dessus. Pattern à surveiller : toute nouvelle route de génération JSON doit démarrer avec ces 3 protections dès l'écriture, pas les rattraper après un incident.
 
 
+50. Format legacy sur call_analysis.objections : le call de référence Ravachol avait déjà un objections non vide, mais en string[] brut — vestige d'une version antérieure et non documentée du prompt, d'avant que la colonne soit mise à toujours écrire []. Repéré uniquement en lançant le backfill contre la vraie base (aucune trace de ce format dans le code ni la doc à ce moment-là). Fix centralisé dans normalizeCallAnalysis (lib/db.ts), le seul chokepoint par lequel passent toutes les lectures de call_analysis — coerce les strings brutes en {objection, response} avec un texte de réponse placeholder, plutôt que de patcher chacun des call sites qui lisent .objections (au moins 3 : getCallWithAnalysis, getCallContextForContact, getDigestCallInsights).
+
+
 ________________
 
 
@@ -1544,13 +1614,13 @@ ________________
 
 
 Roadmap restante (au 19 juillet 2026)
-Fait depuis la dernière mise à jour : sync bidirectionnel tasks Brief ↔ HubSpot (par template + import inverse natif), fix import PDF playbook (pdf-parse v2) + drag-and-drop, refonte design complète de /admin + menus horizontaux, système de facturation Stripe complet (abonnement par siège + usage 0,50€/h + essai 7j + fenêtre de grâce + blocage), puis 4 compléments (résiliation = accès bloqué, Stripe Tax activé, override admin, plan annuel avec remise) et validation end-to-end en conditions réelles sur le compte Oliverlist (3 bugs trouvés et corrigés au passage) — voir "Modules terminés" ci-dessus.
+Fait depuis la dernière mise à jour : sync bidirectionnel tasks Brief ↔ HubSpot (par template + import inverse natif), fix import PDF playbook (pdf-parse v2) + drag-and-drop, refonte design complète de /admin + menus horizontaux, système de facturation Stripe complet (abonnement par siège + usage 0,50€/h + essai 7j + fenêtre de grâce + blocage), puis 4 compléments (résiliation = accès bloqué, Stripe Tax activé, override admin, plan annuel avec remise) et validation end-to-end en conditions réelles sur le compte Oliverlist (3 bugs trouvés et corrigés au passage), protections IA uniformisées (lib/ai-json.ts partagé sur 7 routes), puis bibliothèque d'objections + win/loss (5 phases, testée en conditions réelles sur le compte Oliverlist — backfill exécuté, RPC vérifiée, 1 bug de données legacy trouvé et corrigé, voir bug #50) — voir "Modules terminés" ci-dessus.
 
 Actions manuelles en attente côté Jean :
 * Se réabonner sur le compte Oliverlist ("Se réabonner" sur /settings/billing) — l'org est restée en 'canceled'/bloquée depuis les tests de résiliation live, le fix customer_update est déployé et vérifié contre l'API réelle
 * Exécuter la migration SQL users.import_hubspot_tasks sur Supabase prod (donnée en session, page /tasks/settings dégrade proprement en attendant mais le toggle reste inopérant)
 * cd Brief && hs project upload pour déployer le nouveau scope crm.objects.owners.read (nécessaire à l'import inverse HubSpot → Brief, les users déjà connectés devront reconnecter HubSpot une fois déployé)
-* Vérifier dans app.inngest.com que reportBillingUsage et checkBillingGracePeriods apparaissent bien dans la liste des fonctions déployées (resync généralement automatique au déploiement Vercel, à confirmer manuellement la première fois)
+* Vérifier dans app.inngest.com que reportBillingUsage, checkBillingGracePeriods et syncDealOutcomes apparaissent bien dans la liste des fonctions déployées (resync généralement automatique au déploiement Vercel, à confirmer manuellement la première fois)
 * Tester en pratique : sync de sièges (ajout/retrait membre), flux carte refusée → grâce → blocage (carte de test Stripe dédiée), déclenchement manuel du cron d'usage mensuel plutôt que d'attendre le 1er août
 Priorité immédiate (déblocants business)
 * Google OAuth — sortir du mode Testing (bloque toute croissance au-delà des comptes de test whitelistés)
