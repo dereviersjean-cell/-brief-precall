@@ -1,4 +1,4 @@
-﻿Contexte Brief — reprise de session (version complète unifiée) — MàJ 18 juillet 2026
+﻿Contexte Brief — reprise de session (version complète unifiée) — MàJ 19 juillet 2026
 Je continue le développement de Brief avec toi sur plusieurs sessions successives. Ce document contient l'intégralité de l'état du projet depuis le début.
 
 
@@ -52,7 +52,7 @@ Stack technique complète
 * marked — conversion markdown → HTML pour les emails
 * pdf-parse — extraction de texte depuis PDF (import playbook)
 * lucide-react — icônes
-* Stripe (SDK `stripe`) — facturation par organisation. Checkout Session (abonnement par siège) + Invoice Items (usage 0,50€/h, pas Billing Meters/Metronome) + Billing Portal (self-serve). Webhook `app/api/webhooks/stripe/route.ts`
+* Stripe (SDK `stripe`) — facturation par organisation. Checkout Session (abonnement par siège, mensuel ou annuel) + Invoice Items (usage 0,50€/h, pas Billing Meters/Metronome) + Billing Portal (self-serve) + Stripe Tax (TVA automatique). Webhook `app/api/webhooks/stripe/route.ts`. Validé end-to-end en conditions réelles sur le compte Oliverlist (19 juillet 2026).
 
 
 ________________
@@ -163,14 +163,15 @@ Admin backoffice (refonte design complète le 18 juillet 2026 — voir "Modules 
 Toutes les pages sauf `/admin` (le login) sont gatées côté serveur via `isAdminAuthenticated()` + `redirect("/admin")` (uniforme depuis la refonte — avant, 5 pages géraient leur propre état loading/login/ready côté client).
 
 
-Module Facturation (Stripe, 18 juillet 2026 — voir "Modules terminés" pour le détail des 3 phases)
+Module Facturation (Stripe, 18-19 juillet 2026 — voir "Modules terminés" pour le détail complet)
 
 
-* lib/stripe.ts — client Stripe (instancié au point d'usage, pas de wrapper central, même convention que lib/recall.ts). Checkout Session (essai 7j, carte requise), sync sièges, report usage mensuel (Invoice Items), Billing Portal, vérification webhook
+* lib/stripe.ts — client Stripe (instancié au point d'usage, pas de wrapper central, même convention que lib/recall.ts). Checkout Session (essai 7j, carte requise, mensuel/annuel, Stripe Tax activé), sync sièges, report usage mensuel (Invoice Items), Billing Portal, vérification webhook
 * app/api/webhooks/stripe/route.ts — idempotent via table billing_events, calqué sur le webhook Recall (body brut, signature avant parsing, 200 même si un effet de bord échoue)
 * app/api/settings/billing/checkout/route.ts + portal/route.ts + status/route.ts — démarrer l'essai, gérer l'abonnement (Portal), statut lecture seule (tout user, pas manager-only — la bannière de grâce doit être visible par toute l'org)
+* app/api/admin/organizations/[orgId]/billing/route.ts (PATCH) — override support (unblock | extend_grace), n'agit jamais sur le vrai abonnement Stripe, seulement sur l'accès Brief
 * app/components/BillingGraceBanner.tsx — bannière site-wide (countdown en heures) pendant la fenêtre de grâce, ajoutée à côté d'ImpersonationBanner dans les 9 layouts applicatifs
-* app/compte-suspendu/page.tsx — page de blocage (middleware), message différent manager (lien vers /settings/billing) vs commercial (contacter le manager)
+* app/compte-suspendu/page.tsx — page de blocage (middleware), message différent manager (lien vers /settings/billing) vs commercial (contacter le manager), et différencié selon la cause (résiliation vs échec de paiement)
 * Crons Inngest (lib/inngest-functions.ts) : reportBillingUsage (1er du mois), checkBillingGracePeriods (horaire)
 
 
@@ -366,10 +367,11 @@ Routes Admin
 Routes Facturation
 
 
-* app/api/webhooks/stripe/route.ts (POST) — checkout.session.completed, customer.subscription.updated/deleted, invoice.payment_failed/succeeded
-* app/api/settings/billing/checkout/route.ts (POST) — manager-only, démarre l'essai/Checkout pour l'org
+* app/api/webhooks/stripe/route.ts (POST) — checkout.session.completed, customer.subscription.updated/created/deleted, invoice.payment_failed/succeeded
+* app/api/settings/billing/checkout/route.ts (POST) — manager-only, démarre l'essai/Checkout pour l'org (accepte interval: 'month'|'year')
 * app/api/settings/billing/portal/route.ts (POST) — manager-only, session Billing Portal
 * app/api/settings/billing/status/route.ts (GET) — tout user actif, statut + fin de grâce (alimente BillingGraceBanner)
+* app/api/admin/organizations/[orgId]/billing/route.ts (PATCH) — admin uniquement, override support unblock|extend_grace
 
 
 Routes supprimées (nettoyage historique) check-calendar, connect-google, get-calendar, get-transcript, list-bots, list-events, set-preferences, trigger-transcript, create-calendar-v2, init-prompts, /admin/impersonation-logs (dédoublonné dans /admin/dashboard/users/[userId])
@@ -429,9 +431,10 @@ CREATE TABLE organizations (
 
 );
 
--- Colonnes facturation (Stripe, 18 juillet 2026) ajoutées à organizations :
+-- Colonnes facturation (Stripe, 18-19 juillet 2026) ajoutées à organizations :
 -- stripe_customer_id text, stripe_subscription_id text, stripe_seat_item_id text,
--- billing_status text NOT NULL DEFAULT 'none',  -- none|trialing|active|grace_period|blocked|canceled
+-- billing_status text NOT NULL DEFAULT 'none',  -- none|trialing|active|grace_period|blocked|canceled (blocked ET canceled bloquent l'accès, voir middleware)
+-- billing_interval text,  -- 'month' | 'year', lu depuis SubscriptionItem.price.recurring.interval
 -- trial_ends_at timestamptz, grace_period_ends_at timestamptz,
 -- current_period_start timestamptz, current_period_end timestamptz,
 -- last_usage_reported_at timestamptz  -- curseur du cron mensuel d'usage, pas de table de ledger séparée
@@ -1041,7 +1044,7 @@ HUBSPOT_CLIENT_ID, HUBSPOT_CLIENT_SECRET
 RESEND_API_KEY, RESEND_FROM_EMAIL
 
 
-STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_ID_SEAT
+STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_ID_SEAT, STRIPE_PRICE_ID_SEAT_ANNUAL
 
 
 ADMIN_TEST_USER_ID=ee6772b4-423f-4091-a140-bf3991919c8b
@@ -1365,6 +1368,23 @@ Facturation Stripe complète (session du 18 juillet 2026, 3 phases)
 * Onglet "Facturation" ajouté au détail organisation admin (4e onglet), et route /api/settings/billing/status accessible à tout user (pas manager-only) pour que la bannière de grâce soit visible par toute l'organisation
 
 
+Facturation Stripe : 4 compléments (session du 19 juillet 2026)
+
+
+* Résiliation = accès bloqué : billing_status='canceled' (déclenché par customer.subscription.deleted) était auparavant ignoré par le middleware (seul 'blocked' l'était), laissant un accès complet et illimité après résiliation volontaire. Corrigé pour bloquer sur 'blocked' OU 'canceled', même comportement, même page /compte-suspendu
+* Stripe Tax activé : automatic_tax + tax_id_collection (autoliquidation TVA intracommunautaire B2B) sur la Checkout Session. Configuration manuelle côté dashboard Stripe : adresse entreprise, enregistrement TVA France (auto-immatriculation choisie plutôt que le partenaire payant Taxually), tax code produit, tax_behavior='exclusive' sur les deux prix (HT + TVA ajoutée, pas TTC)
+* Override support admin : route /api/admin/organizations/[orgId]/billing (PATCH unblock|extend_grace), boutons dans l'onglet Facturation de OrganizationDetailClient.tsx, pour les cas de paiement par virement ou litige — n'agit jamais sur le véritable abonnement Stripe
+* Plan annuel avec remise : 2e Price Stripe (490€/an, ≈2 mois offerts vs 12×49€) pour inciter à l'engagement long. Colonne billing_interval sur organizations, toggle Mensuel/Annuel sur /settings/billing (IntervalToggle), coût mensuel équivalent toujours affiché pour rester lisible entre les deux cas
+
+
+Validation end-to-end en conditions réelles (session du 19 juillet 2026)
+
+
+* Testé sur le vrai compte Oliverlist en mode Test Stripe (pas de sandbox) : Checkout complet (3 sièges, TVA calculée), essai actif, résiliation immédiate, réabonnement, blocage d'accès — chaque étape vérifiée par screenshot
+* 3 bugs réels trouvés et corrigés uniquement grâce à ce test live (non détectés par la revue de code ni le typecheck) — voir bugs #46, #47, #48 ci-dessous
+* Méthode de debug : reproduction directe contre l'API Stripe réelle (scripts Node ponctuels avec les vraies credentials test) pour confirmer la cause puis vérifier le fix, sans attendre de redeploy Vercel à chaque itération
+
+
 ________________
 
 
@@ -1459,6 +1479,15 @@ Bugs documentés (numérotation continue depuis session 1)
 45. Stripe usage-based billing : Billing Meters (l'ancienne API dédiée à l'usage) n'est pas dépréciée mais n'est plus recommandée pour les nouvelles intégrations — Stripe pousse vers Metronome (plateforme tierce rachetée). Pour une métrique unique et simple (0,50€/h), plus pragmatique de calculer le total soi-même et de pousser un Invoice Item standard (API stable, non concernée par ce virage) plutôt que d'intégrer Metronome ou la mécanique de Meter/meter events.
 
 
+46. Stripe invoice.payment_succeeded écrasait 'trialing' : Stripe émet cet événement aussi pour la facture à 0€ générée au démarrage d'un essai (rien à payer). Le handler mettait billing_status à 'active' sans condition, court-circuitant 'trialing' dès le jour 1 — découvert en testant un vrai Checkout (l'état Stripe était correct, seul l'état Brief était faux). Fix : n'agir que si billing_status === 'grace_period' (le seul vrai cas d'usage de ce handler — sortie de grâce après paiement qui finit par passer).
+
+
+47. Webhook Stripe : customer.subscription.created non coché côté dashboard : le code gérait déjà ce cas dans son switch, mais Stripe ne l'envoyait jamais car l'endpoint n'était souscrit qu'à 5 événements sur 6 nécessaires. Résultat : current_period_start/end et billing_interval jamais renseignés côté Brief même une fois le bug #46 corrigé. Pas un bug de code — vérifier la liste des événements cochés sur le webhook Dashboard à chaque nouveau case ajouté au switch.
+
+
+48. Réabonnement Stripe après résiliation échouait : checkout.sessions.create avec un customer existant + tax_id_collection activé exige customer_update: { name: 'auto' }, sinon Stripe refuse ("Tax ID collection requires updating business name on the customer"). Invisible au premier abonnement (customer_email, pas de customer existant) — repéré en testant un vrai réabonnement après résiliation. Reproduit et vérifié directement contre l'API Stripe réelle avant et après le fix (lib/stripe.ts, createOrganizationCheckoutSession).
+
+
 ________________
 
 
@@ -1499,13 +1528,18 @@ Workflow de développement habituel
 ________________
 
 
-Roadmap restante (au 18 juillet 2026)
-Fait depuis la dernière mise à jour : sync bidirectionnel tasks Brief ↔ HubSpot (par template + import inverse natif), fix import PDF playbook (pdf-parse v2) + drag-and-drop, refonte design complète de /admin + menus horizontaux, système de facturation Stripe complet (abonnement par siège + usage 0,50€/h + essai 7j + fenêtre de grâce + blocage) — voir "Modules terminés" ci-dessus.
+Roadmap restante (au 19 juillet 2026)
+Fait depuis la dernière mise à jour : sync bidirectionnel tasks Brief ↔ HubSpot (par template + import inverse natif), fix import PDF playbook (pdf-parse v2) + drag-and-drop, refonte design complète de /admin + menus horizontaux, système de facturation Stripe complet (abonnement par siège + usage 0,50€/h + essai 7j + fenêtre de grâce + blocage), puis 4 compléments (résiliation = accès bloqué, Stripe Tax activé, override admin, plan annuel avec remise) et validation end-to-end en conditions réelles sur le compte Oliverlist (3 bugs trouvés et corrigés au passage) — voir "Modules terminés" ci-dessus.
 
 Actions manuelles en attente côté Jean :
+* Se réabonner sur le compte Oliverlist ("Se réabonner" sur /settings/billing) — l'org est restée en 'canceled'/bloquée depuis les tests de résiliation live, le fix customer_update est déployé et vérifié contre l'API réelle
 * Exécuter la migration SQL users.import_hubspot_tasks sur Supabase prod (donnée en session, page /tasks/settings dégrade proprement en attendant mais le toggle reste inopérant)
 * cd Brief && hs project upload pour déployer le nouveau scope crm.objects.owners.read (nécessaire à l'import inverse HubSpot → Brief, les users déjà connectés devront reconnecter HubSpot une fois déployé)
 * Vérifier dans app.inngest.com que reportBillingUsage et checkBillingGracePeriods apparaissent bien dans la liste des fonctions déployées (resync généralement automatique au déploiement Vercel, à confirmer manuellement la première fois)
+* Tester en pratique : sync de sièges (ajout/retrait membre), flux carte refusée → grâce → blocage (carte de test Stripe dédiée), déclenchement manuel du cron d'usage mensuel plutôt que d'attendre le 1er août
+Priorité immédiate (déblocants business)
+* Google OAuth — sortir du mode Testing (bloque toute croissance au-delà des comptes de test whitelistés)
+* Sortir Stripe du mode Test — activation du compte (vérification entreprise, IBAN) pour encaisser réellement, nouveau webhook + price_id en mode Live ; le système est validé de bout en bout en Test et prêt à basculer
 Court terme (haute valeur produit)
 * Backfill de tous les calls historiques restants avec le script (aujourd'hui seul Ravachol/Hubert est backfilé)
 Améliorations techniques
@@ -1513,6 +1547,7 @@ Améliorations techniques
 * Harmoniser design system (slate-* vs gray-*) entre /feedback et le reste
 * Investigation bundle client qui référence SUPABASE_SERVICE_ROLE_KEY (pas de fuite active mais signal d'un import serveur non isolé)
 * Amélioration UX édition des templates emails : note d'aide + preview
+* Décrire l'usage en minutes plutôt qu'en heures sur la description de l'Invoice Item Stripe (cosmétique, la facturation elle-même est déjà à la seconde près)
 CRM et intégrations
 * Sellsy CRM (lecture, même architecture que HubSpot/Pipedrive)
 * Téléphonie Ringover/Aircall — capture automatique des appels téléphoniques (pas juste visio)
@@ -1522,8 +1557,6 @@ Enrichissement
 * Enrichissement Proxycurl LinkedIn — poste, ancienneté, décideur
 * Activer Pappers payant (données légales FR précises en complément du web search)
 Infra & business
-* Sortir Stripe du mode Test — activation du compte (vérification entreprise, IBAN) pour encaisser réellement, nouveau webhook + price_id en mode Live
-* Sortir Google OAuth du mode Testing — scopes sensibles à justifier, politique confidentialité publique
 * Microsoft OAuth Recall — valider avec un vrai compte Outlook (déployé, jamais testé)
 * Notifications push quand un prospect répond à un email de suivi
 Plus tard
