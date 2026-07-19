@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { readPromptConfig, DEFAULT_CALL_ANALYSIS_SYSTEM_PROMPT } from "./admin-config";
 import { DEFAULT_PLAYBOOK_SNAPSHOT } from "./db";
 import type { PlaybookSnapshot } from "./db";
+import { extractJsonObject } from "./ai-json";
 
 // Dimension keys are dynamic — driven by whatever playbook (org-specific or
 // the hardcoded default) was passed to analyzeCall, not a fixed set. See
@@ -69,6 +70,7 @@ Transcription :
 
 ${transcript}`;
 
+  let raw = "";
   try {
     const message = await client.messages.create({
       model: "claude-sonnet-4-6",
@@ -78,12 +80,15 @@ ${transcript}`;
     });
 
     const textBlock = message.content.find((b) => b.type === "text");
-    const raw = textBlock?.type === "text" ? textBlock.text : "";
-    const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    raw = textBlock?.type === "text" ? textBlock.text : "";
 
-    return JSON.parse(cleaned) as CallAnalysis;
+    return JSON.parse(extractJsonObject(raw)) as CallAnalysis;
   } catch (err) {
-    console.error("[call-analysis] analyzeCall failed:", err instanceof Error ? err.message : String(err));
+    console.error(
+      "[call-analysis] analyzeCall failed:",
+      err instanceof Error ? err.message : String(err),
+      raw ? `\nRaw Claude response:\n${raw}` : "(no response captured — API call itself failed)"
+    );
     return {
       ...DEFAULT_ANALYSIS,
       summary: `Analyse indisponible : ${err instanceof Error ? err.message : String(err)}`,

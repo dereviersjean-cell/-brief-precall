@@ -199,6 +199,7 @@ Fichiers principaux
 Génération et IA
 
 
+* lib/ai-json.ts — extractJsonObject(raw) partagé par toutes les routes de génération JSON (strip fences, isolation de l'objet {...}, sanitize des caractères de contrôle bruts dans les strings) — uniformisé le 19 juillet 2026, remplace 3 implémentations locales divergentes
 * lib/brief-generator.ts — generateBrief(...) avec web search natif Claude, appels parallèles Pappers/CRM/refs, type GeneratedBriefJson
 * lib/call-analysis.ts — analyzeCall(transcript, context, playbookSnapshot) avec dimensions dynamiques
 * lib/email-followup.ts — generateFollowUpEmail, generateReplyToProspect, generateReplyToProspectWithTemplate
@@ -1385,6 +1386,17 @@ Validation end-to-end en conditions réelles (session du 19 juillet 2026)
 * Méthode de debug : reproduction directe contre l'API Stripe réelle (scripts Node ponctuels avec les vraies credentials test) pour confirmer la cause puis vérifier le fix, sans attendre de redeploy Vercel à chaque itération
 
 
+Protections IA uniformisées (session du 19 juillet 2026)
+
+
+* Constat : les 3 protections (max_tokens ≥1500, extractJsonObject robuste, log réponse brute sur échec parsing) n'existaient que sur app/api/tasks/[taskId]/generate-email/route.ts, la route où le bug avait été trouvé à l'origine — jamais propagées ailleurs
+* Nouveau lib/ai-json.ts : extractJsonObject(raw) extrait, sans dépendance à un fichier consommateur, remplace 3 implémentations locales quasi identiques (tasks/generate-email, lib/brief-generator.ts, lib/inngest-functions.ts) qui avaient légèrement divergé dans le temps
+* max_tokens relevé à 1500 sur app/api/quotes/[quoteId]/generate-email/route.ts (était à 1000, seule route sous le seuil)
+* extractJsonObject appliqué aux JSON.parse nus restants : lib/brief-generator.ts, lib/call-analysis.ts, lib/email-followup.ts (generateFollowUpEmail), app/api/quotes/generate, app/api/quotes/[quoteId]/generate-email, app/api/playbook/import
+* Log de la réponse brute ajouté sur les catch qui ne le faisaient pas encore (lib/call-analysis.ts, app/api/playbook/import, les deux routes quotes, lib/inngest-functions.ts)
+* Volontairement laissés hors périmètre : lib/digest.ts et lib/key-points.ts (sortie markdown, pas de contrat JSON à casser) ; les deux appels à max_tokens 1000 dans lib/email-followup.ts (generateReplyToProspect / generateReplyToProspectWithTemplate — texte libre, une troncature raccourcit la réponse mais ne casse pas de parsing)
+
+
 ________________
 
 
@@ -1488,6 +1500,9 @@ Bugs documentés (numérotation continue depuis session 1)
 48. Réabonnement Stripe après résiliation échouait : checkout.sessions.create avec un customer existant + tax_id_collection activé exige customer_update: { name: 'auto' }, sinon Stripe refuse ("Tax ID collection requires updating business name on the customer"). Invisible au premier abonnement (customer_email, pas de customer existant) — repéré en testant un vrai réabonnement après résiliation. Reproduit et vérifié directement contre l'API Stripe réelle avant et après le fix (lib/stripe.ts, createOrganizationCheckoutSession).
 
 
+49. Protections IA (max_tokens/extractJsonObject/log réponse brute) présentes sur une seule route : la robustesse JSON introduite pour corriger un bug ponctuel sur app/api/tasks/[taskId]/generate-email/route.ts n'avait jamais été propagée aux 6 autres routes de génération JSON, qui gardaient un JSON.parse nu (aucune tolérance au préambule/postambule ni aux caractères de contrôle bruts) et, pour une, un max_tokens à 1000. Fix : lib/ai-json.ts partagé, appliqué partout, cf "Protections IA uniformisées" ci-dessus. Pattern à surveiller : toute nouvelle route de génération JSON doit démarrer avec ces 3 protections dès l'écriture, pas les rattraper après un incident.
+
+
 ________________
 
 
@@ -1543,7 +1558,6 @@ Priorité immédiate (déblocants business)
 Court terme (haute valeur produit)
 * Backfill de tous les calls historiques restants avec le script (aujourd'hui seul Ravachol/Hubert est backfilé)
 Améliorations techniques
-* Appliquer les 3 protections IA (max_tokens 1500, extractJsonObject, log réponse brute) à toutes les routes de génération IA restantes (generate-brief, generate-quote, etc.)
 * Harmoniser design system (slate-* vs gray-*) entre /feedback et le reste
 * Investigation bundle client qui référence SUPABASE_SERVICE_ROLE_KEY (pas de fuite active mais signal d'un import serveur non isolé)
 * Amélioration UX édition des templates emails : note d'aide + preview

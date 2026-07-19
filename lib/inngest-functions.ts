@@ -95,7 +95,12 @@ function extractJSON(raw: string): Record<string, unknown>[] {
   if (start === -1 || end <= start) return [];
   try {
     return JSON.parse(cleaned.slice(start, end + 1)) as Record<string, unknown>[];
-  } catch {
+  } catch (err) {
+    console.error(
+      "[inngest] extractRefsFromChunk JSON parse failed:",
+      err instanceof Error ? err.message : err,
+      `\nRaw Claude response:\n${raw}`
+    );
     return [];
   }
 }

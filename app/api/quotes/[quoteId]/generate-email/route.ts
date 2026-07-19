@@ -15,6 +15,7 @@ import {
   type QuoteGenerationCallContext,
 } from "@/lib/db";
 import { refreshGoogleAccessToken, getEmailHistory, type GmailMessage } from "@/lib/gmail";
+import { extractJsonObject } from "@/lib/ai-json";
 
 export type GeneratedQuoteEmail = { subject: string; body: string };
 
@@ -140,23 +141,27 @@ CONTENU DU DEVIS
 
 ${formatQuoteSummary(quote)}`;
 
+  let raw = "";
   try {
     const client = new Anthropic();
     const message = await client.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 1000,
+      max_tokens: 1500,
       system: basePrompt,
       messages: [{ role: "user", content: contextPrompt }],
     });
 
     const textBlock = message.content.find((b) => b.type === "text");
-    const raw = textBlock?.type === "text" ? textBlock.text : "";
-    const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    const parsed = JSON.parse(cleaned) as unknown;
+    raw = textBlock?.type === "text" ? textBlock.text : "";
+    const parsed = JSON.parse(extractJsonObject(raw)) as unknown;
 
     return NextResponse.json(sanitizeEmail(parsed, quote));
   } catch (err) {
-    console.error("[quotes/generate-email] Claude API failed:", err);
+    console.error(
+      "[quotes/generate-email] Claude API failed:",
+      err instanceof Error ? err.message : err,
+      raw ? `\nRaw Claude response:\n${raw}` : "(no response captured — API call itself failed)"
+    );
     return NextResponse.json(
       { error: "La génération a échoué. Réessayez ou rédigez l'email manuellement." },
       { status: 502 }

@@ -15,6 +15,7 @@ import {
   type QuoteOffer,
 } from "@/lib/db";
 import { refreshGoogleAccessToken, getEmailHistory, type GmailMessage } from "@/lib/gmail";
+import { extractJsonObject } from "@/lib/ai-json";
 
 export type GeneratedQuoteLine = {
   offer_id: string | null;
@@ -169,6 +170,7 @@ CATALOGUE D'OFFRES DISPONIBLES (utilise l'id exact pour offer_id)
 
 ${formatCatalog(offers)}`;
 
+  let raw = "";
   try {
     const client = new Anthropic();
     const message = await client.messages.create({
@@ -179,13 +181,16 @@ ${formatCatalog(offers)}`;
     });
 
     const textBlock = message.content.find((b) => b.type === "text");
-    const raw = textBlock?.type === "text" ? textBlock.text : "";
-    const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    const parsed = JSON.parse(cleaned) as unknown;
+    raw = textBlock?.type === "text" ? textBlock.text : "";
+    const parsed = JSON.parse(extractJsonObject(raw)) as unknown;
 
     return NextResponse.json(sanitizeDraft(parsed, settings.default_vat_rate));
   } catch (err) {
-    console.error("[quotes/generate] Claude API failed:", err);
+    console.error(
+      "[quotes/generate] Claude API failed:",
+      err instanceof Error ? err.message : err,
+      raw ? `\nRaw Claude response:\n${raw}` : "(no response captured — API call itself failed)"
+    );
     return NextResponse.json(
       { error: "La génération a échoué. Réessayez ou remplissez manuellement." },
       { status: 502 }

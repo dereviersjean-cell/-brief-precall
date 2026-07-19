@@ -72,10 +72,10 @@ Testé de bout en bout en conditions réelles (mode Test Stripe, vrai compte Oli
 ### Génération IA — règles critiques
 - Modèle principal : `claude-sonnet-4-6` / léger : `claude-haiku-4-5-20251001`
 - `max_tokens` : minimum 1500 pour les sorties JSON (800 = troncature garantie)
-- Toujours `extractJsonObject` robuste après réponse IA (préambule/postambule possible)
+- Toujours `extractJsonObject` de `lib/ai-json.ts` après réponse IA (préambule/postambule possible, sanitize aussi les caractères de contrôle bruts dans les strings JSON) — uniformisé le 19 juillet 2026 sur toutes les routes de génération JSON (`lib/brief-generator.ts`, `lib/call-analysis.ts`, `lib/email-followup.ts`, `app/api/quotes/generate`, `app/api/quotes/[quoteId]/generate-email`, `app/api/tasks/[taskId]/generate-email`, `app/api/playbook/import`)
 - Toujours logger la réponse brute en cas d'erreur JSON parsing
 - Contrat JSON : forcer côté serveur dans le system prompt, jamais dans le template manager
-- Web search : `web_search_20250305`, max_uses: 3 — activé pour tous les briefs
+- Web search : `web_search_20250305`, max_uses: 3 — activé pour tous les briefs. Avec le web search, utiliser `.filter(b => b.type === "text").pop()` (pas `.find()`) — la réponse contient d'autres blocs (citations, résultats) et le texte utile est le dernier bloc
 
 ## Bugs critiques résolus — patterns à ne pas reproduire
 
@@ -129,14 +129,13 @@ git add . && git commit -m "..." && git push
 
 ## Roadmap prioritaire
 
-Fait depuis la dernière mise à jour (18 juillet 2026) : sync bidirectionnel tasks Brief↔HubSpot par template + import inverse (task créée nativement dans HubSpot → créée sur Brief, toggle par user, nécessite le scope `crm.objects.owners.read`), fix import PDF playbook (pdf-parse v2) + drag-and-drop sur la zone fichier, refonte design complète de la partie `/admin` (nouveau design system + menus horizontaux sur `/admin/prompts` et détail organisation), fix résilience `/tasks/settings`, **système de facturation Stripe complet** (abonnement par siège + usage 0,50€/h + essai 7j + fenêtre de grâce 48h + blocage — voir section Facturation ci-dessus), puis 4 compléments (résiliation = accès bloqué comme `blocked`, Stripe Tax activé, override admin débloquer/prolonger, plan annuel avec remise) et **validation end-to-end en conditions réelles sur le compte Oliverlist** (checkout, essai, résiliation, réabonnement, blocage — 3 bugs trouvés et corrigés au passage, voir bugs #15-17).
+Fait depuis la dernière mise à jour (18 juillet 2026) : sync bidirectionnel tasks Brief↔HubSpot par template + import inverse (task créée nativement dans HubSpot → créée sur Brief, toggle par user, nécessite le scope `crm.objects.owners.read`), fix import PDF playbook (pdf-parse v2) + drag-and-drop sur la zone fichier, refonte design complète de la partie `/admin` (nouveau design system + menus horizontaux sur `/admin/prompts` et détail organisation), fix résilience `/tasks/settings`, **système de facturation Stripe complet** (abonnement par siège + usage 0,50€/h + essai 7j + fenêtre de grâce 48h + blocage — voir section Facturation ci-dessus), puis 4 compléments (résiliation = accès bloqué comme `blocked`, Stripe Tax activé, override admin débloquer/prolonger, plan annuel avec remise) et **validation end-to-end en conditions réelles sur le compte Oliverlist** (checkout, essai, résiliation, réabonnement, blocage — 3 bugs trouvés et corrigés au passage, voir bugs #15-17), **protections IA uniformisées** (`lib/ai-json.ts` partagé, max_tokens ≥1500, log réponse brute) sur les 7 routes de génération JSON qui ne les avaient pas encore.
 
 1. Google OAuth — sortir du mode Testing (bloque toute croissance au-delà des comptes de test whitelistés, prioritaire)
 2. Sortir Stripe du mode Test — activation compte (vérification entreprise) pour encaisser réellement, le système est validé en Test et prêt
-3. Protections IA — uniformiser max_tokens 1500 + extractJsonObject sur toutes les routes génération
-4. Sellsy CRM — lecture
-5. Ringover/Aircall — téléphonie (pas juste visio)
-6. Proxycurl LinkedIn — enrichissement contact
+3. Sellsy CRM — lecture
+4. Ringover/Aircall — téléphonie (pas juste visio)
+5. Proxycurl LinkedIn — enrichissement contact
 
 ## Comptes de test
 - Jean (manager) : `jean.dereviers@oliverlist.com` — user_id `ee6772b4-423f-4091-a140-bf3991919c8b`

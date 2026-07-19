@@ -5,6 +5,7 @@ import { requireActiveUser } from "@/lib/api-auth";
 import { getUserRole, getUserOrganizationId } from "@/lib/db";
 import { readPromptConfig, DEFAULT_PLAYBOOK_EXTRACTION_PROMPT } from "@/lib/admin-config";
 import Anthropic from "@anthropic-ai/sdk";
+import { extractJsonObject } from "@/lib/ai-json";
 
 export type PlaybookExtractionDimension = {
   label: string;
@@ -71,9 +72,17 @@ export async function extractPlaybookDimensions(text: string): Promise<PlaybookE
 
   const textBlock = message.content.find((b) => b.type === "text");
   const raw = textBlock?.type === "text" ? textBlock.text : "";
-  const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-  const parsed = JSON.parse(cleaned) as { dimensions?: PlaybookExtractionDimension[] };
-  return parsed.dimensions ?? [];
+  try {
+    const parsed = JSON.parse(extractJsonObject(raw)) as { dimensions?: PlaybookExtractionDimension[] };
+    return parsed.dimensions ?? [];
+  } catch (err) {
+    console.error(
+      "[playbook/import] extractPlaybookDimensions JSON parse failed:",
+      err instanceof Error ? err.message : err,
+      `\nRaw Claude response:\n${raw}`
+    );
+    throw err;
+  }
 }
 
 export async function POST(request: NextRequest) {

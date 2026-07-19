@@ -6,6 +6,7 @@ import type { SimilarReference } from "./embeddings";
 import { getContact } from "./db";
 import { enrichFromCRM } from "./crm/enrichment";
 import type { CrmEnrichment } from "./crm/enrichment";
+import { extractJsonObject } from "./ai-json";
 
 const client = new Anthropic();
 
@@ -20,17 +21,6 @@ const TONE_INSTRUCTION: Record<AdminConfig["tone"], string> = {
   professionnel: "Utilise un registre professionnel et accessible.",
   direct: "Sois direct et concis, va droit au but, évite le jargon.",
 };
-
-function extractJSON(raw: string): unknown {
-  let text = raw
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/\s*```\s*$/, "")
-    .trim();
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start !== -1 && end > start) text = text.slice(start, end + 1);
-  return JSON.parse(text);
-}
 
 export type UserContext = {
   product_description: string | null;
@@ -232,7 +222,7 @@ export async function generateBrief(
   }
 
   try {
-    return extractJSON(textBlock.text);
+    return JSON.parse(extractJsonObject(textBlock.text));
   } catch {
     console.error("[brief-generator] Échec du parsing JSON :\n", textBlock.text);
     throw new Error("Le modèle n'a pas retourné du JSON valide.");

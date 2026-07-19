@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { GmailMessage } from "./gmail";
 import { readPromptConfig, DEFAULT_EMAIL_FOLLOWUP_PROMPT, DEFAULT_REPLY_SUGGESTION_PROMPT } from "./admin-config";
+import { extractJsonObject } from "./ai-json";
 
 export type FollowUpEmail = {
   subject: string;
@@ -151,10 +152,8 @@ ${missionInstructions}`;
     return null;
   }
 
-  const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-
   try {
-    return JSON.parse(cleaned) as FollowUpEmail;
+    return JSON.parse(extractJsonObject(raw)) as FollowUpEmail;
   } catch {
     console.log("[email-followup] JSON parse failed, raw:", raw.slice(0, 200));
     return { subject: "", body: raw };

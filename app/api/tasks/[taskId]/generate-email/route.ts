@@ -16,6 +16,7 @@ import {
   type TaskListItem,
 } from "@/lib/db";
 import { formatContactDisplayName } from "@/lib/format";
+import { extractJsonObject } from "@/lib/ai-json";
 
 export type GeneratedTaskEmail = { subject: string; body: string };
 
@@ -89,65 +90,6 @@ Montant total TTC : ${formatCurrency(quote.total_ttc)}`;
   }
 
   return "Aucun contexte source disponible.";
-}
-
-// More resilient than the previous "strip ```json fences and hope the whole
-// string is valid JSON" — a template asking for extra framing (or Claude
-// adding so much as a one-line preamble/postamble around the fence) used to
-// break JSON.parse outright. This isolates the {...} object regardless of
-// what surrounds it, while staying a no-op for the common pure-JSON case.
-function extractJsonObject(raw: string): string {
-  const cleaned = raw.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();
-  const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
-  if (start === -1 || end === -1 || end < start) return cleaned;
-  return sanitizeJsonControlChars(cleaned.slice(start, end + 1));
-}
-
-// Claude intermittently writes a literal newline inside the "body" string
-// value instead of the escaped `\n` (same prompt, same context — reproduced
-// 1-in-3 runs locally against real data), which JSON.parse rejects outright
-// ("Bad control character in string literal"). Walks the string tracking
-// whether we're inside a JSON string (respecting `\"` and `\\` escapes) and
-// escapes any raw control character found there — a no-op when the model
-// already escaped correctly.
-function sanitizeJsonControlChars(text: string): string {
-  let out = "";
-  let inString = false;
-  let escaped = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (inString) {
-      if (escaped) {
-        out += ch;
-        escaped = false;
-        continue;
-      }
-      if (ch === "\\") {
-        out += ch;
-        escaped = true;
-        continue;
-      }
-      if (ch === '"') {
-        out += ch;
-        inString = false;
-        continue;
-      }
-      const code = ch.charCodeAt(0);
-      if (code < 0x20) {
-        if (ch === "\n") out += "\\n";
-        else if (ch === "\r") out += "\\r";
-        else if (ch === "\t") out += "\\t";
-        else out += "\\u" + code.toString(16).padStart(4, "0");
-        continue;
-      }
-      out += ch;
-    } else {
-      out += ch;
-      if (ch === '"') inString = true;
-    }
-  }
-  return out;
 }
 
 function sanitizeEmail(raw: unknown, task: TaskListItem): GeneratedTaskEmail {
