@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { readPromptConfig, DEFAULT_CALL_ANALYSIS_SYSTEM_PROMPT } from "./admin-config";
 import { DEFAULT_PLAYBOOK_SNAPSHOT } from "./db";
-import type { PlaybookSnapshot } from "./db";
+import type { PlaybookSnapshot, CallObjection } from "./db";
 import { extractJsonObject } from "./ai-json";
 
 // Dimension keys are dynamic — driven by whatever playbook (org-specific or
@@ -17,6 +17,7 @@ export type CallAnalysis = {
   strong_points: string[];
   weak_points: string[];
   next_steps: string[];
+  objections: CallObjection[];
 };
 
 const DEFAULT_ANALYSIS: CallAnalysis = {
@@ -26,6 +27,7 @@ const DEFAULT_ANALYSIS: CallAnalysis = {
   strong_points: [],
   weak_points: [],
   next_steps: [],
+  objections: [],
 };
 
 export type AnalyzeContext = {
@@ -93,5 +95,41 @@ ${transcript}`;
       ...DEFAULT_ANALYSIS,
       summary: `Analyse indisponible : ${err instanceof Error ? err.message : String(err)}`,
     };
+  }
+}
+
+// Narrow, dedicated extraction for the objections backfill
+// (scripts/backfill-objections.ts) — a call that already has a good
+// call_analysis (scores, summary, etc.) just needs its objections filled in,
+// not a full re-analysis that risks producing different scores/summary on a
+// second pass and overwriting a perfectly good row. Hardcoded prompt (not
+// admin_config-editable), same rationale as lib/key-points.ts: an internal
+// extraction task, not manager-facing content.
+export async function extractObjectionsFromTranscript(transcript: string): Promise<CallObjection[]> {
+  const client = new Anthropic();
+
+  let raw = "";
+  try {
+    const message = await client.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 1500,
+      system: `Tu analyses la transcription d'un call commercial B2B. Identifie chaque objection concrète soulevée par le prospect (prix, concurrent, timing, besoin d'en parler à un tiers, etc.), avec la réponse effectivement apportée par le commercial dans le transcript. N'invente pas de réponse si le commercial n'a pas répondu — indique alors "Pas de réponse apportée dans ce call.". Liste vide si aucune objection identifiable.
+
+Réponds UNIQUEMENT en JSON strict, sans markdown, avec la structure :
+{ "objections": [{ "objection": "...", "response": "..." }] }`,
+      messages: [{ role: "user", content: transcript }],
+    });
+
+    const textBlock = message.content.find((b) => b.type === "text");
+    raw = textBlock?.type === "text" ? textBlock.text : "";
+    const parsed = JSON.parse(extractJsonObject(raw)) as { objections?: CallObjection[] };
+    return parsed.objections ?? [];
+  } catch (err) {
+    console.error(
+      "[call-analysis] extractObjectionsFromTranscript failed:",
+      err instanceof Error ? err.message : String(err),
+      raw ? `\nRaw Claude response:\n${raw}` : "(no response captured — API call itself failed)"
+    );
+    return [];
   }
 }

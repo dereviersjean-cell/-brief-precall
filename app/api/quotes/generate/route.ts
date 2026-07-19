@@ -53,7 +53,9 @@ function formatCalls(calls: QuoteGenerationCallContext[]): string {
       if (c.summary) parts.push(`Résumé : ${c.summary}`);
       if (c.strengths.length > 0) parts.push(`Points forts : ${c.strengths.join("; ")}`);
       if (c.weaknesses.length > 0) parts.push(`Axes d'amélioration : ${c.weaknesses.join("; ")}`);
-      if (c.objections.length > 0) parts.push(`Objections : ${c.objections.join("; ")}`);
+      if (c.objections.length > 0) {
+        parts.push(`Objections : ${c.objections.map((o) => `${o.objection} (réponse apportée : ${o.response})`).join("; ")}`);
+      }
       if (c.next_steps.length > 0) parts.push(`Prochaines étapes convenues : ${c.next_steps.join("; ")}`);
       return parts.join("\n");
     })

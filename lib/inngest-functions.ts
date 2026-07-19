@@ -17,6 +17,10 @@ import {
   getOrganizationsForUsageBilling,
   getOrganizationsInExpiredGracePeriod,
   updateOrganizationBilling,
+  getUserOrganizationId,
+  getUserIdsConnectedToCrm,
+  getContactEmailsNeedingDealOutcomeSync,
+  upsertDealOutcome,
   type UnansweredFollowUpCall,
   type UnansweredQuote,
   type DigestRecipient,
@@ -24,7 +28,8 @@ import {
 import { syncAndScheduleForUser } from "./recall";
 import { sendWeeklyDigestForUser } from "./digest";
 import { pushNewTasksToHubSpot } from "./tasks-hubspot-sync";
-import { batchGetHubSpotTaskStatuses, getHubSpotOwnerId, findNewHubSpotTasksForOwner } from "./crm/hubspot";
+import { batchGetHubSpotTaskStatuses, getHubSpotOwnerId, findNewHubSpotTasksForOwner, findClosedDealsForEmail as findClosedHubspotDealForEmail } from "./crm/hubspot";
+import { findClosedDealsForEmail as findClosedPipedriveDealForEmail } from "./crm/pipedrive";
 import { reportMonthlyUsageForOrganization } from "./stripe";
 
 // ─── Text extraction ──────────────────────────────────────────────────────────
@@ -465,6 +470,76 @@ export const syncHubSpotTaskStatuses = inngest.createFunction(
     };
     console.log("[sync-hubspot-task-statuses] done —", JSON.stringify(summary));
     return summary;
+  }
+);
+
+// ─── Sync des issues de deals CRM (module Bibliothèque d'objections / win-loss) ─
+//
+// Complète le signal "quote" (écrit de façon synchrone, sans cron, dans
+// acceptQuoteByPublicToken/rejectQuoteByPublicToken — lib/db.ts) avec le
+// statut closedwon/closedlost réel des CRM connectés, pour les deals qui ne
+// passent jamais par un devis Brief. Un step.run par user connecté (même
+// granularité que syncHubSpotTaskStatuses ci-dessus) : un échec sur un user
+// (token expiré, rate limit) n'affecte pas les autres. Ne réinterroge que les
+// contacts sans résultat connu pour cette source (getContactEmailsNeedingDealOutcomeSync)
+// — pas tout l'historique à chaque run.
+export const syncDealOutcomes = inngest.createFunction(
+  {
+    id: "sync-deal-outcomes",
+    triggers: [{ cron: "*/30 * * * *" }],
+  },
+  async ({ step }) => {
+    const sinceISO = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+    let totalSynced = 0;
+
+    const providers: Array<{
+      name: "hubspot" | "pipedrive";
+      findClosedDeal: (userId: string, contactEmail: string) => Promise<{ outcome: "won" | "lost"; amount: number | null; closedAt: string | null } | null>;
+    }> = [
+      { name: "hubspot", findClosedDeal: findClosedHubspotDealForEmail },
+      { name: "pipedrive", findClosedDeal: findClosedPipedriveDealForEmail },
+    ];
+
+    for (const provider of providers) {
+      const userIds = await step.run(`get-users-connected-${provider.name}`, async () => {
+        return getUserIdsConnectedToCrm(provider.name);
+      });
+
+      for (const userId of userIds) {
+        totalSynced += await step.run(`sync-deal-outcomes-${provider.name}-${userId}`, async () => {
+          const organizationId = await getUserOrganizationId(userId).catch(() => null);
+          if (!organizationId) return 0;
+
+          const emails = await getContactEmailsNeedingDealOutcomeSync(userId, organizationId, provider.name, sinceISO).catch((err) => {
+            console.warn(`[sync-deal-outcomes] getContactEmailsNeedingDealOutcomeSync failed for user ${userId} (non-blocking):`, err instanceof Error ? err.message : String(err));
+            return [] as string[];
+          });
+
+          let synced = 0;
+          for (const email of emails) {
+            const closed = await provider.findClosedDeal(userId, email).catch((err) => {
+              console.warn(`[sync-deal-outcomes] ${provider.name} lookup failed for ${email} (non-blocking):`, err instanceof Error ? err.message : String(err));
+              return null;
+            });
+            if (!closed) continue;
+
+            await upsertDealOutcome({
+              organizationId,
+              contactEmail: email,
+              source: provider.name,
+              outcome: closed.outcome,
+              amount: closed.amount,
+              closedAt: closed.closedAt,
+            }).catch((err) => console.warn(`[sync-deal-outcomes] upsertDealOutcome failed for ${email} (non-blocking):`, err instanceof Error ? err.message : String(err)));
+            synced += 1;
+          }
+          return synced;
+        });
+      }
+    }
+
+    console.log(`[sync-deal-outcomes] done — ${totalSynced} deal outcome(s) synced`);
+    return { totalSynced };
   }
 );
 

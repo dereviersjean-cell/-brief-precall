@@ -317,6 +317,43 @@ export async function findPipedriveDealForEmail(userId: string, contactEmail: st
   });
 }
 
+export type PipedriveClosedDeal = { dealId: number; outcome: "won" | "lost"; amount: number | null; closedAt: string | null };
+
+// Mirrors findPipedriveDealForEmail's person resolution, but looks at closed
+// deals instead of open ones (module win/loss, syncDealOutcomes cron in
+// lib/inngest-functions.ts). Pipedrive's deals endpoint filters status
+// server-side (unlike HubSpot, which needs a post-filter) — status: "won"
+// and "lost" are two separate calls, same as getWonDeals's status: "won".
+export async function findClosedDealsForEmail(userId: string, contactEmail: string): Promise<PipedriveClosedDeal | null> {
+  return withPipedriveAuth(userId, async (accessToken, apiDomain) => {
+    const personId = await resolvePersonId(accessToken, apiDomain, contactEmail);
+    if (!personId) return null;
+
+    async function fetchByStatus(status: "won" | "lost"): Promise<PipedriveDeal[]> {
+      const params = new URLSearchParams({ person_id: String(personId), status, sort: "close_time DESC" });
+      const res = await fetch(`${apiDomain}/api/v1/deals?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (res.status === 401) throw new Error("findClosedDealsForEmail auth failed: 401");
+      const data = (await res.json()) as { success: boolean; data: PipedriveDeal[] | null };
+      if (!res.ok || !data.success) return [];
+      return data.data ?? [];
+    }
+
+    const [won, lost] = await Promise.all([fetchByStatus("won"), fetchByStatus("lost")]);
+    const closed = [...won, ...lost].sort((a, b) => (b.close_time ?? "").localeCompare(a.close_time ?? ""));
+
+    const latest = closed[0];
+    if (!latest) return null;
+    return {
+      dealId: latest.id,
+      outcome: latest.status === "won" ? "won" : "lost",
+      amount: latest.value ?? null,
+      closedAt: latest.close_time,
+    };
+  });
+}
+
 export type PipedriveActivityMatch = { activityId: number; subject: string | null; dueAt: string | null };
 
 type PipedriveActivityResult = {

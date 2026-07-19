@@ -380,6 +380,94 @@ function List({ items, icon, color }: { items: string[]; icon: string; color: st
   );
 }
 
+type DealOutcomeInfo = { outcome: "won" | "lost"; source: "quote" | "hubspot" | "pipedrive"; closedAt: string | null };
+type SimilarObjection = { id: string; objection: string; response: string; outcome: DealOutcomeInfo | null };
+
+function OutcomeBadge({ outcome }: { outcome: DealOutcomeInfo | null }) {
+  if (!outcome) return null;
+  const isWon = outcome.outcome === "won";
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
+        isWon ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"
+      }`}
+    >
+      {isWon ? "✓ Deal gagné" : "✕ Deal perdu"}
+      {outcome.source === "quote" ? " (devis)" : " (CRM)"}
+    </span>
+  );
+}
+
+// Fetches on demand (not preloaded with the page) — most objections are
+// never expanded, no reason to pay for an embedding + RPC call on every
+// feedback page load. Local expand/loading/result state per item, not lifted
+// to the parent — each objection's "cas similaires" search is independent.
+function ObjectionItem({ objection, response }: { objection: string; response: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [similar, setSimilar] = useState<SimilarObjection[] | null>(null);
+  const [error, setError] = useState(false);
+
+  async function handleToggle() {
+    if (expanded) {
+      setExpanded(false);
+      return;
+    }
+    setExpanded(true);
+    if (similar !== null || loading) return;
+    setLoading(true);
+    setError(false);
+    try {
+      const res = await fetch("/api/objections/similar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: objection }),
+      });
+      if (!res.ok) throw new Error();
+      const data = (await res.json()) as { similar: SimilarObjection[] };
+      setSimilar(data.similar ?? []);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <li className="text-sm leading-relaxed">
+      <p className="text-slate-700">
+        <span className="text-slate-400">–</span> {objection}
+      </p>
+      <p className="text-slate-500 pl-4 mt-0.5">↳ {response}</p>
+      <button
+        type="button"
+        onClick={handleToggle}
+        className="pl-4 mt-1 text-xs text-indigo-500 hover:text-indigo-600 font-medium"
+      >
+        {expanded ? "Masquer les cas similaires" : "Voir des cas similaires déjà traités"}
+      </button>
+      {expanded && (
+        <div className="pl-4 mt-2 space-y-2">
+          {loading && <p className="text-xs text-slate-400 italic">Recherche en cours…</p>}
+          {error && <p className="text-xs text-red-500">Recherche indisponible pour le moment.</p>}
+          {similar && similar.length === 0 && !loading && !error && (
+            <p className="text-xs text-slate-400 italic">Aucun cas similaire trouvé pour l&apos;instant.</p>
+          )}
+          {similar?.map((s) => (
+            <div key={s.id} className="bg-slate-50 rounded-lg p-3">
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-xs text-slate-600 font-medium">{s.objection}</p>
+                <OutcomeBadge outcome={s.outcome} />
+              </div>
+              <p className="text-xs text-slate-500 mt-1">↳ {s.response}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </li>
+  );
+}
+
 type SendStatus = "idle" | "sending" | "sent" | "error" | "auth-error";
 type VideoStatus = "idle" | "loading" | "ready" | "unavailable";
 type ReplyState =
@@ -743,7 +831,11 @@ export default function FeedbackDetailClient({
                   {(a.objections ?? []).length > 0 && (
                     <div className="bg-white rounded-2xl border border-slate-200 p-5">
                       <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Objections rencontrées</h2>
-                      <List items={a.objections ?? []} icon="–" color="text-slate-400" />
+                      <ul className="space-y-3">
+                        {(a.objections ?? []).map((o, i) => (
+                          <ObjectionItem key={i} objection={o.objection} response={o.response} />
+                        ))}
+                      </ul>
                     </div>
                   )}
 

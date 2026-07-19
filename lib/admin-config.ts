@@ -18,6 +18,7 @@ Tu produis aussi :
 - Une liste de \`strong_points\` (points forts, 2-4)
 - Une liste de \`weak_points\` (points d'amélioration, 2-4)
 - Une liste de \`next_steps\` suggérées (2-4)
+- Une liste d'\`objections\` : chaque objection concrète soulevée par le prospect pendant le call (prix, concurrent, timing, besoin d'en parler à un tiers, etc.), avec la réponse effectivement apportée par le commercial dans le transcript. Liste vide si aucune objection identifiable. Ne pas inventer de réponse si le commercial n'a pas répondu — indiquer alors "Pas de réponse apportée dans ce call."
 
 Réponds UNIQUEMENT en JSON strict, sans markdown, avec la structure :
 {
@@ -30,7 +31,8 @@ Réponds UNIQUEMENT en JSON strict, sans markdown, avec la structure :
   "summary": "...",
   "strong_points": ["...", "..."],
   "weak_points": ["...", "..."],
-  "next_steps": ["...", "..."]
+  "next_steps": ["...", "..."],
+  "objections": [{ "objection": "...", "response": "..." }]
 }
 
 Les clés <key_dimension_X> doivent correspondre EXACTEMENT aux \`key\` fournies dans la liste des dimensions du contexte utilisateur.`;

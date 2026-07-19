@@ -59,7 +59,9 @@ function formatCalls(calls: QuoteGenerationCallContext[]): string {
     .map((c, i) => {
       const parts = [`Call ${i + 1} (${new Date(c.date).toLocaleDateString("fr-FR")})`];
       if (c.summary) parts.push(`Résumé : ${c.summary}`);
-      if (c.objections.length > 0) parts.push(`Objections : ${c.objections.join("; ")}`);
+      if (c.objections.length > 0) {
+        parts.push(`Objections : ${c.objections.map((o) => `${o.objection} (réponse apportée : ${o.response})`).join("; ")}`);
+      }
       if (c.next_steps.length > 0) parts.push(`Prochaines étapes convenues : ${c.next_steps.join("; ")}`);
       return parts.join("\n");
     })

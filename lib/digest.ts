@@ -86,7 +86,9 @@ function formatUserRawMaterial(
       lines.push(`\nCall ${idx + 1}${insight.summary ? ` — ${insight.summary}` : ""}`);
       if (insight.strengths.length) lines.push(`Points forts : ${insight.strengths.join("; ")}`);
       if (insight.weaknesses.length) lines.push(`Points faibles : ${insight.weaknesses.join("; ")}`);
-      if (insight.objections.length) lines.push(`Objections rencontrées : ${insight.objections.join("; ")}`);
+      if (insight.objections.length) {
+        lines.push(`Objections rencontrées : ${insight.objections.map((o) => `${o.objection} (réponse apportée : ${o.response})`).join("; ")}`);
+      }
       if (insight.next_steps.length) lines.push(`Prochaines étapes identifiées : ${insight.next_steps.join("; ")}`);
     });
   }

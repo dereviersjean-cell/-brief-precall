@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { createAsyncTranscript, getBotInfo, getTranscriptContent, transcriptToText, buildTranscriptJson, resolveSpeakerNames } from "@/lib/recall";
-import { createCall, getUserProfile, getUserName, getUserEmail, saveCallAnalysis, updateCallAnalysisKeyPoints, getGoogleTokens, updateCallFollowUp, getContact, createContact, updateContact, generateTasksFromTemplates, getPlaybookSnapshotForUser } from "@/lib/db";
+import { createCall, getUserProfile, getUserName, getUserEmail, saveCallAnalysis, updateCallAnalysisKeyPoints, getGoogleTokens, updateCallFollowUp, getContact, createContact, updateContact, generateTasksFromTemplates, getPlaybookSnapshotForUser, getUserOrganizationId } from "@/lib/db";
 import { pushNewTasksToHubSpot } from "@/lib/tasks-hubspot-sync";
 import { analyzeCall } from "@/lib/call-analysis";
+import { indexCallObjections } from "@/lib/objections";
 import { refreshGoogleAccessToken, getEmailHistory } from "@/lib/gmail";
 import { generateFollowUpEmail } from "@/lib/email-followup";
 import { generateKeyPoints } from "@/lib/key-points";
@@ -216,6 +217,15 @@ export async function POST(request: NextRequest) {
             );
             const { id: analysisId } = await saveCallAnalysis(call.id, savedAnalysis, playbookSnapshot);
             console.log("[bot-webhook] call analysis saved, global_score:", savedAnalysis.scores.global_score);
+
+            if (savedAnalysis.objections.length > 0) {
+              const organizationId = await getUserOrganizationId(userId).catch(() => null);
+              if (organizationId) {
+                await indexCallObjections(organizationId, call.id, contactEmail, savedAnalysis.objections).catch((err) =>
+                  console.warn("[bot-webhook] indexCallObjections failed (non-blocking):", err instanceof Error ? err.message : String(err))
+                );
+              }
+            }
 
             try {
               const { createdCount, toPushToHubSpot } = await generateTasksFromTemplates(userId, "call", call.id, {

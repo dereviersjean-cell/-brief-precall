@@ -286,6 +286,51 @@ export async function findHubSpotDealForEmail(userId: string, contactEmail: stri
   });
 }
 
+export type HubspotClosedDeal = { dealId: string; outcome: "won" | "lost"; amount: number | null; closedAt: string | null };
+
+// Mirrors findHubSpotDealForEmail's contact/association resolution, but
+// inverted: this is the only place in the codebase that looks at CLOSED
+// deals rather than filtering them out (module win/loss, syncDealOutcomes
+// cron in lib/inngest-functions.ts). Not used by any live write path — read
+// this only from the sync cron.
+export async function findClosedDealsForEmail(userId: string, contactEmail: string): Promise<HubspotClosedDeal | null> {
+  return withHubspotAuth(userId, async (accessToken) => {
+    const contactId = await resolveContactId(accessToken, contactEmail);
+    if (!contactId) return null;
+
+    const assocRes = await fetch(`https://api.hubapi.com/crm/v4/objects/contacts/${contactId}/associations/deals`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (assocRes.status === 401) throw new Error("findClosedDealsForEmail auth failed: 401");
+    if (!assocRes.ok) return null;
+    const assocData = (await assocRes.json()) as { results?: Array<{ toObjectId: string }> };
+    const dealIds = (assocData.results ?? []).map((r) => r.toObjectId);
+    if (dealIds.length === 0) return null;
+
+    const dealsRes = await fetch("https://api.hubapi.com/crm/v3/objects/deals/batch/read", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ inputs: dealIds.map((id) => ({ id })), properties: ["dealstage", "closedate", "amount"] }),
+    });
+    if (!dealsRes.ok) return null;
+    const dealsData = (await dealsRes.json()) as {
+      results?: Array<{ id: string; properties: { dealstage?: string | null; closedate?: string | null; amount?: string | null } }>;
+    };
+    const closedDeals = (dealsData.results ?? [])
+      .filter((d) => CLOSED_DEAL_STAGES.has(d.properties.dealstage ?? ""))
+      .sort((a, b) => (b.properties.closedate ?? "").localeCompare(a.properties.closedate ?? ""));
+
+    const latest = closedDeals[0];
+    if (!latest) return null;
+    return {
+      dealId: latest.id,
+      outcome: latest.properties.dealstage === "closedwon" ? "won" : "lost",
+      amount: latest.properties.amount ? Number(latest.properties.amount) : null,
+      closedAt: latest.properties.closedate ?? null,
+    };
+  });
+}
+
 export type HubspotMeetingMatch = { meetingId: string; title: string | null; startTime: string | null };
 
 type HubspotMeetingResult = {

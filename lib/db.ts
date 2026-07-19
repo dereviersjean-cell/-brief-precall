@@ -568,12 +568,14 @@ export type AnalysisScores = {
   [dimensionKey: string]: AnalysisDimensionScore | number;
 };
 
+export type CallObjection = { objection: string; response: string };
+
 export type CallAnalysisRow = {
   id: string;
   scores: AnalysisScores | null;
   strengths: string[] | null;
   weaknesses: string[] | null;
-  objections: string[] | null;
+  objections: CallObjection[] | null;
   next_steps: string[] | null;
   summary: string | null;
   sentiment: string | null;
@@ -589,13 +591,37 @@ export type CallAnalysisRow = {
   key_points_generated_at: string | null;
 };
 
+// Rows written before the objections field's {objection,response} shape
+// existed (an older, undocumented version of call_analysis_system_prompt —
+// discovered live on the Ravachol reference call, which still has a plain
+// string[]) may still hold bare strings. Coerced here, at the single
+// chokepoint every call_analysis row passes through (normalizeCallAnalysis
+// below), rather than at each of the several call sites that read
+// .objections — so nothing downstream ever reads .objection/.response as
+// undefined on old data. New rows (always written via saveCallAnalysis with
+// the current CallAnalysis shape) pass through unchanged.
+function normalizeObjections(raw: unknown): CallObjection[] | null {
+  if (raw == null) return null;
+  if (!Array.isArray(raw)) return [];
+  return raw.map((item) =>
+    typeof item === "string" ? { objection: item, response: "Réponse non disponible (ancien format)." } : (item as CallObjection)
+  );
+}
+
 // PostgREST returns an embedded call_analysis(...) as a plain object now that
 // call_analysis.call_id has a UNIQUE constraint (it infers a 1:1 relation
 // instead of 1:many) — previously it was an array, and this repo has several
-// `?.[0]` reads left over from that. Handles both shapes defensively.
+// `?.[0]` reads left over from that. Handles both shapes defensively, and
+// normalizes any legacy objections shape found along the way (see
+// normalizeObjections above) — every caller goes through this function, so
+// it's the one place that needs to know about the legacy shape.
 function normalizeCallAnalysis<T>(raw: T | T[] | null | undefined): T | null {
   if (!raw) return null;
-  return Array.isArray(raw) ? raw[0] ?? null : raw;
+  const row = Array.isArray(raw) ? raw[0] ?? null : raw;
+  if (row && typeof row === "object" && "objections" in row) {
+    (row as { objections: unknown }).objections = normalizeObjections((row as { objections: unknown }).objections);
+  }
+  return row;
 }
 
 export type CallWithAnalysis = {
@@ -1952,6 +1978,146 @@ export async function getTeamAverageScores(managerId: string): Promise<TeamAvera
   };
 }
 
+// ─── Win/loss (module Bibliothèque d'objections, /team/insights) ──────────
+
+export type ObjectionStat = {
+  objection: string;
+  occurrences: number;
+  wonCount: number;
+  lostCount: number;
+};
+
+// V1 grouping is by normalized (trimmed, lowercased) objection text, not
+// semantic clustering — two calls phrasing the same objection differently
+// end up as separate rows. A real dedup would cluster by embedding
+// similarity (call_objections.embedding already has what's needed); deferred
+// as a later improvement, this keeps the first version simple and correct.
+export async function getObjectionStatsForOrganization(organizationId: string): Promise<ObjectionStat[]> {
+  const { data, error } = await supabaseAdmin
+    .from("call_objections")
+    .select("objection, contact_email")
+    .eq("organization_id", organizationId);
+  if (error) throw error;
+
+  const rows = (data ?? []) as { objection: string; contact_email: string | null }[];
+  if (rows.length === 0) return [];
+
+  const outcomeByEmail = await getDealOutcomesByEmail(organizationId, rows.map((r) => r.contact_email));
+
+  const byKey = new Map<string, ObjectionStat>();
+  for (const row of rows) {
+    const key = row.objection.trim().toLowerCase();
+    const stat = byKey.get(key) ?? { objection: row.objection.trim(), occurrences: 0, wonCount: 0, lostCount: 0 };
+    stat.occurrences += 1;
+    const outcome = row.contact_email ? outcomeByEmail.get(row.contact_email) : undefined;
+    if (outcome === "won") stat.wonCount += 1;
+    else if (outcome === "lost") stat.lostCount += 1;
+    byKey.set(key, stat);
+  }
+
+  return Array.from(byKey.values()).sort((a, b) => b.occurrences - a.occurrences);
+}
+
+// Shared by getObjectionStatsForOrganization and getDimensionScoresByOutcome
+// — one bulk fetch of deal_outcomes for a set of contact emails, ordered so
+// that when several sources disagree for the same contact, the most recently
+// closed one is what survives in the map (same "most recent wins" rule as
+// getDealOutcomeForContact's single-contact lookup).
+async function getDealOutcomesByEmail(organizationId: string, contactEmails: (string | null)[]): Promise<Map<string, DealOutcome>> {
+  const emails = Array.from(new Set(contactEmails.filter((e): e is string => !!e)));
+  const byEmail = new Map<string, DealOutcome>();
+  if (emails.length === 0) return byEmail;
+
+  const { data, error } = await supabaseAdmin
+    .from("deal_outcomes")
+    .select("contact_email, outcome, closed_at")
+    .eq("organization_id", organizationId)
+    .in("contact_email", emails)
+    .order("closed_at", { ascending: true, nullsFirst: true });
+  if (error) throw error;
+
+  for (const row of (data ?? []) as { contact_email: string; outcome: string }[]) {
+    byEmail.set(row.contact_email, row.outcome as DealOutcome);
+  }
+  return byEmail;
+}
+
+export type DimensionScoreByOutcome = {
+  key: string;
+  label: string;
+  weight: number;
+  wonAverage: number | null;
+  lostAverage: number | null;
+  wonCount: number;
+  lostCount: number;
+};
+
+// Same JS-aggregation approach as getTeamAverageScores just above (dimension
+// keys are dynamic per-org/per-playbook-version, not agregable cleanly in
+// SQL — see that function's comment), but scoped to the whole organization
+// (getUsersInOrganization) rather than one manager's linked commercials, and
+// split into two buckets by deal outcome instead of a single average.
+export async function getDimensionScoresByOutcome(organizationId: string): Promise<DimensionScoreByOutcome[]> {
+  const playbook = await getPlaybookForOrganization(organizationId);
+  const dimensions = (playbook ? playbook.dimensions : DEFAULT_PLAYBOOK_SNAPSHOT.dimensions).map((d) => ({
+    key: d.key,
+    label: d.label,
+    weight: d.weight,
+  }));
+
+  const members = await getUsersInOrganization(organizationId);
+  const empty = dimensions.map((d) => ({ ...d, wonAverage: null, lostAverage: null, wonCount: 0, lostCount: 0 }));
+  if (members.length === 0) return empty;
+
+  const { data, error } = await supabaseAdmin
+    .from("calls")
+    .select("contact_email, call_analysis(scores)")
+    .in("user_id", members.map((m) => m.id))
+    .not("contact_email", "is", null);
+  if (error) throw error;
+
+  const rows = (data ?? []) as Array<{
+    contact_email: string | null;
+    call_analysis: { scores: AnalysisScores | null } | { scores: AnalysisScores | null }[] | null;
+  }>;
+  if (rows.length === 0) return empty;
+
+  const outcomeByEmail = await getDealOutcomesByEmail(organizationId, rows.map((r) => r.contact_email));
+
+  const wonScores: AnalysisScores[] = [];
+  const lostScores: AnalysisScores[] = [];
+  for (const row of rows) {
+    const analysis = normalizeCallAnalysis(row.call_analysis)?.scores;
+    if (!analysis || !row.contact_email) continue;
+    const outcome = outcomeByEmail.get(row.contact_email);
+    if (outcome === "won") wonScores.push(analysis);
+    else if (outcome === "lost") lostScores.push(analysis);
+  }
+
+  const avg = (values: number[]): number | null =>
+    values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : null;
+
+  return dimensions.map((d) => {
+    const wonValues = wonScores
+      .map((s) => s[d.key])
+      .filter((v): v is AnalysisDimensionScore => typeof v === "object" && v !== null)
+      .map((v) => v.score);
+    const lostValues = lostScores
+      .map((s) => s[d.key])
+      .filter((v): v is AnalysisDimensionScore => typeof v === "object" && v !== null)
+      .map((v) => v.score);
+    return {
+      key: d.key,
+      label: d.label,
+      weight: d.weight,
+      wonAverage: avg(wonValues),
+      lostAverage: avg(lostValues),
+      wonCount: wonValues.length,
+      lostCount: lostValues.length,
+    };
+  });
+}
+
 export type CommercialDetailForManager = {
   user_id: string;
   name: string | null;
@@ -2042,7 +2208,7 @@ export async function saveCallAnalysis(
         call_id: callId,
         strengths: analysis.strong_points,
         weaknesses: analysis.weak_points,
-        objections: [],
+        objections: analysis.objections,
         next_steps: analysis.next_steps,
         summary: analysis.summary,
         sentiment: analysis.sentiment,
@@ -2931,7 +3097,7 @@ export type QuoteGenerationCallContext = {
   summary: string | null;
   strengths: string[];
   weaknesses: string[];
-  objections: string[];
+  objections: CallObjection[];
   next_steps: string[];
 };
 
@@ -2956,7 +3122,7 @@ export async function getCallContextForContact(
     summary: string | null;
     strengths: string[] | null;
     weaknesses: string[] | null;
-    objections: string[] | null;
+    objections: CallObjection[] | null;
     next_steps: string[] | null;
   };
 
@@ -3090,6 +3256,101 @@ export async function markQuoteAsViewed(token: string): Promise<void> {
   if (error) throw error;
 }
 
+// ─── Deal outcomes (module win/loss) ───────────────────────────────────────
+//
+// Unifies two signals into one table: quotes accepted/rejected (written
+// synchronously below, at the moment of the outcome — reliable, already
+// persisted, no cron needed) and CRM closedwon/closedlost deals (written by
+// the syncDealOutcomes cron, lib/inngest-functions.ts — see
+// lib/crm/hubspot.ts and lib/crm/pipedrive.ts's findClosedDealsForEmail).
+// contact_email is the join key throughout Brief for "which deal is this"
+// (same key getCallContextForContact already uses) — there's no CRM deal id
+// stored anywhere on calls/quotes to join on instead.
+
+export type DealOutcome = "won" | "lost";
+export type DealOutcomeSource = "quote" | "hubspot" | "pipedrive";
+
+export async function upsertDealOutcome(params: {
+  organizationId: string;
+  contactEmail: string;
+  source: DealOutcomeSource;
+  outcome: DealOutcome;
+  amount: number | null;
+  closedAt: string | null;
+}): Promise<void> {
+  const { error } = await supabaseAdmin.from("deal_outcomes").upsert(
+    {
+      organization_id: params.organizationId,
+      contact_email: params.contactEmail,
+      source: params.source,
+      outcome: params.outcome,
+      amount: params.amount,
+      closed_at: params.closedAt,
+      synced_at: new Date().toISOString(),
+    },
+    { onConflict: "organization_id,contact_email,source" }
+  );
+  if (error) throw error;
+}
+
+export type DealOutcomeInfo = { outcome: DealOutcome; source: DealOutcomeSource; closedAt: string | null };
+
+// Most recent signal wins when several sources disagree (e.g. a CRM deal
+// re-opened and closed differently after the Brief quote was accepted).
+export async function getDealOutcomeForContact(organizationId: string, contactEmail: string): Promise<DealOutcomeInfo | null> {
+  const { data, error } = await supabaseAdmin
+    .from("deal_outcomes")
+    .select("outcome, source, closed_at")
+    .eq("organization_id", organizationId)
+    .eq("contact_email", contactEmail)
+    .order("closed_at", { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const row = data as { outcome: string; source: string; closed_at: string | null };
+  return { outcome: row.outcome as DealOutcome, source: row.source as DealOutcomeSource, closedAt: row.closed_at };
+}
+
+export async function getUserIdsConnectedToCrm(provider: string): Promise<string[]> {
+  const { data, error } = await supabaseAdmin.from("crm_connections").select("user_id").eq("provider", provider);
+  if (error) throw error;
+  return (data ?? []).map((r) => (r as { user_id: string }).user_id);
+}
+
+// Contacts worth checking against the CRM for this cron run: seen in this
+// user's calls recently, but not yet resolved (for this source) in
+// deal_outcomes — so re-runs only ever query the CRM for contacts that are
+// still unknown, not the user's entire call history every 30 minutes.
+export async function getContactEmailsNeedingDealOutcomeSync(
+  userId: string,
+  organizationId: string,
+  source: DealOutcomeSource,
+  sinceISO: string
+): Promise<string[]> {
+  const { data: callRows, error } = await supabaseAdmin
+    .from("calls")
+    .select("contact_email")
+    .eq("user_id", userId)
+    .not("contact_email", "is", null)
+    .gte("created_at", sinceISO);
+  if (error) throw error;
+
+  const emails = Array.from(new Set((callRows ?? []).map((r) => (r as { contact_email: string }).contact_email).filter(Boolean)));
+  if (emails.length === 0) return [];
+
+  const { data: existing, error: existError } = await supabaseAdmin
+    .from("deal_outcomes")
+    .select("contact_email")
+    .eq("organization_id", organizationId)
+    .eq("source", source)
+    .in("contact_email", emails);
+  if (existError) throw existError;
+
+  const known = new Set((existing ?? []).map((r) => (r as { contact_email: string }).contact_email));
+  return emails.filter((e) => !known.has(e));
+}
+
 export type AcceptQuoteResult = { ok: true; quote: Quote } | { ok: false; error: string };
 
 // Same compare-and-swap idea as markQuoteAsViewed's atomic guard: the update
@@ -3123,7 +3384,22 @@ export async function acceptQuoteByPublicToken(token: string): Promise<AcceptQuo
     return { ok: false, error: "Ce devis a déjà été traité." };
   }
 
-  return { ok: true, quote: updated as Quote };
+  const quote = updated as Quote;
+  if (quote.client_email) {
+    const organizationId = await getUserOrganizationId(quote.user_id).catch(() => null);
+    if (organizationId) {
+      await upsertDealOutcome({
+        organizationId,
+        contactEmail: quote.client_email,
+        source: "quote",
+        outcome: "won",
+        amount: quote.total_ttc,
+        closedAt: quote.accepted_at,
+      }).catch((err) => console.warn("[acceptQuoteByPublicToken] upsertDealOutcome failed (non-blocking):", err instanceof Error ? err.message : String(err)));
+    }
+  }
+
+  return { ok: true, quote };
 }
 
 export type RejectQuoteResult = { ok: true } | { ok: false; error: string };
@@ -3147,11 +3423,26 @@ export async function rejectQuoteByPublicToken(token: string, reason: string | n
     .update({ status: "rejected", rejected_at: new Date().toISOString(), rejection_reason: reason })
     .eq("id", (existing as { id: string }).id)
     .eq("status", status)
-    .select("id")
+    .select("id, user_id, client_email, total_ttc, rejected_at")
     .maybeSingle();
   if (error) throw error;
   if (!updated) {
     return { ok: false, error: "Ce devis a déjà été traité." };
+  }
+
+  const rejectedQuote = updated as { user_id: string; client_email: string | null; total_ttc: number; rejected_at: string };
+  if (rejectedQuote.client_email) {
+    const organizationId = await getUserOrganizationId(rejectedQuote.user_id).catch(() => null);
+    if (organizationId) {
+      await upsertDealOutcome({
+        organizationId,
+        contactEmail: rejectedQuote.client_email,
+        source: "quote",
+        outcome: "lost",
+        amount: rejectedQuote.total_ttc,
+        closedAt: rejectedQuote.rejected_at,
+      }).catch((err) => console.warn("[rejectQuoteByPublicToken] upsertDealOutcome failed (non-blocking):", err instanceof Error ? err.message : String(err)));
+    }
   }
 
   return { ok: true };
@@ -4885,7 +5176,7 @@ export type DigestCallInsight = {
   summary: string | null;
   strengths: string[];
   weaknesses: string[];
-  objections: string[];
+  objections: CallObjection[];
   next_steps: string[];
 };
 

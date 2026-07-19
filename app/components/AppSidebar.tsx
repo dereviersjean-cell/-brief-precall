@@ -52,16 +52,17 @@ export default function AppSidebar() {
   const notificationsActive = pathname.startsWith("/notifications");
   const playbookActive = pathname.startsWith("/team/playbook");
   const emailTemplatesActive = pathname.startsWith("/team/email-templates");
-  const teamActive = pathname.startsWith("/team") && !playbookActive && !emailTemplatesActive;
+  const insightsActive = pathname.startsWith("/team/insights");
+  const teamActive = pathname.startsWith("/team") && !playbookActive && !emailTemplatesActive && !insightsActive;
   const settingsActive = pathname.startsWith("/settings");
 
   // Collapsed by default, expanded automatically whenever a sub-page is
   // active (direct nav or refresh lands there) — manual toggling otherwise
   // persists as the user navigates around the rest of the app.
-  const [teamMenuOpen, setTeamMenuOpen] = useState(teamActive || playbookActive || emailTemplatesActive);
+  const [teamMenuOpen, setTeamMenuOpen] = useState(teamActive || playbookActive || emailTemplatesActive || insightsActive);
   useEffect(() => {
-    if (playbookActive || emailTemplatesActive) setTeamMenuOpen(true);
-  }, [playbookActive, emailTemplatesActive]);
+    if (playbookActive || emailTemplatesActive || insightsActive) setTeamMenuOpen(true);
+  }, [playbookActive, emailTemplatesActive, insightsActive]);
 
   const navItems: { href: string; label: string; icon: LucideIcon; active: boolean; badge?: number }[] = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, active: dashboardActive },
@@ -156,6 +157,14 @@ export default function AppSidebar() {
                   }`}
                 >
                   Templates emails
+                </Link>
+                <Link
+                  href="/team/insights"
+                  className={`block px-2.5 py-1.5 rounded-md text-sm transition-colors duration-200 ${
+                    insightsActive ? "text-primary font-medium bg-[#F5F3FF]" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                  }`}
+                >
+                  Insights
                 </Link>
               </div>
             )}

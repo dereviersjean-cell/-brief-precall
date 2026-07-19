@@ -56,7 +56,11 @@ async function buildSourceContext(task: TaskListItem, userId: string): Promise<s
       parts.push(`Call du ${new Date(call.started_at ?? call.created_at).toLocaleDateString("fr-FR")}`);
       if (call.analysis?.summary) parts.push(`Résumé : ${call.analysis.summary}`);
       if (call.analysis?.strengths?.length) parts.push(`Points forts : ${call.analysis.strengths.join("; ")}`);
-      if (call.analysis?.objections?.length) parts.push(`Objections : ${call.analysis.objections.join("; ")}`);
+      if (call.analysis?.objections?.length) {
+        parts.push(
+          `Objections : ${call.analysis.objections.map((o) => `${o.objection} (réponse apportée : ${o.response})`).join("; ")}`
+        );
+      }
       if (call.analysis?.next_steps?.length) {
         parts.push(`Prochaines étapes convenues : ${call.analysis.next_steps.join("; ")}`);
       }
