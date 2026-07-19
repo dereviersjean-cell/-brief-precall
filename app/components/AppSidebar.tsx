@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, FileText, Video, History, FileCheck, CheckSquare, Bell, Users, Settings, LogOut, ChevronDown } from "lucide-react";
+import { LayoutDashboard, FileText, Video, History, FileCheck, CheckSquare, Bell, Users, Settings, HelpCircle, LogOut, ChevronDown } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export default function AppSidebar() {
@@ -55,6 +55,7 @@ export default function AppSidebar() {
   const insightsActive = pathname.startsWith("/team/insights");
   const teamActive = pathname.startsWith("/team") && !playbookActive && !emailTemplatesActive && !insightsActive;
   const settingsActive = pathname.startsWith("/settings");
+  const helpActive = pathname.startsWith("/help");
 
   // Collapsed by default, expanded automatically whenever a sub-page is
   // active (direct nav or refresh lands there) — manual toggling otherwise
@@ -172,8 +173,18 @@ export default function AppSidebar() {
         )}
       </nav>
 
-      {/* Bottom — settings, sign out, user */}
+      {/* Bottom — help, settings, sign out, user */}
       <div className="px-3 py-4 space-y-2 shrink-0">
+        <Link
+          href="/help"
+          className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md border border-gray-200 text-sm font-medium hover:bg-gray-50 transition-colors duration-200 ${
+            helpActive ? "text-primary" : "text-gray-600"
+          }`}
+        >
+          <HelpCircle className="w-3.5 h-3.5" />
+          Aide
+        </Link>
+
         <Link
           href="/settings"
           className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md border border-gray-200 text-sm font-medium hover:bg-gray-50 transition-colors duration-200 ${

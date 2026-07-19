@@ -9,6 +9,7 @@ import {
   PenLine,
   LayoutDashboard,
   Building2,
+  BookOpen,
   LogOut,
   ShieldCheck,
 } from "lucide-react";
@@ -20,6 +21,7 @@ const TABS: { label: string; href: string; icon: LucideIcon }[] = [
   { label: "Test Analyse", href: "/admin/test-analysis", icon: PhoneCall },
   { label: "Test Email", href: "/admin/test-email", icon: Mail },
   { label: "Prompts", href: "/admin/prompts", icon: PenLine },
+  { label: "Aide", href: "/admin/help", icon: BookOpen },
   { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { label: "Organisations", href: "/admin/organizations", icon: Building2 },
 ];

@@ -4918,6 +4918,120 @@ export async function reorderEmailTemplates(orgId: string, orderedIds: string[])
   for (const r of results) if (r.error) throw r.error;
 }
 
+// ─── Help articles (base de connaissance "Comment ça marche ?") ───────────
+// Contenu global (pas par organisation), édité depuis /admin (backoffice
+// Oliverlist, mot de passe partagé) — pas par les managers, contrairement à
+// email_templates juste au-dessus. visible_to filtre l'affichage côté page
+// utilisateur (/help) selon le rôle résolu frais depuis la DB.
+
+export type HelpArticleVisibility = "manager" | "commercial" | "both";
+
+export type HelpArticle = {
+  id: string;
+  category: string;
+  title: string;
+  content: string;
+  visible_to: HelpArticleVisibility;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function getAllHelpArticles(): Promise<HelpArticle[]> {
+  const { data, error } = await supabaseAdmin
+    .from("help_articles")
+    .select("*")
+    .order("category", { ascending: true })
+    .order("sort_order", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as HelpArticle[];
+}
+
+export async function getHelpArticlesForRole(role: "manager" | "commercial"): Promise<HelpArticle[]> {
+  const { data, error } = await supabaseAdmin
+    .from("help_articles")
+    .select("*")
+    .in("visible_to", [role, "both"])
+    .order("category", { ascending: true })
+    .order("sort_order", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as HelpArticle[];
+}
+
+export type HelpArticleInput = {
+  category: string;
+  title: string;
+  content: string;
+  visible_to: HelpArticleVisibility;
+  sort_order?: number;
+};
+
+export async function createHelpArticle(data: HelpArticleInput): Promise<string> {
+  let sortOrder = data.sort_order;
+  if (sortOrder === undefined) {
+    const { count, error: countError } = await supabaseAdmin
+      .from("help_articles")
+      .select("id", { count: "exact", head: true })
+      .eq("category", data.category);
+    if (countError) throw countError;
+    sortOrder = count ?? 0;
+  }
+
+  const { data: row, error } = await supabaseAdmin
+    .from("help_articles")
+    .insert({
+      category: data.category,
+      title: data.title,
+      content: data.content,
+      visible_to: data.visible_to,
+      sort_order: sortOrder,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return (row as { id: string }).id;
+}
+
+export async function updateHelpArticle(articleId: string, data: Partial<HelpArticleInput>): Promise<void> {
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (data.category !== undefined) patch.category = data.category;
+  if (data.title !== undefined) patch.title = data.title;
+  if (data.content !== undefined) patch.content = data.content;
+  if (data.visible_to !== undefined) patch.visible_to = data.visible_to;
+  if (data.sort_order !== undefined) patch.sort_order = data.sort_order;
+
+  const { error } = await supabaseAdmin.from("help_articles").update(patch).eq("id", articleId);
+  if (error) throw error;
+}
+
+// Pas de garde "dernier article" contrairement à deleteEmailTemplate — un
+// centre d'aide vide pendant l'édition est un état valide, aucun flow
+// produit ne dépend d'avoir au moins un article.
+export async function deleteHelpArticle(articleId: string): Promise<void> {
+  const { error } = await supabaseAdmin.from("help_articles").delete().eq("id", articleId);
+  if (error) throw error;
+}
+
+// Scope de validation = category plutôt qu'organization_id (email_templates
+// ci-dessus) — le réordonnancement se fait au sein d'une catégorie affichée
+// dans l'admin, pas globalement sur toute la table.
+export async function reorderHelpArticles(category: string, orderedIds: string[]): Promise<void> {
+  const { data: existing, error: existingError } = await supabaseAdmin
+    .from("help_articles")
+    .select("id")
+    .eq("category", category);
+  if (existingError) throw existingError;
+  const validIds = new Set((existing ?? []).map((r) => (r as { id: string }).id));
+  if (orderedIds.length === 0 || !orderedIds.every((id) => validIds.has(id))) {
+    throw new Error("Un ou plusieurs articles n'appartiennent pas à cette catégorie.");
+  }
+
+  const results = await Promise.all(
+    orderedIds.map((id, index) => supabaseAdmin.from("help_articles").update({ sort_order: index }).eq("id", id))
+  );
+  for (const r of results) if (r.error) throw r.error;
+}
+
 // ─── Notification preferences (module Distribution Flexible, sous-étape A) ─
 // Strictly per-user, never per-organization — a manager has no read or write
 // access to a commercial's preferences, even for calls/briefs they're

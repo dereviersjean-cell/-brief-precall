@@ -12,6 +12,7 @@ export const config = {
     "/tasks/:path*",
     "/settings/:path*",
     "/team/:path*",
+    "/help/:path*",
     "/onboarding/:path*",
   ],
 };
