@@ -1,4 +1,5 @@
-import { Phone, FileText, ListChecks, TrendingUp } from "lucide-react";
+import Link from "next/link";
+import { Phone, FileText, ListChecks, TrendingUp, Calendar, Download, Sparkles } from "lucide-react";
 import {
   getCommercialDigestData,
   getRecentCallScores,
@@ -9,7 +10,7 @@ import { fridayEveningDigestRange } from "@/lib/digest";
 import { mostRecentParisMonday, bucketScoresByWeek } from "@/lib/paris-week";
 import { formatContactDisplayName } from "@/lib/format";
 import { PageHeader } from "@/app/components/ui/PageHeader";
-import { Card } from "@/app/components/ui/ui-bits";
+import { Card, Button } from "@/app/components/ui/ui-bits";
 import StatTile from "./StatTile";
 import ScoreTrendChart from "./ScoreTrendChart";
 import ConnectionsStatus from "./ConnectionsStatus";
@@ -63,6 +64,22 @@ export default async function CommercialOverview({ userId, userName }: { userId:
               </>
             }
             subtitle={`${now.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })} — voici votre semaine.`}
+            actions={
+              <>
+                <Button variant="secondary" icon={<Calendar className="h-3.5 w-3.5" />} disabled title="Bientôt disponible">
+                  Cette semaine
+                </Button>
+                <Button variant="secondary" icon={<Download className="h-3.5 w-3.5" />} disabled title="Bientôt disponible">
+                  Exporter
+                </Button>
+                <Link
+                  href="/brief"
+                  className="brand-gradient inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-lg text-[13px] font-medium text-white shadow-[var(--shadow-glow)] hover:brightness-110 transition-all"
+                >
+                  <Sparkles className="h-3.5 w-3.5" /> Nouveau brief
+                </Link>
+              </>
+            }
           />
         </div>
       </FadeIn>

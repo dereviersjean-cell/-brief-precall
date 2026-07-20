@@ -1,6 +1,7 @@
 import AppSidebar from "@/app/components/AppSidebar";
 import ImpersonationBanner from "@/app/components/ImpersonationBanner";
 import BillingGraceBanner from "@/app/components/BillingGraceBanner";
+import TopBar from "@/app/components/TopBar";
 import QuoteAcceptanceToast from "./QuoteAcceptanceToast";
 import type { ReactNode } from "react";
 
@@ -11,6 +12,7 @@ export default function QuotesLayout({ children }: { children: ReactNode }) {
       <div className="flex-1 ml-60 min-w-0">
         <ImpersonationBanner />
         <BillingGraceBanner />
+        <TopBar />
         <QuoteAcceptanceToast />
         {children}
       </div>

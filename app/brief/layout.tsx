@@ -1,6 +1,7 @@
 import AppSidebar from "@/app/components/AppSidebar";
 import ImpersonationBanner from "@/app/components/ImpersonationBanner";
 import BillingGraceBanner from "@/app/components/BillingGraceBanner";
+import TopBar from "@/app/components/TopBar";
 import type { ReactNode } from "react";
 
 export default function BriefLayout({ children }: { children: ReactNode }) {
@@ -10,6 +11,7 @@ export default function BriefLayout({ children }: { children: ReactNode }) {
       <div className="flex-1 ml-60 min-w-0">
         <ImpersonationBanner />
         <BillingGraceBanner />
+        <TopBar />
         {children}
       </div>
     </div>

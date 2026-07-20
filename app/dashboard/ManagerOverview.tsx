@@ -1,9 +1,10 @@
-import { Phone, FileText, Users as UsersIcon, TrendingUp } from "lucide-react";
+import Link from "next/link";
+import { Phone, FileText, Users as UsersIcon, TrendingUp, Calendar, Download, Sparkles, Target } from "lucide-react";
 import { getCommercialsForManager, getManagerDigestData, getRecentTeamCallScores, getTeamAverageScores, getTeamOverview } from "@/lib/db";
 import { fridayEveningDigestRange } from "@/lib/digest";
 import { mostRecentParisMonday, bucketScoresByWeek } from "@/lib/paris-week";
 import { PageHeader } from "@/app/components/ui/PageHeader";
-import { Card } from "@/app/components/ui/ui-bits";
+import { Card, Button } from "@/app/components/ui/ui-bits";
 import StatTile from "./StatTile";
 import ScoreTrendChart from "./ScoreTrendChart";
 import TeamRosterTable, { type RosterRow } from "./TeamRosterTable";
@@ -77,6 +78,22 @@ export default async function ManagerOverview({ userId, userName }: { userId: st
               </>
             }
             subtitle={`${now.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })} — vue d'équipe.`}
+            actions={
+              <>
+                <Button variant="secondary" icon={<Calendar className="h-3.5 w-3.5" />} disabled title="Bientôt disponible">
+                  Cette semaine
+                </Button>
+                <Button variant="secondary" icon={<Download className="h-3.5 w-3.5" />} disabled title="Bientôt disponible">
+                  Exporter
+                </Button>
+                <Link
+                  href="/brief"
+                  className="brand-gradient inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-lg text-[13px] font-medium text-white shadow-[var(--shadow-glow)] hover:brightness-110 transition-all"
+                >
+                  <Sparkles className="h-3.5 w-3.5" /> Nouveau brief
+                </Link>
+              </>
+            }
           />
         </div>
       </FadeIn>
@@ -113,12 +130,15 @@ export default async function ManagerOverview({ userId, userName }: { userId: st
           {averages.dimensions.length > 0 && (
             <FadeIn delay={0.15}>
               <Card padded={false} className="p-5">
-                <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-4">
-                  Scores moyens par dimension
-                  <span className="block text-[11px] font-normal normal-case text-slate-400 mt-0.5">
-                    {averages.calls_analyzed_count} call{averages.calls_analyzed_count !== 1 ? "s" : ""} analysé{averages.calls_analyzed_count !== 1 ? "s" : ""}, tous temps
-                  </span>
-                </h2>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="grid h-7 w-7 place-items-center rounded-lg bg-[color:var(--lavender)] text-[color:var(--violet)] shrink-0">
+                    <Target className="h-3.5 w-3.5" />
+                  </div>
+                  <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500">Scores moyens par dimension</h2>
+                </div>
+                <span className="block text-[11px] font-normal text-slate-400 mb-4">
+                  {averages.calls_analyzed_count} call{averages.calls_analyzed_count !== 1 ? "s" : ""} analysé{averages.calls_analyzed_count !== 1 ? "s" : ""}, tous temps
+                </span>
                 <DimensionScores dimensions={averages.dimensions} />
               </Card>
             </FadeIn>

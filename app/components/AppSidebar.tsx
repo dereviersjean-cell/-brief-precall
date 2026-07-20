@@ -4,8 +4,19 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, FileText, Video, History, FileCheck, CheckSquare, Bell, Users, Settings, HelpCircle, LogOut, ChevronDown } from "lucide-react";
+import { LayoutDashboard, FileText, Video, History, FileCheck, CheckSquare, Bell, Users, Settings, HelpCircle, LogOut, ChevronDown, Sparkles } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+
+type OrgStatus = {
+  organizationName: string | null;
+  billingStatus: string;
+  trialEndsAt: string | null;
+  seatCount: number;
+};
+
+function daysRemaining(iso: string): number {
+  return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / (24 * 60 * 60 * 1000)));
+}
 
 // Style porté du mockup Lovable (app-shell.tsx), juillet 2026 — nav/routes
 // inchangées, uniquement le visuel (tokens app/globals.css : var(--violet),
@@ -60,6 +71,7 @@ export default function AppSidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const [pendingTasksCount, setPendingTasksCount] = useState(0);
+  const [orgStatus, setOrgStatus] = useState<OrgStatus | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,6 +90,21 @@ export default function AppSidebar() {
     return () => {
       cancelled = true;
       clearInterval(interval);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/sidebar/org-status")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: OrgStatus | null) => {
+        if (!cancelled && data) setOrgStatus(data);
+      })
+      .catch(() => {
+        // ignore — org name/trial card just stay hidden
+      });
+    return () => {
+      cancelled = true;
     };
   }, []);
 
@@ -137,7 +164,12 @@ export default function AppSidebar() {
             B
             <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-white" />
           </div>
-          <span className="text-[15px] font-semibold tracking-tight text-slate-900">Brief</span>
+          <div className="min-w-0 leading-tight">
+            <div className="text-[15px] font-semibold tracking-tight text-slate-900">Brief</div>
+            {orgStatus?.organizationName && (
+              <div className="text-[10.5px] text-slate-500 truncate">{orgStatus.organizationName}</div>
+            )}
+          </div>
         </Link>
       </div>
 
@@ -233,6 +265,20 @@ export default function AppSidebar() {
 
       {/* Bottom — help, settings, sign out, user */}
       <div className="px-3 py-3 space-y-2 shrink-0">
+        {orgStatus?.billingStatus === "trialing" && orgStatus.trialEndsAt && (
+          <div className="relative overflow-hidden rounded-xl border border-border bg-gradient-to-br from-[color:var(--lavender)] to-white p-3">
+            <div className="flex items-center gap-2 text-[11px] font-medium text-[color:var(--violet)]">
+              <Sparkles className="h-3.5 w-3.5" /> Essai actif
+            </div>
+            <div className="mt-1 text-[11.5px] text-slate-600">
+              {daysRemaining(orgStatus.trialEndsAt)} jours restants · {orgStatus.seatCount} siège{orgStatus.seatCount > 1 ? "s" : ""}
+            </div>
+            <Link href="/settings/billing" className="mt-2 inline-flex text-[11.5px] font-medium text-[color:var(--violet)] hover:underline">
+              Gérer la facturation →
+            </Link>
+          </div>
+        )}
+
         <Link
           href="/help"
           className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-border text-[12.5px] font-medium hover:bg-slate-50 transition-colors ${
