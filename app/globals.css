@@ -15,7 +15,8 @@ body {
    (see AppSidebar.tsx, dashboard/layout.tsx). Color utilities (bg-background,
    text-ink, bg-primary, etc.) are safe to expose globally via @theme since
    nothing else in the app uses these class names (verified) — only the
-   font-family and heading rules are scoped under .brief-ui, since
+   font-family and heading rules are scoped under .brief-ui (matches the
+   className used across AppSidebar/landing/login/toasts/banners), since
    font-sans/h1-h4 ARE used/styled elsewhere (other modules not yet migrated).
 
    Rebrand (juillet 2026, migration visuelle Lovable) : la palette canonique
@@ -151,15 +152,15 @@ body {
   }
 }
 
-.marketing-page {
+.brief-ui {
   font-family: var(--marketing-sans);
   font-feature-settings: "ss01", "cv11";
   -webkit-font-smoothing: antialiased;
 }
-.marketing-page h1,
-.marketing-page h2,
-.marketing-page h3,
-.marketing-page h4 {
+.brief-ui h1,
+.brief-ui h2,
+.brief-ui h3,
+.brief-ui h4 {
   font-family: var(--marketing-sans);
   letter-spacing: -0.03em;
 }

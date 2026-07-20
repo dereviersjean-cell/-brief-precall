@@ -16,10 +16,9 @@ export default function RootLayout({
   return (
     <html lang="fr" className="h-full">
       <head>
-        {/* Only consumed by the marketing pages (/ and /login) via the
-            .marketing-page class in globals.css — loading them here is the
-            simplest option, and harmless since nothing else references these
-            font families. */}
+        {/* Only consumed by pages/components using the .brief-ui class in
+            globals.css — loading them here is the simplest option, and
+            harmless since nothing else references these font families. */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
