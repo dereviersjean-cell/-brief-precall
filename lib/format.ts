@@ -1,4 +1,4 @@
-function deriveNameFromEmail(email: string): string | null {
+export function deriveNameFromEmail(email: string): string | null {
   const local = email.split("@")[0];
   if (!local) return null;
   const parts = local.split(/[._-]+/).filter(Boolean);
