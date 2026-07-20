@@ -15,9 +15,9 @@ export default function ScoreTrendChart({ weeks, title }: { weeks: ScoreTrendWee
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="bg-white rounded-2xl border border-slate-200 p-5"
+      className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5"
     >
-      <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-5">{title}</h2>
+      <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-5">{title}</h2>
       {!hasAnyData ? (
         <p className="text-sm text-slate-400 italic py-8 text-center">Pas encore assez de calls analysés.</p>
       ) : (

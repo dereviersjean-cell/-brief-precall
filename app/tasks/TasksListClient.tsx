@@ -17,6 +17,8 @@ import type { TaskListItem } from "@/lib/db";
 import { formatContactDisplayName } from "@/lib/format";
 import StatTile from "@/app/dashboard/StatTile";
 import FadeIn from "@/app/dashboard/FadeIn";
+import { PageHeader } from "@/app/components/ui/PageHeader";
+import { Button } from "@/app/components/ui/ui-bits";
 import TaskEmailModal from "./TaskEmailModal";
 
 type GroupedTasks = {
@@ -27,16 +29,16 @@ type GroupedTasks = {
 };
 
 const GROUP_META: { key: keyof GroupedTasks; label: string; dotColor: string; textColor: string }[] = [
-  { key: "overdue", label: "En retard", dotColor: "bg-red-500", textColor: "text-red-700" },
-  { key: "today", label: "Aujourd'hui", dotColor: "bg-indigo-500", textColor: "text-indigo-700" },
+  { key: "overdue", label: "En retard", dotColor: "bg-[color:var(--danger)]", textColor: "text-rose-700" },
+  { key: "today", label: "Aujourd'hui", dotColor: "bg-[color:var(--violet)]", textColor: "text-[color:var(--violet)]" },
   { key: "this_week", label: "Cette semaine", dotColor: "bg-blue-500", textColor: "text-blue-700" },
   { key: "later", label: "Plus tard", dotColor: "bg-slate-400", textColor: "text-slate-500" },
 ];
 
 const SOURCE_META: Record<string, { label: string; icon: typeof Phone; bg: string; text: string }> = {
-  call: { label: "Après call", icon: Phone, bg: "bg-indigo-50", text: "text-indigo-500" },
-  email: { label: "Après email", icon: Mail, bg: "bg-emerald-50", text: "text-emerald-500" },
-  quote: { label: "Après devis", icon: FileText, bg: "bg-amber-50", text: "text-amber-500" },
+  call: { label: "Après call", icon: Phone, bg: "bg-[color:var(--lavender)]", text: "text-[color:var(--violet)]" },
+  email: { label: "Après email", icon: Mail, bg: "bg-[color:var(--success-soft)]", text: "text-emerald-700" },
+  quote: { label: "Après devis", icon: FileText, bg: "bg-[color:var(--warning-soft)]", text: "text-amber-700" },
 };
 
 function sourceMeta(sourceType: string) {
@@ -84,7 +86,7 @@ function TaskCard({
   const SourceIcon = meta.icon;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-start gap-4 hover:shadow-md hover:border-indigo-200 transition-all">
+    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-4 flex items-start gap-4 hover:shadow-[var(--shadow-md)] hover:border-[color:var(--lavender-strong)] transition-all">
       <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${meta.bg} ${meta.text}`}>
         <SourceIcon className="w-4 h-4" />
       </span>
@@ -102,23 +104,15 @@ function TaskCard({
       </div>
       <div className="flex flex-col items-end gap-2 shrink-0">
         {task.action_type === "open_gmail_draft" ? (
-          <button
-            onClick={() => onOpenDraft(task)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition-colors whitespace-nowrap"
-          >
-            <Mail className="w-3.5 h-3.5" />
+          <Button variant="primary" size="sm" icon={<Mail className="w-3.5 h-3.5" />} onClick={() => onOpenDraft(task)} className="whitespace-nowrap">
             Rédiger l&apos;email
-          </button>
+          </Button>
         ) : (
-          <button
-            onClick={() => onComplete(task)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition-colors whitespace-nowrap"
-          >
-            <Check className="w-3.5 h-3.5" />
+          <Button variant="primary" size="sm" icon={<Check className="w-3.5 h-3.5" />} onClick={() => onComplete(task)} className="whitespace-nowrap">
             Marquer comme fait
-          </button>
+          </Button>
         )}
-        <button onClick={() => onDismiss(task)} className="text-xs text-slate-400 hover:text-red-600 transition-colors">
+        <button onClick={() => onDismiss(task)} className="text-xs text-slate-400 hover:text-rose-600 transition-colors">
           Rejeter
         </button>
       </div>
@@ -192,34 +186,25 @@ export default function TasksListClient({ initialGrouped }: { initialGrouped: Gr
     <div className="max-w-4xl mx-auto px-6 py-10">
       {/* Hero header */}
       <FadeIn>
-        <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 mb-6">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-indigo-200/50 via-violet-200/40 to-transparent blur-3xl"
+        <div className="mb-6">
+          <PageHeader
+            eyebrow="Suivi automatique"
+            title={
+              <>
+                Tasks <span className="italic-serif text-[color:var(--violet)]">de suivi</span>
+              </>
+            }
+            subtitle="Suivi automatique de vos actions après calls, emails et devis."
+            actions={
+              <Link
+                href="/tasks/settings"
+                className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-lg text-[13px] font-medium bg-white border border-border text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-[var(--shadow-xs)] transition-all"
+              >
+                <Settings className="w-4 h-4" />
+                Paramètres
+              </Link>
+            }
           />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-gradient-to-tr from-red-100/30 to-transparent blur-3xl"
-          />
-          <div className="relative flex items-start justify-between gap-4 flex-wrap">
-            <div>
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full mb-3">
-                <ListChecks className="w-3 h-3" />
-                Suivi automatique
-              </span>
-              <h1 className="text-2xl font-bold text-slate-900">Tasks</h1>
-              <p className="text-slate-500 text-sm mt-1">
-                Suivi automatique de vos actions après calls, emails et devis.
-              </p>
-            </div>
-            <Link
-              href="/tasks/settings"
-              className="inline-flex items-center gap-2 h-9 px-3.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 hover:text-slate-900 transition-colors duration-200 shrink-0"
-            >
-              <Settings className="w-4 h-4" />
-              Paramètres
-            </Link>
-          </div>
         </div>
       </FadeIn>
 
@@ -231,19 +216,19 @@ export default function TasksListClient({ initialGrouped }: { initialGrouped: Gr
       </div>
 
       {/* Tabs */}
-      <div className="inline-flex items-center gap-1 bg-white rounded-xl border border-slate-200 p-1 mb-5">
+      <div className="inline-flex items-center gap-1 bg-white rounded-xl border border-border shadow-[var(--shadow-xs)] p-1 mb-5">
         <button
           onClick={() => setTab("pending")}
-          className={`px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors duration-200 ${
-            tab === "pending" ? "bg-indigo-600 text-white" : "text-slate-500 hover:text-slate-700"
+          className={`px-3.5 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 ${
+            tab === "pending" ? "brand-gradient text-white shadow-[var(--shadow-glow)]" : "text-slate-500 hover:text-slate-700"
           }`}
         >
           À faire
         </button>
         <button
           onClick={handleSwitchToHistory}
-          className={`px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors duration-200 ${
-            tab === "history" ? "bg-indigo-600 text-white" : "text-slate-500 hover:text-slate-700"
+          className={`px-3.5 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 ${
+            tab === "history" ? "brand-gradient text-white shadow-[var(--shadow-glow)]" : "text-slate-500 hover:text-slate-700"
           }`}
         >
           Historique
@@ -252,9 +237,9 @@ export default function TasksListClient({ initialGrouped }: { initialGrouped: Gr
 
       {tab === "pending" ? (
         totalPending === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
-            <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 className="w-6 h-6 text-emerald-500" strokeWidth={1.5} />
+          <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-12 text-center">
+            <div className="w-12 h-12 bg-[color:var(--success-soft)] rounded-xl flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 className="w-6 h-6 text-emerald-600" strokeWidth={1.5} />
             </div>
             <p className="text-slate-700 font-medium">Aucune task en attente</p>
             <p className="text-slate-400 text-sm mt-1">Vous êtes à jour.</p>
@@ -297,7 +282,7 @@ export default function TasksListClient({ initialGrouped }: { initialGrouped: Gr
             const meta = sourceMeta(task.source_type);
             const SourceIcon = meta.icon;
             return (
-              <div key={task.id} className="bg-white rounded-2xl border border-slate-200 p-4 flex items-start gap-4 opacity-70">
+              <div key={task.id} className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-4 flex items-start gap-4 opacity-70">
                 <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${meta.bg} ${meta.text}`}>
                   <SourceIcon className="w-4 h-4" />
                 </span>
@@ -320,7 +305,7 @@ export default function TasksListClient({ initialGrouped }: { initialGrouped: Gr
           })}
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-400 text-sm">
+        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-12 text-center text-slate-400 text-sm">
           Aucune task complétée pour l&apos;instant.
         </div>
       )}

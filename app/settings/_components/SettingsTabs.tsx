@@ -25,7 +25,7 @@ export default function SettingsTabs() {
   const items = NAV_ITEMS.filter((item) => !item.managerOnly || isManager);
 
   return (
-    <div className="inline-flex items-center gap-1 bg-white rounded-xl border border-slate-200 p-1 flex-wrap">
+    <nav className="flex items-center gap-1 overflow-x-auto border-b border-border">
       {items.map((item) => {
         const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
         const Icon = item.icon;
@@ -33,15 +33,16 @@ export default function SettingsTabs() {
           <Link
             key={item.href}
             href={item.href}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
-              active ? "bg-indigo-600 text-white" : "text-slate-500 hover:text-slate-700"
+            className={`relative inline-flex items-center gap-2 whitespace-nowrap px-3.5 h-11 text-[13px] font-medium transition-colors ${
+              active ? "text-[color:var(--violet)]" : "text-slate-500 hover:text-slate-900"
             }`}
           >
-            <Icon className={`w-4 h-4 shrink-0 ${active ? "text-white" : "text-slate-400"}`} />
+            <Icon className="h-3.5 w-3.5" strokeWidth={active ? 2.25 : 1.75} />
             {item.label}
+            {active && <span className="absolute inset-x-2 -bottom-px h-[2px] rounded-full brand-gradient" />}
           </Link>
         );
       })}
-    </div>
+    </nav>
   );
 }

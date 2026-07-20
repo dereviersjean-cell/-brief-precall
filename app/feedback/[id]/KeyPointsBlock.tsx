@@ -76,7 +76,7 @@ export default function KeyPointsBlock({
       {status === "error" && (
         <div className="flex items-center gap-2 text-sm text-red-600 py-1">
           <span>Impossible de générer les points clés.</span>
-          <button onClick={generate} className="text-indigo-600 hover:text-indigo-800 font-medium underline">
+          <button onClick={generate} className="text-[color:var(--violet)] hover:brightness-90 font-medium underline">
             Réessayer
           </button>
         </div>

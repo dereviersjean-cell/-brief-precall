@@ -55,7 +55,7 @@ function SortHeader({
       <button
         onClick={() => onSort(sortKey)}
         className={`inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide transition-colors ${
-          active ? "text-indigo-600" : "text-slate-400 hover:text-slate-600"
+          active ? "text-[color:var(--violet)]" : "text-slate-400 hover:text-slate-600"
         } ${align === "right" ? "flex-row-reverse" : ""}`}
       >
         {label}
@@ -144,7 +144,7 @@ export default function TeamClient({
     <div className="max-w-6xl mx-auto px-6 py-10">
       {/* Hero header */}
       <FadeIn>
-        <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 mb-6">
+        <div className="relative overflow-hidden rounded-3xl border border-border shadow-[var(--shadow-sm)] bg-white p-8 mb-6">
           <div
             aria-hidden
             className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-indigo-200/50 via-violet-200/40 to-transparent blur-3xl"
@@ -155,7 +155,7 @@ export default function TeamClient({
           />
           <div className="relative flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full mb-3">
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[color:var(--violet)] bg-[color:var(--lavender)] px-2.5 py-1 rounded-full mb-3">
                 <Users className="w-3 h-3" />
                 Pilotage d&apos;équipe
               </span>
@@ -180,7 +180,7 @@ export default function TeamClient({
               </button>
               <button
                 onClick={() => setShowManageModal(true)}
-                className="inline-flex items-center gap-2 h-9 px-3.5 bg-indigo-600 text-white rounded-lg text-sm font-medium shadow-sm shadow-indigo-500/20 hover:bg-indigo-700 hover:shadow-md hover:shadow-indigo-500/30 transition-all duration-200"
+                className="inline-flex items-center gap-2 h-9 px-3.5 brand-gradient text-white rounded-lg text-sm font-medium shadow-[var(--shadow-sm)] hover:brightness-110 hover:shadow-[var(--shadow-md)] transition-all duration-200"
               >
                 <Settings2 className="w-4 h-4" />
                 Gérer mon équipe
@@ -222,9 +222,9 @@ export default function TeamClient({
 
       {/* Commercials table */}
       {overview.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
-          <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center mx-auto mb-4">
-            <Users className="w-6 h-6 text-indigo-400" strokeWidth={1.5} />
+        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-12 text-center">
+          <div className="w-12 h-12 bg-[color:var(--lavender)] rounded-xl flex items-center justify-center mx-auto mb-4">
+            <Users className="w-6 h-6 text-[color:var(--violet)]" strokeWidth={1.5} />
           </div>
           <p className="text-slate-700 font-medium">Aucun commercial rattaché à votre équipe pour l&apos;instant</p>
         </div>
@@ -237,17 +237,17 @@ export default function TeamClient({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Rechercher un commercial…"
-              className="pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white w-full focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white w-full focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
             />
           </div>
 
           {filteredOverview.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+            <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-12 text-center">
               <p className="text-slate-500 text-sm">Aucun résultat pour « {query} ».</p>
             </div>
           ) : (
             <FadeIn delay={0.1}>
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm border-collapse min-w-[820px]">
                     <thead>
@@ -265,17 +265,17 @@ export default function TeamClient({
                         <tr
                           key={c.user_id}
                           onClick={() => router.push(`/team/${c.user_id}`)}
-                          className="border-b border-slate-100 last:border-b-0 hover:bg-indigo-50/40 cursor-pointer transition-colors group"
+                          className="border-b border-slate-100 last:border-b-0 hover:bg-[color:var(--lavender)]/50 cursor-pointer transition-colors group"
                         >
                           <td className="px-4 py-3.5 max-w-[220px]">
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shrink-0">
+                              <div className="w-8 h-8 rounded-lg bg-gradient-to-br brand-gradient flex items-center justify-center shrink-0">
                                 <span className="text-xs font-bold text-white">
                                   {(c.name ?? c.email).charAt(0).toUpperCase()}
                                 </span>
                               </div>
                               <div className="min-w-0">
-                                <p className="font-medium text-slate-900 text-sm truncate group-hover:text-indigo-700 transition-colors">
+                                <p className="font-medium text-slate-900 text-sm truncate group-hover:text-[color:var(--violet)] transition-colors">
                                   {c.name || "—"}
                                 </p>
                                 <p className="text-slate-400 text-xs truncate">{c.email}</p>

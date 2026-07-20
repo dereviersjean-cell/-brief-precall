@@ -56,13 +56,6 @@ export default function ConnexionsSettingsClient({
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">Connexions</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Vos comptes connectés — calendrier, email et Slack.
-        </p>
-      </div>
-
       {toast && (
         <div className={`mb-6 rounded-xl border px-4 py-3 flex items-center justify-between gap-4 ${
           toast.type === "success" ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"
@@ -79,7 +72,7 @@ export default function ConnexionsSettingsClient({
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+      <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)]">
         <div className="px-6 py-5">
           <h2 className="text-sm font-semibold text-slate-900 mb-1">Calendrier Recall</h2>
           <p className="text-sm text-slate-500 mb-4">
@@ -114,7 +107,7 @@ export default function ConnexionsSettingsClient({
             <div className="flex items-center gap-3 flex-wrap">
               <a
                 href="/api/recall/google-oauth/start"
-                className="inline-flex items-center gap-2 bg-indigo-600 text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors"
+                className="inline-flex items-center gap-2 brand-gradient text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:brightness-110 transition-colors"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#fff" opacity=".9"/>
@@ -148,7 +141,7 @@ export default function ConnexionsSettingsClient({
           Distribution Flexible sous-étape B) — /api/recall/google-oauth/start
           above wouldn't touch this at all, it's a different credential. */}
       {!hasCalendarWriteAccess && (
-        <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mt-6">
+        <div className="flex items-start gap-2.5 bg-[color:var(--warning-soft)] border border-[color:var(--warning)]/30 rounded-lg px-4 py-3 mt-6">
           <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <p className="text-sm text-amber-900">
@@ -161,7 +154,7 @@ export default function ConnexionsSettingsClient({
                 setReconnecting(true);
                 await signIn("google", { callbackUrl: "/settings/connexions" });
               }}
-              className="inline-block mt-2 text-xs font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 transition-colors px-2.5 py-1 rounded-md disabled:opacity-50"
+              className="inline-block mt-2 text-xs font-semibold text-amber-900 bg-amber-100/70 hover:bg-amber-100 transition-colors px-2.5 py-1 rounded-md disabled:opacity-50"
             >
               {reconnecting ? "Redirection…" : "Se reconnecter avec Google"}
             </button>
@@ -174,7 +167,7 @@ export default function ConnexionsSettingsClient({
           connect/disconnect action here (that's the sidebar's "Déconnexion").
           Only Google sign-ins carry the gmail.readonly/gmail.send scopes —
           Microsoft/Azure AD sign-ins only request Calendars.Read. */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mt-6">
+      <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] mt-6">
         <div className="px-6 py-5">
           <h2 className="text-sm font-semibold text-slate-900 mb-1">Compte Mail</h2>
           <p className="text-sm text-slate-500 mb-4">
@@ -204,7 +197,7 @@ export default function ConnexionsSettingsClient({
           in /settings/crm (CrmSettingsClient.tsx). Status fetched
           server-side (page.tsx, via hasSlackConnection) so there's no
           loading flash. */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mt-6">
+      <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] mt-6">
         <div className="px-6 py-5">
           <h2 className="text-sm font-semibold text-slate-900 mb-1">Compte Slack</h2>
           <p className="text-sm text-slate-500 mb-4">

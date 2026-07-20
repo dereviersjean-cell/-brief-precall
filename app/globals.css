@@ -1,10 +1,5 @@
 @import "tailwindcss";
 
-:root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-}
-
 body {
   /* Hardcoded (not var()) on purpose — frees up --background/--foreground
      below for the marketing-only palette without touching the rest of the
@@ -21,17 +16,86 @@ body {
    text-ink, bg-primary, etc.) are safe to expose globally via @theme since
    nothing else in the app uses these class names (verified) — only the
    font-family and heading rules are scoped under .brief-ui, since
-   font-sans/h1-h4 ARE used/styled elsewhere (other modules not yet migrated). */
+   font-sans/h1-h4 ARE used/styled elsewhere (other modules not yet migrated).
+
+   Rebrand (juillet 2026, migration visuelle Lovable) : la palette canonique
+   vient désormais du bloc ci-dessous (--background, --primary, --violet,
+   etc.), copiée verbatim depuis le mockup Lovable pour que les composants
+   portés depuis ui-bits.tsx/app-shell.tsx fonctionnent sans réécrire leurs
+   var(--xxx). Les anciens noms --marketing-* deviennent de simples alias
+   vers ces tokens canoniques — une seule source de vérité, zéro rupture pour
+   le code existant (landing/login/AppSidebar/bannières) qui les consomme
+   déjà via bg-background/text-ink/bg-primary/etc. Volontairement pas de
+   --radius-x ou --font-x dans @theme inline : ça redéfinirait rounded-lg
+   ou font-sans pour TOUTE l'app, alors que seules les couleurs ont été
+   vérifiées sans risque d'effet de bord sur les pages pas encore migrées. */
 
 :root {
-  --marketing-bg: oklch(0.982 0.012 295);
-  --marketing-ink: oklch(0.14 0.03 265);
-  --marketing-primary: oklch(0.55 0.22 285);
-  --marketing-primary-fg: oklch(0.99 0 0);
-  --marketing-lavender: oklch(0.955 0.025 295);
-  --marketing-lavender-deep: oklch(0.88 0.06 290);
-  --marketing-border: oklch(0.9 0.02 285);
-  --marketing-muted-fg: oklch(0.48 0.02 265);
+  --radius: 0.625rem;
+
+  /* Palette canonique Brief — bleu B2B (mockup Lovable, juillet 2026) */
+  --background: oklch(0.985 0.005 250);
+  --foreground: oklch(0.22 0.04 260);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.04 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.04 260);
+  --primary: oklch(0.52 0.2 258); /* bleu roi #2A5CE0 */
+  --primary-foreground: oklch(0.99 0.005 250);
+  --secondary: oklch(0.965 0.01 260);
+  --secondary-foreground: oklch(0.28 0.05 265);
+  --muted: oklch(0.965 0.01 260);
+  --muted-foreground: oklch(0.52 0.03 257);
+  --accent: oklch(0.968 0.028 255);
+  --accent-foreground: oklch(0.45 0.18 258);
+  --destructive: oklch(0.62 0.22 27);
+  --destructive-foreground: oklch(0.99 0.005 250);
+  --border: oklch(0.92 0.01 258);
+  --input: oklch(0.92 0.01 258);
+  --ring: oklch(0.6 0.17 258);
+
+  /* Alias conservés pour compat avec le code existant + les primitives portées */
+  --violet: oklch(0.52 0.2 258);
+  --lavender: oklch(0.968 0.028 255);
+  --lavender-strong: oklch(0.9 0.055 255);
+  --success: oklch(0.72 0.17 155);
+  --success-soft: oklch(0.95 0.05 155);
+  --warning: oklch(0.78 0.16 65);
+  --warning-soft: oklch(0.96 0.05 75);
+  --danger: oklch(0.68 0.2 20);
+  --danger-soft: oklch(0.96 0.04 20);
+
+  --shadow-xs: 0 1px 0 0 oklch(0.2 0.04 260 / 0.04);
+  --shadow-sm: 0 1px 2px 0 oklch(0.2 0.04 260 / 0.05), 0 1px 3px -1px oklch(0.2 0.04 260 / 0.04);
+  --shadow-md: 0 4px 12px -4px oklch(0.35 0.14 258 / 0.12), 0 2px 6px -2px oklch(0.2 0.04 260 / 0.05);
+  --shadow-glow: 0 20px 60px -20px oklch(0.52 0.2 258 / 0.32);
+  --gradient-brand: linear-gradient(135deg, oklch(0.48 0.2 262) 0%, oklch(0.58 0.18 240) 100%);
+  --gradient-canvas: radial-gradient(1200px 600px at 100% -10%, oklch(0.94 0.045 255 / 0.6), transparent 60%),
+    radial-gradient(900px 500px at -10% 20%, oklch(0.94 0.035 235 / 0.55), transparent 60%);
+
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.984 0.003 247.858);
+  --sidebar-foreground: oklch(0.129 0.042 264.695);
+  --sidebar-primary: oklch(0.208 0.042 265.755);
+  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
+  --sidebar-accent: oklch(0.968 0.007 247.896);
+  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
+  --sidebar-border: oklch(0.929 0.013 255.508);
+  --sidebar-ring: oklch(0.704 0.04 256.788);
+
+  /* Alias --marketing-* historiques → tokens canoniques ci-dessus */
+  --marketing-bg: var(--background);
+  --marketing-ink: var(--foreground);
+  --marketing-primary: var(--primary);
+  --marketing-primary-fg: var(--primary-foreground);
+  --marketing-lavender: var(--lavender);
+  --marketing-lavender-deep: var(--lavender-strong);
+  --marketing-border: var(--border);
+  --marketing-muted-fg: var(--muted-foreground);
   --marketing-sans: "Inter Tight", ui-sans-serif, system-ui, sans-serif;
   --marketing-serif: "Instrument Serif", ui-serif, Georgia, serif;
 }
@@ -45,6 +109,46 @@ body {
   --color-lavender-deep: var(--marketing-lavender-deep);
   --color-border: var(--marketing-border);
   --color-muted-foreground: var(--marketing-muted-fg);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  .app-canvas {
+    background-image: var(--gradient-canvas);
+    background-attachment: fixed;
+  }
+  .brand-gradient {
+    background-image: var(--gradient-brand);
+  }
+  .brand-text {
+    background-image: var(--gradient-brand);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
 }
 
 .marketing-page {

@@ -47,13 +47,6 @@ export default function CrmSettingsClient({
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">CRM</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Connectez votre CRM pour enrichir automatiquement vos briefs avec l&apos;historique commercial.
-        </p>
-      </div>
-
       {toast && (
         <div className={`mb-6 rounded-xl border px-4 py-3 flex items-center justify-between gap-4 ${
           toast.type === "success" ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"
@@ -70,11 +63,11 @@ export default function CrmSettingsClient({
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+      <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)]">
         <div className="px-6 py-5 space-y-5 divide-y divide-slate-100">
           {/* Pipedrive */}
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Pipedrive</p>
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[color:var(--violet)] mb-3">Pipedrive</p>
             {pipedriveConnected ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-3 flex-wrap">
@@ -103,7 +96,7 @@ export default function CrmSettingsClient({
                         setPipedriveImporting(false);
                       }
                     }}
-                    className="inline-flex items-center gap-2 bg-indigo-600 text-white text-sm font-semibold px-5 py-2 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-2 brand-gradient text-white text-sm font-semibold px-5 py-2 rounded-lg hover:brightness-110 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {pipedriveImporting ? (
                       <>
@@ -146,7 +139,7 @@ export default function CrmSettingsClient({
             ) : (
               <a
                 href="/api/crm/pipedrive/start"
-                className="inline-flex items-center gap-2 bg-indigo-600 text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors"
+                className="inline-flex items-center gap-2 brand-gradient text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:brightness-110 transition-colors"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm1 14.5v-9l6 4.5-6 4.5z" fillOpacity=".9"/>
@@ -158,7 +151,7 @@ export default function CrmSettingsClient({
 
           {/* HubSpot */}
           <div className="pt-5">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">HubSpot</p>
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[color:var(--violet)] mb-3">HubSpot</p>
             {hubspotConnected ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-3 flex-wrap">
@@ -187,7 +180,7 @@ export default function CrmSettingsClient({
                         setHubspotImporting(false);
                       }
                     }}
-                    className="inline-flex items-center gap-2 bg-indigo-600 text-white text-sm font-semibold px-5 py-2 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-2 brand-gradient text-white text-sm font-semibold px-5 py-2 rounded-lg hover:brightness-110 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {hubspotImporting ? (
                       <>

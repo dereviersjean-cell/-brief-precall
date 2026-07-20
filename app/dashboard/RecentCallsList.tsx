@@ -22,7 +22,7 @@ export default function RecentCallsList({ calls }: { calls: RecentCallRow[] }) {
         >
           <Link href={`/feedback/${call.id}`} className="flex items-center justify-between gap-3 py-2.5 group">
             <div className="min-w-0">
-              <p className="text-sm font-medium text-slate-800 group-hover:text-indigo-700 transition-colors truncate">
+              <p className="text-sm font-medium text-slate-800 group-hover:text-[color:var(--violet)] transition-colors truncate">
                 {call.name}
               </p>
               <p className="text-xs text-slate-400">{call.dateLabel}</p>

@@ -68,11 +68,11 @@ function AmountTile({ label, amount, index }: { label: string; amount: number; i
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.07, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
       whileHover={{ y: -3, boxShadow: "0 8px 24px -8px rgba(15, 23, 42, 0.12)" }}
-      className="bg-white rounded-2xl border border-slate-200 p-5"
+      className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5"
     >
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{label}</p>
-        <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 bg-amber-50 text-amber-500">
+        <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 bg-[color:var(--warning-soft)] text-amber-700">
           <Euro className="w-3.5 h-3.5" />
         </span>
       </div>
@@ -105,7 +105,7 @@ function SortHeader({
       <button
         onClick={() => onSort(sortKey)}
         className={`inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide transition-colors ${
-          active ? "text-indigo-600" : "text-slate-400 hover:text-slate-600"
+          active ? "text-[color:var(--violet)]" : "text-slate-400 hover:text-slate-600"
         } ${align === "right" ? "flex-row-reverse" : ""}`}
       >
         {label}
@@ -218,7 +218,7 @@ export default function QuotesListClient({
     <div className="max-w-6xl mx-auto px-6 py-10">
       {/* Hero header */}
       <FadeIn>
-        <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 mb-6">
+        <div className="relative overflow-hidden rounded-3xl border border-border shadow-[var(--shadow-sm)] bg-white p-8 mb-6">
           <div
             aria-hidden
             className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-indigo-200/50 via-violet-200/40 to-transparent blur-3xl"
@@ -229,7 +229,7 @@ export default function QuotesListClient({
           />
           <div className="relative flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full mb-3">
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[color:var(--violet)] bg-[color:var(--lavender)] px-2.5 py-1 rounded-full mb-3">
                 <FileText className="w-3 h-3" />
                 Devis commerciaux
               </span>
@@ -248,7 +248,7 @@ export default function QuotesListClient({
               </Link>
               <Link
                 href="/quotes/new"
-                className="inline-flex items-center gap-2 h-9 px-3.5 bg-indigo-600 text-white rounded-lg text-sm font-medium shadow-sm shadow-indigo-500/20 hover:bg-indigo-700 hover:shadow-md hover:shadow-indigo-500/30 transition-all duration-200"
+                className="inline-flex items-center gap-2 h-9 px-3.5 brand-gradient text-white rounded-lg text-sm font-medium shadow-[var(--shadow-sm)] hover:brightness-110 hover:shadow-[var(--shadow-md)] transition-all duration-200"
               >
                 <Plus className="w-4 h-4" />
                 Nouveau devis
@@ -259,7 +259,7 @@ export default function QuotesListClient({
       </FadeIn>
 
       {missingCompanyInfo && (
-        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+        <div className="mb-6 rounded-2xl border border-[color:var(--warning)]/30 bg-[color:var(--warning-soft)] px-4 py-3">
           <p className="text-sm font-medium text-amber-800">
             Configurez d&apos;abord la raison sociale de votre entreprise dans les paramètres avant de créer un devis.
           </p>
@@ -267,9 +267,9 @@ export default function QuotesListClient({
       )}
 
       {quotes.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
-          <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center mx-auto mb-4">
-            <svg className="w-6 h-6 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-12 text-center">
+          <div className="w-12 h-12 bg-[color:var(--lavender)] rounded-xl flex items-center justify-center mx-auto mb-4">
+            <svg className="w-6 h-6 text-[color:var(--violet)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 14.25l6-6m4.5-3.493V21.75l-3.75-1.5-3.75 1.5-3.75-1.5-3.75 1.5V4.757c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0c1.1.128 1.907 1.077 1.907 2.185z" />
             </svg>
           </div>
@@ -300,17 +300,17 @@ export default function QuotesListClient({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Rechercher un devis, un contact…"
-              className="pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white w-full focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white w-full focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
             />
           </div>
 
           {filteredQuotes.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+            <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-12 text-center">
               <p className="text-slate-500 text-sm">Aucun résultat pour « {query} ».</p>
             </div>
           ) : (
             <FadeIn delay={0.1}>
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm border-collapse min-w-[820px]">
                     <thead>
@@ -332,13 +332,13 @@ export default function QuotesListClient({
                         <tr
                           key={quote.id}
                           onClick={() => router.push(`/quotes/${quote.id}`)}
-                          className={`border-b border-slate-100 last:border-b-0 hover:bg-indigo-50/40 cursor-pointer transition-colors group ${
+                          className={`border-b border-slate-100 last:border-b-0 hover:bg-[color:var(--lavender)]/50 cursor-pointer transition-colors group ${
                             deletingId === quote.id ? "opacity-40" : ""
                           }`}
                         >
                           <td className="px-4 py-3.5 whitespace-nowrap font-medium text-slate-800">{quote.quote_number}</td>
                           <td className="px-4 py-3.5 max-w-[220px]">
-                            <p className="text-slate-700 truncate group-hover:text-indigo-700 transition-colors">{quote.client_name}</p>
+                            <p className="text-slate-700 truncate group-hover:text-[color:var(--violet)] transition-colors">{quote.client_name}</p>
                             {quote.client_email && <p className="text-slate-400 text-xs truncate">{quote.client_email}</p>}
                           </td>
                           <td className="px-4 py-3.5 text-right font-mono text-slate-700 whitespace-nowrap">{formatCurrency(quote.total_ttc)}</td>
@@ -354,7 +354,7 @@ export default function QuotesListClient({
                                     e.stopPropagation();
                                     handleSend(quote);
                                   }}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 brand-gradient text-white text-xs font-medium rounded-lg hover:brightness-110 transition-colors"
                                 >
                                   <Send className="w-3.5 h-3.5" />
                                   Envoyer

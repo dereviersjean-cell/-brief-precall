@@ -134,7 +134,7 @@ function TextField({
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
       />
     </div>
   );
@@ -389,7 +389,7 @@ export default function QuoteEditor({
         </div>
 
         {isReadOnly && quote && (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-6 py-5 mb-6">
+          <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] px-6 py-5 mb-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-semibold text-slate-900">Statut</h2>
               <StatusBadge status={quote.status} viewedAt={quote.viewed_at} />
@@ -425,7 +425,7 @@ export default function QuoteEditor({
         <fieldset disabled={isReadOnly} className="contents">
 
         {/* Client */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-6 py-5 mb-6">
+        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] px-6 py-5 mb-6">
           <h2 className="text-sm font-semibold text-slate-900 mb-4">Client</h2>
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
@@ -433,7 +433,7 @@ export default function QuoteEditor({
               <select
                 value={contactId}
                 onChange={(e) => handleContactChange(e.target.value)}
-                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
               >
                 <option value="">— Nouveau client —</option>
                 {contacts.map((c) => (
@@ -455,7 +455,7 @@ export default function QuoteEditor({
         </div>
 
         {/* Lines */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mb-6">
+        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] mb-6">
           <div className="px-6 py-5 flex items-center justify-between flex-wrap gap-3">
             <h2 className="text-sm font-semibold text-slate-900">Lignes</h2>
             <div className="flex items-center gap-2 flex-wrap">
@@ -463,7 +463,7 @@ export default function QuoteEditor({
                 <button
                   onClick={handleGenerate}
                   disabled={generating}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                  className="inline-flex items-center gap-2 px-4 py-2 brand-gradient text-white rounded-lg text-sm font-medium hover:brightness-110 transition-all disabled:opacity-50"
                 >
                   {generating ? (
                     <>
@@ -481,7 +481,7 @@ export default function QuoteEditor({
               <select
                 value=""
                 onChange={(e) => handleAddFromCatalog(e.target.value)}
-                className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
               >
                 <option value="">+ Depuis le catalogue</option>
                 {offers.map((o) => (
@@ -492,7 +492,7 @@ export default function QuoteEditor({
               </select>
               <button
                 onClick={handleAddBlankLine}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+                className="px-4 py-2 brand-gradient text-white rounded-lg text-sm font-medium hover:brightness-110 transition-colors"
               >
                 + Ligne libre
               </button>
@@ -544,14 +544,14 @@ export default function QuoteEditor({
                             value={line.name}
                             onChange={(e) => updateLine(line.key, { name: e.target.value })}
                             placeholder="Nom de la ligne"
-                            className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-sm mb-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-sm mb-1 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
                           />
                           <input
                             type="text"
                             value={line.description}
                             onChange={(e) => updateLine(line.key, { description: e.target.value })}
                             placeholder="Description (optionnel)"
-                            className="w-full px-2 py-1 border border-slate-100 rounded-md text-xs text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="w-full px-2 py-1 border border-slate-100 rounded-md text-xs text-slate-500 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
                           />
                         </td>
                         <td className="py-2 px-1.5 align-top">
@@ -560,7 +560,7 @@ export default function QuoteEditor({
                             step="0.01"
                             value={line.quantity}
                             onChange={(e) => updateLine(line.key, { quantity: parseFloat(e.target.value) || 0 })}
-                            className="w-14 px-1.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="w-14 px-1.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
                           />
                         </td>
                         <td className="py-2 px-1.5 align-top">
@@ -568,7 +568,7 @@ export default function QuoteEditor({
                             type="text"
                             value={line.unit}
                             onChange={(e) => updateLine(line.key, { unit: e.target.value })}
-                            className="w-16 px-1.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="w-16 px-1.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
                           />
                         </td>
                         <td className="py-2 px-1.5 align-top">
@@ -577,7 +577,7 @@ export default function QuoteEditor({
                             step="0.01"
                             value={line.unit_price}
                             onChange={(e) => updateLine(line.key, { unit_price: parseFloat(e.target.value) || 0 })}
-                            className="w-20 px-1.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="w-20 px-1.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
                           />
                         </td>
                         <td className="py-2 px-1.5 align-top">
@@ -587,7 +587,7 @@ export default function QuoteEditor({
                               onChange={(e) =>
                                 updateLine(line.key, { discount_type: e.target.value as EditorLine["discount_type"] })
                               }
-                              className="px-1 py-1.5 border border-slate-200 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              className="px-1 py-1.5 border border-slate-200 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
                             >
                               <option value="">—</option>
                               <option value="percent">%</option>
@@ -601,7 +601,7 @@ export default function QuoteEditor({
                                 onChange={(e) =>
                                   updateLine(line.key, { discount_value: parseFloat(e.target.value) || 0 })
                                 }
-                                className="w-14 px-1.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-14 px-1.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
                               />
                             )}
                           </div>
@@ -612,7 +612,7 @@ export default function QuoteEditor({
                             step="0.1"
                             value={line.vat_rate}
                             onChange={(e) => updateLine(line.key, { vat_rate: parseFloat(e.target.value) || 0 })}
-                            className="w-14 px-1.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="w-14 px-1.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
                           />
                         </td>
                         <td className="py-2 px-1.5 align-top text-right font-mono text-slate-700 pt-3.5">
@@ -649,7 +649,7 @@ export default function QuoteEditor({
         </div>
 
         {/* Totals */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-6 py-5 mb-6">
+        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] px-6 py-5 mb-6">
           <h2 className="text-sm font-semibold text-slate-900 mb-4">Totaux</h2>
           <div className="max-w-xs ml-auto space-y-1.5">
             <div className="flex justify-between text-sm">
@@ -676,7 +676,7 @@ export default function QuoteEditor({
         </div>
 
         {/* Options */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-6 py-5 mb-6">
+        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] px-6 py-5 mb-6">
           <h2 className="text-sm font-semibold text-slate-900 mb-4">Options</h2>
           <div className="space-y-4">
             <div>
@@ -685,7 +685,7 @@ export default function QuoteEditor({
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
-                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] resize-none"
               />
             </div>
             <div>
@@ -694,7 +694,7 @@ export default function QuoteEditor({
                 value={legalMentions}
                 onChange={(e) => setLegalMentions(e.target.value)}
                 rows={2}
-                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] resize-none"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -705,7 +705,7 @@ export default function QuoteEditor({
                   type="date"
                   value={validUntil}
                   onChange={(e) => setValidUntil(e.target.value)}
-                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
                 />
               </div>
             </div>
@@ -748,7 +748,7 @@ export default function QuoteEditor({
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                className="px-6 py-2.5 brand-gradient text-white rounded-lg text-sm font-semibold hover:brightness-110 transition-colors disabled:opacity-50"
               >
                 {saving ? "Enregistrement…" : "Enregistrer brouillon"}
               </button>
@@ -756,7 +756,7 @@ export default function QuoteEditor({
             {mode === "edit" && quote && quote.status === "draft" && (
               <button
                 onClick={() => setShowSendModal(true)}
-                className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors"
+                className="px-6 py-2.5 brand-gradient text-white rounded-lg text-sm font-semibold hover:brightness-110 transition-colors"
               >
                 📤 Envoyer
               </button>

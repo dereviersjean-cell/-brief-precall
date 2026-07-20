@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Search, ChevronUp, ChevronDown, Mic, Users, Clock } from "lucide-react";
 import type { CallWithAnalysis } from "@/lib/db";
 import { formatContactDisplayName } from "@/lib/format";
+import { PageHeader } from "@/app/components/ui/PageHeader";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
@@ -106,7 +107,7 @@ function SortHeader({
       <button
         onClick={() => onSort(sortKey)}
         className={`inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide transition-colors ${
-          active ? "text-indigo-600" : "text-slate-400 hover:text-slate-600"
+          active ? "text-[color:var(--violet)]" : "text-slate-400 hover:text-slate-600"
         } ${align === "right" ? "flex-row-reverse" : ""}`}
       >
         {icon}
@@ -182,14 +183,19 @@ export default function FeedbackClient({ calls }: { calls: CallWithAnalysis[] })
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-background">
       <div className="max-w-6xl mx-auto px-6 py-10">
         {/* Header */}
-        <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Feedback post-call</h1>
-            <p className="text-slate-500 mt-1 text-sm">Analyse de vos appels commerciaux par l&apos;IA.</p>
-          </div>
+        <div className="flex items-start justify-between gap-4 mb-6 flex-wrap">
+          <PageHeader
+            eyebrow="Analyse IA"
+            title={
+              <>
+                Feedback <span className="italic-serif text-[color:var(--violet)]">post-call</span>
+              </>
+            }
+            subtitle="Analyse de vos appels commerciaux par l'IA."
+          />
           {calls.length > 0 && (
             <div className="relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -198,16 +204,16 @@ export default function FeedbackClient({ calls }: { calls: CallWithAnalysis[] })
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Rechercher un contact, une entreprise…"
-                className="pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white w-72 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white w-72 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
               />
             </div>
           )}
         </div>
 
         {calls.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
-            <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <svg className="w-6 h-6 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-12 text-center">
+            <div className="w-12 h-12 bg-[color:var(--lavender)] rounded-xl flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-[color:var(--violet)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
               </svg>
             </div>
@@ -217,11 +223,11 @@ export default function FeedbackClient({ calls }: { calls: CallWithAnalysis[] })
             </p>
           </div>
         ) : filteredRows.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+          <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-12 text-center">
             <p className="text-slate-500 text-sm">Aucun résultat pour « {query} ».</p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse min-w-[820px]">
                 <thead>
@@ -264,11 +270,11 @@ export default function FeedbackClient({ calls }: { calls: CallWithAnalysis[] })
                     <tr
                       key={call.id}
                       onClick={() => router.push(`/feedback/${call.id}`)}
-                      className="border-b border-slate-100 last:border-b-0 hover:bg-indigo-50/40 cursor-pointer transition-colors group"
+                      className="border-b border-slate-100 last:border-b-0 hover:bg-[color:var(--lavender)]/50 cursor-pointer transition-colors group"
                     >
                       <td className="px-4 py-3.5 max-w-[260px]">
                         <Link href={`/feedback/${call.id}`} className="block" onClick={(e) => e.stopPropagation()}>
-                          <p className="font-medium text-slate-900 text-sm truncate group-hover:text-indigo-700 transition-colors">
+                          <p className="font-medium text-slate-900 text-sm truncate group-hover:text-[color:var(--violet)] transition-colors">
                             {displayName}
                           </p>
                           {call.contact_email && call.contact_email !== displayName && (
@@ -297,7 +303,7 @@ export default function FeedbackClient({ calls }: { calls: CallWithAnalysis[] })
                       </td>
                       <td className="px-4 py-3.5 whitespace-nowrap">
                         {call.recall_bot_id ? (
-                          <span className="inline-flex items-center gap-1.5 text-xs text-indigo-500">
+                          <span className="inline-flex items-center gap-1.5 text-xs text-[color:var(--violet)]">
                             <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
                             </svg>

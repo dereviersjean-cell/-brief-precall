@@ -56,7 +56,7 @@ export default function SpeakerTimelineBlock({
   const rows = Array.from(bySpeaker.values()).sort((a, b) => b.totalMs - a.totalMs);
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
       <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">🎙️ Qui a parlé, et quand</h2>
       <div className="space-y-4">
         {rows.map((row, i) => {

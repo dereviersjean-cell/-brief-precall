@@ -19,7 +19,7 @@ function formatDateTime(iso: string) {
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-6">
+    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-6">
       <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">
         {title}
       </h2>
@@ -102,8 +102,8 @@ function GeneratingProgress({ company }: { company: string }) {
     <div className="flex flex-col items-center justify-center py-20">
       <div className="w-full max-w-md mx-auto">
         <div className="text-center mb-10">
-          <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <svg className="w-7 h-7 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <div className="w-14 h-14 bg-[color:var(--lavender)] rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <svg className="w-7 h-7 text-[color:var(--violet)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
             </svg>
           </div>
@@ -113,7 +113,7 @@ function GeneratingProgress({ company }: { company: string }) {
 
         <div className="h-1 bg-slate-100 rounded-full mb-8 overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all duration-700 ease-out"
+            className="h-full brand-gradient rounded-full transition-all duration-700 ease-out"
             style={{ width: `${progressWidth}%` }}
           />
         </div>
@@ -128,7 +128,7 @@ function GeneratingProgress({ company }: { company: string }) {
                 key={i}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-500 ${
                   isActive
-                    ? "bg-indigo-50 border border-indigo-100"
+                    ? "bg-[color:var(--lavender)] border border-[color:var(--lavender-strong)]"
                     : "border border-transparent"
                 }`}
               >
@@ -137,7 +137,7 @@ function GeneratingProgress({ company }: { company: string }) {
                     isCompleted
                       ? "bg-emerald-100 text-emerald-600"
                       : isActive
-                      ? "bg-indigo-100 text-indigo-600"
+                      ? "bg-[color:var(--lavender)] text-[color:var(--violet)]"
                       : "bg-slate-100 text-slate-300"
                   }`}
                 >
@@ -163,7 +163,7 @@ function GeneratingProgress({ company }: { company: string }) {
                 </span>
 
                 {isActive && (
-                  <div className="shrink-0 text-indigo-500">
+                  <div className="shrink-0 text-[color:var(--violet)]">
                     <Spinner />
                   </div>
                 )}
@@ -176,7 +176,7 @@ function GeneratingProgress({ company }: { company: string }) {
   );
 }
 
-const talkingPointColors = ["bg-indigo-500", "bg-emerald-500", "bg-amber-500", "bg-rose-500", "bg-violet-500"];
+const talkingPointColors = ["bg-[color:var(--violet)]", "bg-emerald-500", "bg-amber-500", "bg-rose-500", "bg-violet-500"];
 const painPointColors = ["bg-rose-500", "bg-orange-500", "bg-red-400", "bg-pink-500"];
 
 interface ApiResponse {
@@ -294,7 +294,7 @@ export default function BriefClient({
   }, [autoGenerate, generateBrief, meeting.brief]);
 
   const badge = isGenerating
-    ? { label: "Génération...", bg: "bg-indigo-50", fg: "text-indigo-700", dot: "bg-indigo-400 animate-pulse" }
+    ? { label: "Génération...", bg: "bg-[color:var(--lavender)]", fg: "text-[color:var(--violet)]", dot: "bg-[color:var(--violet)] animate-pulse" }
     : isAiGenerated
     ? { label: "Brief IA", bg: "bg-violet-50", fg: "text-violet-700", dot: "bg-violet-500" }
     : brief
@@ -302,7 +302,7 @@ export default function BriefClient({
     : { label: "Aucun brief", bg: "bg-slate-100", fg: "text-slate-500", dot: "bg-slate-400" };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-background">
       {/* Topbar */}
       <div className="sticky top-0 z-10 bg-white border-b border-slate-200">
         <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
@@ -404,7 +404,7 @@ export default function BriefClient({
             <button
               onClick={() => generateBrief()}
               disabled={isGenerating}
-              className="flex items-center gap-2 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors shrink-0 disabled:opacity-60"
+              className="flex items-center gap-2 brand-gradient text-white text-sm font-medium px-4 py-2 rounded-lg hover:brightness-110 transition-colors shrink-0 disabled:opacity-60"
             >
               {isGenerating ? (
                 <>
@@ -426,11 +426,11 @@ export default function BriefClient({
           <div className={`transition-opacity duration-200 ${isGenerating ? "opacity-40 pointer-events-none" : "opacity-100"}`}>
             {/* Suggested opening line */}
             {brief.suggestedOpeningLine && (
-              <div className="bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-200 rounded-2xl p-5 mb-6">
+              <div className="bg-[color:var(--lavender)] border border-[color:var(--lavender-strong)] rounded-2xl p-5 mb-6">
                 <div className="flex items-start gap-3">
                   <span className="text-xl">💬</span>
                   <div>
-                    <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wider mb-1">
+                    <p className="text-xs font-semibold text-[color:var(--violet)] uppercase tracking-wider mb-1">
                       Accroche suggérée
                     </p>
                     <p className="text-slate-800 font-medium leading-relaxed">
@@ -528,7 +528,7 @@ export default function BriefClient({
                       {meeting.website && (
                         <div>
                           <p className="text-xs text-slate-400 mb-0.5">Site web</p>
-                          <p className="text-sm font-semibold text-indigo-600">{meeting.website}</p>
+                          <p className="text-sm font-semibold text-[color:var(--violet)]">{meeting.website}</p>
                         </div>
                       )}
                     </div>
@@ -550,7 +550,7 @@ export default function BriefClient({
                             {i + 1}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-slate-800 text-sm font-medium leading-snug group-hover:text-indigo-600 transition-colors">
+                            <p className="text-slate-800 text-sm font-medium leading-snug group-hover:text-[color:var(--violet)] transition-colors">
                               {article.titre}
                             </p>
                             {article.description && (
@@ -563,7 +563,7 @@ export default function BriefClient({
                               {(() => { const d = formatNewsDate(article.date); return d ? ` · ${d}` : ""; })()}
                             </p>
                           </div>
-                          <svg className="w-3.5 h-3.5 text-slate-300 group-hover:text-indigo-400 shrink-0 mt-1 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <svg className="w-3.5 h-3.5 text-slate-300 group-hover:text-[color:var(--violet)] shrink-0 mt-1 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                           </svg>
                         </a>
@@ -604,11 +604,11 @@ export default function BriefClient({
                         <div key={i} className={i > 0 ? "pt-4 border-t border-slate-100" : ""}>
                           <p className="font-semibold text-slate-800 text-sm mb-1">{ref.client_name}</p>
                           <p className="text-slate-500 text-xs mb-3 leading-relaxed">{ref.relevance}</p>
-                          <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3">
-                            <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wider mb-1.5">
+                          <div className="bg-[color:var(--lavender)] border border-[color:var(--lavender-strong)] rounded-xl p-3">
+                            <p className="text-xs font-semibold text-[color:var(--violet)] uppercase tracking-wider mb-1.5">
                               À dire en call
                             </p>
-                            <p className="text-indigo-900 text-sm leading-relaxed">{ref.pitch}</p>
+                            <p className="text-slate-900 text-sm leading-relaxed">{ref.pitch}</p>
                           </div>
                         </div>
                       ))}
@@ -634,7 +634,7 @@ export default function BriefClient({
                     {meeting.contacts.map((c, i) => (
                       <div key={i} className={i > 0 ? "pt-4 border-t border-slate-100" : ""}>
                         <div className="flex items-center gap-3 mb-2">
-                          <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-xs font-bold shrink-0">
+                          <div className="w-9 h-9 rounded-full bg-[color:var(--lavender)] flex items-center justify-center text-[color:var(--violet)] text-xs font-bold shrink-0">
                             {c.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
                           </div>
                           <div>
@@ -682,7 +682,7 @@ export default function BriefClient({
                   <Section title="Vocabulaire métier">
                     <div className="flex flex-wrap gap-2">
                       {brief.keywords.map((kw) => (
-                        <span key={kw} className="text-xs bg-indigo-50 text-indigo-700 border border-indigo-100 px-2.5 py-1 rounded-full font-medium">
+                        <span key={kw} className="text-xs bg-[color:var(--lavender)] text-[color:var(--violet)] border border-[color:var(--lavender-strong)] px-2.5 py-1 rounded-full font-medium">
                           {kw}
                         </span>
                       ))}
@@ -694,7 +694,7 @@ export default function BriefClient({
                 <button
                   onClick={() => generateBrief(true)}
                   disabled={isGenerating}
-                  className="w-full flex items-center justify-center gap-2 text-sm text-slate-500 border border-dashed border-slate-300 rounded-xl py-3 hover:border-indigo-300 hover:text-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-2 text-sm text-slate-500 border border-dashed border-slate-300 rounded-xl py-3 hover:border-[color:var(--lavender-strong)] hover:text-[color:var(--violet)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isGenerating ? (
                     <>
@@ -729,7 +729,7 @@ export default function BriefClient({
             </p>
             <button
               onClick={() => generateBrief()}
-              className="flex items-center gap-2 bg-indigo-600 text-white text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors"
+              className="flex items-center gap-2 brand-gradient text-white text-sm font-medium px-5 py-2.5 rounded-lg hover:brightness-110 transition-colors"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />

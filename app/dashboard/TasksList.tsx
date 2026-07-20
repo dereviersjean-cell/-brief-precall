@@ -27,7 +27,7 @@ export default function TasksList({ tasks, totalCount }: { tasks: TaskRow[]; tot
         ))}
       </ul>
       {totalCount > tasks.length && (
-        <Link href="/tasks" className="inline-block mt-3 text-xs font-medium text-indigo-600 hover:text-indigo-800">
+        <Link href="/tasks" className="inline-block mt-3 text-xs font-medium text-[color:var(--violet)] hover:underline">
           Voir les {totalCount} tâches →
         </Link>
       )}

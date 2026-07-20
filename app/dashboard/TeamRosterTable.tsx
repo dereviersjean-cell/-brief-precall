@@ -34,11 +34,11 @@ export default function TeamRosterTable({ rows }: { rows: RosterRow[] }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.15 + i * 0.05, duration: 0.4 }}
-            whileHover={{ backgroundColor: "rgba(99, 102, 241, 0.04)" }}
+            whileHover={{ backgroundColor: "var(--lavender)" }}
             className="border-t border-slate-100"
           >
             <td className="px-5 py-2.5">
-              <Link href={`/team/${row.userId}`} className="text-sm font-medium text-slate-800 hover:text-indigo-700 transition-colors">
+              <Link href={`/team/${row.userId}`} className="text-sm font-medium text-slate-800 hover:text-[color:var(--violet)] transition-colors">
                 {row.name}
               </Link>
             </td>
@@ -48,11 +48,11 @@ export default function TeamRosterTable({ rows }: { rows: RosterRow[] }) {
             </td>
             <td className="px-5 py-2.5 text-right">
               {row.needsAttention ? (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[color:var(--warning-soft)] text-amber-700">
                   À suivre
                 </span>
               ) : (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[color:var(--success-soft)] text-emerald-700">
                   Actif
                 </span>
               )}

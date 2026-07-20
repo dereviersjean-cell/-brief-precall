@@ -12,7 +12,7 @@ function StatusRow({ label, connected, href }: { label: string; connected: boole
           Connecté
         </span>
       ) : (
-        <Link href={href} className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800">
+        <Link href={href} className="inline-flex items-center gap-1.5 text-xs font-medium text-[color:var(--violet)] hover:underline">
           <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
           Connecter
         </Link>
@@ -34,8 +34,8 @@ export default async function ConnectionsStatus({ userId }: { userId: string }) 
   ]);
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5">
-      <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Connexions & distribution</h2>
+    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
+      <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-1">Connexions & distribution</h2>
       <div className="divide-y divide-slate-100">
         <StatusRow label="HubSpot" connected={hubspot !== null} href="/settings/crm" />
         <StatusRow label="Pipedrive" connected={pipedrive !== null} href="/settings/crm" />
@@ -48,7 +48,7 @@ export default async function ConnectionsStatus({ userId }: { userId: string }) 
               Activé
             </span>
           ) : (
-            <Link href="/notifications" className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800">
+            <Link href="/notifications" className="inline-flex items-center gap-1.5 text-xs font-medium text-[color:var(--violet)] hover:underline">
               <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
               Activer
             </Link>

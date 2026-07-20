@@ -24,7 +24,7 @@ function hoursUntil(iso: string): number {
 
 const STATUS_META: Record<string, { label: string; className: string }> = {
   none: { label: "Aucun abonnement", className: "bg-slate-100 text-slate-600" },
-  trialing: { label: "Essai gratuit", className: "bg-indigo-100 text-indigo-700" },
+  trialing: { label: "Essai gratuit", className: "bg-[color:var(--lavender)] text-[color:var(--violet)]" },
   active: { label: "Actif", className: "bg-emerald-100 text-emerald-700" },
   grace_period: { label: "Paiement en échec", className: "bg-amber-100 text-amber-700" },
   blocked: { label: "Accès suspendu", className: "bg-red-100 text-red-700" },
@@ -74,12 +74,12 @@ function IntervalToggle({
             type="button"
             onClick={() => onChange(option.key)}
             className={`text-left p-4 rounded-xl border-2 transition-colors ${
-              active ? "border-indigo-600 bg-indigo-50" : "border-slate-200 hover:border-slate-300"
+              active ? "border-[color:var(--violet)] bg-[color:var(--lavender)]" : "border-slate-200 hover:border-slate-300"
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className={`text-sm font-semibold ${active ? "text-indigo-700" : "text-slate-700"}`}>{option.label}</span>
-              {active && <Check className="w-4 h-4 text-indigo-600" />}
+              <span className={`text-sm font-semibold ${active ? "text-[color:var(--violet)]" : "text-slate-700"}`}>{option.label}</span>
+              {active && <Check className="w-4 h-4 text-[color:var(--violet)]" />}
             </div>
             <p className="text-xs text-slate-500 mt-1">{option.sub}</p>
             <p className="text-xs text-slate-400 mt-0.5">
@@ -153,7 +153,7 @@ export default function BillingSettingsClient({
 
   if (!organizationName) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 text-sm text-slate-500">
+      <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-6 text-sm text-slate-500">
         Vous devez être rattaché à une organisation pour accéder à la facturation. Contactez votre administrateur.
       </div>
     );
@@ -162,14 +162,14 @@ export default function BillingSettingsClient({
   return (
     <div>
       <FadeIn>
-        <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 mb-6">
+        <div className="relative overflow-hidden rounded-3xl border border-border shadow-[var(--shadow-sm)] bg-white p-8 mb-6">
           <div
             aria-hidden
             className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-indigo-200/50 via-violet-200/40 to-transparent blur-3xl"
           />
           <div className="relative flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full mb-3">
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[color:var(--violet)] bg-[color:var(--lavender)] px-2.5 py-1 rounded-full mb-3">
                 <CreditCard className="w-3 h-3" />
                 Facturation
               </span>
@@ -194,7 +194,7 @@ export default function BillingSettingsClient({
 
       {status === "grace_period" && billing?.grace_period_ends_at && (
         <FadeIn delay={0.05}>
-          <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-6">
+          <div className="flex items-start gap-3 bg-[color:var(--warning-soft)] border border-[color:var(--warning)]/30 rounded-2xl p-5 mb-6">
             <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-semibold text-amber-800">
@@ -236,7 +236,7 @@ export default function BillingSettingsClient({
             accent="violet"
             index={1}
           />
-          <div className="bg-white rounded-2xl border border-slate-200 p-5">
+          <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
               {status === "trialing" ? "Fin de l'essai" : "Prochain renouvellement"}
             </p>
@@ -248,7 +248,7 @@ export default function BillingSettingsClient({
       )}
 
       <FadeIn delay={0.1}>
-        <div className="bg-white rounded-2xl border border-slate-200 p-6">
+        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-6">
           {!hasSubscription ? (
             <>
               <h2 className="text-sm font-semibold text-slate-900 mb-1">Démarrer votre essai gratuit</h2>
@@ -262,7 +262,7 @@ export default function BillingSettingsClient({
               <button
                 onClick={handleCheckout}
                 disabled={loading}
-                className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-5 py-2.5 brand-gradient text-white rounded-lg text-sm font-semibold hover:brightness-110 transition-colors disabled:opacity-50"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                 Démarrer mon essai gratuit de 7 jours
@@ -278,7 +278,7 @@ export default function BillingSettingsClient({
               <button
                 onClick={handleCheckout}
                 disabled={loading}
-                className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-5 py-2.5 brand-gradient text-white rounded-lg text-sm font-semibold hover:brightness-110 transition-colors disabled:opacity-50"
               >
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                 Se réabonner
@@ -293,7 +293,7 @@ export default function BillingSettingsClient({
               <button
                 onClick={handlePortal}
                 disabled={loading}
-                className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-5 py-2.5 brand-gradient text-white rounded-lg text-sm font-semibold hover:brightness-110 transition-colors disabled:opacity-50"
               >
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                 Gérer mon abonnement

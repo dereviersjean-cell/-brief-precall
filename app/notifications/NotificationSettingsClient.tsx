@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { AlertTriangle, Bell, Info } from "lucide-react";
+import { AlertTriangle, Info } from "lucide-react";
 import {
   AVAILABLE_CHANNELS,
   CHANNEL_META,
@@ -12,6 +12,8 @@ import {
 } from "@/lib/notification-preferences";
 import type { DigestPreference, DigestTiming } from "@/lib/db";
 import FadeIn from "@/app/dashboard/FadeIn";
+import { PageHeader } from "@/app/components/ui/PageHeader";
+import { Card } from "@/app/components/ui/ui-bits";
 
 const DIGEST_TIMING_LABELS: Record<DigestTiming, string> = {
   friday_evening: "Vendredi soir",
@@ -149,36 +151,27 @@ export default function NotificationSettingsClient({
     <div className="max-w-3xl mx-auto w-full px-6 py-10">
       {/* Hero header */}
       <FadeIn>
-        <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 mb-6">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-indigo-200/50 via-violet-200/40 to-transparent blur-3xl"
+        <div className="mb-6">
+          <PageHeader
+            eyebrow="Distribution"
+            title="Notifications et distribution"
+            subtitle={
+              <>
+                Choisissez où recevoir vos briefs pré-call et vos analyses post-call.
+                {activeChannelsCount > 0 && (
+                  <> · {activeChannelsCount} {activeChannelsCount === 1 ? "canal actif" : "canaux actifs"}</>
+                )}
+              </>
+            }
           />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-gradient-to-tr from-emerald-100/40 to-transparent blur-3xl"
-          />
-          <div className="relative">
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full mb-3">
-              <Bell className="w-3 h-3" />
-              Distribution
-            </span>
-            <h1 className="text-2xl font-bold text-slate-900">Notifications et distribution</h1>
-            <p className="text-sm text-slate-500 mt-1">
-              Choisissez où recevoir vos briefs pré-call et vos analyses post-call.
-              {activeChannelsCount > 0 && (
-                <> · {activeChannelsCount} {activeChannelsCount === 1 ? "canal actif" : "canaux actifs"}</>
-              )}
-            </p>
-          </div>
         </div>
       </FadeIn>
 
-      <div className="flex items-start gap-3 bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3.5 mb-8">
-        <span className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shrink-0 shadow-sm">
-          <Info className="w-4 h-4 text-indigo-500" />
+      <div className="flex items-start gap-3 bg-[color:var(--lavender)] border border-[color:var(--lavender-strong)] rounded-2xl px-4 py-3.5 mb-8">
+        <span className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shrink-0 shadow-[var(--shadow-xs)]">
+          <Info className="w-4 h-4 text-[color:var(--violet)]" />
         </span>
-        <p className="text-sm text-indigo-700 mt-0.5">
+        <p className="text-sm text-[color:var(--violet)] mt-0.5">
           Vous pouvez activer plusieurs canaux à la fois. Si aucun canal n&apos;est activé, aucune notification ne
           sera envoyée.
         </p>
@@ -188,10 +181,10 @@ export default function NotificationSettingsClient({
         {SECTIONS.map((section, index) => (
           <FadeIn key={section.eventType} delay={0.05 + index * 0.05}>
             <div>
-              <h2 className="text-sm font-semibold text-slate-900">{section.title}</h2>
-              <p className="text-xs text-slate-400 mt-0.5 mb-3">{section.description}</p>
+              <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[color:var(--violet)]">{section.title}</h2>
+              <p className="text-xs text-slate-400 mt-1 mb-3">{section.description}</p>
 
-              <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
+              <Card padded={false} className="divide-y divide-slate-100">
                 {AVAILABLE_CHANNELS[section.eventType].map((channel) => {
                   const meta = CHANNEL_META[channel];
                   const enabled = preferences.get(prefKey(section.eventType, channel)) ?? false;
@@ -222,7 +215,7 @@ export default function NotificationSettingsClient({
                           onClick={() => handleToggle(section.eventType, channel)}
                           disabled={disabled}
                           className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${
-                            enabled ? "bg-indigo-600" : "bg-slate-200"
+                            enabled ? "brand-gradient shadow-[var(--shadow-glow)]" : "bg-slate-200"
                           }`}
                           aria-label={enabled ? "Désactiver" : "Activer"}
                         >
@@ -234,7 +227,7 @@ export default function NotificationSettingsClient({
                         </button>
                       </div>
                       {showCalendarWarning && (
-                        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-sm p-3 mt-3">
+                        <div className="flex items-start gap-2 bg-[color:var(--warning-soft)] border border-[color:var(--warning)]/30 rounded-xl text-amber-900 text-sm p-3 mt-3">
                           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                           <div className="flex-1 min-w-0">
                             <p>Ce canal nécessite une reconnexion à Google Calendar avec l&apos;autorisation d&apos;écriture.</p>
@@ -248,7 +241,7 @@ export default function NotificationSettingsClient({
                         </div>
                       )}
                       {showHubspotWarning && (
-                        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-sm p-3 mt-3">
+                        <div className="flex items-start gap-2 bg-[color:var(--warning-soft)] border border-[color:var(--warning)]/30 rounded-xl text-amber-900 text-sm p-3 mt-3">
                           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                           <div className="flex-1 min-w-0">
                             <p>Ce canal nécessite une reconnexion à HubSpot avec l&apos;autorisation d&apos;écriture (notes, meetings).</p>
@@ -262,7 +255,7 @@ export default function NotificationSettingsClient({
                         </div>
                       )}
                       {showPipedriveWarning && (
-                        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-sm p-3 mt-3">
+                        <div className="flex items-start gap-2 bg-[color:var(--warning-soft)] border border-[color:var(--warning)]/30 rounded-xl text-amber-900 text-sm p-3 mt-3">
                           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                           <div className="flex-1 min-w-0">
                             <p>Ce canal nécessite une reconnexion à Pipedrive avec l&apos;autorisation d&apos;écriture (deals, contacts, activités).</p>
@@ -276,7 +269,7 @@ export default function NotificationSettingsClient({
                         </div>
                       )}
                       {showSlackWarning && (
-                        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-sm p-3 mt-3">
+                        <div className="flex items-start gap-2 bg-[color:var(--warning-soft)] border border-[color:var(--warning)]/30 rounded-xl text-amber-900 text-sm p-3 mt-3">
                           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                           <div className="flex-1 min-w-0">
                             <p>Ce canal nécessite de connecter votre compte Slack.</p>
@@ -292,7 +285,7 @@ export default function NotificationSettingsClient({
                     </div>
                   );
                 })}
-              </div>
+              </Card>
             </div>
           </FadeIn>
         ))}
@@ -300,11 +293,11 @@ export default function NotificationSettingsClient({
 
       <FadeIn delay={0.15}>
         <div className="mt-8">
-          <h2 className="text-sm font-semibold text-slate-900">Digest hebdomadaire</h2>
-          <p className="text-xs text-slate-400 mt-0.5 mb-3">
+          <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[color:var(--violet)]">Digest hebdomadaire</h2>
+          <p className="text-xs text-slate-400 mt-1 mb-3">
             Un récap par email de votre semaine (ou, pour les managers, de celle de votre équipe).
           </p>
-          <div className="bg-white rounded-2xl border border-slate-200 px-4 py-3.5">
+          <Card padded={false} className="px-4 py-3.5">
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
                 <p className="font-medium text-slate-900 text-sm">Recevoir le digest</p>
@@ -314,7 +307,7 @@ export default function NotificationSettingsClient({
                 onClick={() => saveDigestPreference(!digestEnabled, digestTiming)}
                 disabled={digestSaving}
                 className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${
-                  digestEnabled ? "bg-indigo-600" : "bg-slate-200"
+                  digestEnabled ? "brand-gradient shadow-[var(--shadow-glow)]" : "bg-slate-200"
                 }`}
                 aria-label={digestEnabled ? "Désactiver" : "Activer"}
               >
@@ -334,7 +327,7 @@ export default function NotificationSettingsClient({
                     disabled={digestSaving}
                     className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                       digestTiming === timing
-                        ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                        ? "bg-[color:var(--lavender)] border-[color:var(--lavender-strong)] text-[color:var(--violet)]"
                         : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
                     }`}
                   >
@@ -360,7 +353,7 @@ export default function NotificationSettingsClient({
                 {digestPreviewResult.message}
               </p>
             )}
-          </div>
+          </Card>
         </div>
       </FadeIn>
     </div>

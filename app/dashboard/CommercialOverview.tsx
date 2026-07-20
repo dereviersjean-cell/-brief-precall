@@ -8,6 +8,8 @@ import {
 import { fridayEveningDigestRange } from "@/lib/digest";
 import { mostRecentParisMonday, bucketScoresByWeek } from "@/lib/paris-week";
 import { formatContactDisplayName } from "@/lib/format";
+import { PageHeader } from "@/app/components/ui/PageHeader";
+import { Card } from "@/app/components/ui/ui-bits";
 import StatTile from "./StatTile";
 import ScoreTrendChart from "./ScoreTrendChart";
 import ConnectionsStatus from "./ConnectionsStatus";
@@ -52,10 +54,16 @@ export default async function CommercialOverview({ userId, userName }: { userId:
     <div className="max-w-6xl mx-auto px-6 py-10">
       <FadeIn>
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-slate-900">Bonjour{userName ? ` ${userName.split(" ")[0]}` : ""} 👋</h1>
-          <p className="text-slate-500 mt-1 text-sm">
-            {now.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })} — voici votre semaine.
-          </p>
+          <PageHeader
+            eyebrow="Vue d'ensemble"
+            title={
+              <>
+                Bonjour{userName ? ` ${userName.split(" ")[0]}` : ""}{" "}
+                <span className="italic-serif text-[color:var(--violet)]">👋</span>
+              </>
+            }
+            subtitle={`${now.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })} — voici votre semaine.`}
+          />
         </div>
       </FadeIn>
 
@@ -86,10 +94,10 @@ export default async function CommercialOverview({ userId, userName }: { userId:
           <ScoreTrendChart weeks={trendWeeks} title={`Score moyen — ${TREND_WEEKS} dernières semaines`} />
 
           <FadeIn delay={0.1}>
-            <div className="bg-white rounded-2xl border border-slate-200 p-5">
-              <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Calls récents</h2>
+            <Card padded={false} className="p-5">
+              <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-4">Calls récents</h2>
               <RecentCallsList calls={last5Calls} />
-            </div>
+            </Card>
           </FadeIn>
         </div>
 
@@ -99,13 +107,13 @@ export default async function CommercialOverview({ userId, userName }: { userId:
           </FadeIn>
 
           <FadeIn delay={0.2}>
-            <div className="bg-white rounded-2xl border border-slate-200 p-5">
+            <Card padded={false} className="p-5">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tâches en attente</h2>
+                <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500">Tâches en attente</h2>
                 <ListChecks className="w-4 h-4 text-slate-300" />
               </div>
               <TasksList tasks={next5Tasks} totalCount={pendingTasks.length} />
-            </div>
+            </Card>
           </FadeIn>
         </div>
       </div>

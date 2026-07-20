@@ -2,6 +2,8 @@ import { Phone, FileText, Users as UsersIcon, TrendingUp } from "lucide-react";
 import { getCommercialsForManager, getManagerDigestData, getRecentTeamCallScores, getTeamAverageScores, getTeamOverview } from "@/lib/db";
 import { fridayEveningDigestRange } from "@/lib/digest";
 import { mostRecentParisMonday, bucketScoresByWeek } from "@/lib/paris-week";
+import { PageHeader } from "@/app/components/ui/PageHeader";
+import { Card } from "@/app/components/ui/ui-bits";
 import StatTile from "./StatTile";
 import ScoreTrendChart from "./ScoreTrendChart";
 import TeamRosterTable, { type RosterRow } from "./TeamRosterTable";
@@ -66,10 +68,16 @@ export default async function ManagerOverview({ userId, userName }: { userId: st
     <div className="max-w-6xl mx-auto px-6 py-10">
       <FadeIn>
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-slate-900">Bonjour{userName ? ` ${userName.split(" ")[0]}` : ""} 👋</h1>
-          <p className="text-slate-500 mt-1 text-sm">
-            {now.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })} — vue d&apos;équipe.
-          </p>
+          <PageHeader
+            eyebrow="Vue d'équipe"
+            title={
+              <>
+                Bonjour{userName ? ` ${userName.split(" ")[0]}` : ""}{" "}
+                <span className="italic-serif text-[color:var(--violet)]">👋</span>
+              </>
+            }
+            subtitle={`${now.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })} — vue d'équipe.`}
+          />
         </div>
       </FadeIn>
 
@@ -94,33 +102,33 @@ export default async function ManagerOverview({ userId, userName }: { userId: st
           <ScoreTrendChart weeks={trendWeeks} title={`Score moyen équipe — ${TREND_WEEKS} dernières semaines`} />
 
           <FadeIn delay={0.1}>
-            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-              <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-5 pt-5 mb-1">Équipe cette semaine</h2>
+            <Card padded={false} className="overflow-hidden">
+              <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500 px-5 pt-5 mb-1">Équipe cette semaine</h2>
               <TeamRosterTable rows={rosterRows} />
-            </div>
+            </Card>
           </FadeIn>
         </div>
 
         <div className="space-y-5">
           {averages.dimensions.length > 0 && (
             <FadeIn delay={0.15}>
-              <div className="bg-white rounded-2xl border border-slate-200 p-5">
-                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">
+              <Card padded={false} className="p-5">
+                <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-4">
                   Scores moyens par dimension
                   <span className="block text-[11px] font-normal normal-case text-slate-400 mt-0.5">
                     {averages.calls_analyzed_count} call{averages.calls_analyzed_count !== 1 ? "s" : ""} analysé{averages.calls_analyzed_count !== 1 ? "s" : ""}, tous temps
                   </span>
                 </h2>
                 <DimensionScores dimensions={averages.dimensions} />
-              </div>
+              </Card>
             </FadeIn>
           )}
 
           <FadeIn delay={0.2}>
-            <div className="bg-white rounded-2xl border border-slate-200 p-5">
-              <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Dernière activité</h2>
+            <Card padded={false} className="p-5">
+              <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-4">Dernière activité</h2>
               <TasksList tasks={activityRows} totalCount={activityRows.length} />
-            </div>
+            </Card>
           </FadeIn>
         </div>
       </div>

@@ -60,7 +60,7 @@ export default function ConversationAnalyticsBlock({ analytics }: { analytics: C
   const silencePct = analytics.total_duration_ms > 0 ? Math.round((100 * silenceMs) / analytics.total_duration_ms) : 0;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
       <div className="mb-4">
         <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">🎧 Analyse de la conversation</h2>
         <p className="text-xs text-slate-400 mt-0.5">

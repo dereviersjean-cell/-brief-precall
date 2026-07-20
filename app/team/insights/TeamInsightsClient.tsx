@@ -66,13 +66,13 @@ export default function TeamInsightsClient({
   return (
     <div className="max-w-6xl mx-auto px-6 py-10">
       <FadeIn>
-        <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 mb-6">
+        <div className="relative overflow-hidden rounded-3xl border border-border shadow-[var(--shadow-sm)] bg-white p-8 mb-6">
           <div
             aria-hidden
             className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-indigo-200/50 via-violet-200/40 to-transparent blur-3xl"
           />
           <div className="relative">
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full mb-3">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[color:var(--violet)] bg-[color:var(--lavender)] px-2.5 py-1 rounded-full mb-3">
               <Trophy className="w-3 h-3" />
               Win / loss
             </span>
@@ -85,7 +85,7 @@ export default function TeamInsightsClient({
       </FadeIn>
 
       <FadeIn delay={0.05}>
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
+        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-6 mb-6">
           <div className="flex items-center gap-2 mb-4">
             <MessageSquareWarning className="w-4 h-4 text-slate-400" />
             <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Objections les plus fréquentes</h2>
@@ -115,7 +115,7 @@ export default function TeamInsightsClient({
       </FadeIn>
 
       <FadeIn delay={0.1}>
-        <div className="bg-white rounded-2xl border border-slate-200 p-6">
+        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-6">
           <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Scores par dimension — gagné vs perdu</h2>
           {!hasEnoughDimensionData ? (
             <p className="text-slate-400 text-sm italic mt-3">

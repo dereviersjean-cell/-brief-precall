@@ -214,7 +214,7 @@ function TranscriptSection({
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
       <button
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between text-left"
@@ -244,7 +244,7 @@ function TranscriptSection({
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="Rechercher dans le transcript…"
-                    className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-md text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-md text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
                   />
                 </div>
                 <button
@@ -255,9 +255,9 @@ function TranscriptSection({
                 </button>
               </div>
               {showTip && hasTimestamps && (
-                <p className="flex items-center justify-between gap-2 text-xs text-indigo-600 bg-indigo-50 rounded-md px-2.5 py-1.5 mb-3">
+                <p className="flex items-center justify-between gap-2 text-xs text-[color:var(--violet)] bg-[color:var(--lavender)] rounded-md px-2.5 py-1.5 mb-3">
                   <span>Cliquez sur un nom pour le corriger, ou sur une ligne pour aller à ce moment de la vidéo</span>
-                  <button onClick={dismissTip} className="text-indigo-400 hover:text-indigo-600 shrink-0">
+                  <button onClick={dismissTip} className="text-[color:var(--violet)] hover:text-[color:var(--violet)] shrink-0">
                     ✕
                   </button>
                 </p>
@@ -277,8 +277,8 @@ function TranscriptSection({
                       ref={isActive ? activeRowRef : undefined}
                       onClick={canSeek ? () => onSeek(turn.startMs as number) : undefined}
                       className={`rounded-lg p-3 mb-2 transition-colors ${
-                        isActive ? "bg-indigo-50 ring-1 ring-indigo-200" : i % 2 === 0 ? "bg-slate-50" : "bg-white"
-                      } ${canSeek ? "cursor-pointer hover:bg-indigo-50/60" : ""}`}
+                        isActive ? "bg-[color:var(--lavender)] ring-1 ring-[color:var(--lavender-strong)]" : i % 2 === 0 ? "bg-slate-50" : "bg-white"
+                      } ${canSeek ? "cursor-pointer hover:bg-[color:var(--lavender)]/60" : ""}`}
                     >
                       <div className="flex items-center justify-between mb-1.5 gap-2">
                         <div className="flex items-center gap-1.5 min-w-0" onClick={(e) => e.stopPropagation()}>
@@ -292,7 +292,7 @@ function TranscriptSection({
                                 if (e.key === "Escape") setEditingSpeakerId(null);
                               }}
                               onBlur={commitEdit}
-                              className="text-xs font-semibold text-slate-700 uppercase tracking-wide border border-indigo-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              className="text-xs font-semibold text-slate-700 uppercase tracking-wide border border-[color:var(--lavender-strong)] rounded px-1.5 py-0.5 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
                             />
                           ) : (
                             <>
@@ -442,7 +442,7 @@ function ObjectionItem({ objection, response }: { objection: string; response: s
       <button
         type="button"
         onClick={handleToggle}
-        className="pl-4 mt-1 text-xs text-indigo-500 hover:text-indigo-600 font-medium"
+        className="pl-4 mt-1 text-xs text-[color:var(--violet)] hover:text-[color:var(--violet)] font-medium"
       >
         {expanded ? "Masquer les cas similaires" : "Voir des cas similaires déjà traités"}
       </button>
@@ -492,7 +492,7 @@ function ReadOnlyVideoStatus({ call }: { call: CallWithAnalysis }) {
     : "L'enregistrement n'a pas pu être récupéré (bot refusé ou échec technique).";
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
       <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Enregistrement</h2>
       <p className="text-sm text-slate-500 italic">{message}</p>
     </div>
@@ -501,7 +501,7 @@ function ReadOnlyVideoStatus({ call }: { call: CallWithAnalysis }) {
 
 function ReadOnlyEmailBlock({ call }: { call: CallWithAnalysis }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Email de suivi</h2>
         {call.follow_up_sent_at && (
@@ -708,7 +708,7 @@ export default function FeedbackDetailClient({
         {/* Back */}
         <Link
           href={backHref}
-          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 transition-colors mb-6"
+          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-[color:var(--violet)] transition-colors mb-6"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
@@ -717,7 +717,7 @@ export default function FeedbackDetailClient({
         </Link>
 
         {/* Header */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
+        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-6 mb-5">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h1 className="text-xl font-bold text-slate-900">{displayName}</h1>
@@ -755,7 +755,7 @@ export default function FeedbackDetailClient({
         </div>
 
         {!a ? (
-          <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center text-slate-400 text-sm">
+          <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-10 text-center text-slate-400 text-sm">
             Analyse non disponible pour cet appel.
           </div>
         ) : (
@@ -768,7 +768,7 @@ export default function FeedbackDetailClient({
                     key={t.key}
                     onClick={() => setTab(t.key)}
                     className={`px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors duration-200 ${
-                      tab === t.key ? "bg-indigo-600 text-white" : "text-slate-500 hover:text-slate-700"
+                      tab === t.key ? "brand-gradient text-white" : "text-slate-500 hover:text-slate-700"
                     }`}
                   >
                     {t.label}
@@ -797,7 +797,7 @@ export default function FeedbackDetailClient({
                   {/* Scores par dimension — dynamique via le playbook_snapshot de
                       l'analyse (ou les 4 labels historiques si absent) */}
                   {effectiveScores.length > 0 && (
-                    <div className="bg-white rounded-2xl border border-slate-200 p-6">
+                    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-6">
                       <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-5">
                         Scores par dimension
                       </h2>
@@ -817,11 +817,11 @@ export default function FeedbackDetailClient({
 
                   {/* Strengths + Weaknesses */}
                   <div className="grid grid-cols-2 gap-5">
-                    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
                       <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Points forts</h2>
                       <List items={a.strengths ?? []} icon="✓" color="text-green-500" />
                     </div>
-                    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
                       <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Axes d&apos;amélioration</h2>
                       <List items={a.weaknesses ?? []} icon="△" color="text-orange-400" />
                     </div>
@@ -829,7 +829,7 @@ export default function FeedbackDetailClient({
 
                   {/* Objections */}
                   {(a.objections ?? []).length > 0 && (
-                    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
                       <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Objections rencontrées</h2>
                       <ul className="space-y-3">
                         {(a.objections ?? []).map((o, i) => (
@@ -841,9 +841,9 @@ export default function FeedbackDetailClient({
 
                   {/* Next steps */}
                   {(a.next_steps ?? []).length > 0 && (
-                    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
                       <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Prochaines étapes</h2>
-                      <List items={a.next_steps ?? []} icon="→" color="text-indigo-400" />
+                      <List items={a.next_steps ?? []} icon="→" color="text-[color:var(--violet)]" />
                     </div>
                   )}
                 </div>
@@ -853,7 +853,7 @@ export default function FeedbackDetailClient({
                 readOnly ? (
                   <ReadOnlyEmailBlock call={call} />
                 ) : (
-                <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
                   <div className="flex items-center gap-2 mb-4">
                     <label htmlFor="feedback-email-template" className="text-xs text-slate-400 shrink-0">
                       Type de call
@@ -862,7 +862,7 @@ export default function FeedbackDetailClient({
                       id="feedback-email-template"
                       value={selectedTemplateId}
                       onChange={(e) => setSelectedTemplateId(e.target.value)}
-                      className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 max-w-[220px]"
+                      className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] max-w-[220px]"
                     >
                       {selectedTemplateId === "" && (
                         <option value="" disabled hidden>
@@ -898,7 +898,7 @@ export default function FeedbackDetailClient({
                               setTimeout(() => setCopied(false), 2000);
                             });
                           }}
-                          className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors px-2.5 py-1 rounded-lg border border-indigo-200 hover:bg-indigo-50"
+                          className="text-xs font-medium text-[color:var(--violet)] hover:brightness-90 transition-colors px-2.5 py-1 rounded-lg border border-[color:var(--lavender-strong)] hover:bg-[color:var(--lavender)]"
                         >
                           {copied ? "Copié !" : "Copier"}
                         </button>
@@ -929,7 +929,7 @@ export default function FeedbackDetailClient({
                               setSendStatus("error");
                             }
                           }}
-                          className="text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors px-2.5 py-1 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="text-xs font-medium text-white brand-gradient hover:brightness-110 transition-colors px-2.5 py-1 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {sendStatus === "sending" ? "Envoi…" : "Envoyer"}
                         </button>
@@ -1005,7 +1005,7 @@ export default function FeedbackDetailClient({
                                 setReply((r) => r.status === "replied" ? { ...r, loadingBody: false } : r);
                               }
                             }}
-                            className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors px-2 py-1 rounded border border-indigo-200 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="text-xs font-medium text-[color:var(--violet)] hover:brightness-90 transition-colors px-2 py-1 rounded border border-[color:var(--lavender-strong)] hover:bg-[color:var(--lavender)] disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {reply.loadingBody ? "Chargement…" : "Charger le contenu"}
                           </button>
@@ -1017,7 +1017,7 @@ export default function FeedbackDetailClient({
                           <button
                             disabled={generatingSuggestion}
                             onClick={handleGenerateSuggestion}
-                            className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors px-2.5 py-1 rounded-lg border border-indigo-200 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="text-xs font-medium text-[color:var(--violet)] hover:brightness-90 transition-colors px-2.5 py-1 rounded-lg border border-[color:var(--lavender-strong)] hover:bg-[color:var(--lavender)] disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {generatingSuggestion ? "Génération…" : "✨ Régénérer avec Brief"}
                           </button>
@@ -1031,7 +1031,7 @@ export default function FeedbackDetailClient({
                                 value={replySuggestion}
                                 onChange={(e) => setReplySuggestion(e.target.value)}
                                 rows={5}
-                                className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none leading-relaxed"
+                                className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] resize-none leading-relaxed"
                               />
                             </div>
                           )}
@@ -1046,14 +1046,14 @@ export default function FeedbackDetailClient({
                         type="text"
                         value={subject}
                         onChange={(e) => setSubject(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-3"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] mb-3"
                         placeholder="Objet"
                       />
                       <textarea
                         value={body}
                         onChange={(e) => setBody(e.target.value)}
                         rows={8}
-                        className="w-full px-3 py-3 border border-slate-200 rounded-lg text-sm text-slate-600 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none leading-relaxed"
+                        className="w-full px-3 py-3 border border-slate-200 rounded-lg text-sm text-slate-600 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] resize-none leading-relaxed"
                       />
                     </>
                   ) : (
@@ -1068,13 +1068,13 @@ export default function FeedbackDetailClient({
                 left column scrolls */}
             <div className="lg:sticky lg:top-6 space-y-5">
               {hasVideo ? (
-                <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Enregistrement</h2>
                     {videoStatus === "idle" && (
                       <button
                         onClick={loadVideo}
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors px-2.5 py-1 rounded-lg border border-indigo-200 hover:bg-indigo-50"
+                        className="inline-flex items-center gap-1.5 text-xs font-medium text-[color:var(--violet)] hover:brightness-90 transition-colors px-2.5 py-1 rounded-lg border border-[color:var(--lavender-strong)] hover:bg-[color:var(--lavender)]"
                       >
                         <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M8 5v14l11-7z" />

@@ -11,7 +11,7 @@ export default async function DashboardPage() {
   const [role, userName] = await Promise.all([getUserRole(userId), getUserName(userId)]);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-background">
       {role === "manager" ? (
         <ManagerOverview userId={userId} userName={userName} />
       ) : (

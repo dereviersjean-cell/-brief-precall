@@ -241,7 +241,7 @@ function ReplyEntry({ item }: { item: ContactTimelineItem }) {
                     setGeneratingAI(false);
                   }
                 }}
-                className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors px-3 py-1.5 rounded-lg border border-indigo-200 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-xs font-medium text-[color:var(--violet)] hover:brightness-90 transition-colors px-3 py-1.5 rounded-lg border border-[color:var(--lavender-strong)] hover:bg-[color:var(--lavender)] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {generatingAI ? "Génération…" : "Générer avec l'IA"}
               </button>
@@ -346,7 +346,7 @@ export default function ContactTimelineClient({ contactEmail, timeline }: Props)
   return (
     <div className="max-w-6xl mx-auto px-6 py-10">
       <FadeIn>
-        <Link href="/contacts" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 transition-colors mb-6">
+        <Link href="/contacts" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-[color:var(--violet)] transition-colors mb-6">
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
@@ -354,7 +354,7 @@ export default function ContactTimelineClient({ contactEmail, timeline }: Props)
         </Link>
 
         {/* Hero header */}
-        <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 mb-6">
+        <div className="relative overflow-hidden rounded-3xl border border-border shadow-[var(--shadow-sm)] bg-white p-8 mb-6">
           <div
             aria-hidden
             className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-indigo-200/50 via-violet-200/40 to-transparent blur-3xl"
@@ -364,7 +364,7 @@ export default function ContactTimelineClient({ contactEmail, timeline }: Props)
             className="pointer-events-none absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-gradient-to-tr from-blue-100/40 to-transparent blur-3xl"
           />
           <div className="relative flex items-start gap-4 flex-wrap">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shrink-0 shadow-sm shadow-indigo-500/20">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br brand-gradient flex items-center justify-center shrink-0 shadow-[var(--shadow-glow)]">
               <span className="text-lg font-bold text-white">{displayName.charAt(0).toUpperCase()}</span>
             </div>
             <div className="min-w-0 flex-1">
@@ -372,7 +372,7 @@ export default function ContactTimelineClient({ contactEmail, timeline }: Props)
               {contactEmail !== displayName && <p className="text-slate-400 text-sm mt-0.5">{contactEmail}</p>}
               <div className="flex items-center gap-2 mt-3 flex-wrap">
                 {videoCallCount > 0 && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-600">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[color:var(--lavender)] text-[color:var(--violet)]">
                     <VideoIcon className="w-3 h-3 shrink-0" />
                     {videoCallCount} {videoCallCount === 1 ? "visio enregistrée" : "visios enregistrées"}
                   </span>
@@ -396,9 +396,9 @@ export default function ContactTimelineClient({ contactEmail, timeline }: Props)
       </FadeIn>
 
       {timeline.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
-          <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center mx-auto mb-4">
-            <Calendar className="w-6 h-6 text-indigo-400" strokeWidth={1.5} />
+        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-12 text-center">
+          <div className="w-12 h-12 bg-[color:var(--lavender)] rounded-xl flex items-center justify-center mx-auto mb-4">
+            <Calendar className="w-6 h-6 text-[color:var(--violet)]" strokeWidth={1.5} />
           </div>
           <p className="text-slate-700 font-medium">Aucun call enregistré pour ce contact</p>
           <p className="text-slate-400 text-sm mt-1">L&apos;historique apparaîtra ici après un premier call.</p>
@@ -417,19 +417,19 @@ export default function ContactTimelineClient({ contactEmail, timeline }: Props)
                 return (
                   <div key={item.id} className={`relative pl-12 ${isLast ? "" : "pb-6"}`}>
                     {/* Dot */}
-                    <div className="absolute left-2 top-2 w-4 h-4 rounded-full bg-white border-2 border-indigo-400 flex items-center justify-center">
-                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                    <div className="absolute left-2 top-2 w-4 h-4 rounded-full bg-white border-2 border-[color:var(--violet)] flex items-center justify-center">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[color:var(--violet)]" />
                     </div>
 
                     {/* Call card */}
                     <Link
                       href={`/feedback/${item.id}`}
-                      className="block bg-white rounded-2xl border border-slate-200 p-5 hover:shadow-md hover:border-indigo-200 transition-all"
+                      className="block bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5 hover:shadow-[var(--shadow-md)] hover:border-[color:var(--lavender-strong)] transition-all"
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <svg className="w-4 h-4 text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <svg className="w-4 h-4 text-[color:var(--violet)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
                             </svg>
                             <p className="font-semibold text-slate-900 text-sm">{formatDateTime(item.date)}</p>
@@ -444,7 +444,7 @@ export default function ContactTimelineClient({ contactEmail, timeline }: Props)
                               </span>
                             )}
                             {item.recall_bot_id && (
-                              <svg className="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                              <svg className="w-4 h-4 text-[color:var(--violet)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
                               </svg>
                             )}
@@ -479,7 +479,7 @@ export default function ContactTimelineClient({ contactEmail, timeline }: Props)
           {/* RIGHT — sticky summary */}
           <div className="lg:sticky lg:top-6">
             <FadeIn delay={0.15}>
-              <div className="bg-white rounded-2xl border border-slate-200 p-5">
+              <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
                 <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Résumé</h2>
                 <div className="divide-y divide-slate-100">
                   {replyRate !== null && (

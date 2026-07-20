@@ -61,7 +61,7 @@ function Field({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
       />
     </div>
   );
@@ -157,7 +157,7 @@ function QuoteOfferModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               autoFocus
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
             />
           </div>
           <div>
@@ -166,7 +166,7 @@ function QuoteOfferModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] resize-none"
             />
           </div>
           <div className="grid grid-cols-3 gap-2">
@@ -177,7 +177,7 @@ function QuoteOfferModal({
                 step="0.01"
                 value={unitPrice}
                 onChange={(e) => setUnitPrice(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
               />
             </div>
             <div>
@@ -186,7 +186,7 @@ function QuoteOfferModal({
                 type="text"
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
               />
             </div>
             <div>
@@ -196,7 +196,7 @@ function QuoteOfferModal({
                 step="0.1"
                 value={vatRate}
                 onChange={(e) => setVatRate(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
               />
             </div>
           </div>
@@ -214,7 +214,7 @@ function QuoteOfferModal({
           <button
             onClick={handleSubmit}
             disabled={!name.trim() || !unitPrice || loading}
-            className="text-sm font-medium text-white bg-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+            className="text-sm font-medium text-white brand-gradient px-4 py-2 rounded-lg hover:brightness-110 transition-colors disabled:opacity-50"
           >
             {loading ? "Enregistrement…" : offer ? "Enregistrer" : "Ajouter"}
           </button>
@@ -383,7 +383,7 @@ export default function QuoteSettingsClient({
         </div>
 
         {/* Company info */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm divide-y divide-slate-100">
+        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] divide-y divide-slate-100">
           <div className="px-6 py-5">
             <h2 className="text-sm font-semibold text-slate-900 mb-4">Informations entreprise</h2>
 
@@ -410,7 +410,7 @@ export default function QuoteSettingsClient({
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={logoUploading}
-                  className="text-sm font-medium text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
+                  className="text-sm font-medium text-[color:var(--violet)] hover:brightness-90 disabled:opacity-50"
                 >
                   {logoUploading ? "Envoi…" : "Changer le logo"}
                 </button>
@@ -438,7 +438,7 @@ export default function QuoteSettingsClient({
                   value={form.company_rib}
                   onChange={(e) => updateField("company_rib", e.target.value)}
                   rows={2}
-                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] resize-none"
                 />
               </div>
               <div className="col-span-2">
@@ -447,7 +447,7 @@ export default function QuoteSettingsClient({
                   value={form.legal_mentions}
                   onChange={(e) => updateField("legal_mentions", e.target.value)}
                   rows={3}
-                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] resize-none"
                 />
               </div>
               <Field
@@ -478,7 +478,7 @@ export default function QuoteSettingsClient({
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 bg-indigo-600 text-white text-sm font-semibold px-6 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 brand-gradient text-white text-sm font-semibold px-6 py-2.5 rounded-lg hover:brightness-110 transition-colors disabled:opacity-50"
             >
               {saving ? "Enregistrement…" : "Enregistrer"}
             </button>
@@ -486,7 +486,7 @@ export default function QuoteSettingsClient({
         </div>
 
         {/* Offer catalog */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mt-6">
+        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] mt-6">
           <div className="px-6 py-5 flex items-center justify-between">
             <div>
               <h2 className="text-sm font-semibold text-slate-900">Catalogue d&apos;offres</h2>
@@ -497,7 +497,7 @@ export default function QuoteSettingsClient({
                 setEditingOffer(null);
                 setShowOfferModal(true);
               }}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 brand-gradient text-white rounded-lg text-sm font-medium hover:brightness-110 transition-colors"
             >
               + Ajouter une offre
             </button>
@@ -552,7 +552,7 @@ export default function QuoteSettingsClient({
                               setEditingOffer(offer);
                               setShowOfferModal(true);
                             }}
-                            className="text-xs font-medium text-indigo-600 hover:text-indigo-700 px-2"
+                            className="text-xs font-medium text-[color:var(--violet)] hover:brightness-90 px-2"
                           >
                             Modifier
                           </button>

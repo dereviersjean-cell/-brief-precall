@@ -69,7 +69,7 @@ function SortHeader({
       <button
         onClick={() => onSort(sortKey)}
         className={`inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide transition-colors ${
-          active ? "text-indigo-600" : "text-slate-400 hover:text-slate-600"
+          active ? "text-[color:var(--violet)]" : "text-slate-400 hover:text-slate-600"
         } ${align === "right" ? "flex-row-reverse" : ""}`}
       >
         {icon}
@@ -146,7 +146,7 @@ export default function ContactsClient({ contacts }: { contacts: ContactOverview
     <div className="max-w-6xl mx-auto px-6 py-10">
       {/* Hero header */}
       <FadeIn>
-        <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 mb-6">
+        <div className="relative overflow-hidden rounded-3xl border border-border shadow-[var(--shadow-sm)] bg-white p-8 mb-6">
           <div
             aria-hidden
             className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-indigo-200/50 via-violet-200/40 to-transparent blur-3xl"
@@ -157,7 +157,7 @@ export default function ContactsClient({ contacts }: { contacts: ContactOverview
           />
           <div className="relative flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full mb-3">
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[color:var(--violet)] bg-[color:var(--lavender)] px-2.5 py-1 rounded-full mb-3">
                 <Users className="w-3 h-3" />
                 Vue d&apos;ensemble
               </span>
@@ -174,7 +174,7 @@ export default function ContactsClient({ contacts }: { contacts: ContactOverview
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Rechercher un contact, une entreprise…"
-                  className="pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white w-72 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white w-72 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
                 />
               </div>
             )}
@@ -199,9 +199,9 @@ export default function ContactsClient({ contacts }: { contacts: ContactOverview
       )}
 
       {contacts.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
-          <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center mx-auto mb-4">
-            <svg className="w-6 h-6 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-12 text-center">
+          <div className="w-12 h-12 bg-[color:var(--lavender)] rounded-xl flex items-center justify-center mx-auto mb-4">
+            <svg className="w-6 h-6 text-[color:var(--violet)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
             </svg>
           </div>
@@ -211,12 +211,12 @@ export default function ContactsClient({ contacts }: { contacts: ContactOverview
           </p>
         </div>
       ) : filteredRows.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-12 text-center">
           <p className="text-slate-500 text-sm">Aucun résultat pour « {query} ».</p>
         </div>
       ) : (
         <FadeIn delay={0.1}>
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse min-w-[760px]">
                 <thead>
@@ -255,7 +255,7 @@ export default function ContactsClient({ contacts }: { contacts: ContactOverview
                     <tr
                       key={contact.contact_email}
                       onClick={() => router.push(`/contacts/${encodeURIComponent(contact.contact_email)}`)}
-                      className="border-b border-slate-100 last:border-b-0 hover:bg-indigo-50/40 cursor-pointer transition-colors group"
+                      className="border-b border-slate-100 last:border-b-0 hover:bg-[color:var(--lavender)]/50 cursor-pointer transition-colors group"
                     >
                       <td className="px-4 py-3.5 max-w-[280px]">
                         <Link
@@ -263,11 +263,11 @@ export default function ContactsClient({ contacts }: { contacts: ContactOverview
                           className="flex items-center gap-3"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shrink-0">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br brand-gradient flex items-center justify-center shrink-0">
                             <span className="text-xs font-bold text-white">{displayName.charAt(0).toUpperCase()}</span>
                           </div>
                           <div className="min-w-0">
-                            <p className="font-medium text-slate-900 text-sm truncate group-hover:text-indigo-700 transition-colors">
+                            <p className="font-medium text-slate-900 text-sm truncate group-hover:text-[color:var(--violet)] transition-colors">
                               {displayName}
                             </p>
                             {contact.contact_email !== displayName && (
@@ -281,7 +281,7 @@ export default function ContactsClient({ contacts }: { contacts: ContactOverview
                       </td>
                       <td className="px-4 py-3.5 whitespace-nowrap">
                         {contact.video_call_count > 0 ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-600">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[color:var(--lavender)] text-[color:var(--violet)]">
                             <VideoIcon className="w-3 h-3 shrink-0" />
                             {contact.video_call_count}
                           </span>
@@ -310,7 +310,7 @@ export default function ContactsClient({ contacts }: { contacts: ContactOverview
                         )}
                       </td>
                       <td className="px-4 py-3.5">
-                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-500 transition-colors" />
+                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[color:var(--violet)] transition-colors" />
                       </td>
                     </tr>
                   ))}
