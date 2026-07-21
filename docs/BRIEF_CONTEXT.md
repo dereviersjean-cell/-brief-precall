@@ -1,4 +1,4 @@
-﻿Contexte Brief — reprise de session (version complète unifiée) — MàJ 19 juillet 2026
+﻿Contexte Brief — reprise de session (version complète unifiée) — MàJ 21 juillet 2026
 Je continue le développement de Brief avec toi sur plusieurs sessions successives. Ce document contient l'intégralité de l'état du projet depuis le début.
 
 
@@ -1464,6 +1464,31 @@ Bibliothèque d'objections & win/loss (session du 19 juillet 2026, 5 phases)
 * Validé en conditions réelles sur le compte Oliverlist : credentials Supabase/Voyage/Anthropic réels ajoutés à .env.local (gitignored), backfill exécuté sur les 9 calls existants, RPC match_call_objections vérifiée, getObjectionStatsForOrganization/getDimensionScoresByOutcome exécutées contre la vraie base et le vrai playbook (7 dimensions). 1 bug de données legacy trouvé et corrigé au passage — voir bug #50
 
 
+Refonte visuelle complète direction Lovable + version mobile (session du 20 juillet 2026)
+
+
+* Reproduction dans le vrai code du redesign fait sur Lovable (export React/Vite statique dans ~/Downloads/Brief Visual Studio, non committé) : nouveau système de tokens oklch avec le bleu #2A5CE0 comme couleur de marque. Les tokens gardent leurs noms historiques (--violet = désormais le bleu de marque, --lavender, --lavender-strong, border-border, shadow-[var(--shadow-*)], classe brand-gradient pour les boutons primaires + hover:brightness-110) — une seule source de vérité dans app/globals.css, les anciens noms --marketing-* aliasés dessus
+* Primitives partagées créées (le repo n'avait AUCUN composant UI partagé avant) : app/components/ui/ui-bits.tsx (Button, Card, ScoreChip, SentimentChip, StatCard, StatusChip, Eyebrow) + PageHeader.tsx + TopBar.tsx (breadcrumb via dict LABELS, recherche désactivée volontairement, cloche → /notifications, avatar → /settings) insérée dans les 10 layouts
+* Refonte complète : landing (structure ~1478 lignes du mockup, témoignage/stats gardés tels quels sur décision explicite, cas clients anonymisés "SaaS RH"/"Fintech B2B"), liste /feedback (KPI strip + onglets filtres + cartes groupées par date), dashboard (graphe SVG 6 semaines reconstruit, carte "Essai actif" + nom d'org dans la sidebar via /api/sidebar/org-status)
+* Fix au passage : le scoping fonts .brief-ui n'avait JAMAIS fonctionné (la CSS définissait .marketing-page mais le code utilisait className="brief-ui") — Inter Tight/Instrument Serif ne s'affichaient nulle part
+* Version mobile responsive : sidebar en drawer auto-contenu (useState + translate-x + auto-close sur changement de pathname, hamburger fixed lg:hidden), layouts passés en ml-0 lg:ml-60 — vérifiée sur ~7 pages
+* Bug "William" trouvé et corrigé (voir bug #51) : un call analysé sans points forts/axes d'amélioration
+
+
+Audit complet + 6 correctifs + fin de migration visuelle (session du 21 juillet 2026)
+
+
+* Audit systématique du repo (sécurité routes, parsing IA, idempotence, design, mobile) — verdict : multi-tenant/idempotence/webhooks sains, 3 bugs latents corrigés + 3 durcissements
+* after() généralisé (bug #52) : tasks/complete, tasks/dismiss, public/quotes/[token] — dernières promesses post-réponse encore tuables par Vercel
+* /notifications ajouté au matcher middleware (bug #53)
+* Refresh du rôle JWT (bug #54) : callback jwt relit le rôle en base toutes les 10 min max (roleRefreshedAt) — le menu Équipe apparaît sans re-login après promotion manager
+* Validation runtime de l'analyse IA : validateCallAnalysisShape (lib/call-analysis.ts) — un prompt admin_config périmé throw désormais (réponse brute loggée, fallback "Analyse indisponible" visible) au lieu de persister des null silencieux. À répliquer sur les autres prompts JSON éditables
+* requireActiveUser ajouté sur /api/recall/google-oauth/start (aligné sur le jumeau Microsoft)
+* Rate limiting étendu : lib/rate-limit.ts refactoré en fabrique — checkRateLimit (briefs, quotas historiques) + checkAiGenerationRateLimit (60/h IP, 200/j user, buckets séparés) branché sur les 9 autres routes de génération IA (quotes/generate, generate-email ×2, reply-suggestion, playbook/import ×2, key-points, objections/similar, digest send-preview). Toute nouvelle route de génération IA doit le brancher
+* Fin de migration visuelle : les 25 fichiers non-admin encore sur l'ancien style indigo (onboarding, ImportPlaybookModal, références clients, TaskTemplatesClient, TaskEmailModal, SendQuoteModal, TemplatePromptSettingsModal, InviteCommercialModal, ManageTeamModal, help, compte-suspendu, page publique devis q/[token], + résidus dans 13 fichiers migrés) passés aux tokens — zéro classe indigo-* hors /admin (qui garde volontairement son design dédié). TeamRosterTable enveloppée en overflow-x-auto (débordait sur mobile)
+* Vérifié : tsc + next build OK, rendu contrôlé navigateur (aide, onboarding, références, paramètres tasks)
+
+
 ________________
 
 
@@ -1573,6 +1598,18 @@ Bugs documentés (numérotation continue depuis session 1)
 50. Format legacy sur call_analysis.objections : le call de référence Ravachol avait déjà un objections non vide, mais en string[] brut — vestige d'une version antérieure et non documentée du prompt, d'avant que la colonne soit mise à toujours écrire []. Repéré uniquement en lançant le backfill contre la vraie base (aucune trace de ce format dans le code ni la doc à ce moment-là). Fix centralisé dans normalizeCallAnalysis (lib/db.ts), le seul chokepoint par lequel passent toutes les lectures de call_analysis — coerce les strings brutes en {objection, response} avec un texte de réponse placeholder, plutôt que de patcher chacun des call sites qui lisent .objections (au moins 3 : getCallWithAnalysis, getCallContextForContact, getDigestCallInsights).
 
 
+51. Prompt admin_config périmé → analyse aux champs null silencieux (bug "William", 20 juillet 2026) : call_analysis_system_prompt édité en base le 9 juillet ne correspondait plus au contrat JSON attendu par le code (architecture dimensions dynamiques arrivée après) — JSON.parse(...) as CallAnalysis laissait passer, strengths/weaknesses/scores arrivaient null en base sans aucune erreur nulle part. Découvert parce qu'un call réel (Hubert × william.bouzemarene@best-energy-control.fr) n'affichait ni points forts ni axes d'amélioration. Fix : reset du prompt au défaut (setPromptConfig) + ré-analyse du call + validateCallAnalysisShape en validation runtime (session du 21). Un seul call affecté (vérifié par requête scores IS NULL). Leçon : un prompt éditable en admin est un contrat d'API non typé — le code doit valider la forme à l'exécution.
+
+
+52. Fire-and-forget tué par Vercel — récidive du bug #40 : le fix after() n'avait été appliqué qu'à generate-brief. Trois autres routes lançaient encore des promesses .catch() nues après la réponse : tasks/complete (sync statut HubSpot), tasks/dismiss (suppression task HubSpot), public/quotes/[token] (markQuoteAsViewed). Corrigées le 21 juillet. Règle : TOUT effet de bord post-réponse passe par after() de next/server, sans exception.
+
+
+53. /notifications absent du matcher middleware : la page vérifiait la session elle-même (getEffectiveUserId + redirect) mais le middleware est le SEUL endroit qui applique le check disabled_at + blocage facturation — un user désactivé ou une org bloquée/résiliée accédait encore à /notifications. À chaque nouvelle page top-level, ajouter la route au matcher de middleware.ts.
+
+
+54. token.role figé jusqu'à re-login : le callback jwt ne posait le rôle qu'à la connexion (branche if (account)) — un commercial promu manager ne voyait pas le menu "Équipe" (AppSidebar lit session.role) avant de se déconnecter/reconnecter. Fix : refresh du rôle depuis la base toutes les 10 min max (roleRefreshedAt dans le JWT, types/next-auth.d.ts). Les routes API sensibles relisaient déjà le rôle en base à chaque appel — à conserver, le JWT peut avoir jusqu'à 10 min de retard.
+
+
 ________________
 
 
@@ -1613,8 +1650,8 @@ Workflow de développement habituel
 ________________
 
 
-Roadmap restante (au 19 juillet 2026)
-Fait depuis la dernière mise à jour : sync bidirectionnel tasks Brief ↔ HubSpot (par template + import inverse natif), fix import PDF playbook (pdf-parse v2) + drag-and-drop, refonte design complète de /admin + menus horizontaux, système de facturation Stripe complet (abonnement par siège + usage 0,50€/h + essai 7j + fenêtre de grâce + blocage), puis 4 compléments (résiliation = accès bloqué, Stripe Tax activé, override admin, plan annuel avec remise) et validation end-to-end en conditions réelles sur le compte Oliverlist (3 bugs trouvés et corrigés au passage), protections IA uniformisées (lib/ai-json.ts partagé sur 7 routes), puis bibliothèque d'objections + win/loss (5 phases, testée en conditions réelles sur le compte Oliverlist — backfill exécuté, RPC vérifiée, 1 bug de données legacy trouvé et corrigé, voir bug #50) — voir "Modules terminés" ci-dessus.
+Roadmap restante (au 21 juillet 2026)
+Fait depuis la dernière mise à jour (19 juillet) : refonte visuelle complète direction Lovable (tokens bleus #2A5CE0, primitives ui-bits.tsx/PageHeader/TopBar, landing, liste feedback, dashboard, fix .brief-ui) + version mobile responsive (sidebar drawer), fix bug "William" (prompt d'analyse périmé, bug #51), audit complet du repo suivi de 6 correctifs (after() généralisé, /notifications au middleware, refresh rôle JWT, validation runtime analyse IA, auth google-oauth/start, rate limiting sur les 9 routes de génération IA — bugs #52-54) et fin de la migration visuelle (zéro indigo-* hors /admin, y compris onboarding, modales, références, page publique devis) — voir "Modules terminés" ci-dessus. L'ancien item "Harmoniser design system" et la "Restructuration finale UI de tous les modules" sont soldés.
 
 Actions manuelles en attente côté Jean :
 * Se réabonner sur le compte Oliverlist ("Se réabonner" sur /settings/billing) — l'org est restée en 'canceled'/bloquée depuis les tests de résiliation live, le fix customer_update est déployé et vérifié contre l'API réelle
@@ -1624,22 +1661,27 @@ Actions manuelles en attente côté Jean :
 * Tester en pratique : sync de sièges (ajout/retrait membre), flux carte refusée → grâce → blocage (carte de test Stripe dédiée), déclenchement manuel du cron d'usage mensuel plutôt que d'attendre le 1er août
 Priorité immédiate (déblocants business)
 * Google OAuth — sortir du mode Testing (bloque toute croissance au-delà des comptes de test whitelistés)
-* Sortir Stripe du mode Test — activation du compte (vérification entreprise, IBAN) pour encaisser réellement, nouveau webhook + price_id en mode Live ; le système est validé de bout en bout en Test et prêt à basculer
+* Sortir Stripe du mode Test — activation du compte (vérification entreprise, IBAN), nouveau webhook + price_id en mode Live ; le système est validé de bout en bout en Test. AVANT la bascule, trancher le pricing usage : recommandation audit = quota d'heures inclus par siège (ex. 10h/mois puis 0,50€/h) plutôt que la refacturation sèche dès la 1ère heure — évite les petites lignes de facture qui font poser des questions, et "10h incluses" devient un argument de vente
+Recommandations audit du 21 juillet 2026 (classées par ratio effort/valeur)
+* Sentry sur webhooks (Recall, Stripe) + crons Inngest — le fil rouge des bugs #46/#40/#42/#51 est l'échec silencieux découvert des jours après ; tier gratuit suffisant, meilleur ratio effort/valeur de la liste
+* Checklist d'activation sur le dashboard ("Démarrage : 2/4 étapes" — agenda Recall, CRM, playbook, premier brief) — à faire AVANT d'ouvrir Google OAuth : le "aha moment" dépend de 3 connexions, un invité qui n'a rien connecté voit un dashboard vide et décroche
+* Notifications inbox : la cloche TopBar mène vers des préférences, pas une inbox — incohérence UX. Les événements existent déjà tous en base (devis accepté, réponse prospect détectée, call analysé), il manque une table notifications + un compteur. Remplace l'ancien item "système de notifications transverse"
+* Recherche globale v1 (contacts + calls, simple ilike) — l'input désactivé de la TopBar est l'élément "pas fini" le plus visible de l'app
+* Dossier migrations/ committé (SQL numérotées, même appliquées à la main) — le workflow actuel (SQL donnée en session) a déjà produit le bug #43
+* Tests sur les flux irréversibles uniquement (pas de couverture générale) : webhook Stripe, webhook Recall, acceptation devis — les endroits où un bug coûte de l'argent ou un client
+* Validation runtime des 6 autres prompts JSON admin_config (même pattern que validateCallAnalysisShape) + bouton "restaurer le défaut" par prompt dans /admin/prompts
+* À terme : découper lib/db.ts (~5000 lignes) par domaine ; passer le rate limiter in-memory sur Upstash/Redis quand il y aura plusieurs instances
 Court terme (haute valeur produit)
 * Backfill de tous les calls historiques restants avec le script (aujourd'hui seul Ravachol/Hubert est backfilé)
-Améliorations techniques
-* Harmoniser design system (slate-* vs gray-*) entre /feedback et le reste
-* Investigation bundle client qui référence SUPABASE_SERVICE_ROLE_KEY (pas de fuite active mais signal d'un import serveur non isolé)
-* Amélioration UX édition des templates emails : note d'aide + preview
-* Décrire l'usage en minutes plutôt qu'en heures sur la description de l'Invoice Item Stripe (cosmétique, la facturation elle-même est déjà à la seconde près)
+* Mobile : dashboard mobile orienté "Prochain RDV + son brief" (le vrai cas d'usage mobile = relire son brief 5 min avant le RDV)
 CRM et intégrations
+* Téléphonie Ringover/Aircall — capture automatique des appels téléphoniques. PASSÉE DEVANT Sellsy (reco audit) : la cible PME/ETI FR fait plus d'appels tél que de visios, Brief ne voit aujourd'hui qu'une fraction de l'activité réelle d'un commercial — c'est l'expansion de marché adressable la plus rentable
 * Sellsy CRM (lecture, même architecture que HubSpot/Pipedrive)
-* Téléphonie Ringover/Aircall — capture automatique des appels téléphoniques (pas juste visio)
 * Salesforce CRM
 Enrichissement
+* Activer Pappers payant — "données légales FR" est dans le positionnement marketing mais tourne sans crédits (fallback mémoire Claude) : à financer avant d'en faire un argument
 * Enrichissement Pappers — auto-remplir SIRET/adresse client dans les devis
 * Enrichissement Proxycurl LinkedIn — poste, ancienneté, décideur
-* Activer Pappers payant (données légales FR précises en complément du web search)
 Infra & business
 * Microsoft OAuth Recall — valider avec un vrai compte Outlook (déployé, jamais testé)
 * Notifications push quand un prospect répond à un email de suivi
@@ -1647,9 +1689,9 @@ Plus tard
 * Signature électronique qualifiée Yousign/DocuSign (actuellement signature simple)
 * Webhook calendar Recall temps réel (actuellement polling cron 5 min)
 * Notation briefs 👍/👎 dans backoffice
-* Système de notifications transverse (cloche + table, aujourd'hui juste toast simple sur devis accepté)
 * Badge "prévenir le prospect de la présence du bot" (issue trouvée : les bots peuvent être kick de la salle d'attente sans consentement explicite)
-* Restructuration finale UI de tous les modules dans le nouveau design system
+* Amélioration UX édition des templates emails : note d'aide + preview
+* Bibliothèque objections + win/loss agrégée/anonymisée par secteur = potentiel tier premium "benchmarks marché FR" — moat défendable sur le marché FR, à valider RGPD (la donnée se construit déjà toute seule)
 
 
 ________________

@@ -80,12 +80,22 @@ Livré et testé en conditions réelles sur le compte Oliverlist le 19 juillet 2
 - Idempotence systématique : contraintes UNIQUE en base + upserts partout (briefs, calls, tasks, notes HubSpot)
 - Server components : `getEffectiveUserId()` de `lib/session-user.ts`
 - Route handlers : `requireActiveUser(session)` de `lib/api-auth.ts`
+- Effets de bord post-réponse (sync HubSpot, tracking, dispatch) : TOUJOURS dans `after()` de `next/server` — jamais une promesse `.catch()` nue, Vercel gèle la fonction dès la réponse envoyée (cf. bug #19)
+- Rate limiting : `lib/rate-limit.ts` (fabrique in-memory) — `checkRateLimit` pour les briefs (quotas serrés), `checkAiGenerationRateLimit` pour les 9 autres routes de génération IA (60/h IP, 200/j user). Toute NOUVELLE route de génération IA doit brancher `checkAiGenerationRateLimit` + `requestIp`
+
+### Design system (migration Lovable terminée le 21 juillet 2026)
+- Tokens oklch dans `app/globals.css` : la marque est le **bleu #2A5CE0** mais les tokens gardent leurs noms historiques — `--violet` (= le bleu de marque), `--lavender`, `--lavender-strong`, `border-border`, `shadow-[var(--shadow-sm/md/glow)]`, classe `brand-gradient` pour les boutons primaires (+ `hover:brightness-110`)
+- Primitives partagées : `app/components/ui/ui-bits.tsx` (Button, Card, ScoreChip, SentimentChip, StatCard, StatusChip, Eyebrow) + `PageHeader.tsx` + `TopBar.tsx` (breadcrumb, dans les 10 layouts)
+- Fonts scopées via la classe `.brief-ui` (Inter Tight + Instrument Serif italic)
+- **Zéro classe `indigo-*` hors `/admin`** (qui garde volontairement son design dédié). Toute nouvelle UI utilise les tokens, jamais indigo/violet Tailwind littéral (exception : couleurs catégorielles type badges emerald/amber/violet-50)
+- Mobile : sidebar en drawer auto-contenu (`AppSidebar.tsx`, `useState` + translate + auto-close sur pathname), layouts en `ml-0 lg:ml-60`, tables larges dans `overflow-x-auto`
 
 ### Génération IA — règles critiques
 - Modèle principal : `claude-sonnet-4-6` / léger : `claude-haiku-4-5-20251001`
 - `max_tokens` : minimum 1500 pour les sorties JSON (800 = troncature garantie)
 - Toujours `extractJsonObject` de `lib/ai-json.ts` après réponse IA (préambule/postambule possible, sanitize aussi les caractères de contrôle bruts dans les strings JSON) — uniformisé le 19 juillet 2026 sur toutes les routes de génération JSON (`lib/brief-generator.ts`, `lib/call-analysis.ts`, `lib/email-followup.ts`, `app/api/quotes/generate`, `app/api/quotes/[quoteId]/generate-email`, `app/api/tasks/[taskId]/generate-email`, `app/api/playbook/import`)
 - Toujours logger la réponse brute en cas d'erreur JSON parsing
+- Validation runtime de la forme : `validateCallAnalysisShape` (lib/call-analysis.ts) vérifie les clés obligatoires après parsing — un prompt admin_config périmé ne peut plus produire des champs `null` silencieux (cf. bug #20). À répliquer sur toute nouvelle route dont le prompt est éditable en admin
 - Contrat JSON : forcer côté serveur dans le system prompt, jamais dans le template manager
 - Web search : `web_search_20250305`, max_uses: 3 — activé pour tous les briefs. Avec le web search, utiliser `.filter(b => b.type === "text").pop()` (pas `.find()`) — la réponse contient d'autres blocs (citations, résultats) et le texte utile est le dernier bloc
 
@@ -109,6 +119,10 @@ Livré et testé en conditions réelles sur le compte Oliverlist le 19 juillet 2
 16. **Webhook Stripe : événement `customer.subscription.created` non coché côté dashboard** : le code gérait déjà ce cas dans son switch, mais Stripe ne l'envoyait jamais car l'endpoint n'était souscrit qu'à 5 événements sur 6 nécessaires. Résultat : `current_period_start/end` et `billing_interval` jamais renseignés côté Brief même une fois le bug #15 corrigé. Pas un bug de code — vérifier la liste des événements cochés sur le webhook dans le Dashboard Stripe à chaque fois qu'un nouveau `case` est ajouté au switch.
 17. **Réabonnement Stripe après résiliation échouait** : `checkout.sessions.create` avec un `customer` existant + `tax_id_collection: { enabled: true }` exige `customer_update: { name: "auto" }`, sinon Stripe refuse avec "Tax ID collection requires updating business name on the customer." Invisible au premier abonnement (`customer_email`, pas de `customer` existant) — repéré uniquement en testant un vrai réabonnement après résiliation sur le compte Oliverlist. Reproduit et vérifié directement contre l'API Stripe réelle avant et après le fix (`lib/stripe.ts`, `createOrganizationCheckoutSession`).
 18. **Format legacy sur `call_analysis.objections`** : le call de référence Ravachol avait déjà un `objections` non vide, mais en `string[]` brut — vestige d'une version antérieure et non documentée du prompt, d'avant que la colonne soit mise à toujours écrire `[]`. Repéré uniquement en lançant le backfill contre la vraie base (aucune trace de ce format dans le code ni la doc). Fix centralisé dans `normalizeCallAnalysis` (lib/db.ts), le seul chokepoint par lequel passent toutes les lectures de `call_analysis` — coerce les strings brutes en `{objection, response}` avec un texte de réponse placeholder, plutôt que de patcher chacun des call sites qui lisent `.objections`.
+19. **Fire-and-forget tué par Vercel (récidive du pattern #40 de BRIEF_CONTEXT)** : toute promesse non-awaitée lancée après la réponse HTTP peut être gelée par Vercel avant de s'exécuter. Le fix `after()` n'avait été appliqué qu'à generate-brief — retrouvé sur `tasks/complete` (sync HubSpot), `tasks/dismiss`, `public/quotes/[token]` (tracking "vu"). Corrigé le 21 juillet 2026. Règle : `after()` systématique pour tout effet de bord post-réponse.
+20. **Prompt admin_config périmé → analyse aux champs null silencieux** (bug "William", 20 juillet 2026) : `call_analysis_system_prompt` édité en base le 9 juillet ne correspondait plus au contrat JSON du code — `JSON.parse(...) as CallAnalysis` laissait passer, `strengths`/`weaknesses`/`scores` arrivaient `null` en base sans aucune erreur. Fix : reset du prompt au défaut + `validateCallAnalysisShape` (validation runtime qui throw au lieu de laisser passer). Un seul call affecté (vérifié par requête `scores IS NULL`).
+21. **`/notifications` absent du matcher middleware** : la page vérifiait la session elle-même mais le middleware est le seul à appliquer `disabled_at` + blocage facturation — un user désactivé ou une org bloquée y accédait encore. À chaque nouvelle page top-level : ajouter la route au matcher de `middleware.ts`.
+22. **`token.role` figé jusqu'à re-login** : le callback `jwt` ne posait le rôle qu'à la connexion (`if (account)`) — un commercial promu manager ne voyait pas le menu "Équipe" avant de se déconnecter/reconnecter. Fix : refresh du rôle depuis la base toutes les 10 min max (`roleRefreshedAt` dans le JWT). Les routes API relisaient déjà le rôle en base (à conserver — le JWT peut avoir jusqu'à 10 min de retard).
 
 ## Règles — NE JAMAIS faire
 
@@ -122,6 +136,10 @@ Livré et testé en conditions réelles sur le compte Oliverlist le 19 juillet 2
 - ❌ Push sans `git status` — Claude Code peut avoir modifié sans stager
 - ❌ Casser l'idempotence (UPSERT + contrainte UNIQUE obligatoires)
 - ❌ `max_tokens` < 1500 sur les routes de génération JSON
+- ❌ Lancer une promesse non-awaitée après la réponse HTTP sans `after()` (Vercel la tue)
+- ❌ Ajouter une page top-level sans l'ajouter au matcher de `middleware.ts`
+- ❌ Utiliser des classes `indigo-*` (ou violet/purple Tailwind littéral pour la marque) hors `/admin` — toujours les tokens du design system
+- ❌ Créer une route de génération IA sans `checkAiGenerationRateLimit`
 
 ## Commandes
 
@@ -142,13 +160,28 @@ git add . && git commit -m "..." && git push
 
 ## Roadmap prioritaire
 
-Fait depuis la dernière mise à jour (18 juillet 2026) : sync bidirectionnel tasks Brief↔HubSpot par template + import inverse (task créée nativement dans HubSpot → créée sur Brief, toggle par user, nécessite le scope `crm.objects.owners.read`), fix import PDF playbook (pdf-parse v2) + drag-and-drop sur la zone fichier, refonte design complète de la partie `/admin` (nouveau design system + menus horizontaux sur `/admin/prompts` et détail organisation), fix résilience `/tasks/settings`, **système de facturation Stripe complet** (abonnement par siège + usage 0,50€/h + essai 7j + fenêtre de grâce 48h + blocage — voir section Facturation ci-dessus), puis 4 compléments (résiliation = accès bloqué comme `blocked`, Stripe Tax activé, override admin débloquer/prolonger, plan annuel avec remise) et **validation end-to-end en conditions réelles sur le compte Oliverlist** (checkout, essai, résiliation, réabonnement, blocage — 3 bugs trouvés et corrigés au passage, voir bugs #15-17), **protections IA uniformisées** (`lib/ai-json.ts` partagé, max_tokens ≥1500, log réponse brute) sur les 7 routes de génération JSON qui ne les avaient pas encore, puis **bibliothèque d'objections + win/loss** (voir section dédiée ci-dessus) testée en conditions réelles sur le compte Oliverlist (backfill exécuté, RPC vérifiée, 1 bug de données legacy trouvé et corrigé, voir bug #18).
+Fait depuis la dernière mise à jour (20-21 juillet 2026) : **refonte visuelle complète direction Lovable** (nouveau système de tokens oklch bleu #2A5CE0, primitives partagées `ui-bits.tsx`/`PageHeader`/`TopBar`, refonte landing + liste feedback + dashboard, fix du scoping `.brief-ui` qui n'avait jamais fonctionné), **version mobile responsive** (sidebar drawer), **fix bug "William"** (prompt d'analyse admin_config périmé → champs null silencieux, voir bug #20), puis **audit complet du repo** suivi de **6 correctifs** (`after()` généralisé, `/notifications` au middleware, refresh rôle JWT 10 min, validation runtime analyse IA, auth sur google-oauth/start, rate limiting étendu aux 9 routes de génération IA) et **fin de la migration visuelle** (les 25 fichiers non-admin restants — onboarding, modales, références, page publique devis, compte-suspendu — zéro `indigo-*` hors /admin).
 
-1. Google OAuth — sortir du mode Testing (bloque toute croissance au-delà des comptes de test whitelistés, prioritaire)
-2. Sortir Stripe du mode Test — activation compte (vérification entreprise) pour encaisser réellement, le système est validé en Test et prêt
-3. Sellsy CRM — lecture
-4. Ringover/Aircall — téléphonie (pas juste visio)
-5. Proxycurl LinkedIn — enrichissement contact
+### Déblocants business (priorité immédiate)
+1. Google OAuth — sortir du mode Testing (bloque toute croissance au-delà des comptes whitelistés)
+2. Stripe en mode Live — activation compte (vérification entreprise). **Avant la bascule, trancher le pricing usage** : recommandation audit = quota d'heures inclus par siège (ex. 10h/mois puis 0,50€/h) plutôt que la refacturation sèche dès la 1ère heure — évite les lignes de facture à 3€ qui font poser des questions, et change la facturation AVANT les premiers clients payants plutôt qu'après
+
+### Recommandations audit du 21 juillet (par ratio effort/valeur)
+3. **Sentry** sur webhooks (Recall, Stripe) + crons Inngest — le fil rouge des bugs #15/#19/#20 est l'échec silencieux découvert des jours après ; meilleur ratio effort/valeur de la liste
+4. **Checklist d'activation** sur le dashboard ("Démarrage : 2/4 étapes" — agenda, CRM, playbook, premier brief) — à faire avant d'ouvrir Google OAuth, sinon les invités décrochent sur un dashboard vide
+5. **Notifications inbox** : la cloche TopBar mène vers des préférences, pas une inbox — les événements existent déjà en base (devis accepté, réponse prospect, call analysé), il manque une table + un compteur
+6. **Recherche globale v1** (contacts + calls, simple `ilike`) — l'élément "pas fini" le plus visible de l'app (input désactivé dans la TopBar)
+7. **Dossier `migrations/`** committé (SQL numérotées, même appliquées à la main) — le workflow actuel a déjà produit le bug #14
+8. **Tests sur les flux irréversibles uniquement** : webhook Stripe, webhook Recall, acceptation devis
+9. **Validation runtime des 6 autres prompts JSON** admin_config (même pattern que `validateCallAnalysisShape`) + bouton "restaurer le défaut" par prompt
+
+### Expansion produit
+10. Ringover/Aircall — téléphonie. **Passé devant Sellsy** (reco audit) : la cible PME/ETI FR fait plus d'appels tél que de visios, Brief ne voit aujourd'hui qu'une fraction de l'activité réelle
+11. Sellsy CRM — lecture
+12. Proxycurl LinkedIn — enrichissement contact
+13. Activer Pappers payant — "données légales FR" est dans le positionnement mais tourne sans crédits (fallback mémoire Claude)
+14. Mobile : dashboard mobile orienté "Prochain RDV + son brief" (le cas d'usage mobile réel = relire son brief 5 min avant le RDV)
+15. Long terme : bibliothèque objections + win/loss agrégée/anonymisée par secteur = potentiel tier premium "benchmarks marché FR" (à valider RGPD)
 
 ## Comptes de test
 - Jean (manager) : `jean.dereviers@oliverlist.com` — user_id `ee6772b4-423f-4091-a140-bf3991919c8b`
