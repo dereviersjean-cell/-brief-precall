@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, FileText, Video, History, FileCheck, CheckSquare, Bell, Users, Settings, HelpCircle, LogOut, ChevronDown, Sparkles } from "lucide-react";
+import { LayoutDashboard, FileText, Video, History, FileCheck, CheckSquare, Bell, Users, Settings, HelpCircle, LogOut, ChevronDown, Sparkles, Menu, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 type OrgStatus = {
@@ -72,6 +72,13 @@ export default function AppSidebar() {
   const { data: session } = useSession();
   const [pendingTasksCount, setPendingTasksCount] = useState(0);
   const [orgStatus, setOrgStatus] = useState<OrgStatus | null>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Auto-close the mobile drawer on every navigation — otherwise it stays
+  // open over the new page after tapping a link.
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     let cancelled = false;
@@ -156,11 +163,36 @@ export default function AppSidebar() {
   ];
 
   return (
-    <aside className="brief-ui fixed left-0 top-0 h-full w-60 bg-white/80 backdrop-blur-xl border-r border-border flex flex-col z-20">
+    <>
+      {/* Mobile trigger — fixed, only shown below lg where the sidebar is
+          hidden by default. Lives here (not in TopBar) so this component
+          stays fully self-contained on mobile, no cross-component state. */}
+      <button
+        onClick={() => setMobileOpen(true)}
+        aria-label="Ouvrir le menu"
+        className="brief-ui fixed top-3 left-3 z-30 grid h-10 w-10 place-items-center rounded-lg border border-border bg-white/90 backdrop-blur text-slate-600 shadow-[var(--shadow-sm)] lg:hidden"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+
+      {/* Backdrop */}
+      {mobileOpen && (
+        <div
+          onClick={() => setMobileOpen(false)}
+          aria-hidden
+          className="fixed inset-0 z-30 bg-slate-900/40 lg:hidden"
+        />
+      )}
+
+      <aside
+        className={`brief-ui fixed left-0 top-0 h-full w-60 bg-white/80 backdrop-blur-xl border-r border-border flex flex-col z-40 transition-transform duration-200 lg:translate-x-0 ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-5 pt-5 pb-4 shrink-0">
-        <Link href="/dashboard" className="flex items-center gap-2.5">
-          <div className="relative grid h-9 w-9 place-items-center rounded-xl brand-gradient text-white text-sm font-semibold shadow-[var(--shadow-glow)]">
+        <Link href="/dashboard" className="flex items-center gap-2.5 min-w-0 flex-1">
+          <div className="relative grid h-9 w-9 place-items-center rounded-xl brand-gradient text-white text-sm font-semibold shadow-[var(--shadow-glow)] shrink-0">
             B
             <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-white" />
           </div>
@@ -171,6 +203,13 @@ export default function AppSidebar() {
             )}
           </div>
         </Link>
+        <button
+          onClick={() => setMobileOpen(false)}
+          aria-label="Fermer le menu"
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-600 lg:hidden"
+        >
+          <X className="h-4 w-4" />
+        </button>
       </div>
 
       {/* Nav */}
@@ -318,6 +357,7 @@ export default function AppSidebar() {
           </div>
         </div>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }

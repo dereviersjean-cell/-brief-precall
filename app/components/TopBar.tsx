@@ -67,7 +67,7 @@ export default function TopBar() {
 
   return (
     <div className="brief-ui sticky top-0 z-10 border-b border-border/80 bg-white/70 backdrop-blur-xl">
-      <div className="h-14 flex items-center gap-4 px-6 lg:px-10">
+      <div className="h-14 flex items-center gap-4 pl-16 pr-4 lg:px-10">
         <nav className="flex items-center gap-1.5 text-[12.5px] text-slate-500 min-w-0">
           {crumbs.map((c, i) => (
             <span key={i} className="flex items-center gap-1.5 min-w-0">

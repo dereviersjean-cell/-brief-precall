@@ -9,7 +9,7 @@ export default function TasksLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen">
       <AppSidebar />
-      <div className="flex-1 ml-60 min-w-0">
+      <div className="flex-1 ml-0 lg:ml-60 min-w-0">
         <ImpersonationBanner />
         <BillingGraceBanner />
         <TopBar />

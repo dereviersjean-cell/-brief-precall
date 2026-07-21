@@ -9,7 +9,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen">
       <AppSidebar />
-      <div className="flex-1 ml-60 min-w-0 bg-background">
+      <div className="flex-1 ml-0 lg:ml-60 min-w-0 bg-background">
         <BillingGraceBanner />
         <TopBar />
         <div className="max-w-4xl mx-auto px-10 py-10">
