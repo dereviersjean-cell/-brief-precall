@@ -14,6 +14,7 @@ export const config = {
     "/team/:path*",
     "/help/:path*",
     "/notifications/:path*",
+    "/objections/:path*",
     "/onboarding/:path*",
   ],
 };

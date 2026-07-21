@@ -2018,6 +2018,88 @@ export async function getObjectionStatsForOrganization(organizationId: string): 
   return Array.from(byKey.values()).sort((a, b) => b.occurrences - a.occurrences);
 }
 
+export type OrganizationObjectionRow = {
+  id: string;
+  callId: string;
+  callOwnerId: string | null;
+  companyName: string | null;
+  contactEmail: string | null;
+  objection: string;
+  response: string;
+  createdAt: string;
+  outcome: DealOutcome | null;
+};
+
+// Full library listing for the /objections page — every indexed objection of
+// the org, newest first, with the deal outcome resolved in bulk (same
+// "most recent wins" rule as everywhere else via getDealOutcomesByEmail).
+export async function listObjectionsForOrganization(organizationId: string): Promise<OrganizationObjectionRow[]> {
+  const { data, error } = await supabaseAdmin
+    .from("call_objections")
+    .select("id, call_id, contact_email, objection, response, created_at, calls(user_id, company_name)")
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  type Row = {
+    id: string;
+    call_id: string;
+    contact_email: string | null;
+    objection: string;
+    response: string;
+    created_at: string;
+    calls: { user_id: string | null; company_name: string | null } | { user_id: string | null; company_name: string | null }[] | null;
+  };
+  const rows = (data ?? []) as Row[];
+  const outcomeByEmail = await getDealOutcomesByEmail(organizationId, rows.map((r) => r.contact_email));
+
+  return rows.map((r) => {
+    // calls embeds as an object (many-to-one FK) but handle the array shape
+    // defensively too — cf. bug #26 on PostgREST relation inference.
+    const call = Array.isArray(r.calls) ? (r.calls[0] ?? null) : r.calls;
+    return {
+      id: r.id,
+      callId: r.call_id,
+      callOwnerId: call?.user_id ?? null,
+      companyName: call?.company_name ?? null,
+      contactEmail: r.contact_email,
+      objection: r.objection,
+      response: r.response,
+      createdAt: r.created_at,
+      outcome: (r.contact_email ? outcomeByEmail.get(r.contact_email) : undefined) ?? null,
+    };
+  });
+}
+
+export type ObjectionCoverage = {
+  analyzedCalls: number;
+  callsWithObjections: number;
+};
+
+// "What's missing" signal for the /objections page: how many analyzed calls
+// of the org never produced a library entry (either no objection was raised,
+// or the call predates the library and was never backfilled).
+export async function getObjectionCoverageForOrganization(organizationId: string): Promise<ObjectionCoverage> {
+  const members = await getUsersInOrganization(organizationId);
+  const userIds = members.map((m) => m.id);
+  if (userIds.length === 0) return { analyzedCalls: 0, callsWithObjections: 0 };
+
+  const [{ data: callRows, error: callsError }, { data: objRows, error: objError }] = await Promise.all([
+    supabaseAdmin.from("calls").select("id, call_analysis(id)").in("user_id", userIds),
+    supabaseAdmin.from("call_objections").select("call_id").eq("organization_id", organizationId),
+  ]);
+  if (callsError) throw callsError;
+  if (objError) throw objError;
+
+  type CallRow = { id: string; call_analysis: { id: string } | { id: string }[] | null };
+  const analyzedCalls = ((callRows ?? []) as CallRow[]).filter((c) =>
+    Array.isArray(c.call_analysis) ? c.call_analysis.length > 0 : !!c.call_analysis
+  ).length;
+  const callsWithObjections = new Set(((objRows ?? []) as { call_id: string }[]).map((o) => o.call_id)).size;
+
+  return { analyzedCalls, callsWithObjections };
+}
+
 // Shared by getObjectionStatsForOrganization and getDimensionScoresByOutcome
 // — one bulk fetch of deal_outcomes for a set of contact emails, ordered so
 // that when several sources disagree for the same contact, the most recently

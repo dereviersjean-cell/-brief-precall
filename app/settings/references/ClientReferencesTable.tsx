@@ -56,8 +56,39 @@ function formatDate(iso: string): string {
 // saveClientReferences (sector + problem + solution + result + client_name)
 // — this is the signal that decides whether a reference can meaningfully
 // surface as a relevant match in a future brief.
+const KEY_FIELDS: { key: keyof ClientReferenceRow; label: string }[] = [
+  { key: "sector", label: "secteur" },
+  { key: "problem", label: "problématique" },
+  { key: "solution", label: "solution" },
+  { key: "result", label: "résultat chiffré" },
+];
+
+function missingFields(ref: ClientReferenceRow): string[] {
+  return KEY_FIELDS.filter((f) => !ref[f.key]).map((f) => f.label);
+}
+
 function isComplete(ref: ClientReferenceRow): boolean {
-  return !!ref.sector && !!ref.problem && !!ref.solution && !!ref.result;
+  return missingFields(ref).length === 0;
+}
+
+// Compact 4-segment gauge: one segment per key field, filled when present.
+// The title attribute spells out what's missing on hover.
+function CompletenessGauge({ reference }: { reference: ClientReferenceRow }) {
+  const missing = missingFields(reference);
+  const title =
+    missing.length === 0
+      ? "Profil complet — matching optimal dans les briefs"
+      : `Manque : ${missing.join(", ")}`;
+  return (
+    <span className="inline-flex items-center gap-0.5 shrink-0" title={title}>
+      {KEY_FIELDS.map((f) => (
+        <span
+          key={f.key}
+          className={`h-1.5 w-3 rounded-full ${reference[f.key] ? "bg-emerald-400" : "bg-slate-200"}`}
+        />
+      ))}
+    </span>
+  );
 }
 
 function toFormData(ref: ClientReferenceRow): ReferenceFormData {
@@ -274,6 +305,14 @@ export default function ClientReferencesTable({ version }: { version: number }) 
   const completeCount = references.filter(isComplete).length;
   const completeRate = hasAny ? Math.round((completeCount / references.length) * 100) : 0;
   const missingEmbeddingCount = references.filter((r) => !r.has_embedding).length;
+  const incompleteCount = references.length - completeCount;
+  // Most frequently missing key field across the base — drives the "what's
+  // missing" banner toward the single most actionable fix.
+  const missingCounts = KEY_FIELDS.map((f) => ({
+    label: f.label,
+    count: references.filter((r) => !r[f.key]).length,
+  })).filter((m) => m.count > 0);
+  const topMissingLabel = missingCounts.sort((a, b) => b.count - a.count)[0]?.label ?? null;
 
   return (
     <div className="mt-6">
@@ -307,6 +346,20 @@ export default function ClientReferencesTable({ version }: { version: number }) 
             {missingEmbeddingCount} référence{missingEmbeddingCount > 1 ? "s" : ""} sans empreinte vectorielle —{" "}
             {missingEmbeddingCount > 1 ? "elles ne seront jamais proposées" : "elle ne sera jamais proposée"} dans les
             briefs. Ouvrez-{missingEmbeddingCount > 1 ? "les" : "la"} et cliquez sur Enregistrer pour relancer le calcul.
+          </p>
+        </div>
+      )}
+
+      {incompleteCount > 0 && (
+        <div className="flex items-start gap-3 bg-[color:var(--lavender)] border border-[color:var(--lavender-strong)] rounded-2xl px-4 py-3 mb-4">
+          <span className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shrink-0 shadow-sm">
+            <Pencil className="w-4 h-4 text-[color:var(--violet)]" />
+          </span>
+          <p className="text-sm text-slate-700">
+            {incompleteCount} profil{incompleteCount > 1 ? "s" : ""} incomplet{incompleteCount > 1 ? "s" : ""}
+            {topMissingLabel && ` (le plus souvent : ${topMissingLabel} manquant)`} — une référence incomplète est
+            moins bien rapprochée des prospects et donc moins souvent citée dans vos briefs. La jauge de chaque ligne
+            indique ce qui manque.
           </p>
         </div>
       )}
@@ -374,7 +427,7 @@ export default function ClientReferencesTable({ version }: { version: number }) 
                       {formatDate(ref.created_at)}
                     </p>
                   </div>
-                  {complete && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />}
+                  {complete ? <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> : <CompletenessGauge reference={ref} />}
                   <button
                     type="button"
                     onClick={(e) => {

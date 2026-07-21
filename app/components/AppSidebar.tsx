@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, FileText, Video, History, FileCheck, CheckSquare, Bell, Users, Settings, HelpCircle, LogOut, ChevronDown, Sparkles, Menu, X } from "lucide-react";
+import { LayoutDashboard, FileText, Video, History, FileCheck, CheckSquare, Bell, Users, Settings, HelpCircle, LogOut, ChevronDown, Sparkles, Menu, X, MessagesSquare } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 type OrgStatus = {
@@ -130,6 +130,7 @@ export default function AppSidebar() {
   const briefActive = pathname.startsWith("/brief");
   const feedbackActive = pathname.startsWith("/feedback");
   const contactsActive = pathname.startsWith("/contacts");
+  const objectionsActive = pathname.startsWith("/objections");
   const quotesActive = pathname.startsWith("/quotes");
   const tasksActive = pathname.startsWith("/tasks");
   const notificationsActive = pathname.startsWith("/notifications");
@@ -154,6 +155,7 @@ export default function AppSidebar() {
   const commercialGroup: { href: string; label: string; icon: LucideIcon; active: boolean; badge?: number }[] = [
     { href: "/brief", label: "Brief", icon: FileText, active: briefActive },
     { href: "/feedback", label: "Analyse rendez-vous", icon: Video, active: feedbackActive },
+    { href: "/objections", label: "Objections", icon: MessagesSquare, active: objectionsActive },
     { href: "/contacts", label: "Historique", icon: History, active: contactsActive },
     { href: "/quotes", label: "Devis", icon: FileCheck, active: quotesActive },
     { href: "/tasks", label: "Tasks", icon: CheckSquare, active: tasksActive, badge: pendingTasksCount },

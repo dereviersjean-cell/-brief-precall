@@ -18,6 +18,7 @@ const LABELS: Record<string, string> = {
   settings: "Paramètres",
   tasks: "Tasks",
   notifications: "Notifications",
+  objections: "Objections",
   team: "Équipe",
   playbook: "Playbook",
   "email-templates": "Templates emails",
