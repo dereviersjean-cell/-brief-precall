@@ -19,7 +19,7 @@ export default async function AccountSuspendedPage() {
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
-        <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 text-center">
+        <div className="relative overflow-hidden rounded-3xl border border-border bg-white p-8 text-center">
           <div
             aria-hidden
             className="pointer-events-none absolute -top-20 -right-16 w-56 h-56 rounded-full bg-gradient-to-br from-red-200/40 via-amber-200/30 to-transparent blur-3xl"
@@ -39,7 +39,7 @@ export default async function AccountSuspendedPage() {
                 </p>
                 <Link
                   href="/settings/billing"
-                  className="inline-flex items-center justify-center gap-2 bg-indigo-600 text-white py-2.5 px-5 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors mt-5"
+                  className="inline-flex items-center justify-center gap-2 brand-gradient text-white py-2.5 px-5 rounded-lg text-sm font-semibold hover:brightness-110 transition-colors mt-5"
                 >
                   {isCanceled ? "Me réabonner" : "Régulariser mon abonnement"}
                 </Link>

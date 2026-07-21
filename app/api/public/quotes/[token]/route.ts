@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { after } from "next/server";
 import { getQuoteByPublicToken, markQuoteAsViewed } from "@/lib/db";
 
 export async function GET(
@@ -12,9 +13,13 @@ export async function GET(
     return NextResponse.json({ error: "Devis introuvable." }, { status: 404 });
   }
 
-  // Fire-and-forget — first-open tracking shouldn't block the response.
-  markQuoteAsViewed(token).catch((err) => {
-    console.error("[public/quotes/:token] markQuoteAsViewed failed (non-blocking):", err);
+  // First-open tracking shouldn't block the response. after() (not bare
+  // fire-and-forget): Vercel can freeze the function as soon as the response
+  // is sent, killing an unawaited promise (cf. generate-brief).
+  after(async () => {
+    await markQuoteAsViewed(token).catch((err) => {
+      console.error("[public/quotes/:token] markQuoteAsViewed failed (non-blocking):", err);
+    });
   });
 
   return NextResponse.json(quote);

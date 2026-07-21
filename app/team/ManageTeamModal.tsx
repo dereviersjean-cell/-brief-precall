@@ -83,7 +83,7 @@ export default function ManageTeamModal({ onClose }: { onClose: () => void }) {
         <div className="overflow-y-auto -mx-1 px-1">
           {state === "loading" && (
             <div className="flex justify-center py-8">
-              <Spinner className="w-6 h-6 text-indigo-600" />
+              <Spinner className="w-6 h-6 text-[color:var(--violet)]" />
             </div>
           )}
 
@@ -115,7 +115,7 @@ export default function ManageTeamModal({ onClose }: { onClose: () => void }) {
                     disabled={c.pending}
                     onClick={() => handleToggle(c)}
                     className={`shrink-0 relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
-                      c.is_linked ? "bg-indigo-600" : "bg-slate-200"
+                      c.is_linked ? "brand-gradient" : "bg-slate-200"
                     }`}
                   >
                     <span
@@ -133,7 +133,7 @@ export default function ManageTeamModal({ onClose }: { onClose: () => void }) {
         <div className="mt-5 flex justify-end shrink-0">
           <button
             onClick={onClose}
-            className="text-sm font-medium text-slate-600 border border-slate-200 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors"
+            className="text-sm font-medium text-slate-600 border border-border px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors"
           >
             Fermer
           </button>

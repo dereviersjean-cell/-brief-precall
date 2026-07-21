@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import Anthropic from "@anthropic-ai/sdk";
 import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
+import { checkAiGenerationRateLimit, requestIp, retryAfterMinutes } from "@/lib/rate-limit";
 import { readPromptConfig, DEFAULT_TASK_EMAIL_PROMPT } from "@/lib/admin-config";
 import {
   getTaskById,
@@ -111,6 +112,15 @@ export async function POST(
   const session = await getServerSession(authOptions);
   const auth = await requireActiveUser(session);
   if (!auth.ok) return auth.response;
+
+  const rl = checkAiGenerationRateLimit(requestIp(request), auth.userId);
+  if (!rl.allowed) {
+    const minutes = retryAfterMinutes(rl.retryAfterMs);
+    return NextResponse.json(
+      { error: `Limite de génération IA atteinte. Réessayez dans ${minutes} minute${minutes > 1 ? "s" : ""}.`, retryAfterMs: rl.retryAfterMs },
+      { status: 429 }
+    );
+  }
 
   const { taskId } = await params;
   const task = await getTaskById(taskId, auth.userId);

@@ -67,7 +67,7 @@ export default function InviteCommercialModal({ onClose }: { onClose: () => void
                   onChange={(e) => setEmail(e.target.value)}
                   autoFocus
                   placeholder="email@entreprise.com"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
                 />
               </div>
               <div>
@@ -77,7 +77,7 @@ export default function InviteCommercialModal({ onClose }: { onClose: () => void
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Nom du collaborateur"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
                 />
               </div>
             </div>
@@ -91,14 +91,14 @@ export default function InviteCommercialModal({ onClose }: { onClose: () => void
             <div className="flex justify-end gap-2">
               <button
                 onClick={onClose}
-                className="text-sm font-medium text-slate-600 border border-slate-200 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors"
+                className="text-sm font-medium text-slate-600 border border-border px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors"
               >
                 Annuler
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={!email.trim() || loading}
-                className="text-sm font-medium text-white bg-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                className="text-sm font-medium text-white brand-gradient px-4 py-2 rounded-lg hover:brightness-110 transition-colors disabled:opacity-50"
               >
                 {loading ? "Envoi…" : "Créer et envoyer l'invitation"}
               </button>

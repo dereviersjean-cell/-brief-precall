@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
+import { checkAiGenerationRateLimit, requestIp, retryAfterMinutes } from "@/lib/rate-limit";
 import { getUserRole, getUserOrganizationId, getPlaybookNotionConnection } from "@/lib/db";
 import { getNotionPageText } from "@/lib/notion";
 import { extractPlaybookDimensions } from "@/app/api/playbook/import/route";
@@ -10,6 +11,15 @@ export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
   const auth = await requireActiveUser(session);
   if (!auth.ok) return auth.response;
+
+  const rl = checkAiGenerationRateLimit(requestIp(request), auth.userId);
+  if (!rl.allowed) {
+    const minutes = retryAfterMinutes(rl.retryAfterMs);
+    return NextResponse.json(
+      { error: `Limite de génération IA atteinte. Réessayez dans ${minutes} minute${minutes > 1 ? "s" : ""}.`, retryAfterMs: rl.retryAfterMs },
+      { status: 429 }
+    );
+  }
 
   const role = await getUserRole(auth.userId);
   if (role !== "manager") {

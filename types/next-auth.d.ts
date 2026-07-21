@@ -19,6 +19,7 @@ declare module "next-auth/jwt" {
     supabaseUserId?: string;
     provider?: string;
     role?: "commercial" | "manager";
+    roleRefreshedAt?: number;
     accessTokenExpires?: number;
     error?: string;
   }

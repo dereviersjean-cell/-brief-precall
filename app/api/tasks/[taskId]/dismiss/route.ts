@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { after } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
@@ -18,14 +19,19 @@ export async function POST(
 
   // Best-effort, same trade-off as /complete — "rejeter" on Brief means
   // "delete" on HubSpot (per product decision), but a HubSpot failure here
-  // doesn't undo the dismissal on Brief's side.
+  // doesn't undo the dismissal on Brief's side. after() (not bare
+  // fire-and-forget): Vercel can freeze the function as soon as the response
+  // is sent, killing an unawaited promise (cf. generate-brief).
   if (hubspot_task_id) {
-    deleteHubSpotTask(auth.userId, hubspot_task_id).catch((err) =>
-      console.warn(
-        "[tasks/dismiss] deleteHubSpotTask failed (non-blocking):",
-        err instanceof Error ? err.message : String(err)
-      )
-    );
+    const hubspotTaskId = hubspot_task_id;
+    after(async () => {
+      await deleteHubSpotTask(auth.userId, hubspotTaskId).catch((err) =>
+        console.warn(
+          "[tasks/dismiss] deleteHubSpotTask failed (non-blocking):",
+          err instanceof Error ? err.message : String(err)
+        )
+      );
+    });
   }
 
   return NextResponse.json({ ok: true });

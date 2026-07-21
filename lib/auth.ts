@@ -1,7 +1,7 @@
 import { type AuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import AzureADProvider from "next-auth/providers/azure-ad";
-import { resolveUserForLogin, saveGoogleTokens, type AuthProvider } from "./db";
+import { resolveUserForLogin, saveGoogleTokens, getUserRole, type AuthProvider } from "./db";
 import { refreshGoogleAccessToken } from "./gmail";
 
 function toAuthProvider(nextAuthProvider: string): AuthProvider | null {
@@ -114,6 +114,7 @@ export const authOptions: AuthOptions = {
             if (resolution.status === "ok") {
               token.supabaseUserId = resolution.userId;
               token.role = resolution.role ?? undefined;
+              token.roleRefreshedAt = Date.now();
 
               if (provider === "google" && account.access_token) {
                 try {
@@ -129,6 +130,24 @@ export const authOptions: AuthOptions = {
         }
 
         return token;
+      }
+
+      // Subsequent calls — re-read the role from DB at most every 10 min.
+      // token.role is otherwise only set at sign-in, so a commercial promoted
+      // to manager (or the reverse) kept a stale role until re-login: the
+      // sidebar "Équipe" entry and the settings tabs read session.role.
+      // Server routes are unaffected (they already re-read the role from DB).
+      const ROLE_REFRESH_MS = 10 * 60 * 1000;
+      const refreshedAt = typeof token.roleRefreshedAt === "number" ? token.roleRefreshedAt : 0;
+      if (typeof token.supabaseUserId === "string" && Date.now() - refreshedAt > ROLE_REFRESH_MS) {
+        try {
+          const freshRole = await getUserRole(token.supabaseUserId);
+          token.role = freshRole ?? undefined;
+          token.roleRefreshedAt = Date.now();
+        } catch (err) {
+          // Keep the existing role on transient DB errors; retry next call.
+          console.error("[auth] jwt role refresh failed:", err);
+        }
       }
 
       // Subsequent calls — refresh Google token if expired

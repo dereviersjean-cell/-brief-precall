@@ -79,7 +79,7 @@ export default function QuotePublicClient({ token, quote: initialQuote }: { toke
   return (
     <div className="min-h-screen bg-slate-50 py-10 px-4">
       <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
+        <div className="bg-white rounded-2xl border border-border shadow-sm p-8">
           {/* Header */}
           <div className="flex items-start justify-between mb-8 flex-wrap gap-4">
             <div>
@@ -113,10 +113,10 @@ export default function QuotePublicClient({ token, quote: initialQuote }: { toke
           </div>
 
           {/* Lines */}
-          <div className="border border-slate-200 rounded-xl overflow-hidden mb-6 overflow-x-auto">
+          <div className="border border-border rounded-xl overflow-hidden mb-6 overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
+                <tr className="bg-slate-50 border-b border-border">
                   <th className="px-4 py-2 text-xs font-semibold text-slate-500 uppercase">Désignation</th>
                   <th className="px-4 py-2 text-xs font-semibold text-slate-500 uppercase text-right">Qté</th>
                   <th className="px-4 py-2 text-xs font-semibold text-slate-500 uppercase text-right">PU HT</th>
@@ -164,7 +164,7 @@ export default function QuotePublicClient({ token, quote: initialQuote }: { toke
                 <span className="text-slate-800">{formatCurrency(v.amount)}</span>
               </div>
             ))}
-            <div className="flex justify-between text-base font-semibold pt-2 mt-1 border-t border-slate-200">
+            <div className="flex justify-between text-base font-semibold pt-2 mt-1 border-t border-border">
               <span>Total TTC</span>
               <span>{formatCurrency(totals.total_ttc)}</span>
             </div>
@@ -189,13 +189,13 @@ export default function QuotePublicClient({ token, quote: initialQuote }: { toke
           ) : (
             <>
               {showRejectForm && (
-                <div className="mb-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="mb-4 p-4 bg-slate-50 rounded-xl border border-border">
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Motif (optionnel)</label>
                   <textarea
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
                     rows={2}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                    className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] resize-none"
                   />
                 </div>
               )}
@@ -204,7 +204,7 @@ export default function QuotePublicClient({ token, quote: initialQuote }: { toke
                   href={`/api/public/quotes/${token}/pdf`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-5 py-2.5 border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
+                  className="px-5 py-2.5 border border-border text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
                 >
                   Télécharger le PDF
                 </a>

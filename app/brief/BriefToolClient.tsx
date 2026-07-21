@@ -218,7 +218,7 @@ function CalendarEventCard({
         {existingBrief ? (
           <Link
             href={`/brief/${existingBrief.calendar_event_id ?? existingBrief.id}?company=${encodeURIComponent(existingBrief.company_name ?? "")}&cached=true&contactEmail=${encodeURIComponent(existingBrief.contact_email ?? "")}`}
-            className="flex items-center gap-1.5 h-8 text-sm font-medium text-slate-700 border border-slate-200 bg-white px-3 rounded-lg hover:bg-slate-50 transition-colors duration-200"
+            className="flex items-center gap-1.5 h-8 text-sm font-medium text-slate-700 border border-border bg-white px-3 rounded-lg hover:bg-slate-50 transition-colors duration-200"
           >
             Revoir
             <ArrowRight className="w-3.5 h-3.5" />
@@ -263,7 +263,7 @@ function CompanyModal({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 8 }}
         transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-        className="bg-white rounded-2xl border border-slate-200 shadow-xl p-6 w-full max-w-sm relative"
+        className="bg-white rounded-2xl border border-border shadow-xl p-6 w-full max-w-sm relative"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -282,7 +282,7 @@ function CompanyModal({
           onChange={(e) => setValue(e.target.value)}
           autoFocus
           placeholder="ex. Salesforce, HubSpot…"
-          className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)] mb-4"
+          className="w-full px-3.5 py-2.5 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)] mb-4"
           onKeyDown={(e) => {
             if (e.key === "Enter" && value.trim()) onConfirm(event.id, value.trim());
             if (e.key === "Escape") onClose();
@@ -291,7 +291,7 @@ function CompanyModal({
         <div className="flex gap-2">
           <button
             onClick={onClose}
-            className="flex-1 text-sm text-slate-600 border border-slate-200 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors duration-200"
+            className="flex-1 text-sm text-slate-600 border border-border px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors duration-200"
           >
             Annuler
           </button>
@@ -558,10 +558,10 @@ export default function BriefToolClient() {
     <div className="max-w-6xl mx-auto w-full px-6 py-10">
       {/* Hero header */}
       <FadeIn>
-        <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 mb-6">
+        <div className="relative overflow-hidden rounded-3xl border border-border bg-white p-8 mb-6">
           <div
             aria-hidden
-            className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-indigo-200/50 via-violet-200/40 to-transparent blur-3xl"
+            className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-[color:var(--lavender-strong)]/60 via-[color:var(--lavender)]/40 to-transparent blur-3xl"
           />
           <div
             aria-hidden
@@ -579,7 +579,7 @@ export default function BriefToolClient() {
                 {showCalendar && ` · ${provider === "azure-ad" ? "Microsoft Calendar" : "Google Calendar"}`}
               </p>
             </div>
-            <button className="flex items-center gap-2 h-9 text-sm font-medium text-slate-600 border border-slate-200 bg-white px-3.5 rounded-lg hover:bg-slate-50 hover:text-slate-900 transition-colors duration-200 shrink-0">
+            <button className="flex items-center gap-2 h-9 text-sm font-medium text-slate-600 border border-border bg-white px-3.5 rounded-lg hover:bg-slate-50 hover:text-slate-900 transition-colors duration-200 shrink-0">
               <Plus className="w-4 h-4" />
               Ajouter un RDV
             </button>

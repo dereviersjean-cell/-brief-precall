@@ -18,7 +18,7 @@ type SpeakerRow = {
 // kept as a separate small copy rather than a shared import since the two
 // components color by a different key (this one has no is_commercial flag
 // to prioritize indigo for, just talk-time rank).
-const SPEAKER_COLORS = ["bg-indigo-500", "bg-slate-500", "bg-amber-500", "bg-violet-500", "bg-teal-500", "bg-rose-400"];
+const SPEAKER_COLORS = ["bg-[color:var(--violet)]", "bg-slate-500", "bg-amber-500", "bg-violet-500", "bg-teal-500", "bg-rose-400"];
 
 function formatMmSs(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000);

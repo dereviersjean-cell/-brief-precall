@@ -221,7 +221,7 @@ export default function QuotesListClient({
         <div className="relative overflow-hidden rounded-3xl border border-border shadow-[var(--shadow-sm)] bg-white p-8 mb-6">
           <div
             aria-hidden
-            className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-indigo-200/50 via-violet-200/40 to-transparent blur-3xl"
+            className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-[color:var(--lavender-strong)]/60 via-[color:var(--lavender)]/40 to-transparent blur-3xl"
           />
           <div
             aria-hidden
@@ -241,7 +241,7 @@ export default function QuotesListClient({
             <div className="flex items-center gap-2 shrink-0">
               <Link
                 href="/quotes/settings"
-                className="inline-flex items-center gap-2 h-9 px-3.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 hover:text-slate-900 transition-colors duration-200"
+                className="inline-flex items-center gap-2 h-9 px-3.5 bg-white border border-border text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 hover:text-slate-900 transition-colors duration-200"
               >
                 <Settings className="w-4 h-4" />
                 Paramètres
@@ -300,7 +300,7 @@ export default function QuotesListClient({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Rechercher un devis, un contact…"
-              className="pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white w-full focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+              className="pl-9 pr-3.5 py-2 border border-border rounded-lg text-sm text-slate-700 bg-white w-full focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
             />
           </div>
 
@@ -314,7 +314,7 @@ export default function QuotesListClient({
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm border-collapse min-w-[820px]">
                     <thead>
-                      <tr className="border-b border-slate-200 bg-slate-50/60">
+                      <tr className="border-b border-border bg-slate-50/60">
                         <SortHeader label="Numéro" sortKey="number" currentSort={sortKey} currentDirection={sortDirection} onSort={handleSort} />
                         <SortHeader label="Contact" sortKey="contact" currentSort={sortKey} currentDirection={sortDirection} onSort={handleSort} />
                         <SortHeader label="Montant TTC" sortKey="amount" currentSort={sortKey} currentDirection={sortDirection} onSort={handleSort} align="right" />
@@ -365,7 +365,7 @@ export default function QuotesListClient({
                                   e.stopPropagation();
                                   setOpenMenuId(openMenuId === quote.id ? null : quote.id);
                                 }}
-                                className="border border-slate-200 hover:bg-slate-50 rounded-lg p-1.5 text-slate-500 transition-colors"
+                                className="border border-border hover:bg-slate-50 rounded-lg p-1.5 text-slate-500 transition-colors"
                               >
                                 <MoreHorizontal className="w-4 h-4" />
                               </button>
@@ -379,7 +379,7 @@ export default function QuotesListClient({
                                     setOpenMenuId(null);
                                   }}
                                 />
-                                <div className="absolute right-4 top-11 z-20 w-48 bg-white border border-slate-200 rounded-xl shadow-lg py-1 text-left">
+                                <div className="absolute right-4 top-11 z-20 w-48 bg-white border border-border rounded-xl shadow-lg py-1 text-left">
                                   <Link
                                     href={`/quotes/${quote.id}`}
                                     className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"

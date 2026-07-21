@@ -147,7 +147,7 @@ export default function TeamClient({
         <div className="relative overflow-hidden rounded-3xl border border-border shadow-[var(--shadow-sm)] bg-white p-8 mb-6">
           <div
             aria-hidden
-            className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-indigo-200/50 via-violet-200/40 to-transparent blur-3xl"
+            className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-[color:var(--lavender-strong)]/60 via-[color:var(--lavender)]/40 to-transparent blur-3xl"
           />
           <div
             aria-hidden
@@ -173,7 +173,7 @@ export default function TeamClient({
                     ? undefined
                     : "Vous devez être rattaché à une organisation pour inviter un collaborateur."
                 }
-                className="inline-flex items-center gap-2 h-9 px-3.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 hover:text-slate-900 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
+                className="inline-flex items-center gap-2 h-9 px-3.5 bg-white border border-border text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 hover:text-slate-900 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
               >
                 <UserPlus className="w-4 h-4" />
                 Inviter un collaborateur
@@ -237,7 +237,7 @@ export default function TeamClient({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Rechercher un commercial…"
-              className="pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white w-full focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+              className="pl-9 pr-3.5 py-2 border border-border rounded-lg text-sm text-slate-700 bg-white w-full focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
             />
           </div>
 
@@ -251,7 +251,7 @@ export default function TeamClient({
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm border-collapse min-w-[820px]">
                     <thead>
-                      <tr className="border-b border-slate-200 bg-slate-50/60">
+                      <tr className="border-b border-border bg-slate-50/60">
                         <SortHeader label="Nom" sortKey="name" currentSort={sortKey} currentDirection={sortDirection} onSort={handleSort} />
                         <SortHeader label="Briefs" sortKey="briefs" currentSort={sortKey} currentDirection={sortDirection} onSort={handleSort} align="right" />
                         <SortHeader label="Appels" sortKey="calls" currentSort={sortKey} currentDirection={sortDirection} onSort={handleSort} align="right" />

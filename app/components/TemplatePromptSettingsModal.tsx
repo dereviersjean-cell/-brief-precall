@@ -112,7 +112,7 @@ export default function TemplatePromptSettingsModal({
         {!loading && (
           <span
             className={`inline-flex items-center mt-3 px-2.5 py-1 rounded-full text-xs font-medium ${
-              hasOverride ? "bg-indigo-50 text-indigo-600" : "bg-slate-100 text-slate-500"
+              hasOverride ? "bg-[color:var(--lavender)] text-[color:var(--violet)]" : "bg-slate-100 text-slate-500"
             }`}
           >
             {hasOverride ? "Vous utilisez votre version personnalisée" : "Vous utilisez actuellement le prompt de votre manager"}
@@ -124,13 +124,13 @@ export default function TemplatePromptSettingsModal({
             {hasOverride ? "Votre version personnelle" : "Prompt actuel"}
           </label>
           {loading ? (
-            <div className="h-[220px] rounded-lg border border-slate-200 bg-slate-50 animate-pulse" />
+            <div className="h-[220px] rounded-lg border border-border bg-slate-50 animate-pulse" />
           ) : (
             <textarea
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               rows={10}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] resize-y"
             />
           )}
         </div>
@@ -141,21 +141,21 @@ export default function TemplatePromptSettingsModal({
           <button
             onClick={handleReset}
             disabled={!hasOverride || resetting || saving || loading}
-            className="text-sm font-medium text-slate-600 border border-slate-200 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50 mr-auto"
+            className="text-sm font-medium text-slate-600 border border-border px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50 mr-auto"
           >
             {resetting ? "Réinitialisation…" : "Réinitialiser au prompt du manager"}
           </button>
           <button
             onClick={onClose}
             disabled={saving || resetting}
-            className="text-sm font-medium text-slate-600 border border-slate-200 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
+            className="text-sm font-medium text-slate-600 border border-border px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
           >
             Annuler
           </button>
           <button
             onClick={handleSave}
             disabled={loading || saving || resetting || !draft.trim()}
-            className="text-sm font-medium text-white bg-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+            className="text-sm font-medium text-white brand-gradient px-4 py-2 rounded-lg hover:brightness-110 transition-colors disabled:opacity-50"
           >
             {saving ? "Enregistrement…" : "Enregistrer"}
           </button>

@@ -79,7 +79,7 @@ function ReferenceFormFields({ value, onChange }: { value: ReferenceFormData; on
   }
 
   const inputClass =
-    "w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500";
+    "w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]";
 
   return (
     <div className="space-y-3">
@@ -150,7 +150,7 @@ function AddReferenceModal({
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 px-4" onClick={onClose}>
       <div
-        className="bg-white rounded-2xl border border-slate-200 p-6 w-full max-w-lg shadow-xl max-h-[85vh] overflow-y-auto"
+        className="bg-white rounded-2xl border border-border p-6 w-full max-w-lg shadow-xl max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="font-semibold text-slate-900 mb-4">Ajouter une référence client</h2>
@@ -159,14 +159,14 @@ function AddReferenceModal({
         <div className="flex justify-end gap-2 mt-5">
           <button
             onClick={onClose}
-            className="h-9 px-4 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+            className="h-9 px-4 text-sm font-medium text-slate-600 border border-border rounded-lg hover:bg-slate-50 transition-colors"
           >
             Annuler
           </button>
           <button
             onClick={handleSubmit}
             disabled={!form.client_name.trim() || loading}
-            className="h-9 px-4 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+            className="h-9 px-4 text-sm font-medium text-white brand-gradient rounded-lg hover:brightness-110 transition-colors disabled:opacity-50"
           >
             {loading ? "Création…" : "Ajouter"}
           </button>
@@ -264,7 +264,7 @@ export default function ClientReferencesTable({ version }: { version: number }) 
     return (
       <div className="mt-6 space-y-2 animate-pulse">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-14 bg-white rounded-2xl border border-slate-200" />
+          <div key={i} className="h-14 bg-white rounded-2xl border border-border" />
         ))}
       </div>
     );
@@ -319,12 +319,12 @@ export default function ClientReferencesTable({ version }: { version: number }) 
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Rechercher un client, un secteur…"
-            className="pl-9 pr-3.5 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white w-full focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="pl-9 pr-3.5 py-2 border border-border rounded-lg text-sm text-slate-700 bg-white w-full focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
           />
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="inline-flex items-center gap-2 h-9 px-3.5 bg-indigo-600 text-white rounded-lg text-sm font-medium shadow-sm shadow-indigo-500/20 hover:bg-indigo-700 hover:shadow-md hover:shadow-indigo-500/30 transition-all duration-200"
+          className="inline-flex items-center gap-2 h-9 px-3.5 brand-gradient text-white rounded-lg text-sm font-medium shadow-[var(--shadow-sm)] hover:brightness-110 hover:shadow-[var(--shadow-md)] transition-all duration-200"
         >
           <Plus className="w-4 h-4" />
           Ajouter une référence
@@ -332,17 +332,17 @@ export default function ClientReferencesTable({ version }: { version: number }) 
       </div>
 
       {!hasAny ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center">
+        <div className="bg-white rounded-2xl border border-border p-8 text-center">
           <p className="text-slate-500 text-sm">
             Aucune référence pour l&apos;instant. Importez un fichier ci-dessus ou ajoutez-en une manuellement.
           </p>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-400 text-sm">
+        <div className="bg-white rounded-2xl border border-border p-8 text-center text-slate-400 text-sm">
           Aucun résultat pour « {query} ».
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+        <div className="bg-white rounded-2xl border border-border divide-y divide-slate-100 overflow-hidden">
           {filtered.map((ref) => {
             const meta = sourceMeta(ref.source);
             const expanded = expandedId === ref.id;
@@ -382,7 +382,7 @@ export default function ClientReferencesTable({ version }: { version: number }) 
                       if (editing) cancelEdit();
                       else startEdit(ref);
                     }}
-                    className="shrink-0 h-7 w-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                    className="shrink-0 h-7 w-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-[color:var(--violet)] hover:bg-[color:var(--lavender)] transition-colors"
                     aria-label={editing ? "Annuler la modification" : "Modifier"}
                   >
                     {editing ? <X className="w-3.5 h-3.5" /> : <Pencil className="w-3.5 h-3.5" />}
@@ -409,14 +409,14 @@ export default function ClientReferencesTable({ version }: { version: number }) 
                         <div className="flex justify-end gap-2 mt-3">
                           <button
                             onClick={cancelEdit}
-                            className="h-8 px-3.5 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors bg-white"
+                            className="h-8 px-3.5 text-sm font-medium text-slate-600 border border-border rounded-lg hover:bg-slate-100 transition-colors bg-white"
                           >
                             Annuler
                           </button>
                           <button
                             onClick={() => saveEdit(ref.id)}
                             disabled={savingEdit || !editDraft.client_name.trim()}
-                            className="h-8 px-3.5 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                            className="h-8 px-3.5 text-sm font-medium text-white brand-gradient rounded-lg hover:brightness-110 transition-colors disabled:opacity-50"
                           >
                             {savingEdit ? "Enregistrement…" : "Enregistrer"}
                           </button>

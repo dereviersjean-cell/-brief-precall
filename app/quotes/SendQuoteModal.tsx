@@ -114,7 +114,7 @@ export default function SendQuoteModal({
                 type="text"
                 value={clientEmail}
                 readOnly
-                className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg text-sm text-slate-500"
+                className="w-full px-3 py-2 border border-border bg-slate-50 rounded-lg text-sm text-slate-500"
               />
             </div>
             <div>
@@ -123,7 +123,7 @@ export default function SendQuoteModal({
                 type="text"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
               />
             </div>
             <div>
@@ -132,14 +132,14 @@ export default function SendQuoteModal({
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 rows={10}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
+                className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] resize-y"
               />
               <p className="text-xs text-slate-400 mt-1">
                 Un lien de consultation et de signature sera automatiquement ajouté au bas de l&apos;email lors de
                 l&apos;envoi.
               </p>
             </div>
-            <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg border border-slate-200">
+            <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg border border-border">
               <span className="text-sm text-slate-600">📎 {quoteNumber}.pdf</span>
               <span className="text-xs text-slate-400">(joint automatiquement)</span>
             </div>
@@ -152,7 +152,7 @@ export default function SendQuoteModal({
           <button
             onClick={handleRegenerate}
             disabled={loading || regenerating || sending}
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
+            className="text-sm font-medium text-[color:var(--violet)] hover:text-[color:var(--violet)] disabled:opacity-50"
           >
             {regenerating ? "Régénération…" : "✨ Régénérer avec IA"}
           </button>
@@ -160,14 +160,14 @@ export default function SendQuoteModal({
             <button
               onClick={onClose}
               disabled={sending}
-              className="text-sm font-medium text-slate-600 border border-slate-200 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
+              className="text-sm font-medium text-slate-600 border border-border px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
             >
               Annuler
             </button>
             <button
               onClick={handleSubmitSend}
               disabled={loading || sending || !subject.trim() || !body.trim()}
-              className="flex items-center gap-2 text-sm font-medium text-white bg-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 text-sm font-medium text-white brand-gradient px-4 py-2 rounded-lg hover:brightness-110 transition-colors disabled:opacity-50"
             >
               {sending && <Spinner />}
               {sending ? "Envoi…" : "Envoyer"}

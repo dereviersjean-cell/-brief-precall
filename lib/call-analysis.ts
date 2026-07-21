@@ -30,6 +30,31 @@ const DEFAULT_ANALYSIS: CallAnalysis = {
   objections: [],
 };
 
+// Runtime guard against prompt/contract drift: the system prompt lives in
+// admin_config and can be edited (or left stale) independently of this code —
+// a drifted prompt once made Claude return a JSON missing strong_points/
+// weak_points/scores, which `as CallAnalysis` happily let through and
+// persisted as nulls with no error anywhere (the "William" bug). Throwing
+// here routes the failure into the catch below: raw response logged, visible
+// "Analyse indisponible" fallback instead of silently empty analysis.
+function validateCallAnalysisShape(parsed: unknown): CallAnalysis {
+  const obj = parsed as Record<string, unknown>;
+  const missing: string[] = [];
+  if (typeof obj?.scores !== "object" || obj.scores === null || typeof (obj.scores as Record<string, unknown>).global_score !== "number") {
+    missing.push("scores.global_score");
+  }
+  if (typeof obj?.summary !== "string") missing.push("summary");
+  if (!Array.isArray(obj?.strong_points)) missing.push("strong_points");
+  if (!Array.isArray(obj?.weak_points)) missing.push("weak_points");
+  if (!Array.isArray(obj?.next_steps)) missing.push("next_steps");
+  if (missing.length > 0) {
+    throw new Error(`Réponse IA hors contrat (clés manquantes/invalides : ${missing.join(", ")}) — prompt admin_config probablement périmé`);
+  }
+  if (!Array.isArray(obj.objections)) obj.objections = [];
+  if (obj.sentiment !== "positif" && obj.sentiment !== "neutre" && obj.sentiment !== "négatif") obj.sentiment = "neutre";
+  return obj as CallAnalysis;
+}
+
 export type AnalyzeContext = {
   clientName: string;
   clientWebsite: string;
@@ -84,7 +109,7 @@ ${transcript}`;
     const textBlock = message.content.find((b) => b.type === "text");
     raw = textBlock?.type === "text" ? textBlock.text : "";
 
-    return JSON.parse(extractJsonObject(raw)) as CallAnalysis;
+    return validateCallAnalysisShape(JSON.parse(extractJsonObject(raw)));
   } catch (err) {
     console.error(
       "[call-analysis] analyzeCall failed:",

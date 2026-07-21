@@ -160,7 +160,7 @@ export default function TaskEmailModal({
             value={selectedTemplateId}
             onChange={(e) => setSelectedTemplateId(e.target.value)}
             disabled={loadingTemplates}
-            className="flex-1 px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+            className="flex-1 px-2.5 py-1.5 border border-border rounded-lg text-xs text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] disabled:opacity-50"
           >
             <option value={DEFAULT_PROMPT_VALUE}>Prompt par défaut</option>
             {templates.map((t) => (
@@ -193,7 +193,7 @@ export default function TaskEmailModal({
                 <button
                   onClick={() => generate(selectedTemplateId)}
                   disabled={loadingTemplates}
-                  className="flex items-center gap-2 text-sm font-medium text-white bg-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 text-sm font-medium text-white brand-gradient px-4 py-2 rounded-lg hover:brightness-110 transition-colors disabled:opacity-50"
                 >
                   ✨ Générer avec IA
                 </button>
@@ -208,7 +208,7 @@ export default function TaskEmailModal({
                 type="text"
                 value={contactEmail}
                 readOnly
-                className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg text-sm text-slate-500"
+                className="w-full px-3 py-2 border border-border bg-slate-50 rounded-lg text-sm text-slate-500"
               />
             </div>
             <div>
@@ -217,7 +217,7 @@ export default function TaskEmailModal({
                 type="text"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
               />
             </div>
             <div>
@@ -226,7 +226,7 @@ export default function TaskEmailModal({
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 rows={10}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
+                className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] resize-y"
               />
             </div>
           </div>
@@ -236,7 +236,7 @@ export default function TaskEmailModal({
           <div className="mt-3">
             <p className="text-sm text-red-600">{error}</p>
             {gmailNotConnected && (
-              <Link href="/settings" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium underline">
+              <Link href="/settings" className="text-sm text-[color:var(--violet)] hover:text-[color:var(--violet)] font-medium underline">
                 Connecter Gmail dans les paramètres
               </Link>
             )}
@@ -248,7 +248,7 @@ export default function TaskEmailModal({
             <button
               onClick={() => generate(selectedTemplateId)}
               disabled={generating || sending}
-              className="text-sm font-medium text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
+              className="text-sm font-medium text-[color:var(--violet)] hover:text-[color:var(--violet)] disabled:opacity-50"
             >
               {generating ? "Régénération…" : "✨ Régénérer avec IA"}
             </button>
@@ -259,14 +259,14 @@ export default function TaskEmailModal({
             <button
               onClick={onClose}
               disabled={sending}
-              className="text-sm font-medium text-slate-600 border border-slate-200 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
+              className="text-sm font-medium text-slate-600 border border-border px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
             >
               Annuler
             </button>
             <button
               onClick={handleSubmitSend}
               disabled={!hasGenerated || sending || !subject.trim() || !body.trim()}
-              className="flex items-center gap-2 text-sm font-medium text-white bg-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 text-sm font-medium text-white brand-gradient px-4 py-2 rounded-lg hover:brightness-110 transition-colors disabled:opacity-50"
             >
               {sending && <Spinner />}
               {sending ? "Envoi…" : "Envoyer"}

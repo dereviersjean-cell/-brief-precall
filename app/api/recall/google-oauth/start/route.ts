@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { randomBytes } from "crypto";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
+import { requireActiveUser } from "@/lib/api-auth";
 
 export async function GET() {
+  const session = await getServerSession(authOptions);
+  const auth = await requireActiveUser(session);
+  if (!auth.ok) return auth.response;
+
   const clientId = process.env.RECALL_GOOGLE_CLIENT_ID;
   if (!clientId) {
     return NextResponse.json({ error: "RECALL_GOOGLE_CLIENT_ID is not set." }, { status: 500 });

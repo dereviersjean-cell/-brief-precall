@@ -95,7 +95,7 @@ function TemplateCard({
           <button
             onClick={() => onMove("up")}
             disabled={index === 0}
-            className="h-7 w-7 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-200"
+            className="h-7 w-7 flex items-center justify-center rounded-lg border border-border text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-200"
             aria-label="Monter"
           >
             <ArrowUp className="w-3.5 h-3.5" />
@@ -103,7 +103,7 @@ function TemplateCard({
           <button
             onClick={() => onMove("down")}
             disabled={index === total - 1}
-            className="h-7 w-7 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-200"
+            className="h-7 w-7 flex items-center justify-center rounded-lg border border-border text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-200"
             aria-label="Descendre"
           >
             <ArrowDown className="w-3.5 h-3.5" />
@@ -111,7 +111,7 @@ function TemplateCard({
           <button
             onClick={onDelete}
             disabled={isLast}
-            className="h-7 px-2.5 flex items-center gap-1 rounded-lg border border-slate-200 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-200 ml-1"
+            className="h-7 px-2.5 flex items-center gap-1 rounded-lg border border-border text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-200 ml-1"
             title={isLast ? "Dernier template — suppression impossible" : "Supprimer le template"}
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -137,14 +137,14 @@ function TemplateCard({
           value={promptDraft}
           onChange={(e) => setPromptDraft(e.target.value)}
           rows={12}
-          className="w-full px-3.5 py-3 border border-slate-200 rounded-lg text-sm text-slate-900 font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)] resize-y"
+          className="w-full px-3.5 py-3 border border-border rounded-lg text-sm text-slate-900 font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)] resize-y"
         />
         <div className="flex items-center justify-end gap-2 mt-2">
           {promptDirty && <span className="text-xs text-amber-600 mr-auto">Modifications non enregistrées</span>}
           <button
             onClick={() => setPromptDraft(template.system_prompt)}
             disabled={!promptDirty}
-            className="h-8 px-3 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors duration-200 disabled:opacity-40"
+            className="h-8 px-3 text-sm font-medium text-slate-600 border border-border rounded-lg hover:bg-slate-50 transition-colors duration-200 disabled:opacity-40"
           >
             Annuler
           </button>
@@ -185,7 +185,7 @@ function AddTemplateModal({
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 px-4" onClick={onClose}>
       <div
-        className="bg-white rounded-2xl border border-slate-200 p-6 w-full max-w-lg shadow-xl max-h-[85vh] overflow-y-auto"
+        className="bg-white rounded-2xl border border-border p-6 w-full max-w-lg shadow-xl max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="font-semibold text-slate-900 mb-4">Ajouter un template</h2>
@@ -197,7 +197,7 @@ function AddTemplateModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="ex. Call 4 — Relance"
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
             />
           </div>
           <div>
@@ -206,7 +206,7 @@ function AddTemplateModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)] resize-none"
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)] resize-none"
             />
           </div>
           <div>
@@ -216,14 +216,14 @@ function AddTemplateModal({
               onChange={(e) => setSystemPrompt(e.target.value)}
               rows={8}
               placeholder="Tu rédiges un email de suivi post-call pour…"
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)] resize-y"
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)] resize-y"
             />
           </div>
         </div>
         <div className="flex justify-end gap-2 mt-5">
           <button
             onClick={onClose}
-            className="h-8 px-4 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors duration-200"
+            className="h-8 px-4 text-sm font-medium text-slate-600 border border-border rounded-lg hover:bg-slate-50 transition-colors duration-200"
           >
             Annuler
           </button>
@@ -334,7 +334,7 @@ export default function EmailTemplatesClient({ templates: initialTemplates }: { 
         <div className="relative overflow-hidden rounded-3xl border border-border shadow-[var(--shadow-sm)] bg-white p-8 mb-6">
           <div
             aria-hidden
-            className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-indigo-200/50 via-violet-200/40 to-transparent blur-3xl"
+            className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-[color:var(--lavender-strong)]/60 via-[color:var(--lavender)]/40 to-transparent blur-3xl"
           />
           <div
             aria-hidden
@@ -371,7 +371,7 @@ export default function EmailTemplatesClient({ templates: initialTemplates }: { 
 
         <button
           onClick={() => setShowAddModal(true)}
-          className="mt-4 h-9 px-3.5 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors duration-200"
+          className="mt-4 h-9 px-3.5 inline-flex items-center gap-1.5 rounded-lg border border-border bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors duration-200"
         >
           <Plus className="w-4 h-4" />
           Ajouter un template

@@ -108,7 +108,7 @@ export default function ClientReferencesSection() {
 
   return (
     <div>
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+      <div className="bg-white rounded-2xl border border-border shadow-sm">
         <div className="px-6 py-5">
           <h2 className="text-sm font-semibold text-slate-900 mb-1">Base de données commerciale</h2>
           <p className="text-sm text-slate-500 mb-4">
@@ -146,19 +146,19 @@ export default function ClientReferencesSection() {
                 <button
                   type="button"
                   onClick={() => setShowUpload(true)}
-                  className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                  className="text-sm text-[color:var(--violet)] hover:text-[color:var(--violet)] font-medium"
                 >
                   Importer un nouveau fichier
                 </button>
               </div>
-              <div className="bg-indigo-50 rounded-lg p-3 mt-3">
+              <div className="bg-[color:var(--lavender)] rounded-lg p-3 mt-3">
                 <p className="text-sm text-slate-600">
                   💡 Pour de meilleurs résultats, utilisez notre template avec les colonnes : problématique, solution et résultats chiffrés.
                 </p>
                 <a
                   href="/Template references clients.xlsx"
                   download
-                  className="text-sm text-indigo-600 font-medium hover:underline mt-1 inline-block"
+                  className="text-sm text-[color:var(--violet)] font-medium hover:underline mt-1 inline-block"
                 >
                   📥 Télécharger le template
                 </a>
@@ -173,7 +173,7 @@ export default function ClientReferencesSection() {
               <a
                 href="/Template references clients.xlsx"
                 download
-                className="inline-block text-sm text-indigo-600 hover:underline mb-4"
+                className="inline-block text-sm text-[color:var(--violet)] hover:underline mb-4"
               >
                 📥 Télécharger le template
               </a>
@@ -181,15 +181,15 @@ export default function ClientReferencesSection() {
               {/* File zone — hidden while polling or done */}
               {refStatus !== "polling" && refStatus !== "done" && (
                 refFile ? (
-                  <div className="flex items-center gap-3 px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-lg mb-4">
-                    <svg className="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <div className="flex items-center gap-3 px-4 py-3 bg-[color:var(--lavender)] border border-[color:var(--lavender-strong)] rounded-lg mb-4">
+                    <svg className="w-4 h-4 text-[color:var(--violet)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <p className="text-sm text-indigo-700 font-medium flex-1 truncate">{refFile.name}</p>
+                    <p className="text-sm text-[color:var(--violet)] font-medium flex-1 truncate">{refFile.name}</p>
                     <button
                       type="button"
                       onClick={() => { setRefFile(null); setRefStatus("idle"); setRefError(null); }}
-                      className="text-xs text-indigo-400 hover:text-indigo-600"
+                      className="text-xs text-[color:var(--violet)] hover:text-[color:var(--violet)]"
                     >
                       Changer
                     </button>
@@ -198,7 +198,7 @@ export default function ClientReferencesSection() {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full flex flex-col items-center gap-2 px-4 py-6 border-2 border-dashed border-slate-200 rounded-xl hover:border-indigo-300 hover:bg-indigo-50 transition-all text-slate-500 text-sm mb-4"
+                    className="w-full flex flex-col items-center gap-2 px-4 py-6 border-2 border-dashed border-border rounded-xl hover:border-[color:var(--lavender-strong)] hover:bg-[color:var(--lavender)] transition-all text-slate-500 text-sm mb-4"
                   >
                     <svg className="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
@@ -222,7 +222,7 @@ export default function ClientReferencesSection() {
 
                 {refStatus === "polling" ? (
                   <div className="flex items-center gap-2 text-sm text-slate-500 py-2.5">
-                    <svg className="w-4 h-4 animate-spin text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 animate-spin text-[color:var(--violet)] shrink-0" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
@@ -234,7 +234,7 @@ export default function ClientReferencesSection() {
                   <button
                     type="button"
                     onClick={() => { setRefStatus("idle"); setRefProcessedCount(0); }}
-                    className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                    className="text-sm text-[color:var(--violet)] hover:text-[color:var(--violet)] font-medium"
                   >
                     Importer un autre fichier
                   </button>
@@ -242,7 +242,7 @@ export default function ClientReferencesSection() {
                   <button
                     onClick={handleImport}
                     disabled={!refFile || refStatus === "uploading"}
-                    className="flex items-center gap-2 bg-indigo-600 text-white text-sm font-semibold px-6 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-2 brand-gradient text-white text-sm font-semibold px-6 py-2.5 rounded-lg hover:brightness-110 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {refStatus === "uploading" ? (
                       <>

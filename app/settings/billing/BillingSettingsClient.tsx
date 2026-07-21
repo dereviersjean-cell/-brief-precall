@@ -74,7 +74,7 @@ function IntervalToggle({
             type="button"
             onClick={() => onChange(option.key)}
             className={`text-left p-4 rounded-xl border-2 transition-colors ${
-              active ? "border-[color:var(--violet)] bg-[color:var(--lavender)]" : "border-slate-200 hover:border-slate-300"
+              active ? "border-[color:var(--violet)] bg-[color:var(--lavender)]" : "border-border hover:border-slate-300"
             }`}
           >
             <div className="flex items-center justify-between">
@@ -165,7 +165,7 @@ export default function BillingSettingsClient({
         <div className="relative overflow-hidden rounded-3xl border border-border shadow-[var(--shadow-sm)] bg-white p-8 mb-6">
           <div
             aria-hidden
-            className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-indigo-200/50 via-violet-200/40 to-transparent blur-3xl"
+            className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-[color:var(--lavender-strong)]/60 via-[color:var(--lavender)]/40 to-transparent blur-3xl"
           />
           <div className="relative flex items-start justify-between gap-4 flex-wrap">
             <div>

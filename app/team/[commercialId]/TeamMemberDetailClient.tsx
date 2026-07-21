@@ -145,7 +145,7 @@ export default function TeamMemberDetailClient({ detail }: { detail: CommercialD
         <div className="mb-10">
           <h2 className="text-sm font-semibold text-slate-900 mb-3">Appels récents</h2>
           {detail.calls.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center">
+            <div className="bg-white rounded-2xl border border-border p-8 text-center">
               <p className="text-slate-500 text-sm">Aucun appel analysé pour l&apos;instant.</p>
             </div>
           ) : (
@@ -156,7 +156,7 @@ export default function TeamMemberDetailClient({ detail }: { detail: CommercialD
                   <Link
                     key={call.id}
                     href={`/team/${detail.user_id}/calls/${call.id}`}
-                    className="block bg-white rounded-2xl border border-slate-200 p-5 hover:shadow-md hover:border-indigo-200 transition-all"
+                    className="block bg-white rounded-2xl border border-border p-5 hover:shadow-md hover:border-[color:var(--lavender-strong)] transition-all"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
@@ -197,7 +197,7 @@ export default function TeamMemberDetailClient({ detail }: { detail: CommercialD
         <div>
           <h2 className="text-sm font-semibold text-slate-900 mb-3">Briefs générés</h2>
           {briefs.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center">
+            <div className="bg-white rounded-2xl border border-border p-8 text-center">
               <p className="text-slate-500 text-sm">Aucun brief généré pour l&apos;instant.</p>
             </div>
           ) : (

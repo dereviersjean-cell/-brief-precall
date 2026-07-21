@@ -18,7 +18,8 @@ export default function TeamRosterTable({ rows }: { rows: RosterRow[] }) {
   }
 
   return (
-    <table className="w-full mt-3">
+    <div className="overflow-x-auto">
+      <table className="w-full mt-3 min-w-[480px]">
       <thead>
         <tr className="border-t border-slate-100 text-xs text-slate-400 uppercase tracking-wide">
           <th className="text-left font-semibold px-5 py-2">Commercial</th>
@@ -60,6 +61,7 @@ export default function TeamRosterTable({ rows }: { rows: RosterRow[] }) {
           </motion.tr>
         ))}
       </tbody>
-    </table>
+      </table>
+    </div>
   );
 }

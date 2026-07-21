@@ -39,13 +39,13 @@ export default async function HelpPage() {
   return (
     <div className="max-w-4xl mx-auto px-6 py-10">
       <FadeIn>
-        <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 mb-6">
+        <div className="relative overflow-hidden rounded-3xl border border-border bg-white p-8 mb-6">
           <div
             aria-hidden
-            className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-indigo-200/50 via-violet-200/40 to-transparent blur-3xl"
+            className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-[color:var(--lavender-strong)]/60 via-[color:var(--lavender)]/40 to-transparent blur-3xl"
           />
           <div className="relative">
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full mb-3">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[color:var(--violet)] bg-[color:var(--lavender)] px-2.5 py-1 rounded-full mb-3">
               <HelpCircle className="w-3 h-3" />
               Base de connaissance
             </span>
@@ -59,7 +59,7 @@ export default async function HelpPage() {
                 <a
                   key={category}
                   href={`#${slugify(category)}`}
-                  className="text-xs font-medium text-slate-600 bg-slate-50 border border-slate-200 rounded-full px-3 py-1.5 hover:bg-slate-100 transition-colors duration-200"
+                  className="text-xs font-medium text-slate-600 bg-slate-50 border border-border rounded-full px-3 py-1.5 hover:bg-slate-100 transition-colors duration-200"
                 >
                   {category}
                 </a>
@@ -71,7 +71,7 @@ export default async function HelpPage() {
 
       {articles.length === 0 && (
         <FadeIn delay={0.1}>
-          <div className="bg-white rounded-2xl border border-slate-200 p-6">
+          <div className="bg-white rounded-2xl border border-border p-6">
             <p className="text-slate-400 text-sm italic">
               Aucun article disponible pour l&apos;instant.
             </p>
@@ -86,7 +86,7 @@ export default async function HelpPage() {
               <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">{category}</h2>
               <div className="space-y-4">
                 {categoryArticles.map((article) => (
-                  <div key={article.id} className="bg-white rounded-2xl border border-slate-200 p-6">
+                  <div key={article.id} className="bg-white rounded-2xl border border-border p-6">
                     <h3 className="text-base font-semibold text-slate-900 mb-2">{article.title}</h3>
                     <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                       {article.content}

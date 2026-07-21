@@ -54,7 +54,7 @@ function PlaybookNameEditor({ name, onSave }: { name: string; onSave: (next: str
             setDraft(name);
             setEditing(false);
           }}
-          className="h-8 w-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors duration-200"
+          className="h-8 w-8 flex items-center justify-center rounded-lg border border-border text-slate-600 hover:bg-slate-50 transition-colors duration-200"
           aria-label="Annuler"
         >
           <X className="w-4 h-4" />
@@ -191,14 +191,14 @@ function DimensionCard({
               const v = parseInt(e.target.value, 10);
               if (!Number.isNaN(v) && v > 0) onUpdate({ weight: v });
             }}
-            className="w-14 border border-slate-200 rounded-lg px-2 py-1 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
+            className="w-14 border border-border rounded-lg px-2 py-1 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
           />
         </label>
         <div className="flex items-center gap-1 ml-auto">
           <button
             onClick={() => onMove("up")}
             disabled={index === 0}
-            className="h-7 w-7 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-200"
+            className="h-7 w-7 flex items-center justify-center rounded-lg border border-border text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-200"
             aria-label="Monter"
           >
             <ArrowUp className="w-3.5 h-3.5" />
@@ -206,7 +206,7 @@ function DimensionCard({
           <button
             onClick={() => onMove("down")}
             disabled={index === total - 1}
-            className="h-7 w-7 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-200"
+            className="h-7 w-7 flex items-center justify-center rounded-lg border border-border text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-200"
             aria-label="Descendre"
           >
             <ArrowDown className="w-3.5 h-3.5" />
@@ -214,7 +214,7 @@ function DimensionCard({
           <button
             onClick={onDelete}
             disabled={isLast}
-            className="h-7 px-2.5 flex items-center gap-1 rounded-lg border border-slate-200 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-200 ml-1"
+            className="h-7 px-2.5 flex items-center gap-1 rounded-lg border border-border text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-200 ml-1"
             title={isLast ? "Dernière dimension — suppression impossible" : "Supprimer la dimension"}
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -259,7 +259,7 @@ function DimensionCard({
           value={newQuestion}
           onChange={(e) => setNewQuestion(e.target.value)}
           placeholder="Ajouter une question…"
-          className="flex-1 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
+          className="flex-1 border border-border rounded-lg px-2.5 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
         />
         <button
           type="submit"
@@ -297,7 +297,7 @@ function AddDimensionModal({
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 px-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 w-full max-w-md shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-2xl border border-border p-6 w-full max-w-md shadow-xl" onClick={(e) => e.stopPropagation()}>
         <h2 className="font-semibold text-slate-900 mb-4">Ajouter une dimension</h2>
         <div className="space-y-3">
           <div>
@@ -307,7 +307,7 @@ function AddDimensionModal({
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder="ex. Vision produit"
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
             />
           </div>
           <div>
@@ -316,7 +316,7 @@ function AddDimensionModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)] resize-none"
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)] resize-none"
             />
           </div>
           <div>
@@ -326,14 +326,14 @@ function AddDimensionModal({
               min={1}
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
-              className="w-20 px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
+              className="w-20 px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
             />
           </div>
         </div>
         <div className="flex justify-end gap-2 mt-5">
           <button
             onClick={onClose}
-            className="h-8 px-4 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors duration-200"
+            className="h-8 px-4 text-sm font-medium text-slate-600 border border-border rounded-lg hover:bg-slate-50 transition-colors duration-200"
           >
             Annuler
           </button>
@@ -553,7 +553,7 @@ export default function PlaybookClient({ playbook: initialPlaybook }: { playbook
         <div className="relative overflow-hidden rounded-3xl border border-border shadow-[var(--shadow-sm)] bg-white p-8 mb-6">
           <div
             aria-hidden
-            className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-indigo-200/50 via-violet-200/40 to-transparent blur-3xl"
+            className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-[color:var(--lavender-strong)]/60 via-[color:var(--lavender)]/40 to-transparent blur-3xl"
           />
           <div
             aria-hidden
@@ -572,7 +572,7 @@ export default function PlaybookClient({ playbook: initialPlaybook }: { playbook
             </div>
             <button
               onClick={() => setShowImportModal(true)}
-              className="shrink-0 inline-flex items-center gap-2 h-9 px-3.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors duration-200"
+              className="shrink-0 inline-flex items-center gap-2 h-9 px-3.5 rounded-lg border border-border bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors duration-200"
             >
               <Upload className="w-4 h-4" />
               Importer depuis un doc
@@ -608,7 +608,7 @@ export default function PlaybookClient({ playbook: initialPlaybook }: { playbook
 
         <button
           onClick={() => setShowAddModal(true)}
-          className="mt-4 h-9 px-3.5 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors duration-200"
+          className="mt-4 h-9 px-3.5 inline-flex items-center gap-1.5 rounded-lg border border-border bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors duration-200"
         >
           <Plus className="w-4 h-4" />
           Ajouter une dimension

@@ -36,7 +36,7 @@ function formatDelay(hours: number): string {
 function ActionBadge({ actionType }: { actionType: string }) {
   if (actionType !== "open_gmail_draft") return null;
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[color:var(--lavender)] text-[color:var(--violet)]">
       📧 Brouillon email
     </span>
   );
@@ -151,7 +151,7 @@ function TaskTemplateModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               autoFocus
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
             />
           </div>
           <div>
@@ -160,7 +160,7 @@ function TaskTemplateModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] resize-none"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -172,7 +172,7 @@ function TaskTemplateModal({
                 step="1"
                 value={offsetHours}
                 onChange={(e) => setOffsetHours(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
               />
             </div>
             <div>
@@ -182,7 +182,7 @@ function TaskTemplateModal({
                 value={taskType}
                 onChange={(e) => setTaskType(e.target.value)}
                 placeholder="relance_email"
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
               />
             </div>
           </div>
@@ -191,7 +191,7 @@ function TaskTemplateModal({
             <select
               value={actionType}
               onChange={(e) => setActionType(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
             >
               {ACTION_TYPE_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -232,14 +232,14 @@ function TaskTemplateModal({
         <div className="flex justify-end gap-2 mt-5">
           <button
             onClick={onClose}
-            className="text-sm font-medium text-slate-600 border border-slate-200 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors"
+            className="text-sm font-medium text-slate-600 border border-border px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors"
           >
             Annuler
           </button>
           <button
             onClick={handleSubmit}
             disabled={!title.trim() || loading}
-            className="text-sm font-medium text-white bg-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+            className="text-sm font-medium text-white brand-gradient px-4 py-2 rounded-lg hover:brightness-110 transition-colors disabled:opacity-50"
           >
             {loading ? "Enregistrement…" : template ? "Enregistrer" : "Ajouter"}
           </button>
@@ -261,7 +261,7 @@ function TemplateCard({
   onDelete: (template: TaskTemplate) => void;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-start justify-between gap-4">
+    <div className="bg-white rounded-xl border border-border p-4 flex items-start justify-between gap-4">
       <div className="min-w-0">
         <div className="flex items-center gap-2 flex-wrap mb-1">
           <p className="font-medium text-slate-900">{template.title}</p>
@@ -275,7 +275,7 @@ function TemplateCard({
         <button
           onClick={() => onToggle(template)}
           className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-            template.enabled ? "bg-indigo-600" : "bg-slate-200"
+            template.enabled ? "brand-gradient" : "bg-slate-200"
           }`}
           aria-label={template.enabled ? "Désactiver" : "Activer"}
         >
@@ -285,7 +285,7 @@ function TemplateCard({
             }`}
           />
         </button>
-        <button onClick={() => onEdit(template)} className="text-xs font-medium text-indigo-600 hover:text-indigo-700">
+        <button onClick={() => onEdit(template)} className="text-xs font-medium text-[color:var(--violet)] hover:text-[color:var(--violet)]">
           Modifier
         </button>
         <button onClick={() => onDelete(template)} className="text-xs font-medium text-red-600 hover:text-red-700">
@@ -375,7 +375,7 @@ export default function TaskTemplatesClient({
           </p>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center justify-between gap-4 mb-8">
+        <div className="bg-white rounded-xl border border-border p-4 flex items-center justify-between gap-4 mb-8">
           <div className="min-w-0">
             <p className="text-sm font-medium text-slate-700">Importer les tasks HubSpot</p>
             <p className="text-xs text-slate-400 mt-0.5">
@@ -413,14 +413,14 @@ export default function TaskTemplatesClient({
                   </div>
                   <button
                     onClick={() => setModalState({ triggerType: section.trigger_type, template: null })}
-                    className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition-colors"
+                    className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 brand-gradient text-white rounded-lg text-xs font-medium hover:brightness-110 transition-colors"
                   >
                     + Ajouter un template
                   </button>
                 </div>
 
                 {sectionTemplates.length === 0 ? (
-                  <div className="bg-white rounded-xl border border-slate-200 p-6 text-center text-sm text-slate-400">
+                  <div className="bg-white rounded-xl border border-border p-6 text-center text-sm text-slate-400">
                     Aucun template dans cette section.
                   </div>
                 ) : (
