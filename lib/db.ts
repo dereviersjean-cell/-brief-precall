@@ -1497,13 +1497,18 @@ export async function setTrainingEnabledForOrganization(organizationId: string, 
 }
 
 // Trace du CTA "Je veux débloquer ce module" (migration 004) — durable en
-// base même si l'email admin échoue. hasRecentTrainingUnlockRequest sert à
-// éviter de spammer l'admin si l'utilisateur reclique plusieurs fois.
+// base même si l'email admin échoue. La dédup 24h (hasRecentTrainingUnlockRequest)
+// ne regarde QUE les demandes dont l'email est réellement parti
+// (email_sent, migration 005) — sinon un premier clic dont l'email a
+// échoué (ADMIN_NOTIFICATION_EMAIL pas encore configurée, panne Resend...)
+// bloquait silencieusement tout renvoi pendant 24h, alors que rien n'était
+// jamais arrivé à l'admin.
 export async function hasRecentTrainingUnlockRequest(userId: string, sinceISO: string): Promise<boolean> {
   const { data, error } = await supabaseAdmin
     .from("training_unlock_requests")
     .select("id")
     .eq("user_id", userId)
+    .eq("email_sent", true)
     .gte("created_at", sinceISO)
     .limit(1);
   if (error) throw error;
@@ -1516,14 +1521,24 @@ export async function createTrainingUnlockRequest(params: {
   userName: string | null;
   userEmail: string;
   organizationName: string | null;
-}): Promise<void> {
-  const { error } = await supabaseAdmin.from("training_unlock_requests").insert({
-    organization_id: params.organizationId,
-    user_id: params.userId,
-    user_name: params.userName,
-    user_email: params.userEmail,
-    organization_name: params.organizationName,
-  });
+}): Promise<{ id: string }> {
+  const { data, error } = await supabaseAdmin
+    .from("training_unlock_requests")
+    .insert({
+      organization_id: params.organizationId,
+      user_id: params.userId,
+      user_name: params.userName,
+      user_email: params.userEmail,
+      organization_name: params.organizationName,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return data as { id: string };
+}
+
+export async function markTrainingUnlockRequestEmailSent(id: string): Promise<void> {
+  const { error } = await supabaseAdmin.from("training_unlock_requests").update({ email_sent: true }).eq("id", id);
   if (error) throw error;
 }
 
