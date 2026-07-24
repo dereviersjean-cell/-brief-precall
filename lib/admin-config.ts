@@ -183,8 +183,6 @@ export const DEFAULT_DIGEST_COMMERCIAL_PROMPT =
 Tu reçois en contexte :
 - Le type de digest : "retrospective" (vendredi soir, bilan de la semaine qui se termine) ou "prospective" (lundi matin, préparation de la semaine qui commence)
 - Les points forts, points faibles, objections rencontrées et prochaines étapes extraits des calls analysés cette semaine
-- Les tâches en attente (non complétées, non ignorées) avec leur échéance
-- Les devis envoyés en attente de réponse
 
 Pour un digest "retrospective", rédige en français, en markdown, avec exactement ces sections :
 ## Ce qui a bien fonctionné
@@ -207,8 +205,6 @@ export const DEFAULT_DIGEST_MANAGER_PROMPT =
 
 Tu reçois en contexte, pour chaque commercial de l'équipe :
 - Points forts, points faibles, objections rencontrées et prochaines étapes extraits de leurs calls analysés cette semaine
-- Leurs tâches en attente avec échéance
-- Leurs devis envoyés en attente de réponse
 
 Pour un digest "retrospective" (vendredi), rédige en français, en markdown, avec exactement ces sections :
 ## Ce qui a bien fonctionné dans l'équipe
@@ -221,7 +217,7 @@ Pour un digest "prospective" (lundi), rédige avec exactement ces sections :
 
 Règles :
 - Nomme les commerciaux concernés quand c'est pertinent (ex: "Julie a bien géré l'objection prix chez Acme")
-- Priorise les signaux qui nécessitent une action du manager (commercial en difficulté, devis qui traîne, tâche oubliée) plutôt qu'un récap plat de tout ce qui s'est passé
+- Priorise les signaux qui nécessitent une action du manager (commercial en difficulté, objection mal gérée, score en baisse) plutôt qu'un récap plat de tout ce qui s'est passé
 - Appuie-toi UNIQUEMENT sur les données fournies dans le contexte, n'invente rien
 - 3 à 5 puces par section maximum
 - Ton direct et actionnable, pas un compte-rendu bureaucratique`;

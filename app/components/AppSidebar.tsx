@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, FileText, Video, History, FileCheck, CheckSquare, Bell, Users, Settings, HelpCircle, LogOut, ChevronDown, Sparkles, Menu, X, MessagesSquare } from "lucide-react";
+import { LayoutDashboard, FileText, Video, Bell, Users, Settings, HelpCircle, LogOut, ChevronDown, Sparkles, Menu, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 type OrgStatus = {
@@ -70,7 +70,6 @@ function NavGroupLabel({ children }: { children: string }) {
 export default function AppSidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const [pendingTasksCount, setPendingTasksCount] = useState(0);
   const [orgStatus, setOrgStatus] = useState<OrgStatus | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -79,26 +78,6 @@ export default function AppSidebar() {
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function fetchCount() {
-      try {
-        const res = await fetch("/api/tasks/pending-count");
-        if (!res.ok) return;
-        const data = (await res.json()) as { count: number };
-        if (!cancelled) setPendingTasksCount(data.count);
-      } catch {
-        // ignore transient errors — badge just stays at its last known value
-      }
-    }
-    fetchCount();
-    const interval = setInterval(fetchCount, 60000);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -126,39 +105,35 @@ export default function AppSidebar() {
 
   const isManager = session?.role === "manager";
 
-  const dashboardActive = pathname === "/dashboard";
+  // « Performance » regroupe l'ancien trio Dashboard / Objections / Historique
+  // (mêmes routes, présentées en onglets — cf. PerformanceTabs.tsx).
+  const performanceActive =
+    pathname === "/dashboard" || pathname.startsWith("/objections") || pathname.startsWith("/contacts");
   const briefActive = pathname.startsWith("/brief");
   const feedbackActive = pathname.startsWith("/feedback");
-  const contactsActive = pathname.startsWith("/contacts");
-  const objectionsActive = pathname.startsWith("/objections");
-  const quotesActive = pathname.startsWith("/quotes");
-  const tasksActive = pathname.startsWith("/tasks");
   const notificationsActive = pathname.startsWith("/notifications");
   const playbookActive = pathname.startsWith("/team/playbook");
   const emailTemplatesActive = pathname.startsWith("/team/email-templates");
   const insightsActive = pathname.startsWith("/team/insights");
-  const teamActive = pathname.startsWith("/team") && !playbookActive && !emailTemplatesActive && !insightsActive;
+  const meetingStagesActive = pathname.startsWith("/team/meeting-stages");
+  const teamActive = pathname.startsWith("/team") && !playbookActive && !emailTemplatesActive && !insightsActive && !meetingStagesActive;
   const settingsActive = pathname.startsWith("/settings");
   const helpActive = pathname.startsWith("/help");
 
   // Collapsed by default, expanded automatically whenever a sub-page is
   // active (direct nav or refresh lands there) — manual toggling otherwise
   // persists as the user navigates around the rest of the app.
-  const [teamMenuOpen, setTeamMenuOpen] = useState(teamActive || playbookActive || emailTemplatesActive || insightsActive);
+  const [teamMenuOpen, setTeamMenuOpen] = useState(teamActive || playbookActive || emailTemplatesActive || insightsActive || meetingStagesActive);
   useEffect(() => {
-    if (playbookActive || emailTemplatesActive || insightsActive) setTeamMenuOpen(true);
-  }, [playbookActive, emailTemplatesActive, insightsActive]);
+    if (playbookActive || emailTemplatesActive || insightsActive || meetingStagesActive) setTeamMenuOpen(true);
+  }, [playbookActive, emailTemplatesActive, insightsActive, meetingStagesActive]);
 
   const pilotageGroup: { href: string; label: string; icon: LucideIcon; active: boolean; badge?: number }[] = [
-    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, active: dashboardActive },
+    { href: "/dashboard", label: "Performance", icon: LayoutDashboard, active: performanceActive },
   ];
   const commercialGroup: { href: string; label: string; icon: LucideIcon; active: boolean; badge?: number }[] = [
     { href: "/brief", label: "Brief", icon: FileText, active: briefActive },
     { href: "/feedback", label: "Analyse rendez-vous", icon: Video, active: feedbackActive },
-    { href: "/objections", label: "Objections", icon: MessagesSquare, active: objectionsActive },
-    { href: "/contacts", label: "Historique", icon: History, active: contactsActive },
-    { href: "/quotes", label: "Devis", icon: FileCheck, active: quotesActive },
-    { href: "/tasks", label: "Tasks", icon: CheckSquare, active: tasksActive, badge: pendingTasksCount },
   ];
   const compteGroup: { href: string; label: string; icon: LucideIcon; active: boolean; badge?: number }[] = [
     { href: "/notifications", label: "Notifications", icon: Bell, active: notificationsActive },
@@ -297,6 +272,14 @@ export default function AppSidebar() {
                   }`}
                 >
                   Insights
+                </Link>
+                <Link
+                  href="/team/meeting-stages"
+                  className={`block rounded-lg px-3 py-1.5 text-[12.5px] transition-colors ${
+                    meetingStagesActive ? "bg-[color:var(--lavender)] text-[color:var(--violet)] font-medium" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  }`}
+                >
+                  Étapes de RDV
                 </Link>
               </div>
             )}

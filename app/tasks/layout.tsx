@@ -1,21 +1,10 @@
-import AppSidebar from "@/app/components/AppSidebar";
-import ImpersonationBanner from "@/app/components/ImpersonationBanner";
-import BillingGraceBanner from "@/app/components/BillingGraceBanner";
-import TopBar from "@/app/components/TopBar";
-import TasksOverdueToast from "./TasksOverdueToast";
-import type { ReactNode } from "react";
+import { redirect } from "next/navigation";
 
-export default function TasksLayout({ children }: { children: ReactNode }) {
-  return (
-    <div className="flex min-h-screen">
-      <AppSidebar />
-      <div className="flex-1 ml-0 lg:ml-60 min-w-0">
-        <ImpersonationBanner />
-        <BillingGraceBanner />
-        <TopBar />
-        <TasksOverdueToast />
-        {children}
-      </div>
-    </div>
-  );
+// Module Tasks masqué depuis le recentrage produit de juillet 2026 (focus
+// taux de closing) : les pages sont inaccessibles mais le code, les routes
+// API et les crons Inngest restent en place. Pour réactiver : restaurer le
+// layout d'origine (git log sur ce fichier) et remettre l'entrée « Tasks »
+// dans AppSidebar.tsx.
+export default function TasksLayout() {
+  redirect("/dashboard");
 }

@@ -9,20 +9,18 @@ import { Search, Bell, ChevronRight } from "lucide-react";
 // volontairement désactivée (pas de moteur de recherche global côté
 // serveur) plutôt que de simuler un champ fonctionnel qui ne ferait rien.
 const LABELS: Record<string, string> = {
-  dashboard: "Dashboard",
+  dashboard: "Performance",
   brief: "Brief",
   feedback: "Analyse rendez-vous",
   contacts: "Historique",
-  quotes: "Devis",
-  new: "Nouveau devis",
   settings: "Paramètres",
-  tasks: "Tasks",
   notifications: "Notifications",
   objections: "Objections",
   team: "Équipe",
   playbook: "Playbook",
   "email-templates": "Templates emails",
   insights: "Insights",
+  "meeting-stages": "Étapes de RDV",
   general: "Général",
   connexions: "Connexions",
   crm: "CRM",
@@ -40,7 +38,7 @@ function buildCrumbs(pathname: string): string[] {
   const parts = pathname.split("/").filter(Boolean);
   const crumbs = ["Brief"];
   if (parts.length === 0) {
-    crumbs.push("Dashboard");
+    crumbs.push("Performance");
     return crumbs;
   }
   for (const p of parts) {

@@ -1,21 +1,10 @@
-import AppSidebar from "@/app/components/AppSidebar";
-import ImpersonationBanner from "@/app/components/ImpersonationBanner";
-import BillingGraceBanner from "@/app/components/BillingGraceBanner";
-import TopBar from "@/app/components/TopBar";
-import QuoteAcceptanceToast from "./QuoteAcceptanceToast";
-import type { ReactNode } from "react";
+import { redirect } from "next/navigation";
 
-export default function QuotesLayout({ children }: { children: ReactNode }) {
-  return (
-    <div className="flex min-h-screen">
-      <AppSidebar />
-      <div className="flex-1 ml-0 lg:ml-60 min-w-0">
-        <ImpersonationBanner />
-        <BillingGraceBanner />
-        <TopBar />
-        <QuoteAcceptanceToast />
-        {children}
-      </div>
-    </div>
-  );
+// Module Devis masqué depuis le recentrage produit de juillet 2026 (focus
+// taux de closing) : les pages sont inaccessibles mais le code, les routes
+// API et le signal win/loss des devis acceptés/refusés restent actifs.
+// Pour réactiver : restaurer le layout d'origine (git log sur ce fichier)
+// et remettre l'entrée « Devis » dans AppSidebar.tsx.
+export default function QuotesLayout() {
+  redirect("/dashboard");
 }

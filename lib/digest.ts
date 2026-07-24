@@ -4,13 +4,9 @@ import {
   getManagerDigestData,
   getCommercialsForManager,
   getDigestCallInsights,
-  getDigestPendingTasks,
-  getDigestPendingQuotes,
   type DigestTiming,
   type DigestRecipient,
   type DigestCallInsight,
-  type DigestPendingTask,
-  type DigestPendingQuote,
 } from "./db";
 import { readPromptConfig, DEFAULT_DIGEST_COMMERCIAL_PROMPT, DEFAULT_DIGEST_MANAGER_PROMPT } from "./admin-config";
 import { sendCommercialWeeklyDigestEmail, sendManagerWeeklyDigestEmail } from "./email";
@@ -71,11 +67,11 @@ function periodTypeForTiming(timing: DigestTiming): PeriodType {
 // material queries return flat arrays across the whole team, filtered here
 // by user_id rather than queried per-commercial, to keep it 3 batched
 // queries total instead of 3-per-commercial).
-function formatUserRawMaterial(
-  insights: DigestCallInsight[],
-  tasks: DigestPendingTask[],
-  quotes: DigestPendingQuote[]
-): string {
+// Tâches en attente et devis envoyés ne font plus partie de la matière du
+// digest depuis le masquage des modules Tasks/Devis (recentrage produit,
+// juillet 2026) — le narratif ne doit pas mentionner des éléments que le
+// destinataire ne peut plus voir dans l'app.
+function formatUserRawMaterial(insights: DigestCallInsight[]): string {
   const lines: string[] = [];
 
   if (insights.length === 0) {
@@ -92,12 +88,6 @@ function formatUserRawMaterial(
       if (insight.next_steps.length) lines.push(`Prochaines étapes identifiées : ${insight.next_steps.join("; ")}`);
     });
   }
-
-  lines.push(`\nTâches en attente (${tasks.length}) :`);
-  lines.push(tasks.length === 0 ? "Aucune." : tasks.map((t) => `- ${t.title} (échéance ${t.due_at})`).join("\n"));
-
-  lines.push(`\nDevis envoyés en attente de réponse (${quotes.length}) :`);
-  lines.push(quotes.length === 0 ? "Aucun." : quotes.map((q) => `- ${q.client_name} (envoyé le ${q.issued_at})`).join("\n"));
 
   return lines.join("\n");
 }
@@ -151,20 +141,14 @@ export async function sendWeeklyDigestForUser(user: DigestRecipient, timing: Dig
       const commercials = await getCommercialsForManager(user.id);
       const commercialIds = commercials.map((c) => c.id);
 
-      const [team, insights, tasks, quotes] = await Promise.all([
+      const [team, insights] = await Promise.all([
         getManagerDigestData(user.id, fromISO, toISO, prevRangeStart.toISOString(), prevRangeEnd.toISOString()),
         getDigestCallInsights(commercialIds, fromISO, toISO),
-        getDigestPendingTasks(commercialIds),
-        getDigestPendingQuotes(commercialIds),
       ]);
 
       const rawMaterialText = commercials
         .map((c) => {
-          const section = formatUserRawMaterial(
-            insights.filter((i) => i.user_id === c.id),
-            tasks.filter((t) => t.user_id === c.id),
-            quotes.filter((q) => q.user_id === c.id)
-          );
+          const section = formatUserRawMaterial(insights.filter((i) => i.user_id === c.id));
           return `### ${c.name ?? c.email}\n${section}`;
         })
         .join("\n\n");
@@ -180,14 +164,12 @@ export async function sendWeeklyDigestForUser(user: DigestRecipient, timing: Dig
         teamUrl: `${APP_URL}/team`,
       });
     } else {
-      const [stats, insights, tasks, quotes] = await Promise.all([
+      const [stats, insights] = await Promise.all([
         getCommercialDigestData(user.id, fromISO, toISO, prevRangeStart.toISOString(), prevRangeEnd.toISOString()),
         getDigestCallInsights([user.id], fromISO, toISO),
-        getDigestPendingTasks([user.id]),
-        getDigestPendingQuotes([user.id]),
       ]);
 
-      const rawMaterialText = formatUserRawMaterial(insights, tasks, quotes);
+      const rawMaterialText = formatUserRawMaterial(insights);
       const narrative = await generateDigestNarrative("digest_commercial_prompt", periodType, rawMaterialText);
 
       await sendCommercialWeeklyDigestEmail({

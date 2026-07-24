@@ -3,6 +3,7 @@ import { generateEmbedding } from "./embeddings";
 import { computeQuoteTotals } from "./quote-calc";
 import type { TranscriptJson } from "./recall";
 import type { NotificationEventType, NotificationChannel, NotificationPreference } from "./notification-preferences";
+import { coerceMeetingStageConfig, type MeetingStage, type MeetingStageConfig } from "./meeting-stage";
 
 export async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 500): Promise<T> {
   let lastError: unknown;
@@ -231,6 +232,11 @@ export type CallData = {
   calendar_event_id: string | null;
   contact_email: string | null;
   company_name: string | null;
+  // Titre du RDV agenda (metadata du bot Recall) + étape R1/R2/R3 détectée
+  // par motif à l'ingestion (lib/meeting-stage.ts). Absents pour les calls
+  // antérieurs à la migration 001 et pour les chemins qui ne les calculent pas.
+  meeting_title?: string | null;
+  meeting_stage?: string | null;
   transcript: string;
   status: string;
   duration_seconds: number | null;
@@ -643,6 +649,10 @@ export type CallWithAnalysis = {
   follow_up_sent_at: string | null;
   recall_bot_id: string | null;
   recording_id: string | null;
+  // Étape de RDV détectée à l'ingestion — null pour les calls antérieurs à la
+  // migration 001 ou sans motif correspondant.
+  meeting_title: string | null;
+  meeting_stage: MeetingStage | null;
   analysis: CallAnalysisRow | null;
   // Raw "Speaker: text" transcript, one turn per line (see transcriptToText
   // in lib/recall.ts) — already persisted on calls.transcript at ingest time
@@ -665,7 +675,7 @@ export async function getCallsWithAnalysis(userId: string): Promise<CallWithAnal
   const { data, error } = await supabaseAdmin
     .from("calls")
     .select(
-      "id, contact_email, company_name, created_at, started_at, status, duration_seconds, participant_count, follow_up_email, follow_up_sent_at, recall_bot_id, recording_id, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment, playbook_snapshot, key_points, key_points_generated_at)"
+      "id, contact_email, company_name, meeting_title, meeting_stage, created_at, started_at, status, duration_seconds, participant_count, follow_up_email, follow_up_sent_at, recall_bot_id, recording_id, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment, playbook_snapshot, key_points, key_points_generated_at)"
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
@@ -687,6 +697,8 @@ export async function getCallsWithAnalysis(userId: string): Promise<CallWithAnal
       follow_up_sent_at: row.follow_up_sent_at as string | null,
       recall_bot_id: row.recall_bot_id as string | null,
       recording_id: row.recording_id as string | null,
+      meeting_title: row.meeting_title as string | null,
+      meeting_stage: row.meeting_stage as MeetingStage | null,
       analysis,
       transcript: null,
       transcript_json: null,
@@ -702,7 +714,7 @@ export async function getCallWithAnalysis(
   const { data, error } = await supabaseAdmin
     .from("calls")
     .select(
-      "id, contact_email, company_name, created_at, started_at, status, duration_seconds, participant_count, follow_up_email, follow_up_sent_at, recall_bot_id, recording_id, transcript, transcript_json, speaker_names_override, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment, playbook_snapshot, key_points, key_points_generated_at)"
+      "id, contact_email, company_name, meeting_title, meeting_stage, created_at, started_at, status, duration_seconds, participant_count, follow_up_email, follow_up_sent_at, recall_bot_id, recording_id, transcript, transcript_json, speaker_names_override, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment, playbook_snapshot, key_points, key_points_generated_at)"
     )
     .eq("id", callId)
     .eq("user_id", userId)
@@ -726,6 +738,8 @@ export async function getCallWithAnalysis(
     follow_up_sent_at: row.follow_up_sent_at as string | null,
     recall_bot_id: row.recall_bot_id as string | null,
     recording_id: row.recording_id as string | null,
+    meeting_title: row.meeting_title as string | null,
+    meeting_stage: row.meeting_stage as MeetingStage | null,
     analysis,
     transcript: row.transcript as string | null,
     transcript_json: row.transcript_json as TranscriptJson | null,
@@ -1595,6 +1609,40 @@ export async function getOrganizationForUser(userId: string): Promise<Organizati
   return getOrganization(orgId);
 }
 
+// Config des étapes de RDV (R1/R2/R3) — motifs de titre + consignes par
+// étape, un jsonb sur organizations (même logique « un par organisation » que
+// le playbook). Lecture résiliente façon bug #14 : tant que la migration 001
+// n'est pas passée en prod, on retombe sur les défauts du code au lieu de
+// faire tomber le webhook ou la page équipe.
+export async function getMeetingStageConfigForOrganization(organizationId: string): Promise<MeetingStageConfig> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("organizations")
+      .select("meeting_stage_config")
+      .eq("id", organizationId)
+      .maybeSingle();
+    if (error) throw error;
+    return coerceMeetingStageConfig((data as { meeting_stage_config: unknown } | null)?.meeting_stage_config);
+  } catch (err) {
+    console.error(
+      "[db] getMeetingStageConfigForOrganization failed (fallback to defaults):",
+      err instanceof Error ? err.message : String(err)
+    );
+    return coerceMeetingStageConfig(null);
+  }
+}
+
+export async function saveMeetingStageConfigForOrganization(
+  organizationId: string,
+  config: MeetingStageConfig
+): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("organizations")
+    .update({ meeting_stage_config: config })
+    .eq("id", organizationId);
+  if (error) throw error;
+}
+
 export type OrganizationWithCounts = Organization & {
   managers_count: number;
   commercials_count: number;
@@ -2068,6 +2116,33 @@ export async function listObjectionsForOrganization(organizationId: string): Pro
       createdAt: r.created_at,
       outcome: (r.contact_email ? outcomeByEmail.get(r.contact_email) : undefined) ?? null,
     };
+  });
+}
+
+// Aperçu léger pour la carte « Objections récentes » du dashboard — les N
+// dernières entrées seulement, sans résolution win/loss en bulk.
+export async function listRecentObjectionsForOrganization(
+  organizationId: string,
+  limit: number
+): Promise<{ id: string; callId: string; objection: string; companyName: string | null; createdAt: string }[]> {
+  const { data, error } = await supabaseAdmin
+    .from("call_objections")
+    .select("id, call_id, objection, created_at, calls(company_name)")
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+
+  type Row = {
+    id: string;
+    call_id: string;
+    objection: string;
+    created_at: string;
+    calls: { company_name: string | null } | { company_name: string | null }[] | null;
+  };
+  return ((data ?? []) as Row[]).map((r) => {
+    const call = Array.isArray(r.calls) ? (r.calls[0] ?? null) : r.calls;
+    return { id: r.id, callId: r.call_id, objection: r.objection, companyName: call?.company_name ?? null, createdAt: r.created_at };
   });
 }
 

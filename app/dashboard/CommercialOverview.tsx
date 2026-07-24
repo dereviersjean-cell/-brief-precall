@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { Phone, FileText, ListChecks, TrendingUp, Calendar, Download, Sparkles } from "lucide-react";
+import { Phone, FileText, MessagesSquare, TrendingUp, Calendar, Download, Sparkles } from "lucide-react";
 import {
   getCommercialDigestData,
   getRecentCallScores,
   getCallsWithAnalysis,
-  listTasksForUser,
+  getUserOrganizationId,
+  listRecentObjectionsForOrganization,
 } from "@/lib/db";
 import { fridayEveningDigestRange } from "@/lib/digest";
 import { mostRecentParisMonday, bucketScoresByWeek } from "@/lib/paris-week";
@@ -15,7 +16,6 @@ import StatTile from "./StatTile";
 import ScoreTrendChart from "./ScoreTrendChart";
 import ConnectionsStatus from "./ConnectionsStatus";
 import RecentCallsList, { type RecentCallRow } from "./RecentCallsList";
-import TasksList, { type TaskRow } from "./TasksList";
 import FadeIn from "./FadeIn";
 
 const TREND_WEEKS = 6;
@@ -29,11 +29,12 @@ export default async function CommercialOverview({ userId, userName }: { userId:
   const { rangeStart, rangeEnd, prevRangeStart, prevRangeEnd } = fridayEveningDigestRange(now);
   const trendSince = new Date(mostRecentParisMonday(now).getTime() - (TREND_WEEKS - 1) * 7 * ONE_DAY_MS);
 
-  const [weekStats, rawScores, recentCalls, pendingTasks] = await Promise.all([
+  const organizationId = await getUserOrganizationId(userId);
+  const [weekStats, rawScores, recentCalls, recentObjections] = await Promise.all([
     getCommercialDigestData(userId, rangeStart.toISOString(), rangeEnd.toISOString(), prevRangeStart.toISOString(), prevRangeEnd.toISOString()),
     getRecentCallScores(userId, trendSince.toISOString()),
     getCallsWithAnalysis(userId),
-    listTasksForUser(userId, "pending"),
+    organizationId ? listRecentObjectionsForOrganization(organizationId, 4) : Promise.resolve([]),
   ]);
 
   const trendWeeks = bucketScoresByWeek(rawScores, TREND_WEEKS, now);
@@ -43,12 +44,6 @@ export default async function CommercialOverview({ userId, userName }: { userId:
     name: formatContactDisplayName(call.company_name, call.contact_email),
     dateLabel: new Date(call.started_at ?? call.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }),
     score: call.analysis?.scores?.global_score ?? null,
-  }));
-
-  const next5Tasks: TaskRow[] = pendingTasks.slice(0, 5).map((task) => ({
-    id: task.id,
-    title: task.title,
-    dueLabel: new Date(task.due_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }),
   }));
 
   return (
@@ -84,7 +79,7 @@ export default async function CommercialOverview({ userId, userName }: { userId:
         </div>
       </FadeIn>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
         <StatTile index={0} accent="indigo" label="Calls cette semaine" value={weekStats.calls_count} icon={<Phone className="w-3.5 h-3.5" />} />
         <StatTile index={1} accent="violet" label="Briefs générés" value={weekStats.briefs_count} icon={<FileText className="w-3.5 h-3.5" />} />
         <StatTile
@@ -96,13 +91,6 @@ export default async function CommercialOverview({ userId, userName }: { userId:
           suffix={weekStats.avg_score !== null ? "/5" : undefined}
           icon={<TrendingUp className="w-3.5 h-3.5" />}
           trend={weekStats.avg_score !== null ? { current: weekStats.avg_score, previous: weekStats.prev_avg_score } : undefined}
-        />
-        <StatTile
-          index={3}
-          accent="amber"
-          label="Devis envoyés"
-          value={weekStats.quotes_sent}
-          detail={weekStats.quotes_accepted > 0 ? `${weekStats.quotes_accepted} accepté${weekStats.quotes_accepted > 1 ? "s" : ""}` : undefined}
         />
       </div>
 
@@ -126,10 +114,26 @@ export default async function CommercialOverview({ userId, userName }: { userId:
           <FadeIn delay={0.2}>
             <Card padded={false} className="p-5">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500">Tâches en attente</h2>
-                <ListChecks className="w-4 h-4 text-slate-300" />
+                <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500">Objections récentes de l&apos;équipe</h2>
+                <MessagesSquare className="w-4 h-4 text-slate-300" />
               </div>
-              <TasksList tasks={next5Tasks} totalCount={pendingTasks.length} />
+              {recentObjections.length === 0 ? (
+                <p className="text-sm text-slate-400 italic">Aucune objection indexée pour l&apos;instant.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {recentObjections.map((o) => (
+                    <li key={o.id} className="min-w-0">
+                      <p className="text-sm text-slate-700 truncate">« {o.objection} »</p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {o.companyName ?? "Prospect"} · {new Date(o.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <Link href="/objections" className="inline-block mt-4 text-xs font-medium text-[color:var(--violet)] hover:underline">
+                Toute la bibliothèque →
+              </Link>
             </Card>
           </FadeIn>
         </div>

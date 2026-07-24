@@ -389,7 +389,7 @@ export async function sendCommercialWeeklyDigestEmail(params: {
   userName: string | null;
   periodLabel: string; // e.g. "1 – 5 juillet 2026"
   narrative: string | null; // markdown, generated from digest_commercial_prompt (lib/admin-config.ts) — see lib/digest.ts
-  stats: { calls_count: number; briefs_count: number; avg_score: number | null; prev_avg_score: number | null; quotes_sent: number; quotes_accepted: number };
+  stats: { calls_count: number; briefs_count: number; avg_score: number | null; prev_avg_score: number | null };
   dashboardUrl: string;
 }): Promise<void> {
   const { to, userName, periodLabel, narrative, stats, dashboardUrl } = params;
@@ -407,13 +407,6 @@ export async function sendCommercialWeeklyDigestEmail(params: {
       </tr>
     </table>
     <p style="margin:0 0 24px;">${scoreTrendHtml(stats.avg_score, stats.prev_avg_score)}</p>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
-      <tr>
-        ${statCellHtml("Devis envoyés", String(stats.quotes_sent), "50%")}
-        <td width="8"></td>
-        ${statCellHtml("Devis acceptés", String(stats.quotes_accepted), "50%")}
-      </tr>
-    </table>
     ${narrative ? renderMarkdownForEmail(narrative) : ""}
     ${ctaButtonHtml("Voir mon tableau de bord", dashboardUrl)}`;
 
