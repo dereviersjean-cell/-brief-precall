@@ -202,6 +202,11 @@ export async function syncAndScheduleForUser(
               calendarEventId: googleEventId ?? "",
               contactEmail: contactEmail ?? "",
               companyName: "",
+              // Titre du RDV agenda — relu par le bot-webhook à l'ingestion
+              // pour détecter l'étape R1/R2/R3 (lib/meeting-stage.ts). Les
+              // bots programmés avant cet ajout n'ont pas la clé : étape non
+              // détectée, analyse générique.
+              meetingTitle: eventTitleOf(event),
             },
           },
         }),

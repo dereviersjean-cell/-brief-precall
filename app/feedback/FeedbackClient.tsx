@@ -21,6 +21,7 @@ import {
   ArrowDownUp,
 } from "lucide-react";
 import type { CallWithAnalysis } from "@/lib/db";
+import { MEETING_STAGE_SHORT_LABELS, MEETING_STAGE_LABELS } from "@/lib/meeting-stage";
 import { deriveNameFromEmail } from "@/lib/format";
 import { PageHeader } from "@/app/components/ui/PageHeader";
 import { Button } from "@/app/components/ui/ui-bits";
@@ -351,6 +352,14 @@ function CallRow({ row }: { row: Row }) {
                 <span className="text-slate-300">·</span>
                 <div className="truncate text-[12.5px] text-slate-500">{call.company_name}</div>
               </>
+            )}
+            {call.meeting_stage && (
+              <span
+                title={MEETING_STAGE_LABELS[call.meeting_stage]}
+                className="inline-flex shrink-0 items-center rounded-full border border-[color:var(--lavender-strong)] bg-[color:var(--lavender)] px-1.5 py-px text-[10px] font-semibold text-[color:var(--violet)]"
+              >
+                {MEETING_STAGE_SHORT_LABELS[call.meeting_stage]}
+              </span>
             )}
           </div>
           <div className="mt-0.5 flex items-center gap-2.5 text-[11.5px] text-slate-500">

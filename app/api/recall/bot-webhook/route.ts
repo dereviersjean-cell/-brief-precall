@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { createAsyncTranscript, getBotInfo, getTranscriptContent, transcriptToText, buildTranscriptJson, resolveSpeakerNames } from "@/lib/recall";
-import { createCall, getUserProfile, getUserName, getUserEmail, saveCallAnalysis, updateCallAnalysisKeyPoints, getGoogleTokens, updateCallFollowUp, getContact, createContact, updateContact, generateTasksFromTemplates, getPlaybookSnapshotForUser, getUserOrganizationId } from "@/lib/db";
+import { createCall, getUserProfile, getUserName, getUserEmail, saveCallAnalysis, updateCallAnalysisKeyPoints, getGoogleTokens, updateCallFollowUp, getContact, createContact, updateContact, generateTasksFromTemplates, getPlaybookSnapshotForUser, getUserOrganizationId, getMeetingStageConfigForOrganization, type CallData } from "@/lib/db";
 import { pushNewTasksToHubSpot } from "@/lib/tasks-hubspot-sync";
 import { analyzeCall } from "@/lib/call-analysis";
+import { detectMeetingStage, MEETING_STAGE_LABELS } from "@/lib/meeting-stage";
 import { indexCallObjections } from "@/lib/objections";
 import { refreshGoogleAccessToken, getEmailHistory } from "@/lib/gmail";
 import { generateFollowUpEmail } from "@/lib/email-followup";
@@ -119,6 +120,9 @@ export async function POST(request: NextRequest) {
       const calendarEventId = metadata?.calendarEventId as string | null ?? null;
       const contactEmail = metadata?.contactEmail as string | null ?? null;
       const companyName = metadata?.companyName as string | null ?? null;
+      // Absent des bots programmés avant l'ajout de meetingTitle aux
+      // metadata (lib/recall.ts) — étape non détectée, analyse générique.
+      const meetingTitle = (metadata?.meetingTitle as string | undefined)?.trim() || null;
 
       console.log("[bot-webhook] transcript.done — transcriptId:", transcriptId, "botId:", botId);
       console.log("[bot-webhook] metadata — userId:", userId, "calendarEventId:", calendarEventId, "contactEmail:", contactEmail);
@@ -174,12 +178,23 @@ export async function POST(request: NextRequest) {
             );
           }
 
+          // Step 1d — detect the R1/R2/R3 stage from the meeting title and
+          // the org's configured patterns. Non-blocking by construction:
+          // getMeetingStageConfigForOrganization falls back to defaults on
+          // any error, and no org / no title / no match all yield null.
+          const organizationId = await getUserOrganizationId(userId).catch(() => null);
+          const stageConfig = organizationId ? await getMeetingStageConfigForOrganization(organizationId) : null;
+          const meetingStage = stageConfig ? detectMeetingStage(meetingTitle, stageConfig) : null;
+          console.log("[bot-webhook] meetingTitle:", meetingTitle, "| detected stage:", meetingStage);
+
           // Step 2 — save call
-          const call = await createCall({
+          const callData = {
             user_id: userId,
             calendar_event_id: calendarEventId,
             contact_email: contactEmail,
             company_name: companyName,
+            meeting_title: meetingTitle,
+            meeting_stage: meetingStage,
             transcript: transcriptText,
             status: "done",
             duration_seconds: timing.duration_seconds,
@@ -191,7 +206,23 @@ export async function POST(request: NextRequest) {
             transcript_id: transcriptId,
             transcript_json: transcriptJson,
             speaker_names_override: speakerNamesOverride,
-          });
+          };
+          let call: { id: string };
+          try {
+            call = await createCall(callData);
+          } catch (createErr) {
+            // Pattern bug #14 : si la migration 001 (meeting_title/
+            // meeting_stage) n'est pas encore passée en prod, ne jamais
+            // perdre l'ingestion du call — on réessaie sans les colonnes.
+            console.error(
+              "[bot-webhook] createCall failed, retrying without meeting stage fields (migration 001 pas encore appliquée ?):",
+              createErr instanceof Error ? createErr.message : String(createErr)
+            );
+            const legacyCallData: CallData = { ...callData };
+            delete legacyCallData.meeting_title;
+            delete legacyCallData.meeting_stage;
+            call = await createCall(legacyCallData);
+          }
           console.log("[bot-webhook] call created:", call.id);
 
           // Step 3 — analyze call with Claude (non-blocking, result shared with step 4)
@@ -212,6 +243,10 @@ export async function POST(request: NextRequest) {
                 prospectName: companyName ?? "",
                 prospectWebsite: contactEmail ? contactEmail.split("@")[1] ?? "" : "",
                 meetingDate,
+                meetingStage:
+                  meetingStage && stageConfig
+                    ? { label: MEETING_STAGE_LABELS[meetingStage], guidance: stageConfig[meetingStage].guidance }
+                    : null,
               },
               playbookSnapshot
             );
@@ -219,7 +254,6 @@ export async function POST(request: NextRequest) {
             console.log("[bot-webhook] call analysis saved, global_score:", savedAnalysis.scores.global_score);
 
             if (savedAnalysis.objections.length > 0) {
-              const organizationId = await getUserOrganizationId(userId).catch(() => null);
               if (organizationId) {
                 await indexCallObjections(organizationId, call.id, contactEmail, savedAnalysis.objections).catch((err) =>
                   console.warn("[bot-webhook] indexCallObjections failed (non-blocking):", err instanceof Error ? err.message : String(err))

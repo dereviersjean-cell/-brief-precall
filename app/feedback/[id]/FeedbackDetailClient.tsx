@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import { Settings, Search, Pencil } from "lucide-react";
 import type { CallWithAnalysis, EmailTemplate } from "@/lib/db";
+import { MEETING_STAGE_LABELS } from "@/lib/meeting-stage";
 import type { ConversationAnalytics } from "@/lib/transcript-analytics";
 import { getEffectiveScoresForDisplay } from "@/lib/playbook-scores";
 import { formatContactDisplayName } from "@/lib/format";
@@ -720,7 +721,17 @@ export default function FeedbackDetailClient({
         <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-6 mb-5">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-xl font-bold text-slate-900">{displayName}</h1>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-xl font-bold text-slate-900">{displayName}</h1>
+                {call.meeting_stage && (
+                  <span
+                    title={call.meeting_title ?? undefined}
+                    className="inline-flex items-center rounded-full border border-[color:var(--lavender-strong)] bg-[color:var(--lavender)] px-2.5 py-0.5 text-[11px] font-semibold text-[color:var(--violet)]"
+                  >
+                    {MEETING_STAGE_LABELS[call.meeting_stage]}
+                  </span>
+                )}
+              </div>
               {call.contact_email && call.contact_email !== displayName && (
                 <p className="text-slate-400 text-sm mt-0.5">{call.contact_email}</p>
               )}

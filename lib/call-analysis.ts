@@ -61,6 +61,9 @@ export type AnalyzeContext = {
   prospectName: string;
   prospectWebsite: string;
   meetingDate: string;
+  // Étape R1/R2/R3 détectée depuis le titre du RDV (lib/meeting-stage.ts) —
+  // absente/null : analyse générique, comportement historique inchangé.
+  meetingStage?: { label: string; guidance: string } | null;
 };
 
 function formatPlaybookForPrompt(snapshot: PlaybookSnapshot): string {
@@ -86,11 +89,20 @@ export async function analyzeCall(
   // prompt edit.
   const systemPrompt = (await readPromptConfig("call_analysis_system_prompt")) ?? DEFAULT_CALL_ANALYSIS_SYSTEM_PROMPT;
 
+  // Les consignes d'étape (R1/R2/R3) sont injectées dans le message
+  // utilisateur, comme le playbook — jamais dans le system prompt, qui reste
+  // le seul endroit où le contrat JSON est forcé (règle « template manager »).
+  const stageBlock = context.meetingStage
+    ? `\nType de rendez-vous : ${context.meetingStage.label}
+Consignes d'évaluation spécifiques à cette étape :
+${context.meetingStage.guidance}\n`
+    : "";
+
   const userMessage = `Contexte de l'appel :
 - Date : ${context.meetingDate}
 - Société du commercial : ${context.clientName || "Non renseigné"}${context.clientWebsite ? ` (${context.clientWebsite})` : ""}
 - Société du prospect : ${context.prospectName || "Non renseigné"}${context.prospectWebsite ? ` (${context.prospectWebsite})` : ""}
-
+${stageBlock}
 ${formatPlaybookForPrompt(playbookSnapshot)}
 
 Transcription :
