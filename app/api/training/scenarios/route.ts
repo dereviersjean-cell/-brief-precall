@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
-import { getUserOrganizationId, listTrainingObjectionCandidatesForUser } from "@/lib/db";
+import { getUserOrganizationId, isTrainingEnabledForOrganization, listTrainingObjectionCandidatesForUser } from "@/lib/db";
 
 // Scénarios suggérés (les « pains » du commercial) — lecture DB pure, pas
 // d'appel IA, donc pas de rate limit génération.
@@ -14,6 +14,12 @@ export async function GET() {
   const organizationId = await getUserOrganizationId(auth.userId);
   if (!organizationId) {
     return NextResponse.json({ candidates: [] });
+  }
+
+  // Gate serveur (pas que l'UI) — module additionnel désactivé par défaut,
+  // migration 003. Fail-closed inclus dans isTrainingEnabledForOrganization.
+  if (!(await isTrainingEnabledForOrganization(organizationId))) {
+    return NextResponse.json({ error: "Module Entraînement non débloqué pour votre organisation." }, { status: 403 });
   }
 
   try {

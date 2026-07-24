@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
 import { checkAiGenerationRateLimit, requestIp, retryAfterMinutes } from "@/lib/rate-limit";
-import { getTrainingSession, saveTrainingTranscript, type TrainingTurn } from "@/lib/db";
+import { getTrainingSession, isTrainingEnabledForOrganization, saveTrainingTranscript, type TrainingTurn } from "@/lib/db";
 import { generateProspectReply, MAX_COMMERCIAL_TURNS } from "@/lib/training";
 
 const MAX_MESSAGE_LENGTH = 2000;
@@ -45,6 +45,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
   if (trainingSession.status !== "active") {
     return NextResponse.json({ error: "Session déjà terminée." }, { status: 409 });
+  }
+
+  // Gate serveur (pas que l'UI) — module additionnel désactivé par défaut,
+  // migration 003. Fail-closed inclus dans isTrainingEnabledForOrganization.
+  if (!trainingSession.organization_id || !(await isTrainingEnabledForOrganization(trainingSession.organization_id))) {
+    return NextResponse.json({ error: "Module Entraînement non débloqué pour votre organisation." }, { status: 403 });
   }
 
   const commercialTurns = trainingSession.transcript.filter((t) => t.role === "commercial").length;

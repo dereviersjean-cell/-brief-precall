@@ -16,52 +16,66 @@ import { Target } from "lucide-react";
 import ScoreTrendChart from "../ScoreTrendChart";
 import DimensionScores from "../DimensionScores";
 import FadeIn from "../FadeIn";
+import CommercialSelector from "../CommercialSelector";
 
 export const dynamic = "force-dynamic";
 
 const TREND_WEEKS = 6;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-export default async function ScoresPage() {
+export default async function ScoresPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ commercial?: string }>;
+}) {
   const userId = await getEffectiveUserId();
   if (!userId) redirect("/login");
 
   const [role, userName] = await Promise.all([getUserRole(userId), getUserName(userId)]);
+  const isManager = role === "manager";
+
+  // Manager : sélection d'un commercial précis (mêmes règles d'autorisation
+  // que /dashboard — getCommercialsForManager est déjà scopé à ce manager).
+  const commercials = isManager ? await getCommercialsForManager(userId) : [];
+  const { commercial: selectedId } = await searchParams;
+  const selected = isManager && selectedId ? commercials.find((c) => c.id === selectedId) ?? null : null;
+
   const now = new Date();
   const trendSince = new Date(mostRecentParisMonday(now).getTime() - (TREND_WEEKS - 1) * 7 * ONE_DAY_MS);
 
-  const isManager = role === "manager";
+  const viewingTeam = isManager && !selected;
+  const scoresUserId = selected?.id ?? userId;
 
   const [rawScores, averages] = await Promise.all([
-    isManager
-      ? getCommercialsForManager(userId).then((c) => getRecentTeamCallScores(c.map((x) => x.id), trendSince.toISOString()))
-      : getRecentCallScores(userId, trendSince.toISOString()),
-    isManager ? getTeamAverageScores(userId) : getUserAverageScores(userId),
+    viewingTeam
+      ? getRecentTeamCallScores(commercials.map((c) => c.id), trendSince.toISOString())
+      : getRecentCallScores(scoresUserId, trendSince.toISOString()),
+    viewingTeam ? getTeamAverageScores(userId) : getUserAverageScores(scoresUserId),
   ]);
 
   const trendWeeks = bucketScoresByWeek(rawScores, TREND_WEEKS, now);
+
+  const subtitle = viewingTeam
+    ? "Tendance et dimensions de scoring, sur toute l'équipe."
+    : selected
+    ? `Tendance et dimensions de scoring de ${selected.name ?? selected.email}.`
+    : `Bonjour${userName ? ` ${userName.split(" ")[0]}` : ""} — tendance et dimensions de vos calls.`;
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-10">
       <FadeIn>
         <div className="mb-8">
-          <PageHeader
-            eyebrow="Performance"
-            title="Scores"
-            subtitle={
-              isManager
-                ? "Tendance et dimensions de scoring, sur toute l'équipe."
-                : `Bonjour${userName ? ` ${userName.split(" ")[0]}` : ""} — tendance et dimensions de vos calls.`
-            }
-          />
+          <PageHeader eyebrow="Performance" title="Scores" subtitle={subtitle} />
         </div>
       </FadeIn>
+
+      {isManager && <CommercialSelector commercials={commercials} selectedId={selected?.id ?? null} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2">
           <ScoreTrendChart
             weeks={trendWeeks}
-            title={isManager ? `Score moyen équipe — ${TREND_WEEKS} dernières semaines` : `Score moyen — ${TREND_WEEKS} dernières semaines`}
+            title={viewingTeam ? `Score moyen équipe — ${TREND_WEEKS} dernières semaines` : `Score moyen — ${TREND_WEEKS} dernières semaines`}
           />
         </div>
 

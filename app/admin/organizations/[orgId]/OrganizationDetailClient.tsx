@@ -130,14 +130,46 @@ export default function OrganizationDetailClient({
   initialMembers,
   availableUsers,
   billing,
+  initialTrainingEnabled,
 }: {
   organization: Organization;
   initialMembers: OrganizationMember[];
   availableUsers: OrganizationMember[];
   billing: OrganizationBilling | null;
+  initialTrainingEnabled: boolean;
 }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<DetailTab>("membres");
+
+  // Module Entraînement — addon désactivé par défaut (migration 003), même
+  // logique d'override support que la facturation ci-dessous, mais n'agit
+  // sur aucun objet Stripe.
+  const [trainingEnabled, setTrainingEnabled] = useState(initialTrainingEnabled);
+  useEffect(() => setTrainingEnabled(initialTrainingEnabled), [initialTrainingEnabled]);
+  const [trainingPending, setTrainingPending] = useState(false);
+  const [trainingError, setTrainingError] = useState<string | null>(null);
+
+  async function handleToggleTraining() {
+    const next = !trainingEnabled;
+    setTrainingPending(true);
+    setTrainingError(null);
+    try {
+      const res = await fetch(`/api/admin/organizations/${organization.id}/training`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: next }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error ?? "Erreur lors de la mise à jour.");
+      }
+      setTrainingEnabled(next);
+    } catch (err) {
+      setTrainingError(err instanceof Error ? err.message : "Erreur lors de la mise à jour.");
+    } finally {
+      setTrainingPending(false);
+    }
+  }
 
   const [members, setMembers] = useState<MemberRow[]>(
     initialMembers.map((m) => ({ ...m, pending: false, error: null }))
@@ -590,6 +622,34 @@ export default function OrganizationDetailClient({
             {billing && (billing.billing_status === "blocked" || billing.billing_status === "grace_period") && (
               <BillingOverrideActions orgId={organization.id} status={billing.billing_status} onDone={() => router.refresh()} />
             )}
+          </div>
+        )}
+
+        {activeTab === "facturation" && (
+          <div className="mt-5 bg-white rounded-2xl border border-slate-200 p-6">
+            <h2 className="text-sm font-semibold text-slate-900 mb-1">Modules additionnels</h2>
+            <p className="text-xs text-slate-400 mb-4">Déblocage manuel — n&apos;agit sur aucun objet Stripe, juste l&apos;accès Brief.</p>
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <p className="text-sm font-medium text-slate-800">Entraînement</p>
+                <p className="text-xs text-slate-400 mt-0.5">Coach IA / roleplay sur les objections mal traitées.</p>
+              </div>
+              <button
+                onClick={handleToggleTraining}
+                disabled={trainingPending}
+                aria-pressed={trainingEnabled}
+                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+                  trainingEnabled ? "bg-indigo-600" : "bg-slate-200"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    trainingEnabled ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
+            {trainingError && <p className="text-xs text-red-600 mt-2">{trainingError}</p>}
           </div>
         )}
 

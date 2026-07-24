@@ -1,11 +1,19 @@
 import { redirect } from "next/navigation";
 import { getEffectiveUserId } from "@/lib/session-user";
-import { getUserOrganizationId, getObjectionStatsForOrganization, type ObjectionStat } from "@/lib/db";
+import {
+  getUserRole,
+  getUserOrganizationId,
+  getObjectionStatsForOrganization,
+  getObjectionStatsForUser,
+  getCommercialsForManager,
+  type ObjectionStat,
+} from "@/lib/db";
 import { PageHeader } from "@/app/components/ui/PageHeader";
 import { Card } from "@/app/components/ui/ui-bits";
 import { Trophy, XCircle, HelpCircle } from "lucide-react";
 import Link from "next/link";
 import FadeIn from "../FadeIn";
+import CommercialSelector from "../CommercialSelector";
 
 export const dynamic = "force-dynamic";
 
@@ -27,30 +35,45 @@ function SuccessBadge({ stat }: { stat: ObjectionStat }) {
   );
 }
 
-// Onglet Performance > Objections — même bibliothèque org-wide que
-// /settings/objections (le playbook d'objections est par organisation, pas
-// par user), mais vue stats agrégées (fréquence + taux de succès) plutôt que
-// le détail des réponses. Accessible aux commerciaux ET managers : c'est
-// exactement le contenu de la carte « Objections importantes » de Vue
-// d'ensemble, non capé à 4 ici.
-export default async function ObjectionsStatsPage() {
+// Onglet Performance > Objections — bibliothèque org-wide par défaut (le
+// playbook d'objections est par organisation, pas par user), avec un
+// sélecteur manager pour ne voir que les objections rencontrées par un
+// commercial précis. Vue stats agrégées (fréquence + taux de succès) ;
+// /settings/objections reste la bibliothèque de réponses cherchables.
+export default async function ObjectionsStatsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ commercial?: string }>;
+}) {
   const userId = await getEffectiveUserId();
   if (!userId) redirect("/login");
 
-  const organizationId = await getUserOrganizationId(userId);
-  const stats = organizationId ? await getObjectionStatsForOrganization(organizationId) : [];
+  const [role, organizationId] = await Promise.all([getUserRole(userId), getUserOrganizationId(userId)]);
+  const isManager = role === "manager";
+
+  const commercials = isManager ? await getCommercialsForManager(userId) : [];
+  const { commercial: selectedId } = await searchParams;
+  const selected = isManager && selectedId ? commercials.find((c) => c.id === selectedId) ?? null : null;
+
+  const stats = !organizationId
+    ? []
+    : selected
+    ? await getObjectionStatsForUser(organizationId, selected.id)
+    : await getObjectionStatsForOrganization(organizationId);
+
+  const subtitle = selected
+    ? `Objections rencontrées par ${selected.name ?? selected.email}, avec leur taux de succès quand l'issue du deal est connue.`
+    : "Les objections les plus fréquentes de l'équipe, avec leur taux de succès quand l'issue du deal est connue.";
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-10">
       <FadeIn>
         <div className="mb-8">
-          <PageHeader
-            eyebrow="Performance"
-            title="Objections"
-            subtitle="Les objections les plus fréquentes de l'équipe, avec leur taux de succès quand l'issue du deal est connue."
-          />
+          <PageHeader eyebrow="Performance" title="Objections" subtitle={subtitle} />
         </div>
       </FadeIn>
+
+      {isManager && <CommercialSelector commercials={commercials} selectedId={selected?.id ?? null} />}
 
       <FadeIn delay={0.05}>
         <Card padded={false} className="p-6">

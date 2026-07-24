@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
 import { checkAiGenerationRateLimit, requestIp, retryAfterMinutes } from "@/lib/rate-limit";
-import { createTrainingSession, getUserOrganizationId, type TrainingScenario, type TrainingTurn } from "@/lib/db";
+import { createTrainingSession, getUserOrganizationId, isTrainingEnabledForOrganization, type TrainingScenario, type TrainingTurn } from "@/lib/db";
 import { generateOpeningLine, generatePersona } from "@/lib/training";
 import { MEETING_STAGE_LABELS, MEETING_STAGES, type MeetingStage } from "@/lib/meeting-stage";
 
@@ -54,6 +54,12 @@ export async function POST(request: NextRequest) {
     : null;
 
   const organizationId = await getUserOrganizationId(auth.userId);
+
+  // Gate serveur (pas que l'UI) — module additionnel désactivé par défaut,
+  // migration 003. Fail-closed inclus dans isTrainingEnabledForOrganization.
+  if (!organizationId || !(await isTrainingEnabledForOrganization(organizationId))) {
+    return NextResponse.json({ error: "Module Entraînement non débloqué pour votre organisation." }, { status: 403 });
+  }
 
   try {
     const persona = await generatePersona(

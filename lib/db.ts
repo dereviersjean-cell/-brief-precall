@@ -1466,6 +1466,36 @@ export async function updateOrganizationBilling(orgId: string, patch: Partial<Or
   if (error) throw error;
 }
 
+// Module Entraînement — addon désactivé par défaut (migration 003), à
+// débloquer par organisation depuis l'admin. Fail-closed (verrouillé) sur
+// toute erreur, y compris colonne absente si la migration n'a pas encore
+// tourné en prod — jamais fail-open sur un gate payant.
+export async function isTrainingEnabledForOrganization(organizationId: string): Promise<boolean> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("organizations")
+      .select("training_enabled")
+      .eq("id", organizationId)
+      .maybeSingle();
+    if (error) throw error;
+    return (data as { training_enabled: boolean } | null)?.training_enabled ?? false;
+  } catch (err) {
+    console.error(
+      "[db] isTrainingEnabledForOrganization failed (fail-closed, verrouillé):",
+      err instanceof Error ? err.message : String(err)
+    );
+    return false;
+  }
+}
+
+export async function setTrainingEnabledForOrganization(organizationId: string, enabled: boolean): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("organizations")
+    .update({ training_enabled: enabled })
+    .eq("id", organizationId);
+  if (error) throw error;
+}
+
 // Sièges facturables = users actifs (non désactivés) rattachés à l'org.
 // Mêmes filtres que deleteOrganization ci-dessus, plus disabled_at IS NULL.
 export async function getActiveSeatCountForOrganization(orgId: string): Promise<number> {
@@ -2054,6 +2084,38 @@ export async function getObjectionStatsForOrganization(organizationId: string): 
     .from("call_objections")
     .select("objection, contact_email")
     .eq("organization_id", organizationId);
+  if (error) throw error;
+
+  const rows = (data ?? []) as { objection: string; contact_email: string | null }[];
+  if (rows.length === 0) return [];
+
+  const outcomeByEmail = await getDealOutcomesByEmail(organizationId, rows.map((r) => r.contact_email));
+
+  const byKey = new Map<string, ObjectionStat>();
+  for (const row of rows) {
+    const key = row.objection.trim().toLowerCase();
+    const stat = byKey.get(key) ?? { objection: row.objection.trim(), occurrences: 0, wonCount: 0, lostCount: 0 };
+    stat.occurrences += 1;
+    const outcome = row.contact_email ? outcomeByEmail.get(row.contact_email) : undefined;
+    if (outcome === "won") stat.wonCount += 1;
+    else if (outcome === "lost") stat.lostCount += 1;
+    byKey.set(key, stat);
+  }
+
+  return Array.from(byKey.values()).sort((a, b) => b.occurrences - a.occurrences);
+}
+
+// Variante par commercial — pour le sélecteur "vue équipe / commercial" de
+// l'onglet Performance > Objections côté manager. Mêmes règles que
+// getObjectionStatsForOrganization, juste restreint aux calls d'un seul
+// user_id via la jointure calls!inner (même pattern que
+// listTrainingObjectionCandidatesForUser).
+export async function getObjectionStatsForUser(organizationId: string, userId: string): Promise<ObjectionStat[]> {
+  const { data, error } = await supabaseAdmin
+    .from("call_objections")
+    .select("objection, contact_email, calls!inner(user_id)")
+    .eq("organization_id", organizationId)
+    .eq("calls.user_id", userId);
   if (error) throw error;
 
   const rows = (data ?? []) as { objection: string; contact_email: string | null }[];

@@ -1,14 +1,16 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Users } from "lucide-react";
 import type { LinkedUser } from "@/lib/db";
 
 // Manager only — bascule entre la vue équipe (défaut) et la vue individuelle
-// d'un commercial précis, via le query param ?commercial=<id> lu par
-// app/dashboard/page.tsx. La liste vient de getCommercialsForManager, déjà
-// scopée aux commerciaux liés à ce manager — pas de vérif supplémentaire
-// nécessaire côté client.
+// d'un commercial précis, via le query param ?commercial=<id>. Présent sur
+// les 4 onglets de Performance (Vue d'ensemble, Scores, Objections,
+// Entraînement) ; conserve l'onglet courant en réutilisant usePathname
+// plutôt qu'une route fixe. La liste vient de getCommercialsForManager,
+// déjà scopée aux commerciaux liés à ce manager — pas de vérif
+// supplémentaire nécessaire côté client.
 export default function CommercialSelector({
   commercials,
   selectedId,
@@ -17,6 +19,7 @@ export default function CommercialSelector({
   selectedId: string | null;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
 
   if (commercials.length === 0) return null;
 
@@ -31,7 +34,7 @@ export default function CommercialSelector({
         value={selectedId ?? ""}
         onChange={(e) => {
           const value = e.target.value;
-          router.push(value ? `/dashboard?commercial=${value}` : "/dashboard");
+          router.push(value ? `${pathname}?commercial=${value}` : pathname);
         }}
         className="text-[13px] font-medium text-slate-900 bg-transparent outline-none cursor-pointer pr-1"
       >
