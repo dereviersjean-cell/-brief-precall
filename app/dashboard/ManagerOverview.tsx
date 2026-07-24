@@ -1,13 +1,10 @@
 import Link from "next/link";
-import { Phone, FileText, Users as UsersIcon, TrendingUp, Calendar, Download, Sparkles, Target, MessagesSquare, Trophy, XCircle } from "lucide-react";
+import { Phone, FileText, Users as UsersIcon, TrendingUp, Calendar, Download, Sparkles } from "lucide-react";
 import {
   getCommercialsForManager,
   getManagerDigestData,
   getRecentTeamCallScores,
-  getTeamAverageScores,
   getTeamOverview,
-  getUserOrganizationId,
-  getObjectionStatsForOrganization,
 } from "@/lib/db";
 import { fridayEveningDigestRange } from "@/lib/digest";
 import { mostRecentParisMonday, bucketScoresByWeek } from "@/lib/paris-week";
@@ -16,7 +13,6 @@ import { Card, Button } from "@/app/components/ui/ui-bits";
 import StatTile from "./StatTile";
 import ScoreTrendChart from "./ScoreTrendChart";
 import TeamRosterTable, { type RosterRow } from "./TeamRosterTable";
-import DimensionScores from "./DimensionScores";
 import TasksList, { type TaskRow } from "./TasksList";
 import FadeIn from "./FadeIn";
 
@@ -38,19 +34,12 @@ export default async function ManagerOverview({ userId, userName }: { userId: st
 
   const commercials = await getCommercialsForManager(userId);
   const commercialIds = commercials.map((c) => c.id);
-  const organizationId = await getUserOrganizationId(userId);
 
-  const [team, rawTeamScores, averages, overview, objectionStats] = await Promise.all([
+  const [team, rawTeamScores, overview] = await Promise.all([
     getManagerDigestData(userId, rangeStart.toISOString(), rangeEnd.toISOString(), prevRangeStart.toISOString(), prevRangeEnd.toISOString()),
     getRecentTeamCallScores(commercialIds, trendSince.toISOString()),
-    getTeamAverageScores(userId),
     getTeamOverview(userId),
-    organizationId ? getObjectionStatsForOrganization(organizationId) : Promise.resolve([]),
   ]);
-
-  // Objections importantes : les plus fréquentes de l'organisation, avec
-  // leur taux de succès quand l'issue du deal est connue.
-  const topObjections = objectionStats.slice(0, 4);
 
   const trendWeeks = bucketScoresByWeek(rawTeamScores, TREND_WEEKS, now);
   const thisWeekBucket = trendWeeks[trendWeeks.length - 1];
@@ -141,66 +130,10 @@ export default async function ManagerOverview({ userId, userName }: { userId: st
         </div>
 
         <div className="space-y-5">
-          {averages.dimensions.length > 0 && (
-            <FadeIn delay={0.15}>
-              <Card padded={false} className="p-5">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="grid h-7 w-7 place-items-center rounded-lg bg-[color:var(--lavender)] text-[color:var(--violet)] shrink-0">
-                    <Target className="h-3.5 w-3.5" />
-                  </div>
-                  <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500">Scores moyens par dimension</h2>
-                </div>
-                <span className="block text-[11px] font-normal text-slate-400 mb-4">
-                  {averages.calls_analyzed_count} call{averages.calls_analyzed_count !== 1 ? "s" : ""} analysé{averages.calls_analyzed_count !== 1 ? "s" : ""}, tous temps
-                </span>
-                <DimensionScores dimensions={averages.dimensions} />
-              </Card>
-            </FadeIn>
-          )}
-
-          <FadeIn delay={0.2}>
+          <FadeIn delay={0.15}>
             <Card padded={false} className="p-5">
               <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-4">Dernière activité</h2>
               <TasksList tasks={activityRows} totalCount={activityRows.length} />
-            </Card>
-          </FadeIn>
-
-          <FadeIn delay={0.25}>
-            <Card padded={false} className="p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500">Objections importantes</h2>
-                <MessagesSquare className="w-4 h-4 text-slate-300" />
-              </div>
-              {topObjections.length === 0 ? (
-                <p className="text-sm text-slate-400 italic">Aucune objection indexée pour l&apos;instant.</p>
-              ) : (
-                <ul className="space-y-3">
-                  {topObjections.map((o) => {
-                    const known = o.wonCount + o.lostCount;
-                    return (
-                      <li key={o.objection} className="min-w-0">
-                        <p className="text-sm text-slate-700 truncate">« {o.objection} »</p>
-                        <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
-                          <span>{o.occurrences}×</span>
-                          {known > 0 && (
-                            <span className="inline-flex items-center gap-2.5">
-                              <span className="inline-flex items-center gap-1 text-emerald-600">
-                                <Trophy className="w-3 h-3" /> {o.wonCount}
-                              </span>
-                              <span className="inline-flex items-center gap-1 text-rose-500">
-                                <XCircle className="w-3 h-3" /> {o.lostCount}
-                              </span>
-                            </span>
-                          )}
-                        </p>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-              <Link href="/settings/objections" className="inline-block mt-4 text-xs font-medium text-[color:var(--violet)] hover:underline">
-                Toute la bibliothèque →
-              </Link>
             </Card>
           </FadeIn>
         </div>

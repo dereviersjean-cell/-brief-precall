@@ -1976,30 +1976,28 @@ export type TeamAverageScores = {
   dimensions: TeamAverageScoreDimension[];
 };
 
-// Dimensions shown are always the manager's ORG's CURRENT playbook (product
-// choice, sous-étape D) — fetched once here, not per-analysis — so the
-// bandeau stays consistent with what /team/playbook shows today, even
-// though individual analyses may have been scored against an older/different
-// playbook_snapshot. A dimension average is computed over whichever analyses
-// happen to have a matching key in their `scores`; older analyses that don't
-// (different dimension keys) are simply excluded from that dimension's
-// average rather than counted as missing/zero.
-export async function getTeamAverageScores(managerId: string): Promise<TeamAverageScores> {
-  const snapshot = await getPlaybookSnapshotForUser(managerId);
+// Dimensions shown are always the CURRENT playbook of the org owning
+// `playbookOwnerId` (product choice, sous-étape D) — fetched once here, not
+// per-analysis — so the bandeau stays consistent with what /team/playbook
+// shows today, even though individual analyses may have been scored against
+// an older/different playbook_snapshot. A dimension average is computed over
+// whichever analyses happen to have a matching key in their `scores`; older
+// analyses that don't (different dimension keys) are simply excluded from
+// that dimension's average rather than counted as missing/zero.
+async function computeAverageScoresForUserIds(playbookOwnerId: string, userIds: string[]): Promise<TeamAverageScores> {
+  const snapshot = await getPlaybookSnapshotForUser(playbookOwnerId);
   const empty: TeamAverageScores = {
     global_score: null,
     calls_analyzed_count: 0,
     dimensions: snapshot.dimensions.map((d) => ({ key: d.key, label: d.label, weight: d.weight, average: null })),
   };
 
-  const commercials = await getCommercialsForManager(managerId);
-  if (commercials.length === 0) return empty;
-  const commercialIds = commercials.map((c) => c.id);
+  if (userIds.length === 0) return empty;
 
   const { data, error } = await supabaseAdmin
     .from("calls")
     .select("call_analysis(scores)")
-    .in("user_id", commercialIds);
+    .in("user_id", userIds);
   if (error) throw error;
 
   const allScores = (
@@ -2024,6 +2022,17 @@ export async function getTeamAverageScores(managerId: string): Promise<TeamAvera
       return { key: d.key, label: d.label, weight: d.weight, average: avg(scoresForDimension) };
     }),
   };
+}
+
+export async function getTeamAverageScores(managerId: string): Promise<TeamAverageScores> {
+  const commercials = await getCommercialsForManager(managerId);
+  return computeAverageScoresForUserIds(managerId, commercials.map((c) => c.id));
+}
+
+// Onglet Performance > Scores (commercial) — même forme que
+// getTeamAverageScores mais sur les calls d'un seul utilisateur.
+export async function getUserAverageScores(userId: string): Promise<TeamAverageScores> {
+  return computeAverageScoresForUserIds(userId, [userId]);
 }
 
 // ─── Win/loss (module Bibliothèque d'objections, /team/insights) ──────────

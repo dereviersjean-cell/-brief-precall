@@ -1,11 +1,9 @@
 import Link from "next/link";
-import { Phone, FileText, MessagesSquare, TrendingUp, Calendar, Download, Sparkles, History, Trophy, XCircle } from "lucide-react";
+import { Phone, FileText, TrendingUp, Calendar, Download, Sparkles, History } from "lucide-react";
 import {
   getCommercialDigestData,
   getRecentCallScores,
   getCallsWithAnalysis,
-  getUserOrganizationId,
-  getObjectionStatsForOrganization,
   getContactsOverview,
 } from "@/lib/db";
 import { fridayEveningDigestRange } from "@/lib/digest";
@@ -42,13 +40,11 @@ export default async function CommercialOverview({
   const { rangeStart, rangeEnd, prevRangeStart, prevRangeEnd } = fridayEveningDigestRange(now);
   const trendSince = new Date(mostRecentParisMonday(now).getTime() - (TREND_WEEKS - 1) * 7 * ONE_DAY_MS);
 
-  const organizationId = await getUserOrganizationId(userId);
-  const [weekStats, rawScores, recentCalls, contacts, objectionStats] = await Promise.all([
+  const [weekStats, rawScores, recentCalls, contacts] = await Promise.all([
     getCommercialDigestData(userId, rangeStart.toISOString(), rangeEnd.toISOString(), prevRangeStart.toISOString(), prevRangeEnd.toISOString()),
     getRecentCallScores(userId, trendSince.toISOString()),
     getCallsWithAnalysis(userId),
     getContactsOverview(userId),
-    organizationId ? getObjectionStatsForOrganization(organizationId) : Promise.resolve([]),
   ]);
 
   const trendWeeks = bucketScoresByWeek(rawScores, TREND_WEEKS, now);
@@ -63,11 +59,6 @@ export default async function CommercialOverview({
   // Historique important : les contacts les plus récemment actifs — un
   // aperçu, pas la liste complète (→ /contacts pour tout voir).
   const topContacts = contacts.slice(0, 4);
-
-  // Objections importantes : les plus fréquentes de l'équipe, avec leur
-  // taux de succès quand l'issue du deal est connue. déjà triées par
-  // occurrences desc côté getObjectionStatsForOrganization.
-  const topObjections = objectionStats.slice(0, 4);
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-10">
@@ -172,45 +163,6 @@ export default async function CommercialOverview({
               )}
               <Link href="/contacts" className="inline-block mt-4 text-xs font-medium text-[color:var(--violet)] hover:underline">
                 Tout l&apos;historique →
-              </Link>
-            </Card>
-          </FadeIn>
-
-          <FadeIn delay={0.25}>
-            <Card padded={false} className="p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500">Objections importantes</h2>
-                <MessagesSquare className="w-4 h-4 text-slate-300" />
-              </div>
-              {topObjections.length === 0 ? (
-                <p className="text-sm text-slate-400 italic">Aucune objection indexée pour l&apos;instant.</p>
-              ) : (
-                <ul className="space-y-3">
-                  {topObjections.map((o) => {
-                    const known = o.wonCount + o.lostCount;
-                    return (
-                      <li key={o.objection} className="min-w-0">
-                        <p className="text-sm text-slate-700 truncate">« {o.objection} »</p>
-                        <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
-                          <span>{o.occurrences}×</span>
-                          {known > 0 && (
-                            <span className="inline-flex items-center gap-2.5">
-                              <span className="inline-flex items-center gap-1 text-emerald-600">
-                                <Trophy className="w-3 h-3" /> {o.wonCount}
-                              </span>
-                              <span className="inline-flex items-center gap-1 text-rose-500">
-                                <XCircle className="w-3 h-3" /> {o.lostCount}
-                              </span>
-                            </span>
-                          )}
-                        </p>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-              <Link href="/settings/objections" className="inline-block mt-4 text-xs font-medium text-[color:var(--violet)] hover:underline">
-                Toute la bibliothèque →
               </Link>
             </Card>
           </FadeIn>

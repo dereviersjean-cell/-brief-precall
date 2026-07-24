@@ -2,9 +2,11 @@ import AppSidebar from "@/app/components/AppSidebar";
 import ImpersonationBanner from "@/app/components/ImpersonationBanner";
 import BillingGraceBanner from "@/app/components/BillingGraceBanner";
 import TopBar from "@/app/components/TopBar";
-import PerformanceTabs from "@/app/components/PerformanceTabs";
 import type { ReactNode } from "react";
 
+// Historique n'est plus un onglet de Performance (25/07/2026) — /contacts
+// reste une page à part entière, atteinte via le lien "Tout l'historique →"
+// de la carte Vue d'ensemble, plus via un onglet persistant.
 export default function ContactsLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen">
@@ -13,7 +15,6 @@ export default function ContactsLayout({ children }: { children: ReactNode }) {
         <ImpersonationBanner />
         <BillingGraceBanner />
         <TopBar />
-        <PerformanceTabs />
         {children}
       </div>
     </div>

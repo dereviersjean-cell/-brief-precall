@@ -2,18 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, History, Dumbbell } from "lucide-react";
+import { LayoutDashboard, Target, MessagesSquare, Dumbbell } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 // Sidebar n'a plus qu'un lien unique « Performance » (AppSidebar.tsx) — la
 // navigation entre les sous-sections se fait ici, en onglets, même pattern
-// que TeamTabs (app/team/TeamTabs.tsx) et SettingsTabs. Entraînement a
-// rejoint Performance ici (recentrage du 25/07/2026) plutôt que de rester
-// une entrée sidebar séparée — c'est un axe de progrès au même titre que
-// l'historique ou la vue d'ensemble.
+// que TeamTabs (app/team/TeamTabs.tsx) et SettingsTabs. Onglets par thème de
+// statistiques détaillées (pas par type de page brute) : Historique n'est
+// plus un onglet — les blocs "Scores par dimension" et "Objections
+// importantes" qui n'étaient que des cartes résumées dans Vue d'ensemble
+// deviennent chacun leur propre page détaillée (recentrage du 25/07/2026).
 const TABS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/dashboard", label: "Vue d'ensemble", icon: LayoutDashboard },
-  { href: "/contacts", label: "Historique", icon: History },
+  { href: "/dashboard/scores", label: "Scores", icon: Target },
+  { href: "/dashboard/objections", label: "Objections", icon: MessagesSquare },
   { href: "/training", label: "Entraînement", icon: Dumbbell },
 ];
 
