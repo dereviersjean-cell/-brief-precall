@@ -28,6 +28,7 @@ import {
   Users,
   Settings,
   LayoutDashboard,
+  Dumbbell,
 } from "lucide-react";
 
 // Refonte juillet 2026 — structure inspirée d'eagr.ai/fr : une promesse
@@ -730,33 +731,132 @@ function ManagerSection() {
   );
 }
 
-function FlowBox({ n, icon: Icon, title, subtitle }: { n: string; icon: React.ComponentType<{ className?: string }>; title: string; subtitle: string }) {
+// Mini-aperçus produit dans les cartes du schéma — pur CSS/SVG, pas d'assets.
+function MiniBriefPreview() {
   return (
-    <div className="flex-1 rounded-2xl border border-border bg-white p-5 shadow-[var(--shadow-sm)]">
-      <div className="flex items-center gap-2.5">
-        <span className="grid h-9 w-9 place-items-center rounded-xl brand-gradient text-white shrink-0">
-          <Icon className="h-4 w-4" />
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <span className="h-1.5 w-3/5 rounded-full bg-white/25" />
+        <span className="inline-flex items-center gap-1 rounded-full bg-primary/30 border border-primary/40 px-1.5 py-px text-[9px] font-semibold text-white">
+          <Sparkles className="h-2.5 w-2.5" /> Prêt
         </span>
-        <span className="italic-serif text-[20px] text-primary/40 leading-none">{n}</span>
       </div>
-      <div className="mt-3 text-[15px] font-semibold text-ink">{title}</div>
-      <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">{subtitle}</p>
+      <span className="block h-1.5 w-4/5 rounded-full bg-white/15" />
+      <span className="block h-1.5 w-2/3 rounded-full bg-white/15" />
+      <span className="block h-1.5 w-1/2 rounded-full bg-white/10" />
     </div>
   );
 }
 
-function SupportBox({ icon: Icon, title, items }: { icon: React.ComponentType<{ className?: string }>; title: string; items: string[] }) {
+function MiniAnalysePreview() {
   return (
-    <div className="flex-1 rounded-2xl border border-border bg-white p-5 shadow-[var(--shadow-sm)]">
+    <div className="space-y-2">
+      <div className="flex items-center justify-between text-[9.5px] text-white/50">
+        <span className="rounded-full bg-white/10 border border-white/15 px-1.5 py-px font-semibold text-white/80">R2</span>
+        <span className="tabular-nums font-semibold text-white/90">3.4/5</span>
+      </div>
+      {[72, 48].map((w, i) => (
+        <div key={i} className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+          <div className="h-full rounded-full brand-gradient" style={{ width: `${w}%` }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MiniTrainingPreview() {
+  const bars = [5, 9, 14, 8, 16, 11, 6, 13, 17, 9, 5, 12, 7, 15, 10, 6];
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/30 border border-primary/40 text-white">
+        <Dumbbell className="h-3 w-3" />
+      </span>
+      <div className="flex flex-1 items-center gap-[3px] h-7">
+        {bars.map((h, i) => (
+          <span
+            key={i}
+            className={`w-[3px] rounded-full ${i % 4 === 0 ? "brand-gradient" : "bg-white/25"}`}
+            style={{ height: `${h}px` }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MiniPerformancePreview() {
+  return (
+    <div className="relative">
+      <svg viewBox="0 0 120 34" className="w-full h-8" aria-hidden>
+        <polyline
+          points="0,28 20,24 40,26 60,17 80,19 100,9 120,5"
+          fill="none"
+          stroke="rgba(255,255,255,0.35)"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <circle cx="120" cy="5" r="3" className="fill-white" />
+      </svg>
+      <span className="absolute -top-1 right-0 inline-flex items-center gap-0.5 rounded-full bg-emerald-400/20 border border-emerald-300/30 px-1.5 py-px text-[9px] font-semibold text-emerald-300">
+        <TrendingUp className="h-2.5 w-2.5" /> +0.4
+      </span>
+    </div>
+  );
+}
+
+function FlowCard({
+  n,
+  icon: Icon,
+  title,
+  subtitle,
+  preview,
+}: {
+  n: string;
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  subtitle: string;
+  preview: React.ReactNode;
+}) {
+  return (
+    <div className="group relative flex-1 rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:bg-white/[0.07]">
+      <div className="flex items-center justify-between">
+        <span className="grid h-10 w-10 place-items-center rounded-xl brand-gradient text-white shadow-[var(--shadow-glow)]">
+          <Icon className="h-4.5 w-4.5" />
+        </span>
+        <span className="italic-serif text-[26px] leading-none text-white/20 group-hover:text-primary/60 transition-colors">{n}</span>
+      </div>
+      <div className="mt-4 text-[15.5px] font-semibold text-white">{title}</div>
+      <p className="mt-1 text-[12.5px] leading-relaxed text-white/50">{subtitle}</p>
+      <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3">{preview}</div>
+    </div>
+  );
+}
+
+function FlowConnector() {
+  return (
+    <div className="hidden lg:flex items-center shrink-0 px-0.5" aria-hidden>
+      <span className="h-px w-5 brand-gradient" />
+      <ArrowRight className="h-3.5 w-3.5 -ml-1 text-primary" />
+    </div>
+  );
+}
+
+function SupportCard({ icon: Icon, title, subtitle, items }: { icon: React.ComponentType<{ className?: string }>; title: string; subtitle: string; items: string[] }) {
+  return (
+    <div className="flex-1 rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur p-5">
       <div className="flex items-center gap-2.5">
-        <span className="grid h-8 w-8 place-items-center rounded-lg bg-lavender text-primary shrink-0">
+        <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 border border-white/10 text-white shrink-0">
           <Icon className="h-4 w-4" />
         </span>
-        <span className="text-[13.5px] font-semibold text-ink">{title}</span>
+        <div>
+          <div className="text-[13.5px] font-semibold text-white">{title}</div>
+          <div className="text-[11px] text-white/40">{subtitle}</div>
+        </div>
       </div>
-      <ul className="mt-3 flex flex-wrap gap-1.5">
+      <ul className="mt-3.5 flex flex-wrap gap-1.5">
         {items.map((i) => (
-          <li key={i} className="rounded-md border border-border bg-lavender/20 px-2 py-1 text-[11.5px] text-ink/80">
+          <li key={i} className="rounded-md border border-white/10 bg-white/[0.06] px-2 py-1 text-[11.5px] text-white/70">
             {i}
           </li>
         ))}
@@ -765,50 +865,58 @@ function SupportBox({ icon: Icon, title, items }: { icon: React.ComponentType<{ 
   );
 }
 
-// Schéma récapitulatif — comment les sections de l'app s'articulent :
-// un fil rouge commercial (préparer → débriefer → progresser) irrigué par
-// deux blocs de configuration (Équipe, Paramètres). Reflète la nav réelle
-// de l'app depuis le recentrage produit (sidebar : Brief / Analyse
-// rendez-vous / Performance / Équipe / Paramètres).
+// Schéma récapitulatif — comment les sections de l'app s'articulent : le fil
+// commercial (préparer → débriefer → s'entraîner → suivre) irrigué par deux
+// blocs de configuration (Équipe, Paramètres). Reflète la nav réelle de
+// l'app ; chaque carte embarque un mini-aperçu du produit (pur CSS/SVG).
 function StructureDiagram() {
   return (
-    <section className="border-y border-border/60 bg-lavender/10">
-      <div className="mx-auto max-w-5xl px-6 py-20 text-center">
+    <section className="relative overflow-hidden border-y border-border/60 bg-ink">
+      <div aria-hidden className="pointer-events-none absolute -top-32 left-1/4 w-[500px] h-[500px] rounded-full bg-primary/25 blur-3xl" />
+      <div aria-hidden className="pointer-events-none absolute -bottom-40 right-1/5 w-[420px] h-[420px] rounded-full bg-primary/15 blur-3xl" />
+
+      <div className="relative mx-auto max-w-6xl px-6 py-24 text-center">
         <span className="text-[11.5px] font-semibold uppercase tracking-[0.12em] text-primary">Structure</span>
-        <h2 className="mt-3 text-[30px] md:text-[36px] leading-tight font-bold tracking-[-0.03em] text-ink">
+        <h2 className="mt-3 text-[30px] md:text-[38px] leading-tight font-bold tracking-[-0.03em] text-white">
           Comment Brief <span className="italic-serif text-primary">s&apos;organise</span>.
         </h2>
+        <p className="mx-auto mt-3 max-w-xl text-[14px] text-white/50">
+          Le parcours d&apos;un commercial, du rendez-vous suivant à la progression de l&apos;équipe.
+        </p>
 
-        <div className="mt-12 flex flex-col md:flex-row items-stretch gap-3 text-left">
-          <FlowBox n="01" icon={FileText} title="Brief" subtitle="Préparer chaque rendez-vous." />
-          <div className="hidden md:flex items-center text-border">
-            <ArrowRight className="h-5 w-5" />
-          </div>
-          <FlowBox n="02" icon={Video} title="Analyse rendez-vous" subtitle="Débriefer selon l'étape R1/R2/R3." />
-          <div className="hidden md:flex items-center text-border">
-            <ArrowRight className="h-5 w-5" />
-          </div>
-          <FlowBox n="03" icon={LayoutDashboard} title="Performance" subtitle="Progresser — historique, objections." />
+        <div className="mt-14 flex flex-col lg:flex-row items-stretch gap-3 text-left">
+          <FlowCard n="01" icon={FileText} title="Brief" subtitle="Préparer chaque rendez-vous en 3 minutes." preview={<MiniBriefPreview />} />
+          <FlowConnector />
+          <FlowCard n="02" icon={Video} title="Analyse rendez-vous" subtitle="Débriefer chaque call, noté selon son étape R1/R2/R3." preview={<MiniAnalysePreview />} />
+          <FlowConnector />
+          <FlowCard n="03" icon={Dumbbell} title="Entraînement" subtitle="Rejouer à la voix les objections mal traitées." preview={<MiniTrainingPreview />} />
+          <FlowConnector />
+          <FlowCard n="04" icon={LayoutDashboard} title="Performance" subtitle="Suivre la progression — scores, historique, win/loss." preview={<MiniPerformancePreview />} />
         </div>
 
-        <div className="flex justify-center my-4 text-border">
-          <ArrowDown className="h-5 w-5" />
+        <div className="flex justify-center my-5" aria-hidden>
+          <div className="flex flex-col items-center">
+            <span className="w-px h-6 brand-gradient" />
+            <ArrowDown className="h-3.5 w-3.5 -mt-1 text-primary" />
+          </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 text-left">
-          <SupportBox
+        <div className="flex flex-col sm:flex-row gap-3 text-left max-w-4xl mx-auto">
+          <SupportCard
             icon={Users}
-            title="Équipe (manager)"
-            items={["Playbook + étapes RDV", "Templates emails", "Insights"]}
+            title="Équipe"
+            subtitle="Le manager règle la méthode"
+            items={["Playbook + étapes RDV", "Templates emails", "Insights win/loss"]}
           />
-          <SupportBox
+          <SupportCard
             icon={Settings}
             title="Paramètres"
+            subtitle="Les données qui alimentent le tout"
             items={["Connexions", "CRM", "Références clients", "Objections", "Facturation"]}
           />
         </div>
-        <p className="mt-5 text-[12.5px] text-muted-foreground max-w-lg mx-auto">
-          Une seule ligne commerciale, deux blocs de configuration qui l&apos;alimentent — rien d&apos;autre.
+        <p className="mt-6 text-[12.5px] text-white/40 max-w-lg mx-auto">
+          Un seul fil commercial, deux blocs de configuration qui l&apos;alimentent — rien d&apos;autre.
         </p>
       </div>
     </section>
