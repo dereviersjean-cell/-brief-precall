@@ -735,14 +735,14 @@ function MiniBriefPreview() {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <span className="h-1.5 w-3/5 rounded-full bg-white/25" />
-        <span className="inline-flex items-center gap-1 rounded-full bg-primary/30 border border-primary/40 px-1.5 py-px text-[9px] font-semibold text-white">
+        <span className="h-1.5 w-3/5 rounded-full bg-slate-300" />
+        <span className="inline-flex items-center gap-1 rounded-full bg-lavender border border-border px-1.5 py-px text-[9px] font-semibold text-primary">
           <Sparkles className="h-2.5 w-2.5" /> Prêt
         </span>
       </div>
-      <span className="block h-1.5 w-4/5 rounded-full bg-white/15" />
-      <span className="block h-1.5 w-2/3 rounded-full bg-white/15" />
-      <span className="block h-1.5 w-1/2 rounded-full bg-white/10" />
+      <span className="block h-1.5 w-4/5 rounded-full bg-slate-200" />
+      <span className="block h-1.5 w-2/3 rounded-full bg-slate-200" />
+      <span className="block h-1.5 w-1/2 rounded-full bg-slate-100" />
     </div>
   );
 }
@@ -750,12 +750,12 @@ function MiniBriefPreview() {
 function MiniAnalysePreview() {
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between text-[9.5px] text-white/50">
-        <span className="rounded-full bg-white/10 border border-white/15 px-1.5 py-px font-semibold text-white/80">R2</span>
-        <span className="tabular-nums font-semibold text-white/90">3.4/5</span>
+      <div className="flex items-center justify-between text-[9.5px]">
+        <span className="rounded-full bg-white border border-border px-1.5 py-px font-semibold text-primary">R2</span>
+        <span className="tabular-nums font-semibold text-ink">3.4/5</span>
       </div>
       {[72, 48].map((w, i) => (
-        <div key={i} className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+        <div key={i} className="h-1.5 rounded-full bg-lavender overflow-hidden">
           <div className="h-full rounded-full brand-gradient" style={{ width: `${w}%` }} />
         </div>
       ))}
@@ -770,14 +770,14 @@ function MiniPerformancePreview() {
         <polyline
           points="0,28 20,24 40,26 60,17 80,19 100,9 120,5"
           fill="none"
-          stroke="rgba(255,255,255,0.35)"
+          stroke="rgba(100,116,139,0.45)"
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        <circle cx="120" cy="5" r="3" className="fill-white" />
+        <circle cx="120" cy="5" r="3" className="fill-primary" />
       </svg>
-      <span className="absolute -top-1 right-0 inline-flex items-center gap-0.5 rounded-full bg-emerald-400/20 border border-emerald-300/30 px-1.5 py-px text-[9px] font-semibold text-emerald-300">
+      <span className="absolute -top-1 right-0 inline-flex items-center gap-0.5 rounded-full bg-emerald-50 border border-emerald-200 px-1.5 py-px text-[9px] font-semibold text-emerald-600">
         <TrendingUp className="h-2.5 w-2.5" /> +0.4
       </span>
     </div>
@@ -798,16 +798,16 @@ function FlowCard({
   preview: React.ReactNode;
 }) {
   return (
-    <div className="group relative flex-1 rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:bg-white/[0.07]">
+    <div className="group relative flex-1 rounded-2xl border border-border/60 bg-white p-5 shadow-[var(--shadow-sm)] transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[var(--shadow-md)]">
       <div className="flex items-center justify-between">
         <span className="grid h-10 w-10 place-items-center rounded-xl brand-gradient text-white shadow-[var(--shadow-glow)]">
           <Icon className="h-4.5 w-4.5" />
         </span>
-        <span className="italic-serif text-[26px] leading-none text-white/20 group-hover:text-primary/60 transition-colors">{n}</span>
+        <span className="italic-serif text-[26px] leading-none text-primary/30 group-hover:text-primary/60 transition-colors">{n}</span>
       </div>
-      <div className="mt-4 text-[15.5px] font-semibold text-white">{title}</div>
-      <p className="mt-1 text-[12.5px] leading-relaxed text-white/50">{subtitle}</p>
-      <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3">{preview}</div>
+      <div className="mt-4 text-[15.5px] font-semibold text-ink">{title}</div>
+      <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">{subtitle}</p>
+      <div className="mt-4 rounded-xl border border-border bg-lavender/20 p-3">{preview}</div>
     </div>
   );
 }
@@ -823,19 +823,19 @@ function FlowConnector() {
 
 function SupportCard({ icon: Icon, title, subtitle, items }: { icon: React.ComponentType<{ className?: string }>; title: string; subtitle: string; items: string[] }) {
   return (
-    <div className="flex-1 rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur p-5">
+    <div className="flex-1 rounded-2xl border border-border/60 bg-white p-5 shadow-[var(--shadow-sm)]">
       <div className="flex items-center gap-2.5">
-        <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 border border-white/10 text-white shrink-0">
+        <span className="grid h-9 w-9 place-items-center rounded-xl bg-lavender text-primary shrink-0">
           <Icon className="h-4 w-4" />
         </span>
         <div>
-          <div className="text-[13.5px] font-semibold text-white">{title}</div>
-          <div className="text-[11px] text-white/40">{subtitle}</div>
+          <div className="text-[13.5px] font-semibold text-ink">{title}</div>
+          <div className="text-[11px] text-muted-foreground">{subtitle}</div>
         </div>
       </div>
       <ul className="mt-3.5 flex flex-wrap gap-1.5">
         {items.map((i) => (
-          <li key={i} className="rounded-md border border-white/10 bg-white/[0.06] px-2 py-1 text-[11.5px] text-white/70">
+          <li key={i} className="rounded-md border border-border bg-lavender/20 px-2 py-1 text-[11.5px] text-ink/80">
             {i}
           </li>
         ))}
@@ -851,16 +851,16 @@ function SupportCard({ icon: Icon, title, subtitle, items }: { icon: React.Compo
 // message simple) ; chaque carte embarque un mini-aperçu produit (CSS/SVG).
 function StructureDiagram() {
   return (
-    <section className="relative overflow-hidden border-y border-border/60 bg-ink">
-      <div aria-hidden className="pointer-events-none absolute -top-32 left-1/4 w-[500px] h-[500px] rounded-full bg-primary/25 blur-3xl" />
-      <div aria-hidden className="pointer-events-none absolute -bottom-40 right-1/5 w-[420px] h-[420px] rounded-full bg-primary/15 blur-3xl" />
+    <section className="relative overflow-hidden border-y border-border/60 bg-lavender/10">
+      <div aria-hidden className="pointer-events-none absolute -top-32 left-1/4 w-[500px] h-[500px] rounded-full bg-lavender-deep/30 blur-3xl" />
+      <div aria-hidden className="pointer-events-none absolute -bottom-40 right-1/5 w-[420px] h-[420px] rounded-full bg-lavender/40 blur-3xl" />
 
       <div className="relative mx-auto max-w-6xl px-6 py-24 text-center">
         <span className="text-[11.5px] font-semibold uppercase tracking-[0.12em] text-primary">Structure</span>
-        <h2 className="mt-3 text-[30px] md:text-[38px] leading-tight font-bold tracking-[-0.03em] text-white">
+        <h2 className="mt-3 text-[30px] md:text-[38px] leading-tight font-bold tracking-[-0.03em] text-ink">
           Comment Brief <span className="italic-serif text-primary">s&apos;organise</span>.
         </h2>
-        <p className="mx-auto mt-3 max-w-xl text-[14px] text-white/50">
+        <p className="mx-auto mt-3 max-w-xl text-[14px] text-muted-foreground">
           Le parcours d&apos;un commercial, du rendez-vous suivant à la progression de l&apos;équipe.
         </p>
 
@@ -893,7 +893,7 @@ function StructureDiagram() {
             items={["Connexions", "CRM", "Références clients", "Objections", "Facturation"]}
           />
         </div>
-        <p className="mt-6 text-[12.5px] text-white/40 max-w-lg mx-auto">
+        <p className="mt-6 text-[12.5px] text-muted-foreground max-w-lg mx-auto">
           Un seul fil commercial, deux blocs de configuration qui l&apos;alimentent — rien d&apos;autre.
         </p>
       </div>
