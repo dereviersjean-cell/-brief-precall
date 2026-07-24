@@ -1,37 +1,20 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Search, ChevronUp, ChevronDown, Users, UserPlus, Settings2, Trophy, Gauge } from "lucide-react";
-import type { TeamOverviewItem, TeamAverageScores } from "@/lib/db";
-import StatTile from "@/app/dashboard/StatTile";
+import { Search, ChevronUp, ChevronDown, Users, UserPlus, Settings2, ArrowUpRight } from "lucide-react";
+import type { TeamOverviewItem } from "@/lib/db";
 import FadeIn from "@/app/dashboard/FadeIn";
 import ManageTeamModal from "./ManageTeamModal";
 import InviteCommercialModal from "./InviteCommercialModal";
-
-const ACCENTS = ["indigo", "violet", "emerald", "amber", "rose"] as const;
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 }
 
-function ScoreBadge({ score }: { score: number | null }) {
-  if (score === null) return <span className="text-slate-300 text-xs">—</span>;
-  const cls =
-    score >= 4
-      ? "bg-green-100 text-green-700"
-      : score >= 2.5
-      ? "bg-orange-100 text-orange-700"
-      : "bg-red-100 text-red-700";
-  return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${cls}`}>
-      {score.toFixed(1)}/5
-    </span>
-  );
-}
-
-type SortKey = "name" | "briefs" | "calls" | "emails" | "score" | "activity";
+type SortKey = "name" | "activity";
 type SortDirection = "asc" | "desc";
 
 function SortHeader({
@@ -70,13 +53,14 @@ function SortHeader({
   );
 }
 
+// Pilotage pur : composition de l'équipe, invitations, gestion des
+// rattachements. Les scores et statistiques détaillées ont leur propre
+// onglet (Performance) — cette page n'en affiche plus (25/07/2026).
 export default function TeamClient({
   overview,
-  averages,
   hasOrganization,
 }: {
   overview: TeamOverviewItem[];
-  averages: TeamAverageScores;
   hasOrganization: boolean;
 }) {
   const router = useRouter();
@@ -114,27 +98,10 @@ export default function TeamClient({
       : overview;
 
     const sorted = [...matching].sort((a, b) => {
-      let cmp = 0;
-      switch (sortKey) {
-        case "name":
-          cmp = (a.name ?? a.email).localeCompare(b.name ?? b.email);
-          break;
-        case "briefs":
-          cmp = a.briefs_count - b.briefs_count;
-          break;
-        case "calls":
-          cmp = a.calls_count - b.calls_count;
-          break;
-        case "emails":
-          cmp = a.emails_sent_count - b.emails_sent_count;
-          break;
-        case "score":
-          cmp = (a.avg_score ?? -1) - (b.avg_score ?? -1);
-          break;
-        case "activity":
-          cmp = (a.last_activity_at ?? "").localeCompare(b.last_activity_at ?? "");
-          break;
-      }
+      const cmp =
+        sortKey === "name"
+          ? (a.name ?? a.email).localeCompare(b.name ?? b.email)
+          : (a.last_activity_at ?? "").localeCompare(b.last_activity_at ?? "");
       return sortDirection === "asc" ? cmp : -cmp;
     });
     return sorted;
@@ -161,7 +128,7 @@ export default function TeamClient({
               </span>
               <h1 className="text-2xl font-bold text-slate-900">Équipe</h1>
               <p className="text-slate-500 text-sm mt-1">
-                Suivi de la performance de {overview.length} {overview.length === 1 ? "commercial" : "commerciaux"}.
+                Gérez les {overview.length} {overview.length === 1 ? "commercial" : "commerciaux"} de votre équipe — pour la performance, direction l&apos;onglet Performance.
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -189,36 +156,6 @@ export default function TeamClient({
           </div>
         </div>
       </FadeIn>
-
-      {/* Team average scores — dimensions viennent du playbook actuel de
-          l'organisation (voir getTeamAverageScores), pas d'un set fixe */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-2">
-        <StatTile
-          index={0}
-          accent="indigo"
-          label="Score global"
-          value={averages.global_score}
-          decimals={1}
-          suffix={averages.global_score !== null ? "/5" : undefined}
-          icon={<Trophy className="w-3.5 h-3.5" />}
-        />
-        {averages.dimensions.map((dim, i) => (
-          <StatTile
-            key={dim.key}
-            index={i + 1}
-            accent={ACCENTS[(i + 1) % ACCENTS.length]}
-            label={dim.label}
-            value={dim.average}
-            decimals={1}
-            suffix={dim.average !== null ? "/5" : undefined}
-            icon={<Gauge className="w-3.5 h-3.5" />}
-          />
-        ))}
-      </div>
-      <p className="text-slate-400 text-xs mb-6">
-        {averages.calls_analyzed_count} appel{averages.calls_analyzed_count > 1 ? "s" : ""} analysé
-        {averages.calls_analyzed_count > 1 ? "s" : ""} pris en compte
-      </p>
 
       {/* Commercials table */}
       {overview.length === 0 ? (
@@ -249,15 +186,14 @@ export default function TeamClient({
             <FadeIn delay={0.1}>
               <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm border-collapse min-w-[820px]">
+                  <table className="w-full text-sm border-collapse min-w-[520px]">
                     <thead>
                       <tr className="border-b border-border bg-slate-50/60">
                         <SortHeader label="Nom" sortKey="name" currentSort={sortKey} currentDirection={sortDirection} onSort={handleSort} />
-                        <SortHeader label="Briefs" sortKey="briefs" currentSort={sortKey} currentDirection={sortDirection} onSort={handleSort} align="right" />
-                        <SortHeader label="Appels" sortKey="calls" currentSort={sortKey} currentDirection={sortDirection} onSort={handleSort} align="right" />
-                        <SortHeader label="Emails" sortKey="emails" currentSort={sortKey} currentDirection={sortDirection} onSort={handleSort} align="right" />
-                        <SortHeader label="Score moyen" sortKey="score" currentSort={sortKey} currentDirection={sortDirection} onSort={handleSort} />
                         <SortHeader label="Dernière activité" sortKey="activity" currentSort={sortKey} currentDirection={sortDirection} onSort={handleSort} />
+                        <th className="px-4 py-3 text-right">
+                          <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Performance</span>
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -267,7 +203,7 @@ export default function TeamClient({
                           onClick={() => router.push(`/team/${c.user_id}`)}
                           className="border-b border-slate-100 last:border-b-0 hover:bg-[color:var(--lavender)]/50 cursor-pointer transition-colors group"
                         >
-                          <td className="px-4 py-3.5 max-w-[220px]">
+                          <td className="px-4 py-3.5 max-w-[280px]">
                             <div className="flex items-center gap-3">
                               <div className="w-8 h-8 rounded-lg bg-gradient-to-br brand-gradient flex items-center justify-center shrink-0">
                                 <span className="text-xs font-bold text-white">
@@ -282,13 +218,16 @@ export default function TeamClient({
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 py-3.5 text-right font-mono text-slate-700 whitespace-nowrap">{c.briefs_count}</td>
-                          <td className="px-4 py-3.5 text-right font-mono text-slate-700 whitespace-nowrap">{c.calls_count}</td>
-                          <td className="px-4 py-3.5 text-right font-mono text-slate-700 whitespace-nowrap">{c.emails_sent_count}</td>
-                          <td className="px-4 py-3.5 whitespace-nowrap">
-                            <ScoreBadge score={c.avg_score} />
-                          </td>
                           <td className="px-4 py-3.5 whitespace-nowrap text-slate-500">{formatDate(c.last_activity_at)}</td>
+                          <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                            <Link
+                              href={`/dashboard?commercial=${c.user_id}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--violet)] hover:underline"
+                            >
+                              Voir la performance <ArrowUpRight className="w-3 h-3" />
+                            </Link>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
