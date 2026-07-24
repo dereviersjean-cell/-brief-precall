@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Mentions légales — Brief",
-  description: "Mentions légales de Brief, édité par Oliverlist.",
+  description: "Mentions légales de Brief.",
 };
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -14,10 +14,11 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-// Champs [à compléter] : identité légale exacte d'Oliverlist, à fournir par
-// Jean avant publication — jamais inventés (SIREN/RCS, forme juridique,
-// capital social, adresse du siège, TVA intracommunautaire, directeur de
-// publication).
+// Champs [à compléter] : identité légale exacte de la société éditrice, à
+// fournir par Jean avant publication — jamais inventés (raison sociale,
+// SIREN/RCS, forme juridique, capital social, adresse du siège, TVA
+// intracommunautaire, directeur de publication). Nom de la société
+// volontairement absent (pas encore arbitré) — cf. consigne du 25/07/2026.
 export default function LegalNoticePage() {
   return (
     <article>
@@ -29,7 +30,8 @@ export default function LegalNoticePage() {
       <Section title="Éditeur du site">
         <p>Le site et le service Brief sont édités par :</p>
         <ul className="list-disc pl-5 space-y-1.5">
-          <li><b className="text-ink">Oliverlist</b> — [à compléter : forme juridique, ex. SAS]</li>
+          <li>Raison sociale : [à compléter]</li>
+          <li>Forme juridique : [à compléter, ex. SAS]</li>
           <li>Capital social : [à compléter]</li>
           <li>Siège social : [à compléter : adresse complète]</li>
           <li>RCS / SIREN : [à compléter]</li>
@@ -54,7 +56,7 @@ export default function LegalNoticePage() {
       <Section title="Propriété intellectuelle">
         <p>
           L&apos;ensemble des éléments du site et du service Brief (textes, marques, logos, interface, code) est la
-          propriété d&apos;Oliverlist ou de ses partenaires, sauf mention contraire, et ne peut être reproduit sans
+          propriété de son éditeur ou de ses partenaires, sauf mention contraire, et ne peut être reproduit sans
           autorisation préalable.
         </p>
       </Section>
@@ -62,7 +64,7 @@ export default function LegalNoticePage() {
       <Section title="Accès au service">
         <p>
           Brief est un service à accès restreint : la création de compte se fait uniquement sur invitation d&apos;une
-          organisation cliente d&apos;Oliverlist. Il n&apos;existe pas d&apos;inscription libre.
+          organisation cliente. Il n&apos;existe pas d&apos;inscription libre.
         </p>
       </Section>
 

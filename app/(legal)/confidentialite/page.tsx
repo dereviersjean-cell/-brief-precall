@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Politique de confidentialité — Brief",
-  description: "Comment Brief (Oliverlist) collecte, utilise et protège vos données, y compris les données de votre compte Google.",
+  description: "Comment Brief collecte, utilise et protège vos données, y compris les données de votre compte Google.",
 };
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -25,9 +25,9 @@ export default function PrivacyPolicyPage() {
 
       <Section title="Qui sommes-nous">
         <p>
-          Brief est édité par <b className="text-ink">Oliverlist</b> (« nous »), société éditrice basée en France.
-          Brief est un logiciel de préparation et d&apos;analyse de rendez-vous commerciaux B2B, réservé aux équipes
-          commerciales qui y sont invitées — il n&apos;y a pas d&apos;inscription libre.
+          Brief (« nous ») est un logiciel de préparation et d&apos;analyse de rendez-vous commerciaux B2B, édité par
+          une société basée en France, réservé aux équipes commerciales qui y sont invitées — il n&apos;y a pas
+          d&apos;inscription libre.
         </p>
         <p>
           Pour toute question relative à cette politique ou à vos données, vous pouvez nous écrire à{" "}

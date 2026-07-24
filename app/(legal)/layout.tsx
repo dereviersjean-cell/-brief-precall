@@ -28,7 +28,7 @@ export default function LegalLayout({ children }: { children: ReactNode }) {
 
       <footer className="border-t border-border/60 px-6 py-8">
         <div className="mx-auto max-w-3xl flex flex-wrap items-center justify-between gap-3 text-[12px] text-muted-foreground">
-          <span>© {new Date().getFullYear()} Brief · édité par Oliverlist</span>
+          <span>© {new Date().getFullYear()} Brief</span>
           <div className="flex items-center gap-5">
             <Link href="/mentions-legales" className="hover:text-ink transition-colors">Mentions légales</Link>
             <Link href="/confidentialite" className="hover:text-ink transition-colors">Confidentialité</Link>
