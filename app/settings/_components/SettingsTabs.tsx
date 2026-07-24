@@ -3,17 +3,20 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Settings, Link as LinkIcon, Database, Library, CreditCard } from "lucide-react";
+import { Settings, Link as LinkIcon, Database, Library, CreditCard, MessagesSquare } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 // Notifications moved out to its own top-level sidebar item (AppSidebar.tsx,
 // /notifications) — it's a frequent daily-use setting, not an occasional
 // one, so it doesn't belong buried under Paramètres with the others.
+// Objections a rejoint Paramètres depuis Performance (recentrage produit,
+// 24 juillet 2026) — ouverte à tous (pas managerOnly), comme avant.
 const NAV_ITEMS: { href: string; label: string; icon: LucideIcon; managerOnly?: boolean }[] = [
   { href: "/settings/general", label: "Général", icon: Settings },
   { href: "/settings/connexions", label: "Connexions", icon: LinkIcon },
   { href: "/settings/crm", label: "CRM", icon: Database },
   { href: "/settings/references", label: "Références clients", icon: Library },
+  { href: "/settings/objections", label: "Objections", icon: MessagesSquare },
   { href: "/settings/billing", label: "Facturation", icon: CreditCard, managerOnly: true },
 ];
 

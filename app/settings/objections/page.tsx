@@ -10,7 +10,7 @@ import ObjectionsClient from "./ObjectionsClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function ObjectionsPage() {
+export default async function ObjectionsSettingsPage() {
   const userId = await getEffectiveUserId();
   if (!userId) redirect("/login");
 
@@ -18,12 +18,10 @@ export default async function ObjectionsPage() {
 
   if (!organizationId) {
     return (
-      <main className="brief-ui px-4 sm:px-10 py-8 max-w-4xl">
-        <p className="text-sm text-slate-500">
-          Votre compte n&apos;est rattaché à aucune organisation — la bibliothèque d&apos;objections est partagée au
-          niveau de l&apos;équipe. Contactez votre administrateur.
-        </p>
-      </main>
+      <p className="text-sm text-slate-500">
+        Votre compte n&apos;est rattaché à aucune organisation — la bibliothèque d&apos;objections est partagée au
+        niveau de l&apos;équipe. Contactez votre administrateur.
+      </p>
     );
   }
 

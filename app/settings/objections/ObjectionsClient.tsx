@@ -194,7 +194,7 @@ export default function ObjectionsClient({
   }, [objections]);
 
   return (
-    <main className="brief-ui px-4 sm:px-10 py-8 max-w-6xl">
+    <div>
       <PageHeader
         eyebrow="Bibliothèque d'équipe"
         title="Objections & réponses"
@@ -339,6 +339,6 @@ export default function ObjectionsClient({
           ))
         )}
       </div>
-    </main>
+    </div>
   );
 }

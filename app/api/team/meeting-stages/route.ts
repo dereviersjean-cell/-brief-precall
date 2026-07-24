@@ -10,7 +10,8 @@ const MAX_PATTERN_LENGTH = 120;
 const MAX_GUIDANCE_LENGTH = 2000;
 
 // Config des étapes de RDV (R1/R2/R3) de l'organisation — manager only, y
-// compris en lecture : seule l'UI /team/meeting-stages la consomme.
+// compris en lecture : seule l'UI /team/playbook (section « Étapes de
+// rendez-vous », MeetingStagesSection.tsx) la consomme.
 async function requireManagerWithOrg() {
   const session = await getServerSession(authOptions);
   const auth = await requireActiveUser(session);

@@ -2078,7 +2078,7 @@ export type OrganizationObjectionRow = {
   outcome: DealOutcome | null;
 };
 
-// Full library listing for the /objections page — every indexed objection of
+// Full library listing for the /settings/objections page — every indexed objection of
 // the org, newest first, with the deal outcome resolved in bulk (same
 // "most recent wins" rule as everywhere else via getDealOutcomesByEmail).
 export async function listObjectionsForOrganization(organizationId: string): Promise<OrganizationObjectionRow[]> {
@@ -2119,39 +2119,12 @@ export async function listObjectionsForOrganization(organizationId: string): Pro
   });
 }
 
-// Aperçu léger pour la carte « Objections récentes » du dashboard — les N
-// dernières entrées seulement, sans résolution win/loss en bulk.
-export async function listRecentObjectionsForOrganization(
-  organizationId: string,
-  limit: number
-): Promise<{ id: string; callId: string; objection: string; companyName: string | null; createdAt: string }[]> {
-  const { data, error } = await supabaseAdmin
-    .from("call_objections")
-    .select("id, call_id, objection, created_at, calls(company_name)")
-    .eq("organization_id", organizationId)
-    .order("created_at", { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-
-  type Row = {
-    id: string;
-    call_id: string;
-    objection: string;
-    created_at: string;
-    calls: { company_name: string | null } | { company_name: string | null }[] | null;
-  };
-  return ((data ?? []) as Row[]).map((r) => {
-    const call = Array.isArray(r.calls) ? (r.calls[0] ?? null) : r.calls;
-    return { id: r.id, callId: r.call_id, objection: r.objection, companyName: call?.company_name ?? null, createdAt: r.created_at };
-  });
-}
-
 export type ObjectionCoverage = {
   analyzedCalls: number;
   callsWithObjections: number;
 };
 
-// "What's missing" signal for the /objections page: how many analyzed calls
+// "What's missing" signal for the /settings/objections page: how many analyzed calls
 // of the org never produced a library entry (either no objection was raised,
 // or the call predates the library and was never backfilled).
 export async function getObjectionCoverageForOrganization(organizationId: string): Promise<ObjectionCoverage> {

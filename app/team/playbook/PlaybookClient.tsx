@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { Pencil, Check, X, ArrowUp, ArrowDown, Plus, Trash2, Upload, BookOpen, Layers, ListChecks, Gauge } from "lucide-react";
 import type { Playbook, PlaybookDimension } from "@/lib/db";
+import type { MeetingStageConfig } from "@/lib/meeting-stage";
 import StatTile from "@/app/dashboard/StatTile";
 import FadeIn from "@/app/dashboard/FadeIn";
 import ImportPlaybookModal from "./ImportPlaybookModal";
+import MeetingStagesSection from "./MeetingStagesSection";
 
 function PlaybookNameEditor({ name, onSave }: { name: string; onSave: (next: string) => void }) {
   const [editing, setEditing] = useState(false);
@@ -350,7 +352,13 @@ function AddDimensionModal({
   );
 }
 
-export default function PlaybookClient({ playbook: initialPlaybook }: { playbook: Playbook }) {
+export default function PlaybookClient({
+  playbook: initialPlaybook,
+  meetingStageConfig,
+}: {
+  playbook: Playbook;
+  meetingStageConfig: MeetingStageConfig;
+}) {
   const [playbook, setPlaybook] = useState(initialPlaybook);
   // useState(initialPlaybook) only reads its argument on mount — after the
   // import modal calls router.refresh(), the parent server component
@@ -617,6 +625,8 @@ export default function PlaybookClient({ playbook: initialPlaybook }: { playbook
 
       {showAddModal && <AddDimensionModal onClose={() => setShowAddModal(false)} onCreate={handleAddDimension} />}
       {showImportModal && <ImportPlaybookModal onClose={() => setShowImportModal(false)} />}
+
+      <MeetingStagesSection initialConfig={meetingStageConfig} />
     </div>
   );
 }

@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, X, Save, FlaskConical } from "lucide-react";
-import { PageHeader } from "@/app/components/ui/PageHeader";
+import { Plus, X, Save, FlaskConical, Layers } from "lucide-react";
 import { Card, Button } from "@/app/components/ui/ui-bits";
 import {
   MEETING_STAGES,
@@ -13,13 +12,18 @@ import {
   type MeetingStageConfig,
 } from "@/lib/meeting-stage";
 
+// Section du Playbook, pas une page à part — les dimensions ci-dessus
+// s'appliquent à tous les calls, cette section les affine par étape du
+// cycle (R1/R2/R3) quand le titre du RDV la révèle. Anciennement une page
+// séparée (/team/meeting-stages) ; fusionnée ici car c'est conceptuellement
+// la même chose que le playbook : comment on évalue un call.
 const STAGE_HINTS: Record<MeetingStage, string> = {
   r1: "Premier rendez-vous : découverte et qualification du besoin.",
   r2: "Deuxième rendez-vous : présentation ou démonstration personnalisée.",
   r3: "Rendez-vous de closing : négociation et signature.",
 };
 
-export default function MeetingStagesClient({ initialConfig }: { initialConfig: MeetingStageConfig }) {
+export default function MeetingStagesSection({ initialConfig }: { initialConfig: MeetingStageConfig }) {
   const [config, setConfig] = useState<MeetingStageConfig>(initialConfig);
   const [drafts, setDrafts] = useState<Record<MeetingStage, string>>({ r1: "", r2: "", r3: "" });
   const [testTitle, setTestTitle] = useState("");
@@ -75,17 +79,24 @@ export default function MeetingStagesClient({ initialConfig }: { initialConfig: 
   }
 
   return (
-    <div className="brief-ui max-w-4xl px-4 sm:px-10 py-8">
-      <PageHeader
-        eyebrow="Équipe"
-        title="Étapes de rendez-vous"
-        subtitle="Le titre du RDV dans l'agenda détermine son étape (R1, R2, R3) — chaque étape a ses propres consignes d'analyse. Sans correspondance, l'analyse générique s'applique."
-        actions={
-          <Button variant="primary" icon={<Save className="h-3.5 w-3.5" />} onClick={save} disabled={saving}>
-            {saving ? "Enregistrement…" : "Enregistrer"}
-          </Button>
-        }
-      />
+    <div className="mt-10">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-2.5">
+          <span className="grid h-9 w-9 place-items-center rounded-xl bg-[color:var(--lavender)] text-[color:var(--violet)] shrink-0">
+            <Layers className="h-4 w-4" />
+          </span>
+          <div>
+            <h2 className="text-[15px] font-semibold text-slate-900">Étapes de rendez-vous (R1 / R2 / R3)</h2>
+            <p className="text-[12.5px] text-slate-500 mt-0.5 max-w-xl">
+              Les dimensions ci-dessus s&apos;appliquent à tous les calls. Affinez-les par étape du cycle
+              si le titre du RDV dans l&apos;agenda la révèle — sans correspondance, l&apos;analyse générique s&apos;applique.
+            </p>
+          </div>
+        </div>
+        <Button variant="primary" size="sm" icon={<Save className="h-3.5 w-3.5" />} onClick={save} disabled={saving}>
+          {saving ? "Enregistrement…" : "Enregistrer les étapes"}
+        </Button>
+      </div>
 
       {message && (
         <p
@@ -101,10 +112,10 @@ export default function MeetingStagesClient({ initialConfig }: { initialConfig: 
 
       {/* Testeur de titre — aperçu immédiat de la détection, même logique
           (lib/meeting-stage.ts) que celle exécutée à l'ingestion des calls. */}
-      <Card className="mt-6">
+      <Card className="mt-4">
         <div className="flex items-center gap-2 mb-3">
           <FlaskConical className="h-4 w-4 text-[color:var(--violet)]" />
-          <h2 className="text-[13px] font-semibold text-slate-900">Tester un titre de RDV</h2>
+          <h3 className="text-[13px] font-semibold text-slate-900">Tester un titre de RDV</h3>
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <input
@@ -138,7 +149,7 @@ export default function MeetingStagesClient({ initialConfig }: { initialConfig: 
                 {MEETING_STAGE_SHORT_LABELS[stage]}
               </span>
               <div>
-                <h2 className="text-[14px] font-semibold text-slate-900">{MEETING_STAGE_LABELS[stage]}</h2>
+                <h3 className="text-[14px] font-semibold text-slate-900">{MEETING_STAGE_LABELS[stage]}</h3>
                 <p className="text-[12px] text-slate-500">{STAGE_HINTS[stage]}</p>
               </div>
             </div>
@@ -196,7 +207,7 @@ export default function MeetingStagesClient({ initialConfig }: { initialConfig: 
                 className="w-full rounded-lg border border-border bg-white px-3 py-2.5 text-[13px] leading-relaxed text-slate-900 outline-none focus:ring-2 focus:ring-[color:var(--violet)]/30"
               />
               <p className="mt-1.5 text-[11.5px] text-slate-400">
-                Injectées dans l&apos;analyse des calls détectés {MEETING_STAGE_SHORT_LABELS[stage]}, en complément du playbook.
+                Injectées dans l&apos;analyse des calls détectés {MEETING_STAGE_SHORT_LABELS[stage]}, en complément des dimensions ci-dessus.
               </p>
             </div>
           </Card>

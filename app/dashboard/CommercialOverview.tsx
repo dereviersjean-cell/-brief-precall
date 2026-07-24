@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { Phone, FileText, MessagesSquare, TrendingUp, Calendar, Download, Sparkles } from "lucide-react";
+import { Phone, FileText, MessagesSquare, TrendingUp, Calendar, Download, Sparkles, History, Trophy, XCircle } from "lucide-react";
 import {
   getCommercialDigestData,
   getRecentCallScores,
   getCallsWithAnalysis,
   getUserOrganizationId,
-  listRecentObjectionsForOrganization,
+  getObjectionStatsForOrganization,
+  getContactsOverview,
 } from "@/lib/db";
 import { fridayEveningDigestRange } from "@/lib/digest";
 import { mostRecentParisMonday, bucketScoresByWeek } from "@/lib/paris-week";
@@ -30,11 +31,12 @@ export default async function CommercialOverview({ userId, userName }: { userId:
   const trendSince = new Date(mostRecentParisMonday(now).getTime() - (TREND_WEEKS - 1) * 7 * ONE_DAY_MS);
 
   const organizationId = await getUserOrganizationId(userId);
-  const [weekStats, rawScores, recentCalls, recentObjections] = await Promise.all([
+  const [weekStats, rawScores, recentCalls, contacts, objectionStats] = await Promise.all([
     getCommercialDigestData(userId, rangeStart.toISOString(), rangeEnd.toISOString(), prevRangeStart.toISOString(), prevRangeEnd.toISOString()),
     getRecentCallScores(userId, trendSince.toISOString()),
     getCallsWithAnalysis(userId),
-    organizationId ? listRecentObjectionsForOrganization(organizationId, 4) : Promise.resolve([]),
+    getContactsOverview(userId),
+    organizationId ? getObjectionStatsForOrganization(organizationId) : Promise.resolve([]),
   ]);
 
   const trendWeeks = bucketScoresByWeek(rawScores, TREND_WEEKS, now);
@@ -45,6 +47,15 @@ export default async function CommercialOverview({ userId, userName }: { userId:
     dateLabel: new Date(call.started_at ?? call.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }),
     score: call.analysis?.scores?.global_score ?? null,
   }));
+
+  // Historique important : les contacts les plus récemment actifs — un
+  // aperçu, pas la liste complète (→ /contacts pour tout voir).
+  const topContacts = contacts.slice(0, 4);
+
+  // Objections importantes : les plus fréquentes de l'équipe, avec leur
+  // taux de succès quand l'issue du deal est connue. déjà triées par
+  // occurrences desc côté getObjectionStatsForOrganization.
+  const topObjections = objectionStats.slice(0, 4);
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-10">
@@ -114,24 +125,69 @@ export default async function CommercialOverview({ userId, userName }: { userId:
           <FadeIn delay={0.2}>
             <Card padded={false} className="p-5">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500">Objections récentes de l&apos;équipe</h2>
-                <MessagesSquare className="w-4 h-4 text-slate-300" />
+                <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500">Historique important</h2>
+                <History className="w-4 h-4 text-slate-300" />
               </div>
-              {recentObjections.length === 0 ? (
-                <p className="text-sm text-slate-400 italic">Aucune objection indexée pour l&apos;instant.</p>
+              {topContacts.length === 0 ? (
+                <p className="text-sm text-slate-400 italic">Aucun contact pour l&apos;instant.</p>
               ) : (
                 <ul className="space-y-3">
-                  {recentObjections.map((o) => (
-                    <li key={o.id} className="min-w-0">
-                      <p className="text-sm text-slate-700 truncate">« {o.objection} »</p>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        {o.companyName ?? "Prospect"} · {new Date(o.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
-                      </p>
+                  {topContacts.map((c) => (
+                    <li key={c.contact_email} className="flex items-center justify-between gap-3 min-w-0">
+                      <div className="min-w-0">
+                        <p className="text-sm text-slate-700 truncate">{formatContactDisplayName(c.company_name, c.contact_email)}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {c.video_call_count} call{c.video_call_count > 1 ? "s" : ""}
+                          {c.emails_sent_count > c.replies_count && " · en attente de réponse"}
+                        </p>
+                      </div>
+                      <span className="text-xs text-slate-400 shrink-0 tabular-nums">
+                        {new Date(c.last_contact_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+                      </span>
                     </li>
                   ))}
                 </ul>
               )}
-              <Link href="/objections" className="inline-block mt-4 text-xs font-medium text-[color:var(--violet)] hover:underline">
+              <Link href="/contacts" className="inline-block mt-4 text-xs font-medium text-[color:var(--violet)] hover:underline">
+                Tout l&apos;historique →
+              </Link>
+            </Card>
+          </FadeIn>
+
+          <FadeIn delay={0.25}>
+            <Card padded={false} className="p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500">Objections importantes</h2>
+                <MessagesSquare className="w-4 h-4 text-slate-300" />
+              </div>
+              {topObjections.length === 0 ? (
+                <p className="text-sm text-slate-400 italic">Aucune objection indexée pour l&apos;instant.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {topObjections.map((o) => {
+                    const known = o.wonCount + o.lostCount;
+                    return (
+                      <li key={o.objection} className="min-w-0">
+                        <p className="text-sm text-slate-700 truncate">« {o.objection} »</p>
+                        <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
+                          <span>{o.occurrences}×</span>
+                          {known > 0 && (
+                            <span className="inline-flex items-center gap-2.5">
+                              <span className="inline-flex items-center gap-1 text-emerald-600">
+                                <Trophy className="w-3 h-3" /> {o.wonCount}
+                              </span>
+                              <span className="inline-flex items-center gap-1 text-rose-500">
+                                <XCircle className="w-3 h-3" /> {o.lostCount}
+                              </span>
+                            </span>
+                          )}
+                        </p>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              <Link href="/settings/objections" className="inline-block mt-4 text-xs font-medium text-[color:var(--violet)] hover:underline">
                 Toute la bibliothèque →
               </Link>
             </Card>

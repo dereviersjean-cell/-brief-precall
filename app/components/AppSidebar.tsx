@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, FileText, Video, Bell, Users, Settings, HelpCircle, LogOut, ChevronDown, Sparkles, Menu, X } from "lucide-react";
+import { LayoutDashboard, FileText, Video, Bell, Users, Settings, HelpCircle, LogOut, Sparkles, Menu, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 type OrgStatus = {
@@ -105,35 +105,23 @@ export default function AppSidebar() {
 
   const isManager = session?.role === "manager";
 
-  // « Performance » regroupe l'ancien trio Dashboard / Objections / Historique
-  // (mêmes routes, présentées en onglets — cf. PerformanceTabs.tsx).
-  const performanceActive =
-    pathname === "/dashboard" || pathname.startsWith("/objections") || pathname.startsWith("/contacts");
+  // « Performance » regroupe Dashboard + Historique (Objections a déménagé
+  // dans Paramètres) — page digest unique, plus d'onglets internes.
+  const performanceActive = pathname === "/dashboard" || pathname.startsWith("/contacts");
   const briefActive = pathname.startsWith("/brief");
   const feedbackActive = pathname.startsWith("/feedback");
   const notificationsActive = pathname.startsWith("/notifications");
-  const playbookActive = pathname.startsWith("/team/playbook");
-  const emailTemplatesActive = pathname.startsWith("/team/email-templates");
-  const insightsActive = pathname.startsWith("/team/insights");
-  const meetingStagesActive = pathname.startsWith("/team/meeting-stages");
-  const teamActive = pathname.startsWith("/team") && !playbookActive && !emailTemplatesActive && !insightsActive && !meetingStagesActive;
+  // Équipe est un lien unique — les sous-pages (Playbook, Templates emails,
+  // Insights) se naviguent via des onglets en haut de /team (TeamTabs.tsx),
+  // pas depuis la sidebar.
+  const teamActive = pathname.startsWith("/team");
   const settingsActive = pathname.startsWith("/settings");
   const helpActive = pathname.startsWith("/help");
 
-  // Collapsed by default, expanded automatically whenever a sub-page is
-  // active (direct nav or refresh lands there) — manual toggling otherwise
-  // persists as the user navigates around the rest of the app.
-  const [teamMenuOpen, setTeamMenuOpen] = useState(teamActive || playbookActive || emailTemplatesActive || insightsActive || meetingStagesActive);
-  useEffect(() => {
-    if (playbookActive || emailTemplatesActive || insightsActive || meetingStagesActive) setTeamMenuOpen(true);
-  }, [playbookActive, emailTemplatesActive, insightsActive, meetingStagesActive]);
-
-  const pilotageGroup: { href: string; label: string; icon: LucideIcon; active: boolean; badge?: number }[] = [
-    { href: "/dashboard", label: "Performance", icon: LayoutDashboard, active: performanceActive },
-  ];
   const commercialGroup: { href: string; label: string; icon: LucideIcon; active: boolean; badge?: number }[] = [
     { href: "/brief", label: "Brief", icon: FileText, active: briefActive },
     { href: "/feedback", label: "Analyse rendez-vous", icon: Video, active: feedbackActive },
+    { href: "/dashboard", label: "Performance", icon: LayoutDashboard, active: performanceActive },
   ];
   const compteGroup: { href: string; label: string; icon: LucideIcon; active: boolean; badge?: number }[] = [
     { href: "/notifications", label: "Notifications", icon: Bell, active: notificationsActive },
@@ -192,15 +180,6 @@ export default function AppSidebar() {
       {/* Nav */}
       <nav className="flex-1 px-3 pb-3 space-y-4 overflow-y-auto">
         <div>
-          <NavGroupLabel>Pilotage</NavGroupLabel>
-          <div className="space-y-0.5">
-            {pilotageGroup.map((item) => (
-              <NavLink key={item.href} {...item} />
-            ))}
-          </div>
-        </div>
-
-        <div>
           <NavGroupLabel>Commercial</NavGroupLabel>
           <div className="space-y-0.5">
             {commercialGroup.map((item) => (
@@ -218,71 +197,14 @@ export default function AppSidebar() {
           </div>
         </div>
 
-        {/* Équipe + sous-pages (manager only) — collapsible dropdown */}
+        {/* Équipe (manager only) — lien unique ; les sous-pages se naviguent
+            via des onglets en haut de /team (TeamTabs.tsx). */}
         {isManager && (
           <div>
             <NavGroupLabel>Manager</NavGroupLabel>
-            <div
-              className={`relative flex items-center rounded-lg text-sm transition-all ${
-                teamActive ? "bg-[color:var(--lavender)] text-[color:var(--violet)] font-medium" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-              }`}
-            >
-              {teamActive && (
-                <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full brand-gradient" />
-              )}
-              <Link href="/team" className="flex items-center gap-3 flex-1 min-w-0 px-3.5 py-2.5">
-                <Users className="h-[15px] w-[15px] shrink-0" strokeWidth={teamActive ? 2.25 : 1.75} />
-                Équipe
-              </Link>
-              <button
-                onClick={() => setTeamMenuOpen((open) => !open)}
-                aria-label={teamMenuOpen ? "Réduire Équipe" : "Développer Équipe"}
-                aria-expanded={teamMenuOpen}
-                className="pr-3.5 pl-1 py-2.5 shrink-0 text-slate-400 hover:text-slate-600"
-              >
-                <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${teamMenuOpen ? "rotate-0" : "-rotate-90"}`} />
-              </button>
+            <div className="space-y-0.5">
+              <NavLink href="/team" label="Équipe" icon={Users} active={teamActive} />
             </div>
-
-            {/* Nested under Équipe — indented to align under its icon, with a
-                connecting guide line so the grouping reads visually instead
-                of the sub-links floating disconnected from their parent. */}
-            {teamMenuOpen && (
-              <div className="ml-[18px] pl-3 border-l border-border mt-0.5 space-y-0.5">
-                <Link
-                  href="/team/playbook"
-                  className={`block rounded-lg px-3 py-1.5 text-[12.5px] transition-colors ${
-                    playbookActive ? "bg-[color:var(--lavender)] text-[color:var(--violet)] font-medium" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                  }`}
-                >
-                  Playbook
-                </Link>
-                <Link
-                  href="/team/email-templates"
-                  className={`block rounded-lg px-3 py-1.5 text-[12.5px] transition-colors ${
-                    emailTemplatesActive ? "bg-[color:var(--lavender)] text-[color:var(--violet)] font-medium" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                  }`}
-                >
-                  Templates emails
-                </Link>
-                <Link
-                  href="/team/insights"
-                  className={`block rounded-lg px-3 py-1.5 text-[12.5px] transition-colors ${
-                    insightsActive ? "bg-[color:var(--lavender)] text-[color:var(--violet)] font-medium" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                  }`}
-                >
-                  Insights
-                </Link>
-                <Link
-                  href="/team/meeting-stages"
-                  className={`block rounded-lg px-3 py-1.5 text-[12.5px] transition-colors ${
-                    meetingStagesActive ? "bg-[color:var(--lavender)] text-[color:var(--violet)] font-medium" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                  }`}
-                >
-                  Étapes de RDV
-                </Link>
-              </div>
-            )}
           </div>
         )}
       </nav>

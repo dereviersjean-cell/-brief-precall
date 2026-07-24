@@ -20,7 +20,6 @@ const LABELS: Record<string, string> = {
   playbook: "Playbook",
   "email-templates": "Templates emails",
   insights: "Insights",
-  "meeting-stages": "Étapes de RDV",
   general: "Général",
   connexions: "Connexions",
   crm: "CRM",

@@ -2,7 +2,6 @@ import AppSidebar from "@/app/components/AppSidebar";
 import ImpersonationBanner from "@/app/components/ImpersonationBanner";
 import BillingGraceBanner from "@/app/components/BillingGraceBanner";
 import TopBar from "@/app/components/TopBar";
-import PerformanceTabs from "@/app/components/PerformanceTabs";
 import type { ReactNode } from "react";
 
 export default function ContactsLayout({ children }: { children: ReactNode }) {
@@ -13,7 +12,6 @@ export default function ContactsLayout({ children }: { children: ReactNode }) {
         <ImpersonationBanner />
         <BillingGraceBanner />
         <TopBar />
-        <PerformanceTabs />
         {children}
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getUserRole, getUserOrganizationId, ensureDefaultPlaybookForOrganization } from "@/lib/db";
+import { getUserRole, getUserOrganizationId, ensureDefaultPlaybookForOrganization, getMeetingStageConfigForOrganization } from "@/lib/db";
 import { getEffectiveUserId } from "@/lib/session-user";
 import PlaybookClient from "./PlaybookClient";
 
@@ -16,7 +16,10 @@ export default async function PlaybookPage() {
     redirect("/team");
   }
 
-  const playbook = await ensureDefaultPlaybookForOrganization(orgId, userId!);
+  const [playbook, meetingStageConfig] = await Promise.all([
+    ensureDefaultPlaybookForOrganization(orgId, userId!),
+    getMeetingStageConfigForOrganization(orgId),
+  ]);
 
-  return <PlaybookClient playbook={playbook} />;
+  return <PlaybookClient playbook={playbook} meetingStageConfig={meetingStageConfig} />;
 }

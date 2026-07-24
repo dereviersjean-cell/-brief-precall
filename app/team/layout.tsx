@@ -2,6 +2,7 @@ import AppSidebar from "@/app/components/AppSidebar";
 import ImpersonationBanner from "@/app/components/ImpersonationBanner";
 import BillingGraceBanner from "@/app/components/BillingGraceBanner";
 import TopBar from "@/app/components/TopBar";
+import TeamTabs from "./TeamTabs";
 import type { ReactNode } from "react";
 
 export default function TeamLayout({ children }: { children: ReactNode }) {
@@ -12,6 +13,7 @@ export default function TeamLayout({ children }: { children: ReactNode }) {
         <ImpersonationBanner />
         <BillingGraceBanner />
         <TopBar />
+        <TeamTabs />
         {children}
       </div>
     </div>

@@ -4,6 +4,7 @@ import {
   Sparkles,
   ArrowRight,
   ArrowUpRight,
+  ArrowDown,
   ShieldCheck,
   Calendar,
   ClipboardCheck,
@@ -24,6 +25,9 @@ import {
   Play,
   TrendingUp,
   Database,
+  Users,
+  Settings,
+  LayoutDashboard,
 } from "lucide-react";
 
 // Refonte juillet 2026 — structure inspirée d'eagr.ai/fr : une promesse
@@ -90,7 +94,7 @@ function WindowChrome({ path }: { path: string }) {
 
 function MiniSidebar({ active }: { active: string }) {
   // Miroir de la vraie navigation de l'app depuis le recentrage produit.
-  const items = ["Performance", "Brief", "Analyse rendez-vous", "Équipe"];
+  const items = ["Brief", "Analyse rendez-vous", "Performance", "Équipe"];
   return (
     <div className="hidden md:block border-r border-border p-4 space-y-1 bg-lavender/30">
       <div className="mb-3 flex items-center gap-2 px-2">
@@ -129,11 +133,8 @@ function Hero() {
           <b className="text-ink">
             Brief prépare chaque rendez-vous, débriefe chaque call selon votre méthode de vente,
             et fait circuler ce qui gagne dans toute l&apos;équipe.
-          </b>
-        </p>
-        <p className="mx-auto mt-4 max-w-2xl text-[15.5px] leading-relaxed text-muted-foreground">
-          Pas une boîte à outils de plus : un seul objectif, transformer davantage de rendez-vous
-          en clients — du premier échange à la signature.
+          </b>{" "}
+          <span className="text-[15.5px] text-muted-foreground">Un seul objectif : plus de rendez-vous transformés en clients.</span>
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Link
@@ -288,10 +289,8 @@ function ProblemSection() {
               Votre meilleur commercial close <span className="italic-serif text-primary">2 à 3×</span> plus que les autres.
             </h2>
             <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
-              Ce n&apos;est pas une question de talent. C&apos;est ce qui se passe autour du rendez-vous :
-              il arrive mieux préparé, il sait répondre aux objections qu&apos;il a déjà entendues cent
-              fois, et il ajuste son discours à chaque étape du cycle. Tout ça peut s&apos;apprendre —
-              à condition de le rendre visible.
+              Pas une question de talent : il arrive mieux préparé, il connaît déjà les objections,
+              et il ajuste son discours à chaque étape. Ça s&apos;apprend — à condition d&apos;être visible.
             </p>
             <ul className="mt-7 space-y-4">
               {[
@@ -402,8 +401,7 @@ function PreparerSection() {
         <ul className="mt-6 space-y-3.5 text-[14px] text-ink/80">
           <PillarItem icon={Building2} title="Fiche entreprise sourcée" body="Effectifs, CA, dirigeants, financement — depuis Pappers, LinkedIn et le web." />
           <PillarItem icon={Newspaper} title="Signaux récents" body="Levées de fonds, recrutements clés, mentions presse des 60 derniers jours." />
-          <PillarItem icon={Target} title="La bonne référence client" body="Brief pioche dans vos cas clients celui qui ressemble le plus au prospect — la preuve sociale exacte qui fait mouche." />
-          <PillarItem icon={MessageSquare} title="Questions de découverte suggérées" body="Basées sur votre playbook et le contexte spécifique du compte." />
+          <PillarItem icon={Target} title="La bonne référence client" body="Brief pioche dans vos cas clients celui qui ressemble le plus au prospect." />
         </ul>
       </div>
 
@@ -559,9 +557,8 @@ function DebrieferSection() {
           </PillarHeading>
           <ul className="mt-6 space-y-3.5 text-[14px] text-ink/80">
             <PillarItem icon={BarChart3} title="Scoring sur votre playbook" body="Vos dimensions, vos critères, votre pondération — importés depuis Notion ou un document." />
-            <PillarItem icon={ClipboardCheck} title="Analyse par étape R1 / R2 / R3" body="Découverte, présentation, closing : des consignes d'évaluation dédiées à chaque étape du cycle." />
+            <PillarItem icon={ClipboardCheck} title="Analyse par étape R1 / R2 / R3" body="Découverte, présentation, closing : des consignes dédiées à chaque étape du cycle." />
             <PillarItem icon={AlertTriangle} title="Objections & signaux" body="Objections, sentiment, concurrents cités, temps de parole — détectés automatiquement." />
-            <PillarItem icon={FileText} title="Résumé & prochaines étapes" body="En 2 minutes, ce qui demandait une heure de réécoute — poussé dans votre CRM." />
           </ul>
         </div>
       </div>
@@ -587,7 +584,7 @@ function ProgresserSection() {
 
       <div className="relative">
         <div className="relative rounded-3xl border border-border bg-white shadow-[0_20px_60px_-30px_rgba(15,23,42,0.3)] overflow-hidden">
-          <WindowChrome path="brief.app / performance / objections" />
+          <WindowChrome path="brief.app / paramètres / objections" />
           <div className="p-5 space-y-3">
             <div className="flex items-center justify-between">
               <div className="text-[10.5px] font-semibold uppercase tracking-wider text-primary">Bibliothèque d&apos;objections · équipe</div>
@@ -638,15 +635,12 @@ function ManagerSection() {
           </h2>
           <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
             Vous définissez le playbook et les étapes de votre cycle. Brief les applique à chaque
-            call de l&apos;équipe et vous remonte ce qui compte : qui progresse, où les deals se
-            perdent, quelles objections bloquent, quels moments réécouter en 1:1.
+            call et vous remonte ce qui compte : qui progresse, où les deals se perdent.
           </p>
           <ul className="mt-6 space-y-3 text-[13.5px] text-ink/80">
             {[
-              "Playbook de scoring éditable — importable depuis Notion ou un document.",
-              "Étapes R1/R2/R3 configurées sur vos propres noms de rendez-vous.",
+              "Playbook de scoring éditable, avec des consignes propres à chaque étape R1/R2/R3.",
               "Objections les plus fréquentes et leur taux de succès, par équipe.",
-              "Scores comparés deals gagnés vs perdus, dimension par dimension.",
               "Digest hebdo par IA : forces, axes de progrès, deals à surveiller.",
             ].map((t) => (
               <li key={t} className="flex items-start gap-2.5">
@@ -659,7 +653,7 @@ function ManagerSection() {
 
         <div className="relative">
           <div className="relative rounded-3xl border border-border bg-white shadow-[0_20px_60px_-30px_rgba(15,23,42,0.3)] overflow-hidden">
-            <WindowChrome path="brief.app / performance / équipe" />
+            <WindowChrome path="brief.app / équipe / insights" />
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-3 gap-2">
                 {[
@@ -736,22 +730,86 @@ function ManagerSection() {
   );
 }
 
-function RoiStrip() {
-  const stats = [
-    { v: "3 min", k: "pour préparer un RDV, au lieu de 20" },
-    { v: "100%", k: "des calls débriefés selon votre playbook" },
-    { v: "R1 → R3", k: "chaque étape du cycle évaluée sur ses propres critères" },
-    { v: "1 équipe", k: "qui capitalise sur chaque objection gagnée" },
-  ];
+function FlowBox({ n, icon: Icon, title, subtitle }: { n: string; icon: React.ComponentType<{ className?: string }>; title: string; subtitle: string }) {
   return (
-    <section className="border-y border-border/60 bg-ink text-background">
-      <div className="mx-auto max-w-6xl px-6 py-14 grid grid-cols-2 md:grid-cols-4 gap-8">
-        {stats.map((s) => (
-          <div key={s.k} className="text-center">
-            <div className="text-[30px] md:text-[36px] font-bold tracking-[-0.02em] text-background tabular-nums">{s.v}</div>
-            <div className="mt-1.5 text-[12.5px] text-background/60 leading-snug">{s.k}</div>
-          </div>
+    <div className="flex-1 rounded-2xl border border-border bg-white p-5 shadow-[var(--shadow-sm)]">
+      <div className="flex items-center gap-2.5">
+        <span className="grid h-9 w-9 place-items-center rounded-xl brand-gradient text-white shrink-0">
+          <Icon className="h-4 w-4" />
+        </span>
+        <span className="italic-serif text-[20px] text-primary/40 leading-none">{n}</span>
+      </div>
+      <div className="mt-3 text-[15px] font-semibold text-ink">{title}</div>
+      <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">{subtitle}</p>
+    </div>
+  );
+}
+
+function SupportBox({ icon: Icon, title, items }: { icon: React.ComponentType<{ className?: string }>; title: string; items: string[] }) {
+  return (
+    <div className="flex-1 rounded-2xl border border-border bg-white p-5 shadow-[var(--shadow-sm)]">
+      <div className="flex items-center gap-2.5">
+        <span className="grid h-8 w-8 place-items-center rounded-lg bg-lavender text-primary shrink-0">
+          <Icon className="h-4 w-4" />
+        </span>
+        <span className="text-[13.5px] font-semibold text-ink">{title}</span>
+      </div>
+      <ul className="mt-3 flex flex-wrap gap-1.5">
+        {items.map((i) => (
+          <li key={i} className="rounded-md border border-border bg-lavender/20 px-2 py-1 text-[11.5px] text-ink/80">
+            {i}
+          </li>
         ))}
+      </ul>
+    </div>
+  );
+}
+
+// Schéma récapitulatif — comment les sections de l'app s'articulent :
+// un fil rouge commercial (préparer → débriefer → progresser) irrigué par
+// deux blocs de configuration (Équipe, Paramètres). Reflète la nav réelle
+// de l'app depuis le recentrage produit (sidebar : Brief / Analyse
+// rendez-vous / Performance / Équipe / Paramètres).
+function StructureDiagram() {
+  return (
+    <section className="border-y border-border/60 bg-lavender/10">
+      <div className="mx-auto max-w-5xl px-6 py-20 text-center">
+        <span className="text-[11.5px] font-semibold uppercase tracking-[0.12em] text-primary">Structure</span>
+        <h2 className="mt-3 text-[30px] md:text-[36px] leading-tight font-bold tracking-[-0.03em] text-ink">
+          Comment Brief <span className="italic-serif text-primary">s&apos;organise</span>.
+        </h2>
+
+        <div className="mt-12 flex flex-col md:flex-row items-stretch gap-3 text-left">
+          <FlowBox n="01" icon={FileText} title="Brief" subtitle="Préparer chaque rendez-vous." />
+          <div className="hidden md:flex items-center text-border">
+            <ArrowRight className="h-5 w-5" />
+          </div>
+          <FlowBox n="02" icon={Video} title="Analyse rendez-vous" subtitle="Débriefer selon l'étape R1/R2/R3." />
+          <div className="hidden md:flex items-center text-border">
+            <ArrowRight className="h-5 w-5" />
+          </div>
+          <FlowBox n="03" icon={LayoutDashboard} title="Performance" subtitle="Progresser — historique, objections." />
+        </div>
+
+        <div className="flex justify-center my-4 text-border">
+          <ArrowDown className="h-5 w-5" />
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3 text-left">
+          <SupportBox
+            icon={Users}
+            title="Équipe (manager)"
+            items={["Playbook + étapes RDV", "Templates emails", "Insights"]}
+          />
+          <SupportBox
+            icon={Settings}
+            title="Paramètres"
+            items={["Connexions", "CRM", "Références clients", "Objections", "Facturation"]}
+          />
+        </div>
+        <p className="mt-5 text-[12.5px] text-muted-foreground max-w-lg mx-auto">
+          Une seule ligne commerciale, deux blocs de configuration qui l&apos;alimentent — rien d&apos;autre.
+        </p>
       </div>
     </section>
   );
@@ -824,10 +882,9 @@ function Integrations() {
 
 function Faq() {
   const qas = [
-    { q: "Comment Brief augmente concrètement le taux de closing ?", a: "En travaillant les trois leviers qui distinguent les top performers : arriver préparé (brief complet avant chaque RDV), savoir ce qui a marché ou pas (débrief noté de chaque call, adapté à l'étape R1/R2/R3), et capitaliser en équipe (bibliothèque d'objections reliée au sort réel des deals)." },
+    { q: "Comment Brief augmente concrètement le taux de closing ?", a: "En travaillant trois leviers : arriver préparé, savoir ce qui a marché ou pas (débrief noté, adapté à l'étape R1/R2/R3), et capitaliser en équipe (bibliothèque d'objections reliée au sort réel des deals)." },
     { q: "Comment Brief rejoint mes rendez-vous ?", a: "Vous connectez votre agenda Google. Brief détecte les visios (Meet, Teams, Zoom) et envoie un bot pour enregistrer et transcrire. Vous pouvez exclure des rendez-vous manuellement." },
-    { q: "C'est quoi, l'analyse par étape R1/R2/R3 ?", a: "Chaque entreprise nomme ses rendez-vous à sa façon (« Rencontre X » pour un premier RDV, « Présentation X » pour une démo…). Le manager configure ces motifs une fois, et Brief évalue chaque call selon les critères de son étape : on ne juge pas un premier rendez-vous de découverte comme un rendez-vous de closing." },
-    { q: "Puis-je adapter le scoring à ma méthode de vente ?", a: "Oui, le playbook est entièrement éditable : vos dimensions, vos critères, votre pondération. Importable depuis Notion, Word ou PDF. Les consignes d'analyse de chaque étape R1/R2/R3 sont également modifiables." },
+    { q: "Comment fonctionne l'analyse par étape R1/R2/R3 ?", a: "Le manager configure une fois les motifs de titre de RDV (« Rencontre X » = découverte, « Présentation X » = démo…) et les consignes propres à chaque étape. Brief évalue ensuite chaque call selon les critères de son étape, entièrement éditables — un R1 n'est pas jugé comme un R3." },
     { q: "Que deviennent les enregistrements ?", a: "Hébergement européen, chiffrement au repos et en transit, suppression sur demande. Chaque participant est informé de l'enregistrement, conformément au RGPD." },
     { q: "Puis-je tester Brief ?", a: "L'accès est sur invitation. Écrivez-nous pour une démonstration adaptée à votre équipe et un accès d'essai encadré." },
   ];
@@ -924,7 +981,7 @@ export default function HomePage() {
         <DebrieferSection />
         <ProgresserSection />
         <ManagerSection />
-        <RoiStrip />
+        <StructureDiagram />
         <Testimonial />
         <Integrations />
         <Faq />
