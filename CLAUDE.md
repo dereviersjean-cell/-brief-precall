@@ -7,7 +7,16 @@
 - **Accès** : invitation uniquement, pas d'inscription libre
 
 ## Vision produit
-Distribution in-context : Brief livre ses outputs (briefs, analyses) là où le commercial travaille déjà — HubSpot, Google Calendar, email. L'utilisateur ne doit pas venir sur Brief pour en bénéficier.
+- **Proposition de valeur unique (recentrage du 24 juillet 2026, décision du directeur commercial) : augmenter le taux de closing.** Pas d'éparpillement en features — tout ce qui ne sert pas directement « préparer / débriefer / progresser » est masqué (voir ci-dessous).
+- Distribution in-context : Brief livre ses outputs (briefs, analyses) là où le commercial travaille déjà — HubSpot, Google Calendar, email. L'utilisateur ne doit pas venir sur Brief pour en bénéficier.
+
+## Recentrage produit — 24 juillet 2026
+
+- **Modules Tasks et Devis masqués, pas supprimés** : entrées retirées de la sidebar, `app/tasks/layout.tsx` et `app/quotes/layout.tsx` remplacés par un `redirect("/dashboard")` (les layouts d'origine sont dans le git log). Les routes API, crons Inngest et le signal win/loss des devis (`deal_outcomes` source `quote`, page publique `/q/[token]`) restent actifs. Le digest hebdo et son email ne mentionnent plus tâches/devis (prompts par défaut `admin_config` ajustés — si des versions éditées existent en base, les resetter).
+- **Section « Performance »** : Dashboard + Objections + Historique fusionnés sous une seule entrée sidebar, en 3 onglets (`app/components/PerformanceTabs.tsx`, rendu sous la TopBar dans les 3 layouts). Les routes/URLs restent `/dashboard`, `/objections`, `/contacts`. Le dashboard commercial n'affiche plus devis/tâches (remplacés par une carte « Objections récentes de l'équipe », `listRecentObjectionsForOrganization`).
+- **Analyse par étape R1/R2/R3** (`lib/meeting-stage.ts`, sans dépendance — importable côté client) : le manager configure des motifs de titre de RDV par étape + des consignes d'analyse (`/team/meeting-stages`, API `/api/team/meeting-stages`, jsonb `organizations.meeting_stage_config`). Le titre du meeting transite par les metadata du bot Recall (`meetingTitle`, ajouté dans `lib/recall.ts` — les bots programmés avant n'en ont pas), l'étape est détectée à l'ingestion (bot-webhook) et stockée sur `calls.meeting_stage` (+ `calls.meeting_title`). Les consignes d'étape sont injectées dans le message utilisateur d'`analyzeCall`, JAMAIS dans le system prompt (contrat JSON). Repli : pas de motif/titre → analyse générique inchangée. Badge R1/R2/R3 sur la liste et le détail feedback.
+- **Migration `migrations/001_meeting_stages.sql`** (premier fichier du dossier `migrations/` recommandé par l'audit) : **à exécuter sur Supabase prod AVANT de déployer** — les selects de `getCallsWithAnalysis` référencent les nouvelles colonnes. L'ingestion webhook a un repli (retry sans les colonnes) mais pas les pages.
+- **Landing refondue** façon eagr.ai/fr : promesse unique « Augmentez votre taux de closing », section problème (écart top performer), 3 piliers numérotés (Préparer / Débriefer / Progresser) calqués sur la structure de l'app, section manager, FAQ. Zéro mention devis/tasks.
 
 ## Décisions architecturales — pourquoi ces choix
 

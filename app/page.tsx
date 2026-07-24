@@ -6,40 +6,36 @@ import {
   ArrowUpRight,
   ShieldCheck,
   Calendar,
-  Bot,
   ClipboardCheck,
   FileText,
-  History,
-  FileCheck,
-  ListChecks,
-  Share2,
-  Mail,
   BookOpen,
-  Users2,
   CheckCircle2,
-  Circle,
   Building2,
   Newspaper,
   Target,
-  Mic,
   Video,
   AlertTriangle,
   Quote,
   Zap,
-  Lock,
-  Database,
   Globe2,
   BarChart3,
   MessageSquare,
-  PenLine,
   Clock,
   Play,
+  TrendingUp,
+  Database,
 } from "lucide-react";
 
+// Refonte juillet 2026 — structure inspirée d'eagr.ai/fr : une promesse
+// unique (augmenter le taux de closing), le problème (l'écart top performer),
+// trois piliers numérotés calqués sur la structure de l'app (Préparer /
+// Débriefer / Progresser), section manager, preuves, FAQ, CTA. Les modules
+// masqués (devis, tasks) n'apparaissent plus nulle part.
+
 export const metadata: Metadata = {
-  title: "Brief — Le copilote IA des rendez-vous commerciaux B2B",
+  title: "Brief — Augmentez le taux de closing de votre équipe commerciale",
   description:
-    "Brief prépare, analyse et distribue chaque rendez-vous commercial. Briefs pré-call sourcés, analyse automatique des visios, coaching, tâches et devis auto-générés. Pour équipes B2B françaises.",
+    "Brief prépare chaque rendez-vous, débriefe chaque call selon votre playbook et fait circuler ce qui gagne dans toute l'équipe. Pour équipes commerciales B2B françaises.",
 };
 
 function BrandMark() {
@@ -59,13 +55,11 @@ function Nav() {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
         <BrandMark />
         <nav className="hidden md:flex items-center gap-8 text-[13.5px] text-muted-foreground">
-          <a href="#pipeline" className="hover:text-ink transition-colors">Pipeline</a>
-          <a href="#precall" className="hover:text-ink transition-colors">Pré-call</a>
-          <a href="#references" className="hover:text-ink transition-colors">Références</a>
-          <a href="#analyse" className="hover:text-ink transition-colors">Analyse</a>
-          <a href="#coaching" className="hover:text-ink transition-colors">Coaching</a>
-          <a href="#features" className="hover:text-ink transition-colors">Fonctionnalités</a>
+          <a href="#probleme" className="hover:text-ink transition-colors">Le problème</a>
+          <a href="#methode" className="hover:text-ink transition-colors">La méthode</a>
+          <a href="#manager" className="hover:text-ink transition-colors">Managers</a>
           <a href="#integrations" className="hover:text-ink transition-colors">Intégrations</a>
+          <a href="#faq" className="hover:text-ink transition-colors">FAQ</a>
         </nav>
         <div className="flex items-center gap-3">
           <Link href="/login" className="hidden sm:inline-flex text-[13.5px] font-medium text-muted-foreground hover:text-ink transition-colors">
@@ -95,7 +89,8 @@ function WindowChrome({ path }: { path: string }) {
 }
 
 function MiniSidebar({ active }: { active: string }) {
-  const items = ["Dashboard", "Rendez-vous", "Analyses", "Historique", "Devis", "Équipe"];
+  // Miroir de la vraie navigation de l'app depuis le recentrage produit.
+  const items = ["Performance", "Brief", "Analyse rendez-vous", "Équipe"];
   return (
     <div className="hidden md:block border-r border-border p-4 space-y-1 bg-lavender/30">
       <div className="mb-3 flex items-center gap-2 px-2">
@@ -109,7 +104,7 @@ function MiniSidebar({ active }: { active: string }) {
             label === active ? "bg-lavender text-primary font-medium" : "text-muted-foreground"
           }`}
         >
-          <Circle className="h-2.5 w-2.5" /> {label}
+          <span className="h-2.5 w-2.5 rounded-full border border-current opacity-60" /> {label}
         </div>
       ))}
     </div>
@@ -125,36 +120,33 @@ function Hero() {
 
       <div className="relative mx-auto max-w-6xl px-6 pt-16 pb-20 text-center">
         <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/60 backdrop-blur px-3 py-1 text-[11.5px] font-medium text-muted-foreground">
-          <Sparkles className="h-3 w-3 text-primary" /> Copilote IA pour équipes commerciales B2B
+          <Sparkles className="h-3 w-3 text-primary" /> Pour équipes commerciales B2B françaises
         </span>
         <h1 className="mt-6 text-[44px] md:text-[64px] leading-[1.02] font-bold tracking-[-0.03em] text-ink">
-          Arrivez préparé. <span className="italic-serif text-primary">Repartez</span> avec le suivi déjà fait.
+          Augmentez votre <span className="italic-serif text-primary">taux de closing</span>.
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-[18px] leading-relaxed text-ink/80">
-          <b className="text-ink">Le copilote qui prépare vos rendez-vous, écoute vos calls et écrit le suivi à votre place.</b>
+          <b className="text-ink">
+            Brief prépare chaque rendez-vous, débriefe chaque call selon votre méthode de vente,
+            et fait circuler ce qui gagne dans toute l&apos;équipe.
+          </b>
         </p>
         <p className="mx-auto mt-4 max-w-2xl text-[15.5px] leading-relaxed text-muted-foreground">
-          Brief livre un dossier complet avant chaque RDV, rejoint votre visio pour l&apos;enregistrer,
-          la transcrire et la scorer, puis génère les tâches, les emails de relance et les devis —
-          en moins de 2 minutes après la fin du call. Vos commerciaux ne repartent jamais les mains vides.
-        </p>
-        <p className="mx-auto mt-3 max-w-2xl text-[14.5px] leading-relaxed text-muted-foreground/80">
-          Côté management, votre directeur commercial pilote sur des faits :
-          scoring homogène, tendances par commercial, objections récurrentes, motifs de win/loss
-          et bonnes pratiques des top performers — extraites automatiquement et prêtes à partager en 1:1.
+          Pas une boîte à outils de plus : un seul objectif, transformer davantage de rendez-vous
+          en clients — du premier échange à la signature.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/login"
             className="brand-gradient inline-flex h-11 items-center gap-2 rounded-xl px-5 text-[14px] font-medium text-white shadow-[var(--shadow-glow)] hover:brightness-110 transition-all"
           >
-            Se connecter <ArrowUpRight className="h-4 w-4" />
+            Accéder à Brief <ArrowUpRight className="h-4 w-4" />
           </Link>
           <a
-            href="#pipeline"
+            href="#methode"
             className="inline-flex h-11 items-center gap-2 rounded-xl border border-border bg-white px-5 text-[14px] font-medium text-ink hover:bg-lavender/40 transition-colors"
           >
-            Voir comment ça marche <ArrowRight className="h-4 w-4" />
+            Voir la méthode <ArrowRight className="h-4 w-4" />
           </a>
         </div>
         <div className="mt-5 inline-flex items-center gap-1.5 text-[12px] text-muted-foreground">
@@ -163,42 +155,25 @@ function Hero() {
 
         <div className="relative mx-auto mt-14 max-w-5xl">
           <div className="relative rounded-3xl bg-white shadow-[0_30px_80px_-20px_rgba(80,60,180,0.25)] border border-border/60 overflow-hidden text-left">
-            <WindowChrome path="brief.app / analyses / acme-corp" />
+            <WindowChrome path="brief.app / analyse / acme-corp" />
             <div className="grid grid-cols-1 md:grid-cols-[220px_1fr]">
-              <MiniSidebar active="Analyses" />
+              <MiniSidebar active="Analyse rendez-vous" />
               <div className="p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 border border-rose-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-rose-600">
-                        <span className="relative inline-flex h-1.5 w-1.5">
-                          <span className="absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-60 animate-ping" />
-                          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-rose-500" />
-                        </span>
-                        Enregistré · 42:07
+                      <span className="inline-flex items-center rounded-full bg-lavender border border-border px-2 py-0.5 text-[10px] font-semibold text-primary">
+                        R2 — Présentation
                       </span>
                       <span className="text-[10.5px] font-medium text-muted-foreground">Google Meet</span>
                       <span className="text-[10.5px] font-medium text-muted-foreground/60">·</span>
-                      <span className="text-[10.5px] font-medium text-muted-foreground">Transcrit · FR</span>
+                      <span className="text-[10.5px] font-medium text-muted-foreground">Enregistré · 42:07 · Transcrit FR</span>
                     </div>
                     <div className="mt-1 text-[18px] font-semibold text-ink">
                       Acme Corp — Marie Lambert, Head of RevOps
                     </div>
                     <div className="mt-0.5 text-[12px] text-muted-foreground">
-                      Jeudi 14:30 · Découverte · 3 participants
-                    </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                      {[
-                        ["Stage", "Découverte → Démo"],
-                        ["ARR estimé", "48 k€"],
-                        ["Source", "Outbound · LinkedIn"],
-                        ["Cycle", "J+12"],
-                      ].map(([k, v]) => (
-                        <span key={k} className="inline-flex items-center gap-1 rounded-md border border-border bg-white px-1.5 py-[2px] text-[10px]">
-                          <span className="text-muted-foreground">{k}</span>
-                          <span className="text-ink font-medium">{v}</span>
-                        </span>
-                      ))}
+                      Jeudi 14:30 · « Présentation Acme &lt;&gt; Brief » · 3 participants
                     </div>
                   </div>
                   <div className="text-right shrink-0">
@@ -214,109 +189,12 @@ function Hero() {
                   </div>
                 </div>
 
-                <div className="mt-5 grid grid-cols-[180px_1fr] gap-3">
-                  <div
-                    className="relative aspect-[4/5] rounded-xl overflow-hidden border border-slate-800"
-                    style={{ background: "linear-gradient(135deg,#0f172a 0%,#1e293b 60%,#334155 100%)" }}
-                  >
-                    <div className="absolute inset-0 grid grid-rows-3 gap-[3px] p-[3px]">
-                      {[
-                        { n: "Marie L.", init: "M", speaking: true, tone: "from-rose-400/40 to-rose-600/30" },
-                        { n: "Vous", init: "V", speaking: false, tone: "from-sky-400/40 to-primary/30" },
-                        { n: "Julien C.", init: "J", speaking: false, tone: "from-emerald-400/30 to-teal-600/20" },
-                      ].map((p) => (
-                        <div key={p.n} className={`relative rounded-md bg-gradient-to-br ${p.tone} overflow-hidden ${p.speaking ? "ring-1 ring-emerald-400/80" : "ring-1 ring-white/10"}`}>
-                          <div className="absolute inset-0 grid place-items-center">
-                            <span className="grid h-6 w-6 place-items-center rounded-full bg-white/15 backdrop-blur text-white text-[9px] font-semibold">{p.init}</span>
-                          </div>
-                          <div className="absolute bottom-[3px] left-[3px] right-[3px] flex items-center justify-between text-[8px] text-white">
-                            <span className="rounded bg-black/50 px-1 py-[1px] font-medium truncate">{p.n}</span>
-                            {p.speaking && (
-                              <span className="flex items-end gap-[1px] rounded bg-emerald-500/90 px-[3px] py-[1px]">
-                                {[2, 4, 3, 5, 2].map((h, i) => (
-                                  <span key={i} className="w-[1px] bg-white rounded-full" style={{ height: `${h}px` }} />
-                                ))}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="absolute top-1.5 left-1.5 inline-flex items-center gap-1 rounded-full bg-black/60 backdrop-blur px-1.5 py-[1px] text-[8.5px] font-medium text-white">
-                      <span className="relative inline-flex h-1 w-1">
-                        <span className="absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-70 animate-ping" />
-                        <span className="relative inline-flex h-1 w-1 rounded-full bg-rose-500" />
-                      </span>
-                      REC 18:24
-                    </div>
-                    <button className="absolute bottom-1.5 right-1.5 grid h-6 w-6 place-items-center rounded-full bg-white/95 text-ink shadow">
-                      <Play className="h-3 w-3 fill-current" />
-                    </button>
-                  </div>
-
-                  <div className="rounded-xl border border-border bg-white p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-primary">
-                        <Sparkles className="h-3 w-3" /> Analyse IA du call
-                      </div>
-                      <span className="text-[9.5px] text-muted-foreground">mise à jour en direct</span>
-                    </div>
-                    <ul className="mt-2 space-y-1.5 text-[11.5px] leading-snug">
-                      <li className="flex items-start gap-1.5">
-                        <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
-                        <span className="text-ink/80"><b className="text-ink">Objection budget</b> à 12:04 — « on est déjà engagés avec HubSpot ». <span className="text-primary font-medium">Réponse playbook §3.2</span></span>
-                      </li>
-                      <li className="flex items-start gap-1.5">
-                        <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
-                        <span className="text-ink/80"><b className="text-ink">Signal d&apos;achat</b> — Marie demande le pricing 3 sièges à 21:47.</span>
-                      </li>
-                      <li className="flex items-start gap-1.5">
-                        <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-500" />
-                        <span className="text-ink/80"><b className="text-ink">Risque</b> — CFO (Julien) parle 6% : décideur pas engagé, prévoir un 1:1.</span>
-                      </li>
-                      <li className="flex items-start gap-1.5">
-                        <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-sky-500" />
-                        <span className="text-ink/80"><b className="text-ink">Concurrent cité</b> — Modjo (28:03). Comparatif dispo dans le kit vente.</span>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-
-                <div className="mt-5 rounded-2xl border border-border p-3.5">
-                  <div className="flex items-center justify-between text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    <span>Temps de parole</span>
-                    <span className="text-muted-foreground/70 normal-case tracking-normal font-normal">Ratio conseillé : 40 / 60</span>
-                  </div>
-                  <div className="mt-3 flex h-2 w-full overflow-hidden rounded-full bg-lavender">
-                    <div className="brand-gradient" style={{ width: "38%" }} />
-                    <div className="bg-slate-300" style={{ width: "56%" }} />
-                    <div className="bg-slate-200" style={{ width: "6%" }} />
-                  </div>
-                  <div className="mt-2.5 grid grid-cols-3 gap-2 text-[11.5px]">
-                    <div className="flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full brand-gradient" />
-                      <span className="text-ink font-medium">Vous</span>
-                      <span className="text-muted-foreground tabular-nums">15:58 · 38%</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-slate-400" />
-                      <span className="text-ink font-medium">Marie L.</span>
-                      <span className="text-muted-foreground tabular-nums">23:35 · 56%</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-slate-300" />
-                      <span className="text-ink font-medium">Julien C.</span>
-                      <span className="text-muted-foreground tabular-nums">2:34 · 6%</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 grid grid-cols-2 gap-x-8 gap-y-4">
+                <div className="mt-5 grid grid-cols-2 gap-x-8 gap-y-4">
                   {[
-                    ["Ouverture", 3.0],
-                    ["Découverte besoin", 4.0],
-                    ["Pitch / démo", 3.0],
-                    ["Prochaine étape", 4.0],
+                    ["Personnalisation de la démo", 4.0],
+                    ["Traitement des objections", 3.0],
+                    ["Implication des décideurs", 2.5],
+                    ["Prochaine étape obtenue", 4.0],
                   ].map(([label, v]) => (
                     <div key={label as string}>
                       <div className="flex items-center justify-between text-[12px] text-muted-foreground">
@@ -336,79 +214,42 @@ function Hero() {
                     <span className="text-[10.5px] text-primary font-medium">Généré par IA</span>
                   </div>
                   <p className="mt-2 text-[12.5px] leading-relaxed text-ink/80">
-                    Marie confirme un projet de refonte RevOps pour Q1. Deux objections : intégration Salesforce et
-                    délai de mise en œuvre. Budget évoqué : 40–60k€. Décideur additionnel à embarquer : Julien (CFO).
+                    Marie confirme un projet de refonte RevOps pour Q1. Deux objections : intégration
+                    Salesforce et délai de mise en œuvre. Décideur additionnel à embarquer : Julien (CFO),
+                    6% du temps de parole — point faible du call.
                   </p>
                 </div>
-                <div className="mt-3 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-[12.5px] text-emerald-700">
-                  <CheckCircle2 className="h-4 w-4" />
-                  Prochaine étape suggérée : envoyer étude de cas + caler démo avec Julien sous 48h
-                </div>
 
-                <div className="mt-5 rounded-2xl border border-border p-3.5">
-                  <div className="flex items-center justify-between text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    <span>Chapitres · générés automatiquement</span>
-                    <span className="text-muted-foreground/70 normal-case tracking-normal font-normal">42:07 · 8 moments clés</span>
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
-                    {[
-                      ["00:00", "Intro & contexte", "bg-slate-400"],
-                      ["04:12", "Découverte besoin", "bg-emerald-500"],
-                      ["12:04", "Objection budget", "bg-amber-500"],
-                      ["18:24", "Démo produit", "bg-sky-500"],
-                      ["21:47", "Signal d'achat", "bg-emerald-500"],
-                      ["28:03", "Concurrent cité", "bg-rose-500"],
-                      ["33:11", "Cadre décisionnel", "bg-slate-400"],
-                      ["38:50", "Next step", "bg-primary"],
-                    ].map(([t, l, c]) => (
-                      <button key={t} className="group text-left rounded-lg border border-border bg-white px-2 py-1.5 hover:border-primary/50 hover:shadow-sm transition">
-                        <div className="flex items-center gap-1 text-[9.5px] font-semibold uppercase tracking-wider text-muted-foreground tabular-nums">
-                          <span className={`h-1.5 w-1.5 rounded-full ${c}`} /> {t}
-                        </div>
-                        <div className="mt-0.5 text-[11.5px] text-ink/90 leading-tight truncate">{l}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mt-5 rounded-2xl border border-border overflow-hidden">
+                <div className="mt-3 rounded-2xl border border-border overflow-hidden">
                   <div className="flex items-center justify-between bg-lavender/30 px-3.5 py-2 border-b border-border">
                     <div className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-ink/80">
-                      <Sparkles className="h-3 w-3 text-primary" /> Suivi généré · prêt à envoyer
+                      <MessageSquare className="h-3 w-3 text-primary" /> Objection détectée · « une intégration de plus, ça m&apos;inquiète »
                     </div>
-                    <span className="text-[10px] text-muted-foreground">3 tâches · 2 emails · 1 devis</span>
+                    <span className="text-[10px] text-muted-foreground">12:04</span>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border">
-                    <div className="p-3">
-                      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Email de suivi</div>
-                      <div className="text-[12px] font-medium text-ink">Compte-rendu + étude de cas</div>
-                      <p className="mt-1 text-[11px] text-muted-foreground leading-snug line-clamp-2">
-                        « Bonjour Marie, merci pour l&apos;échange. Comme évoqué, je vous partage l&apos;étude sur l&apos;attribution Salesforce… »
-                      </p>
-                      <div className="mt-2 inline-flex items-center gap-1 text-[10.5px] text-primary font-medium">
-                        Ouvrir le brouillon <ArrowRight className="h-3 w-3" />
-                      </div>
+                  <div className="p-3.5">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                      Cas similaires déjà traités par l&apos;équipe
                     </div>
-                    <div className="p-3">
-                      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Tâches CRM</div>
-                      <ul className="space-y-1 text-[11.5px] text-ink/80">
-                        <li className="flex items-center gap-1.5"><Circle className="h-2.5 w-2.5 text-slate-300" /> Caler démo avec Julien (CFO) <span className="ml-auto text-[10px] text-rose-500 font-medium">48h</span></li>
-                        <li className="flex items-center gap-1.5"><Circle className="h-2.5 w-2.5 text-slate-300" /> Partager comparatif vs Modjo <span className="ml-auto text-[10px] text-muted-foreground">J+3</span></li>
-                        <li className="flex items-center gap-1.5"><Circle className="h-2.5 w-2.5 text-slate-300" /> Créer opportunité Salesforce <span className="ml-auto text-[10px] text-muted-foreground">Auto</span></li>
-                      </ul>
-                    </div>
-                    <div className="p-3">
-                      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Devis pré-rempli</div>
-                      <div className="text-[12px] font-medium text-ink">Brief Team · 3 sièges</div>
-                      <div className="mt-1 flex items-baseline gap-1">
-                        <span className="text-[18px] font-semibold text-ink tabular-nums">48 k€</span>
-                        <span className="text-[10.5px] text-muted-foreground">/ an · engagement 12 mois</span>
-                      </div>
-                      <div className="mt-2 inline-flex items-center gap-1 text-[10.5px] text-primary font-medium">
-                        Prévisualiser <ArrowRight className="h-3 w-3" />
-                      </div>
+                    <ul className="space-y-1.5 text-[12px] text-ink/80">
+                      <li className="flex items-center gap-2">
+                        <span className="inline-flex shrink-0 items-center rounded-full bg-emerald-50 border border-emerald-200 px-1.5 py-px text-[9.5px] font-semibold text-emerald-700">gagné</span>
+                        <span className="truncate">« Même crainte chez un SaaS RH — la démo de l&apos;intégration en live a débloqué. »</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="inline-flex shrink-0 items-center rounded-full bg-emerald-50 border border-emerald-200 px-1.5 py-px text-[9.5px] font-semibold text-emerald-700">gagné</span>
+                        <span className="truncate">« Proposer un POC borné à 4 semaines a rassuré la DSI. »</span>
+                      </li>
+                    </ul>
+                    <div className="mt-2 inline-flex items-center gap-1 text-[10.5px] text-primary font-medium">
+                      Voir la bibliothèque d&apos;objections <ArrowRight className="h-3 w-3" />
                     </div>
                   </div>
+                </div>
+
+                <div className="mt-3 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-[12.5px] text-emerald-700">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Prochaine étape suggérée : caler un échange avec Julien (CFO) sous 48h
                 </div>
               </div>
             </div>
@@ -436,62 +277,92 @@ function Hero() {
   );
 }
 
-function Pipeline() {
-  const steps = [
-    {
-      n: "01",
-      title: "Avant le RDV",
-      icon: FileText,
-      body: "Brief génère automatiquement un dossier complet sur l'entreprise et le contact : actualités, levées, effectifs, signaux d'intention, références clients similaires dans votre portefeuille.",
-    },
-    {
-      n: "02",
-      title: "Pendant le RDV",
-      icon: Bot,
-      body: "Un bot rejoint votre Google Meet, Teams ou Zoom. Il enregistre, transcrit en français et identifie les intervenants — sans que vous ayez à y penser.",
-    },
-    {
-      n: "03",
-      title: "Après le RDV",
-      icon: ClipboardCheck,
-      body: "Score, résumé, objections, prochaines étapes. Tout est poussé dans votre CRM et Slack, avec les tâches créées, les brouillons d'emails écrits et le devis pré-rempli prêt à envoyer.",
-    },
-  ];
+function ProblemSection() {
   return (
-    <section id="pipeline" className="mx-auto max-w-6xl px-6 py-24">
-      <div className="text-center">
-        <span className="text-[11.5px] font-semibold uppercase tracking-[0.12em] text-primary">Comment ça marche</span>
-        <h2 className="mt-3 text-[34px] md:text-[44px] leading-tight font-bold tracking-[-0.03em] text-ink">
-          Un cycle commercial complet, <span className="italic-serif text-primary">automatisé</span>.
-        </h2>
-        <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
-          Brief couvre les trois moments où un commercial perd le plus de temps : la préparation,
-          la prise de notes et le suivi. Vos commerciaux gardent la main sur la relation, l&apos;IA
-          fait le reste.
-        </p>
-      </div>
-      <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-5">
-        {steps.map((s) => {
-          const Icon = s.icon;
-          return (
-            <div key={s.n} className="group relative rounded-2xl border border-border/60 bg-white p-8 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-              <div className="flex items-center justify-between">
-                <div className="grid h-11 w-11 place-items-center rounded-xl brand-gradient text-white shadow-[var(--shadow-glow)]">
-                  <Icon className="h-5 w-5" />
-                </div>
-                <span className="italic-serif text-[28px] text-primary/40 leading-none">{s.n}</span>
-              </div>
-              <h3 className="mt-5 text-[19px] font-semibold text-ink">{s.title}</h3>
-              <p className="mt-2 text-[13.5px] leading-relaxed text-muted-foreground">{s.body}</p>
+    <section id="probleme" className="border-y border-border/60 bg-lavender/20">
+      <div className="mx-auto max-w-6xl px-6 py-24">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
+          <div>
+            <span className="text-[11.5px] font-semibold uppercase tracking-[0.12em] text-primary">Le problème</span>
+            <h2 className="mt-3 text-[34px] md:text-[44px] leading-tight font-bold tracking-[-0.03em] text-ink">
+              Votre meilleur commercial close <span className="italic-serif text-primary">2 à 3×</span> plus que les autres.
+            </h2>
+            <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
+              Ce n&apos;est pas une question de talent. C&apos;est ce qui se passe autour du rendez-vous :
+              il arrive mieux préparé, il sait répondre aux objections qu&apos;il a déjà entendues cent
+              fois, et il ajuste son discours à chaque étape du cycle. Tout ça peut s&apos;apprendre —
+              à condition de le rendre visible.
+            </p>
+            <ul className="mt-7 space-y-4">
+              {[
+                ["Zéro RDV mal préparé", "Un dossier complet sur le prospect, prêt à lire en 3 minutes, avant chaque rendez-vous."],
+                ["Zéro call non débriefé", "Chaque visio est analysée et notée selon votre playbook — sans réécouter 40 minutes."],
+                ["Zéro leçon perdue", "Les objections gagnées et les motifs de win/loss profitent à toute l'équipe, pas juste à celui qui les a vécus."],
+              ].map(([title, body]) => (
+                <li key={title} className="flex items-start gap-3">
+                  <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white border border-border text-primary">
+                    <CheckCircle2 className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <div className="font-semibold text-ink text-[15px]">{title}</div>
+                    <div className="text-[13.5px] text-muted-foreground leading-relaxed">{body}</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Écart de performance — visuel simple, pas un mockup produit */}
+          <div className="rounded-3xl border border-border bg-white p-8 shadow-[0_20px_60px_-30px_rgba(15,23,42,0.3)]">
+            <div className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Taux de closing par commercial — équipe type
             </div>
-          );
-        })}
+            <div className="mt-6 space-y-4">
+              {[
+                ["Top performer", 38, true],
+                ["Commercial B", 17, false],
+                ["Commercial C", 14, false],
+                ["Commercial D", 11, false],
+              ].map(([name, pct, top]) => (
+                <div key={name as string}>
+                  <div className="flex items-center justify-between text-[12.5px]">
+                    <span className={top ? "font-semibold text-ink" : "text-muted-foreground"}>{name}</span>
+                    <span className={`tabular-nums font-semibold ${top ? "text-primary" : "text-muted-foreground"}`}>{pct}%</span>
+                  </div>
+                  <div className="mt-1.5 h-2 rounded-full bg-lavender overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${top ? "brand-gradient" : "bg-slate-300"}`}
+                      style={{ width: `${((pct as number) / 40) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-6 rounded-xl bg-lavender/40 border border-border p-3.5 text-[12.5px] leading-relaxed text-ink/80">
+              <b className="text-ink">L&apos;enjeu n&apos;est pas de recruter plus.</b> Ramener le reste de
+              l&apos;équipe à mi-chemin du top performer double le chiffre — avec le même pipeline.
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );
 }
 
-function PreCallItem({ icon: Icon, title, body }: { icon: React.ComponentType<{ className?: string }>; title: string; body: string }) {
+function PillarHeading({ n, eyebrow, title, children }: { n: string; eyebrow: string; title: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="flex items-center gap-3">
+        <span className="italic-serif text-[34px] leading-none text-primary/40">{n}</span>
+        <span className="text-[11.5px] font-semibold uppercase tracking-[0.12em] text-primary">{eyebrow}</span>
+      </div>
+      <h3 className="mt-3 text-[28px] md:text-[36px] leading-tight font-bold tracking-[-0.03em] text-ink">{title}</h3>
+      <div className="mt-4 text-[15px] leading-relaxed text-muted-foreground">{children}</div>
+    </div>
+  );
+}
+
+function PillarItem({ icon: Icon, title, body }: { icon: React.ComponentType<{ className?: string }>; title: string; body: string }) {
   return (
     <li className="flex items-start gap-3">
       <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white border border-border text-primary">
@@ -505,121 +376,96 @@ function PreCallItem({ icon: Icon, title, body }: { icon: React.ComponentType<{ 
   );
 }
 
-function PreCallSection() {
+function MethodIntro() {
   return (
-    <section id="precall" className="border-y border-border/60 bg-lavender/20">
-      <div className="mx-auto max-w-6xl px-6 py-24 grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
-        <div>
-          <span className="text-[11.5px] font-semibold uppercase tracking-[0.12em] text-primary">Brief pré-call</span>
-          <h2 className="mt-3 text-[30px] md:text-[38px] leading-tight font-bold tracking-[-0.03em] text-ink">
-            Toutes vos infos. <span className="italic-serif text-primary">Sans les chercher.</span>
-          </h2>
-          <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
-            La veille de chaque rendez-vous, Brief compile un dossier prêt à lire en 3 minutes. Fini
-            les 20 minutes passées entre LinkedIn, Pappers et le site du prospect avant chaque call.
-          </p>
-          <ul className="mt-6 space-y-3.5 text-[14px] text-ink/80">
-            <PreCallItem icon={Building2} title="Fiche entreprise sourcée" body="Effectifs, CA, dirigeants, financement — depuis Pappers, LinkedIn et le web." />
-            <PreCallItem icon={Newspaper} title="Signaux récents" body="Levées de fonds, recrutements clés, communiqués, mentions presse des 60 derniers jours." />
-            <PreCallItem icon={Target} title="Références clients pertinentes" body="Brief pioche dans vos cas clients ceux qui ressemblent le plus au prospect (secteur, taille, use case)." />
-            <PreCallItem icon={MessageSquare} title="Questions de découverte suggérées" body="Basées sur votre playbook et le contexte spécifique du compte." />
-          </ul>
-        </div>
+    <div className="mx-auto max-w-6xl px-6 pt-24 text-center" id="methode">
+      <span className="text-[11.5px] font-semibold uppercase tracking-[0.12em] text-primary">La méthode</span>
+      <h2 className="mt-3 text-[34px] md:text-[44px] leading-tight font-bold tracking-[-0.03em] text-ink">
+        Trois moments. Une obsession : <span className="italic-serif text-primary">le closing</span>.
+      </h2>
+      <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
+        Brief s&apos;organise exactement comme le travail d&apos;un commercial : préparer le rendez-vous,
+        le débriefer, et progresser d&apos;un call à l&apos;autre. Rien d&apos;autre.
+      </p>
+    </div>
+  );
+}
 
-        <div className="relative">
-          <div className="relative rounded-3xl border border-border bg-white shadow-[0_20px_60px_-30px_rgba(15,23,42,0.3)] overflow-hidden">
-            <WindowChrome path="brief.app / rdv / acme-corp" />
-            <div className="p-6 space-y-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="text-[10.5px] font-semibold uppercase tracking-wider text-primary">Brief pré-call</div>
-                  <div className="mt-1 text-[17px] font-semibold text-ink">Acme Corp</div>
-                  <div className="text-[12px] text-muted-foreground">Jeudi 14:30 · Marie Lambert, Head of RevOps</div>
-                </div>
-                <span className="inline-flex items-center gap-1 rounded-full bg-lavender px-2.5 py-1 text-[10.5px] font-medium text-primary">
-                  <Sparkles className="h-3 w-3" /> Prêt
-                </span>
+function PreparerSection() {
+  return (
+    <section className="mx-auto max-w-6xl px-6 py-20 grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
+      <div>
+        <PillarHeading n="01" eyebrow="Préparer" title={<>Arrivez en RDV en <span className="italic-serif text-primary">connaissant</span> votre prospect.</>}>
+          La veille de chaque rendez-vous, Brief compile un dossier prêt à lire en 3 minutes.
+          Fini les 20 minutes éparpillées entre LinkedIn, Pappers et le site du prospect.
+        </PillarHeading>
+        <ul className="mt-6 space-y-3.5 text-[14px] text-ink/80">
+          <PillarItem icon={Building2} title="Fiche entreprise sourcée" body="Effectifs, CA, dirigeants, financement — depuis Pappers, LinkedIn et le web." />
+          <PillarItem icon={Newspaper} title="Signaux récents" body="Levées de fonds, recrutements clés, mentions presse des 60 derniers jours." />
+          <PillarItem icon={Target} title="La bonne référence client" body="Brief pioche dans vos cas clients celui qui ressemble le plus au prospect — la preuve sociale exacte qui fait mouche." />
+          <PillarItem icon={MessageSquare} title="Questions de découverte suggérées" body="Basées sur votre playbook et le contexte spécifique du compte." />
+        </ul>
+      </div>
+
+      <div className="relative">
+        <div className="relative rounded-3xl border border-border bg-white shadow-[0_20px_60px_-30px_rgba(15,23,42,0.3)] overflow-hidden">
+          <WindowChrome path="brief.app / brief / acme-corp" />
+          <div className="p-6 space-y-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="text-[10.5px] font-semibold uppercase tracking-wider text-primary">Brief pré-call</div>
+                <div className="mt-1 text-[17px] font-semibold text-ink">Acme Corp</div>
+                <div className="text-[12px] text-muted-foreground">Jeudi 14:30 · Marie Lambert, Head of RevOps</div>
               </div>
+              <span className="inline-flex items-center gap-1 rounded-full bg-lavender px-2.5 py-1 text-[10.5px] font-medium text-primary">
+                <Sparkles className="h-3 w-3" /> Prêt
+              </span>
+            </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  ["Effectifs", "120"],
-                  ["CA 2024", "18 M€"],
-                  ["Financement", "Série B"],
-                ].map(([k, v]) => (
-                  <div key={k} className="rounded-xl border border-border bg-lavender/20 p-2.5 text-center">
-                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{k}</div>
-                    <div className="mt-0.5 text-[14px] font-semibold text-ink tabular-nums">{v}</div>
-                  </div>
-                ))}
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                ["Effectifs", "120"],
+                ["CA 2024", "18 M€"],
+                ["Financement", "Série B"],
+              ].map(([k, v]) => (
+                <div key={k} className="rounded-xl border border-border bg-lavender/20 p-2.5 text-center">
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{k}</div>
+                  <div className="mt-0.5 text-[14px] font-semibold text-ink tabular-nums">{v}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="rounded-xl border border-border p-3">
+              <div className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <Newspaper className="h-3.5 w-3.5" /> Actualités
               </div>
+              <ul className="mt-2 space-y-1.5 text-[12.5px] text-ink/80">
+                <li>• Levée de 12 M€ (Série B) annoncée le 3 octobre</li>
+                <li>• Recrutement d&apos;un VP Sales</li>
+                <li>• Ouverture de bureaux à Barcelone</li>
+              </ul>
+            </div>
 
-              <div className="rounded-xl border border-border p-3">
-                <div className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  <Newspaper className="h-3.5 w-3.5" /> Actualités
+            <div className="rounded-xl border border-border bg-lavender/40 p-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-primary">
+                  <Target className="h-3.5 w-3.5" /> Référence la plus pertinente
                 </div>
-                <ul className="mt-2 space-y-1.5 text-[12.5px] text-ink/80">
-                  <li>• Levée de 12 M€ (Série B) annoncée le 3 octobre</li>
-                  <li>• Recrutement d&apos;un VP Sales</li>
-                  <li>• Ouverture de bureaux à Barcelone</li>
-                </ul>
+                <span className="text-[10px] text-primary font-medium">94% match</span>
               </div>
-
-              <div className="rounded-xl border border-border bg-lavender/40 p-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-primary">
-                    <Target className="h-3.5 w-3.5" /> Références similaires
-                  </div>
-                  <span className="text-[10px] text-primary font-medium">Cross-référencé</span>
+              {/* Exemple illustratif — pas un vrai client */}
+              <div className="mt-2 rounded-lg bg-white border border-border p-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="grid h-6 w-6 place-items-center rounded-md bg-ink text-background">
+                    <Building2 className="h-3 w-3" />
+                  </span>
+                  <span className="text-[11.5px] font-semibold text-ink">SaaS RH · 220 pers.</span>
+                  <span className="text-[10px] text-muted-foreground">Série C · Salesforce</span>
                 </div>
-                {/* Exemple illustratif — pas un vrai client */}
-                <div className="mt-2 rounded-lg bg-white border border-border p-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className="grid h-6 w-6 place-items-center rounded-md bg-ink text-background">
-                      <Building2 className="h-3 w-3" />
-                    </span>
-                    <span className="text-[11.5px] font-semibold text-ink">SaaS RH · 220 pers.</span>
-                    <span className="text-[10px] text-muted-foreground">Série C · Salesforce</span>
-                    <span className="ml-auto text-[10.5px] tabular-nums font-semibold text-primary">94% match</span>
-                  </div>
-                  <div className="mt-2 grid grid-cols-2 gap-1.5 text-[10.5px]">
-                    <div className="rounded-md bg-emerald-50 border border-emerald-100 p-1.5">
-                      <div className="text-[9.5px] font-semibold uppercase tracking-wider text-emerald-700">Ce qu&apos;on a fait</div>
-                      <ul className="mt-0.5 space-y-0.5 text-ink/80">
-                        <li>• Attribution multi-touch en 6 sem.</li>
-                        <li>• Onboarding RevOps + 3 AE</li>
-                        <li>• +32% de leads sourcés</li>
-                      </ul>
-                    </div>
-                    <div className="rounded-md bg-lavender/60 border border-border p-1.5">
-                      <div className="text-[9.5px] font-semibold uppercase tracking-wider text-primary">Ce qu&apos;on peut faire chez Acme</div>
-                      <ul className="mt-0.5 space-y-0.5 text-ink/80">
-                        <li>• Même schéma Salesforce → 4 sem.</li>
-                        <li>• POC Q1 aligné refonte RevOps</li>
-                        <li>• Cible : +25% pipeline sourcé</li>
-                      </ul>
-                    </div>
-                  </div>
-                  <div className="mt-2 rounded-md bg-lavender/20 border border-border p-1.5">
-                    <div className="text-[9.5px] font-semibold uppercase tracking-wider text-muted-foreground">Accroche suggérée</div>
-                    <p className="mt-0.5 text-[11px] italic leading-snug text-ink/80">
-                      « Un de vos pairs avait exactement votre stack Salesforce et le même sujet d&apos;attribution — on lui a fait gagner un trimestre. Je peux vous montrer comment on transposerait ça chez Acme sur Q1. »
-                    </p>
-                  </div>
-                </div>
-                {/* Autres refs — compact, exemples génériques */}
-                <ul className="mt-2 space-y-1">
-                  {[
-                    { name: "Fintech B2B", why: "Série B · même use case attribution", match: 89 },
-                    { name: "Scale-up FR", why: "A remplacé HubSpot", match: 82 },
-                  ].map((r) => (
-                    <li key={r.name} className="flex items-center gap-2 rounded-md bg-white border border-border px-2 py-1">
-                      <span className="text-[11px] font-semibold text-ink/90 w-24 shrink-0">{r.name}</span>
-                      <span className="flex-1 text-[10.5px] text-muted-foreground truncate">{r.why}</span>
-                      <span className="text-[10px] tabular-nums font-semibold text-primary">{r.match}%</span>
-                    </li>
-                  ))}
-                </ul>
+                <p className="mt-2 text-[11px] italic leading-snug text-ink/80">
+                  « Un de vos pairs avait exactement votre stack et le même sujet d&apos;attribution —
+                  on lui a fait gagner un trimestre. »
+                </p>
               </div>
             </div>
           </div>
@@ -629,151 +475,149 @@ function PreCallSection() {
   );
 }
 
-function ReferencesSection() {
-  const refs = [
-    {
-      name: "SaaS RH",
-      sector: "220 pers. · Série C",
-      match: 94,
-      matches: ["Même stack Salesforce", "Même problème attribution", "Taille comparable"],
-      outcome: "Cycle de vente : 47j · Gain +32% attribution",
-      verbatim: "« On avait exactement la même problématique — l'équipe Brief nous a fait gagner un trimestre. »",
-      author: "Responsable RevOps, cas client SaaS RH",
-    },
-    {
-      name: "Fintech B2B",
-      sector: "400 pers. · Série B",
-      match: 89,
-      matches: ["Série B récente", "Même use case attribution", "Décideur RevOps"],
-      outcome: "Signature 30j après démo · ROI 4 mois",
-      verbatim: "« Le cross-référencement fait sur notre call a été un déclencheur : on a vu qu'un pair avait résolu ça. »",
-      author: "Direction financière, cas client Fintech B2B",
-    },
-  ];
+function DebrieferSection() {
   return (
-    <section id="references" className="border-b border-border/60 bg-white">
-      <div className="mx-auto max-w-6xl px-6 py-24">
-        <div className="max-w-3xl">
-          <span className="text-[11.5px] font-semibold uppercase tracking-[0.12em] text-primary">Cross-référencement de vos clients</span>
-          <h2 className="mt-3 text-[34px] md:text-[44px] leading-tight font-bold tracking-[-0.03em] text-ink">
-            La bonne <span className="italic-serif text-primary">référence client</span>, au bon moment.
-          </h2>
-          <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
-            Brief vectorise votre catalogue de cas clients (études, verbatims, secteurs, use cases,
-            outils remplacés, gains chiffrés) et le croise avec le contexte de chaque prospect.
-            Résultat : à chaque rendez-vous, vos commerciaux savent exactement quelle preuve sociale
-            avancer — et pourquoi elle va résonner.
-          </p>
-        </div>
+    <section className="border-y border-border/60 bg-lavender/20">
+      <div className="mx-auto max-w-6xl px-6 py-20 grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
+        <div className="relative order-2 lg:order-1">
+          <div className="relative rounded-3xl border border-border bg-white shadow-[0_20px_60px_-30px_rgba(15,23,42,0.3)] overflow-hidden">
+            <WindowChrome path="brief.app / analyse / acme-corp" />
+            <div className="p-5 space-y-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                {["R1 — Découverte", "R2 — Présentation", "R3 — Closing"].map((s, i) => (
+                  <span
+                    key={s}
+                    className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10.5px] font-semibold border ${
+                      i === 1 ? "bg-lavender text-primary border-border" : "bg-white text-muted-foreground border-border/60"
+                    }`}
+                  >
+                    {s}
+                  </span>
+                ))}
+              </div>
+              <p className="text-[11.5px] text-muted-foreground leading-snug">
+                Détecté depuis le titre du RDV : « Présentation Acme &lt;&gt; Brief » → l&apos;analyse
+                évalue ce qui compte à cette étape, pas des critères génériques.
+              </p>
 
-        <div className="mt-12 grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-8 items-start">
-          <div className="relative">
-            <div className="relative rounded-3xl border border-border bg-white shadow-[0_20px_60px_-30px_rgba(15,23,42,0.3)] overflow-hidden">
-              <WindowChrome path="brief.app / références / acme-corp" />
-              <div className="p-5">
-                <div className="rounded-2xl bg-lavender/20 border border-border p-4">
-                  <div className="flex items-center gap-3">
-                    <span className="grid h-10 w-10 place-items-center rounded-xl brand-gradient text-white text-[13px] font-semibold">A</span>
-                    <div className="flex-1">
-                      <div className="text-[13.5px] font-semibold text-ink">Acme Corp</div>
-                      <div className="text-[11.5px] text-muted-foreground">SaaS RH · 120p · Série B · Paris</div>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3.5">
+                {[
+                  ["Personnalisation de la démo", 4.0],
+                  ["Traitement des objections", 3.0],
+                  ["Implication des décideurs", 2.5],
+                  ["Prochaine étape obtenue", 4.0],
+                ].map(([label, v]) => (
+                  <div key={label as string}>
+                    <div className="flex items-center justify-between text-[11.5px] text-muted-foreground">
+                      <span>{label}</span>
+                      <span className="tabular-nums text-ink font-medium">{(v as number).toFixed(1)}</span>
                     </div>
-                    <span className="rounded-full bg-lavender px-2.5 py-1 text-[10.5px] font-medium text-primary">
-                      {refs.length} refs trouvées
-                    </span>
+                    <div className="mt-1 h-1.5 rounded-full bg-lavender">
+                      <div className="h-full rounded-full brand-gradient" style={{ width: `${((v as number) / 5) * 100}%` }} />
+                    </div>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {["Salesforce", "Attribution multi-touch", "RevOps", "Q1 refonte"].map((t) => (
-                      <span key={t} className="rounded-md border border-border bg-white px-2 py-0.5 text-[11px] text-muted-foreground">{t}</span>
-                    ))}
-                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3">
+                <div className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-amber-700">
+                  <AlertTriangle className="h-3.5 w-3.5" /> Objection détectée · 21:04
                 </div>
+                <p className="mt-1 text-[12.5px] text-ink/80">
+                  « Notre équipe est déjà surchargée, une nouvelle intégration me fait peur. »
+                </p>
+                <div className="mt-2 text-[10.5px] text-amber-700/90">
+                  → Réponse gagnante disponible dans la bibliothèque de l&apos;équipe
+                </div>
+              </div>
 
-                <div className="mt-4 space-y-3">
-                  {refs.map((r) => (
-                    <div key={r.name} className="rounded-2xl border border-border p-4 hover:border-primary/30 transition">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-2.5">
-                          <span className="grid h-8 w-8 place-items-center rounded-lg bg-ink text-background">
-                            <Building2 className="h-3.5 w-3.5" />
-                          </span>
-                          <div>
-                            <div className="text-[13px] font-semibold text-ink">{r.name}</div>
-                            <div className="text-[11px] text-muted-foreground">{r.sector}</div>
-                          </div>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <div className="text-[16px] font-semibold text-primary tabular-nums leading-none">{r.match}%</div>
-                          <div className="text-[9.5px] uppercase tracking-wider text-muted-foreground mt-0.5">match</div>
-                        </div>
-                      </div>
-                      <div className="mt-3 h-1 rounded-full bg-lavender overflow-hidden">
-                        <div className="h-full brand-gradient" style={{ width: `${r.match}%` }} />
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        {r.matches.map((m) => (
-                          <span key={m} className="inline-flex items-center gap-1 rounded-md bg-lavender/60 border border-border px-1.5 py-0.5 text-[10.5px] font-medium text-primary">
-                            <CheckCircle2 className="h-3 w-3" /> {m}
-                          </span>
-                        ))}
-                      </div>
-                      <div className="mt-3 rounded-lg bg-lavender/20 border border-border p-2.5">
-                        <p className="text-[11.5px] italic text-ink/80 leading-relaxed">{r.verbatim}</p>
-                        <div className="mt-1.5 text-[10.5px] text-muted-foreground">— {r.author}</div>
-                      </div>
-                      <div className="mt-2.5 flex items-center justify-between text-[10.5px]">
-                        <span className="text-emerald-700 font-medium">{r.outcome}</span>
-                        <span className="text-primary font-medium">Insérer dans email ↗</span>
-                      </div>
-                    </div>
-                  ))}
+              <div className="rounded-xl border border-border p-3">
+                <div className="flex items-center justify-between text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <span>Temps de parole</span>
+                  <span className="normal-case tracking-normal font-normal text-muted-foreground/70">Ratio conseillé 40/60</span>
+                </div>
+                <div className="mt-2 flex h-2 w-full overflow-hidden rounded-full bg-lavender">
+                  <div className="brand-gradient" style={{ width: "38%" }} />
+                  <div className="bg-slate-300" style={{ width: "56%" }} />
+                  <div className="bg-slate-200" style={{ width: "6%" }} />
+                </div>
+                <div className="mt-2 flex items-center gap-3 text-[10.5px] text-muted-foreground">
+                  <span>Vous 38%</span>
+                  <span>Marie 56%</span>
+                  <span>Julien (CFO) 6% — décideur silencieux</span>
                 </div>
               </div>
             </div>
           </div>
+        </div>
 
-          <div className="space-y-5">
-            <div className="rounded-2xl border border-border bg-lavender/10 p-5">
-              <div className="text-[10.5px] font-semibold uppercase tracking-wider text-primary">Ce que Brief croise</div>
-              <ul className="mt-3 space-y-2.5 text-[13px] text-ink/80">
-                <li className="flex items-start gap-2.5">
-                  <Database className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  <span><b className="text-ink">Vos cas clients</b> — études, one-pagers, verbatims, chiffres clés, secteurs, outils remplacés, gains obtenus.</span>
-                </li>
-                <li className="flex items-start gap-2.5">
-                  <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  <span><b className="text-ink">Le contexte du prospect</b> — secteur, taille, financement, stack technique, personas, signaux d&apos;intention.</span>
-                </li>
-                <li className="flex items-start gap-2.5">
-                  <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  <span><b className="text-ink">Ce qui a été dit en RDV</b> — objections, priorités, décideurs, concurrents cités — pour affiner à chaque call.</span>
-                </li>
-              </ul>
+        <div className="order-1 lg:order-2">
+          <PillarHeading n="02" eyebrow="Débriefer" title={<>Chaque call <span className="italic-serif text-primary">noté</span> selon votre méthode — et son étape.</>}>
+            Le bot rejoint la visio, transcrit en français, puis l&apos;IA note le call selon votre
+            playbook. Un R1 de découverte n&apos;est pas jugé comme un R3 de closing : Brief reconnaît
+            l&apos;étape du cycle depuis le titre du rendez-vous et adapte son analyse.
+          </PillarHeading>
+          <ul className="mt-6 space-y-3.5 text-[14px] text-ink/80">
+            <PillarItem icon={BarChart3} title="Scoring sur votre playbook" body="Vos dimensions, vos critères, votre pondération — importés depuis Notion ou un document." />
+            <PillarItem icon={ClipboardCheck} title="Analyse par étape R1 / R2 / R3" body="Découverte, présentation, closing : des consignes d'évaluation dédiées à chaque étape du cycle." />
+            <PillarItem icon={AlertTriangle} title="Objections & signaux" body="Objections, sentiment, concurrents cités, temps de parole — détectés automatiquement." />
+            <PillarItem icon={FileText} title="Résumé & prochaines étapes" body="En 2 minutes, ce qui demandait une heure de réécoute — poussé dans votre CRM." />
+          </ul>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ProgresserSection() {
+  return (
+    <section className="mx-auto max-w-6xl px-6 py-20 grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
+      <div>
+        <PillarHeading n="03" eyebrow="Progresser" title={<>Ce qui fait gagner un deal profite à <span className="italic-serif text-primary">toute l&apos;équipe</span>.</>}>
+          Chaque objection traitée, chaque deal gagné ou perdu nourrit une bibliothèque commune.
+          Le commercial junior répond comme s&apos;il avait dix ans de maison — et vous savez enfin
+          où les deals se perdent : en R1, R2 ou R3.
+        </PillarHeading>
+        <ul className="mt-6 space-y-3.5 text-[14px] text-ink/80">
+          <PillarItem icon={MessageSquare} title="Bibliothèque d'objections vivante" body="Face à une objection, Brief retrouve les cas similaires déjà traités par l'équipe — et ce qui a marché." />
+          <PillarItem icon={TrendingUp} title="Win/loss automatique" body="Chaque réponse est reliée au sort du deal via votre CRM : les réponses qui closent se voient." />
+          <PillarItem icon={BookOpen} title="Scores comparés gagné/perdu" body="Les dimensions du playbook qui distinguent les deals gagnés des deals perdus, chiffrées." />
+        </ul>
+      </div>
+
+      <div className="relative">
+        <div className="relative rounded-3xl border border-border bg-white shadow-[0_20px_60px_-30px_rgba(15,23,42,0.3)] overflow-hidden">
+          <WindowChrome path="brief.app / performance / objections" />
+          <div className="p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="text-[10.5px] font-semibold uppercase tracking-wider text-primary">Bibliothèque d&apos;objections · équipe</div>
+              <span className="rounded-full bg-lavender px-2.5 py-1 text-[10.5px] font-medium text-primary">128 objections indexées</span>
             </div>
-
-            <div className="rounded-2xl border border-border p-5">
-              <div className="text-[10.5px] font-semibold uppercase tracking-wider text-primary">Pourquoi c&apos;est puissant</div>
-              <ul className="mt-3 space-y-2.5 text-[13px] text-ink/80">
-                <li className="flex items-start gap-2.5">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  <span>Le commercial junior <b className="text-ink">connaît immédiatement</b> la référence la plus pertinente à sortir, comme s&apos;il avait 10 ans de maison.</span>
-                </li>
-                <li className="flex items-start gap-2.5">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  <span>Les études clients <b className="text-ink">redeviennent vivantes</b> — plus jamais oubliées dans un Drive.</span>
-                </li>
-                <li className="flex items-start gap-2.5">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  <span>Les objections récurrentes trouvent la <b className="text-ink">preuve sociale exacte</b> qui les désamorce.</span>
-                </li>
-              </ul>
-            </div>
-
-            <div className="rounded-2xl brand-gradient text-white p-5 shadow-[var(--shadow-glow)]">
-              <div className="text-[10.5px] font-semibold uppercase tracking-wider text-white/80">Ingestion continue</div>
-              <p className="mt-2 text-[13px] leading-relaxed text-white/90">
-                Ajoutez un cas client depuis Notion, un PDF ou un Google Doc : Brief l&apos;ingère,
-                l&apos;indexe et le rend disponible pour tous les prochains rendez-vous en moins de 5 minutes.
+            {[
+              { o: "« On est déjà engagés avec un concurrent »", n: 23, win: 61 },
+              { o: "« C'est trop cher pour notre taille »", n: 17, win: 47 },
+              { o: "« Il faut que j'en parle à mon associé »", n: 14, win: 38 },
+            ].map((r) => (
+              <div key={r.o} className="rounded-xl border border-border p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-[12.5px] font-medium text-ink leading-snug">{r.o}</p>
+                  <span className="shrink-0 text-[10.5px] text-muted-foreground tabular-nums">×{r.n}</span>
+                </div>
+                <div className="mt-2 flex items-center gap-2">
+                  <div className="flex-1 h-1.5 rounded-full bg-lavender overflow-hidden">
+                    <div className="h-full bg-emerald-500/80 rounded-full" style={{ width: `${r.win}%` }} />
+                  </div>
+                  <span className="text-[10.5px] tabular-nums font-semibold text-emerald-600">{r.win}% gagnées</span>
+                </div>
+              </div>
+            ))}
+            <div className="rounded-xl bg-lavender/40 border border-border p-3">
+              <div className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-primary">
+                <Sparkles className="h-3.5 w-3.5" /> Insight de la semaine
+              </div>
+              <p className="mt-1.5 text-[12px] leading-relaxed text-ink/80">
+                L&apos;objection prix est gagnée 2× plus souvent quand une référence client chiffrée
+                est citée dans la réponse. Trois deals stagnent en R2 faute de décideur présent.
               </p>
             </div>
           </div>
@@ -783,226 +627,45 @@ function ReferencesSection() {
   );
 }
 
-function TranscriptLine({ who, me, ts, text }: { who: string; me: boolean; ts: string; text: string }) {
+function ManagerSection() {
   return (
-    <div className="flex gap-3">
-      <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-[11px] font-semibold ${me ? "brand-gradient text-white" : "bg-lavender text-ink/80"}`}>
-        {who[0]}
-      </span>
-      <div className="flex-1">
-        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-          <span className="font-medium text-ink/80">{who}</span>
-          <span className="tabular-nums">{ts}</span>
-        </div>
-        <p className="mt-0.5 text-[12.5px] leading-relaxed text-ink/80">{text}</p>
-      </div>
-    </div>
-  );
-}
-
-function AnalyseCard({ icon: Icon, title, body }: { icon: React.ComponentType<{ className?: string }>; title: string; body: string }) {
-  return (
-    <div className="rounded-xl border border-border bg-white p-3.5">
-      <div className="grid h-8 w-8 place-items-center rounded-lg bg-lavender text-primary">
-        <Icon className="h-4 w-4" />
-      </div>
-      <div className="mt-3 text-[13.5px] font-semibold text-ink">{title}</div>
-      <div className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">{body}</div>
-    </div>
-  );
-}
-
-function AnalyseSection() {
-  return (
-    <section id="analyse" className="mx-auto max-w-6xl px-6 py-24 grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
-      <div className="relative order-2 lg:order-1">
-        <div className="relative rounded-3xl border border-border bg-white shadow-[0_20px_60px_-30px_rgba(15,23,42,0.3)] overflow-hidden">
-          <WindowChrome path="brief.app / analyses / acme-corp / transcript" />
-          <div className="p-5 space-y-4">
-            <div className="relative rounded-2xl bg-slate-900 text-white p-4 overflow-hidden">
-              <div
-                className="relative aspect-[16/7] rounded-xl overflow-hidden mb-3 border border-white/10"
-                style={{ background: "linear-gradient(135deg,#0f172a 0%,#1e293b 60%,#334155 100%)" }}
-              >
-                <div className="absolute inset-0 grid grid-cols-3 gap-1 p-1">
-                  {[
-                    { n: "Marie L.", init: "M", speaking: true, tone: "from-rose-400/40 to-rose-600/30" },
-                    { n: "Vous", init: "V", speaking: false, tone: "from-sky-400/40 to-primary/30" },
-                    { n: "Julien C.", init: "J", speaking: false, tone: "from-emerald-400/30 to-teal-600/20" },
-                  ].map((p) => (
-                    <div key={p.n} className={`relative rounded-lg bg-gradient-to-br ${p.tone} overflow-hidden ${p.speaking ? "ring-2 ring-emerald-400/80" : "ring-1 ring-white/10"}`}>
-                      <div className="absolute inset-0 grid place-items-center">
-                        <span className="grid h-9 w-9 place-items-center rounded-full bg-white/15 backdrop-blur text-[13px] font-semibold">{p.init}</span>
-                      </div>
-                      <div className="absolute bottom-1 left-1 right-1 flex items-center justify-between text-[9.5px]">
-                        <span className="rounded bg-black/50 px-1.5 py-0.5 font-medium truncate">{p.n}</span>
-                        {p.speaking && (
-                          <span className="flex items-end gap-[1.5px] rounded bg-emerald-500/90 px-1 py-0.5">
-                            {[3, 5, 4, 6, 3].map((h, i) => (
-                              <span key={i} className="w-[1.5px] bg-white rounded-full" style={{ height: `${h}px` }} />
-                            ))}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="absolute top-2 left-2 inline-flex items-center gap-1.5 rounded-full bg-black/60 backdrop-blur px-2 py-0.5 text-[10px] font-medium">
-                  <span className="relative inline-flex h-1.5 w-1.5">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-70 animate-ping" />
-                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-rose-500" />
-                  </span>
-                  REC · 18:24
-                </div>
-                <div className="absolute top-2 right-2 rounded-md bg-black/50 backdrop-blur px-1.5 py-0.5 text-[9.5px] text-white/80">Google Meet · HD</div>
-                <button className="absolute bottom-2 right-2 grid h-8 w-8 place-items-center rounded-full bg-white/95 text-ink shadow-lg hover:scale-105 transition">
-                  <Play className="h-3.5 w-3.5 fill-current" />
-                </button>
-              </div>
-
-              <div className="mb-3">
-                <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-white/60">
-                  <span>Temps de parole</span>
-                  <span className="normal-case text-white/50">Ratio conseillé 40/60</span>
-                </div>
-                <div className="mt-1.5 h-1.5 w-full rounded-full overflow-hidden flex bg-white/10">
-                  <div className="h-full bg-rose-400/80" style={{ width: "56%" }} />
-                  <div className="h-full bg-sky-400/80" style={{ width: "38%" }} />
-                  <div className="h-full bg-emerald-400/70" style={{ width: "6%" }} />
-                </div>
-                <div className="mt-1.5 flex items-center gap-3 text-[10px] text-white/70">
-                  <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-rose-400" />Marie 56%</span>
-                  <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-sky-400" />Vous 38%</span>
-                  <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />Julien 6%</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <button className="grid h-9 w-9 place-items-center rounded-full bg-white/10 backdrop-blur">
-                  <Play className="h-4 w-4 fill-white" />
-                </button>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 text-[10.5px] uppercase tracking-wider text-white/60">Lecture · chapitre Découverte</div>
-                  <div className="text-[13px] font-medium">Acme Corp — Découverte</div>
-                </div>
-                <div className="text-[11.5px] tabular-nums text-white/70">18:24 / 42:07</div>
-              </div>
-              <div className="mt-3 flex items-end gap-[2px] h-10">
-                {Array.from({ length: 64 }).map((_, i) => {
-                  const played = i / 64 < 0.44;
-                  const h = 12 + Math.abs(Math.sin(i * 0.9) * 22) + (i % 5 === 0 ? 6 : 0);
-                  return <span key={i} className={`w-[3px] rounded-full ${played ? "bg-white/90" : "bg-white/25"}`} style={{ height: `${Math.min(h, 40)}px` }} />;
-                })}
-              </div>
-              <div className="mt-2 flex items-center gap-2 text-[10px] text-white/60">
-                <span className="rounded bg-white/10 px-1.5 py-0.5">00:00 Intro</span>
-                <span className="rounded bg-white/20 px-1.5 py-0.5 text-white">05:12 Découverte</span>
-                <span className="rounded bg-white/10 px-1.5 py-0.5">22:40 Démo</span>
-                <span className="rounded bg-white/10 px-1.5 py-0.5">36:10 Next steps</span>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <TranscriptLine who="Marie" me={false} ts="18:12" text="Aujourd'hui on gère tout ça sous Salesforce, mais l'attribution multi-touch, on n'y arrive pas." />
-              <TranscriptLine who="Vous" me ts="18:28" text="C'est justement là où on intervient. Vous êtes combien à toucher au CRM au quotidien ?" />
-              <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3">
-                <div className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-amber-700">
-                  <AlertTriangle className="h-3.5 w-3.5" /> Objection détectée
-                </div>
-                <p className="mt-1 text-[12.5px] text-ink/80">
-                  « Notre équipe est déjà surchargée, une nouvelle intégration me fait peur. »
-                </p>
-                <div className="mt-2 flex items-center gap-2 text-[10.5px] text-amber-700/90">
-                  <span className="rounded-md bg-white px-1.5 py-0.5 font-medium border border-amber-200">21:04</span>
-                  <span>· Réponse-type dispo dans le playbook</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl border border-border p-3">
-                  <div className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">Mots-clés</div>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {[["attribution", 7], ["Salesforce", 5], ["Q1", 4], ["RevOps", 3], ["budget", 2]].map(([w, n]) => (
-                      <span key={w} className="inline-flex items-center gap-1 rounded-md bg-lavender/20 border border-border px-1.5 py-0.5 text-[11px] text-ink/80">
-                        {w} <span className="text-muted-foreground tabular-nums">×{n}</span>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div className="rounded-xl border border-border p-3">
-                  <div className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">Concurrents cités</div>
-                  <ul className="mt-2 space-y-1 text-[11.5px] text-ink/80">
-                    <li className="flex items-center justify-between"><span>HubSpot</span><span className="text-muted-foreground tabular-nums">12:41</span></li>
-                    <li className="flex items-center justify-between"><span>Modjo</span><span className="text-muted-foreground tabular-nums">28:03</span></li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="order-1 lg:order-2">
-        <span className="text-[11.5px] font-semibold uppercase tracking-[0.12em] text-primary">Analyse post-call</span>
-        <h2 className="mt-3 text-[30px] md:text-[38px] leading-tight font-bold tracking-[-0.03em] text-ink">
-          Chaque call <span className="italic-serif text-primary">décortiqué</span>, sans écouter 40 minutes.
-        </h2>
-        <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
-          Le bot rejoint votre visio, transcrit en français, identifie les intervenants, puis
-          l&apos;IA analyse le call selon votre propre playbook. Vous récupérez en 2 minutes ce qui
-          demandait une heure de réécoute.
-        </p>
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <AnalyseCard icon={Mic} title="Transcription précise" body="Français natif, identification des locuteurs, timecodes cliquables." />
-          <AnalyseCard icon={BarChart3} title="Scoring par dimension" body="Ouverture, découverte, pitch, next step — calé sur votre playbook." />
-          <AnalyseCard icon={AlertTriangle} title="Objections & signaux" body="Détection automatique des objections, du sentiment et des concurrents cités." />
-          <AnalyseCard icon={PenLine} title="Résumé & next steps" body="Résumé exécutif, décisions, action items — prêts à copier-coller dans le CRM." />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function CoachItem({ children }: { children: React.ReactNode }) {
-  return (
-    <li className="flex items-start gap-2.5">
-      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-      <span>{children}</span>
-    </li>
-  );
-}
-
-function CoachingSection() {
-  return (
-    <section id="coaching" className="border-y border-border/60 bg-lavender/20">
+    <section id="manager" className="border-y border-border/60 bg-lavender/20">
       <div className="mx-auto max-w-6xl px-6 py-24 grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
         <div>
-          <span className="text-[11.5px] font-semibold uppercase tracking-[0.12em] text-primary">Pour les managers</span>
+          <span className="text-[11.5px] font-semibold uppercase tracking-[0.12em] text-primary">Pour les directeurs commerciaux</span>
           <h2 className="mt-3 text-[30px] md:text-[38px] leading-tight font-bold tracking-[-0.03em] text-ink">
             Coachez sur des <span className="italic-serif text-primary">faits</span>, plus sur des impressions.
           </h2>
           <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
-            Vous définissez le playbook. Brief l&apos;applique à chaque call de l&apos;équipe et vous remonte
-            ce qui compte : les tendances par commercial, les motifs de win/loss, les objections
-            récurrentes, les moments à réécouter en 1:1.
+            Vous définissez le playbook et les étapes de votre cycle. Brief les applique à chaque
+            call de l&apos;équipe et vous remonte ce qui compte : qui progresse, où les deals se
+            perdent, quelles objections bloquent, quels moments réécouter en 1:1.
           </p>
           <ul className="mt-6 space-y-3 text-[13.5px] text-ink/80">
-            <CoachItem>Playbook de scoring éditable — importable depuis Notion ou un doc.</CoachItem>
-            <CoachItem>Insights win/loss croisés : ce qui distingue les deals gagnés des perdus.</CoachItem>
-            <CoachItem>Digest hebdo par IA : forces, axes d&apos;amélioration, deals à surveiller.</CoachItem>
-            <CoachItem>Extraits de calls partageables en un clic pour les 1:1.</CoachItem>
+            {[
+              "Playbook de scoring éditable — importable depuis Notion ou un document.",
+              "Étapes R1/R2/R3 configurées sur vos propres noms de rendez-vous.",
+              "Objections les plus fréquentes et leur taux de succès, par équipe.",
+              "Scores comparés deals gagnés vs perdus, dimension par dimension.",
+              "Digest hebdo par IA : forces, axes de progrès, deals à surveiller.",
+            ].map((t) => (
+              <li key={t} className="flex items-start gap-2.5">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <span>{t}</span>
+              </li>
+            ))}
           </ul>
         </div>
 
         <div className="relative">
           <div className="relative rounded-3xl border border-border bg-white shadow-[0_20px_60px_-30px_rgba(15,23,42,0.3)] overflow-hidden">
-            <WindowChrome path="brief.app / équipe / insights" />
+            <WindowChrome path="brief.app / performance / équipe" />
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-3 gap-2">
                 {[
                   ["Calls / sem.", "84", "+12%"],
                   ["Score moyen", "3.6", "+0.2"],
-                  ["Win rate", "27%", "+4pt"],
+                  ["Taux de closing", "27%", "+4pt"],
                 ].map(([k, v, d]) => (
                   <div key={k} className="rounded-xl border border-border bg-lavender/20 p-3">
                     <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{k}</div>
@@ -1036,13 +699,33 @@ function CoachingSection() {
                 </div>
               </div>
 
+              <div className="rounded-xl border border-border p-3">
+                <div className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">Où se perdent les deals</div>
+                <div className="mt-2.5 grid grid-cols-3 gap-2 text-center">
+                  {[
+                    ["R1", "12%", "text-emerald-600"],
+                    ["R2", "31%", "text-rose-600"],
+                    ["R3", "9%", "text-emerald-600"],
+                  ].map(([s, v, c]) => (
+                    <div key={s} className="rounded-lg bg-lavender/20 border border-border p-2">
+                      <div className="text-[10px] font-semibold text-muted-foreground">{s}</div>
+                      <div className={`text-[15px] font-semibold tabular-nums ${c}`}>{v}</div>
+                      <div className="text-[9px] text-muted-foreground">deals perdus</div>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-2 text-[11px] text-muted-foreground leading-snug">
+                  → Le R2 concentre les pertes : les démos manquent de décideurs. Sujet du prochain point d&apos;équipe.
+                </p>
+              </div>
+
               <div className="rounded-xl border border-border bg-lavender/40 p-3">
                 <div className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-primary">
                   <Sparkles className="h-3.5 w-3.5" /> Digest de la semaine
                 </div>
                 <p className="mt-1.5 text-[12px] leading-relaxed text-ink/80">
-                  Les deals gagnés cette semaine ont tous inclus une démo dans les 5 jours suivant la découverte.
-                  À l&apos;inverse, l&apos;objection « intégration Salesforce » revient sur 3 deals stagnants.
+                  Les deals gagnés cette semaine ont tous inclus une démo dans les 5 jours suivant la
+                  découverte. L&apos;objection « intégration Salesforce » revient sur 3 deals stagnants.
                 </p>
               </div>
             </div>
@@ -1053,59 +736,12 @@ function CoachingSection() {
   );
 }
 
-function Features() {
-  const feats = [
-    { icon: Calendar, title: "Briefs pré-call intelligents", body: "Fiche entreprise sourcée (Pappers, LinkedIn, web), actualités des 60 derniers jours, contacts clés, cas clients similaires — générés la veille de chaque RDV." },
-    { icon: Video, title: "Bot d'enregistrement multi-plateforme", body: "Google Meet, Microsoft Teams, Zoom. Le bot rejoint automatiquement les rendez-vous synchronisés dans votre calendrier — visible ou discret." },
-    { icon: Bot, title: "Analyse automatique des calls", body: "Transcription française, identification des locuteurs, score par dimension calé sur votre playbook, sentiment, objections, concurrents cités." },
-    { icon: History, title: "Historique complet par contact", body: "Tous les touchpoints agrégés au niveau du contact et de l'entreprise : briefs, calls, emails, devis, tâches." },
-    { icon: FileCheck, title: "Devis en un clic", body: "Devis pré-remplis à partir de ce qui a été dit en rendez-vous, envoyés par email avec signature en ligne et suivi d'ouverture." },
-    { icon: ListChecks, title: "Tâches de suivi automatiques", body: "Brief crée les tâches à partir des next steps du call, les priorise, et rédige les brouillons d'emails de relance au bon moment." },
-    { icon: Share2, title: "Distribution automatique", body: "Briefs et analyses poussés dans HubSpot, Pipedrive ou en DM Slack — les commerciaux n'ont pas besoin de revenir sur Brief." },
-    { icon: Mail, title: "Digest hebdomadaire par IA", body: "Chaque lundi, un résumé personnalisé — pour le commercial (ses points forts, ses axes) et pour le manager (santé du pipe, deals à réactiver)." },
-    { icon: BookOpen, title: "Playbook coaching sur-mesure", body: "Définissez vos propres critères d'évaluation par équipe. Importables depuis un document Word, PDF ou directement depuis Notion." },
-    { icon: Users2, title: "Pilotage d'équipe", body: "Vue manager : performance par commercial, insights win/loss, motifs d'objection récurrents, extraits de calls à travailler en 1:1." },
-    { icon: Database, title: "Synchro CRM bidirectionnelle", body: "HubSpot et Pipedrive : les deals, contacts et notes remontent vers Brief, et les analyses redescendent dans les bonnes fiches." },
-    { icon: Lock, title: "Sécurité & conformité", body: "Hébergement européen, chiffrement au repos et en transit, consentement à l'enregistrement, suppression sur demande. RGPD by design." },
-  ];
-  return (
-    <section id="features" className="bg-white">
-      <div className="mx-auto max-w-6xl px-6 py-24">
-        <div className="max-w-2xl">
-          <span className="text-[11.5px] font-semibold uppercase tracking-[0.12em] text-primary">Fonctionnalités</span>
-          <h2 className="mt-3 text-[34px] md:text-[44px] leading-tight font-bold tracking-[-0.03em] text-ink">
-            Tout ce dont un commercial B2B a <span className="italic-serif text-primary">réellement</span> besoin.
-          </h2>
-          <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
-            Pas 40 features gadgets. Les fonctionnalités qui font gagner du temps sur les trois
-            moments qui comptent : préparer, mener, suivre.
-          </p>
-        </div>
-        <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {feats.map((f) => {
-            const Icon = f.icon;
-            return (
-              <div key={f.title} className="group rounded-2xl border border-border/60 bg-white p-5 shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:border-primary/30 transition">
-                <div className="grid h-10 w-10 place-items-center rounded-xl bg-lavender text-primary group-hover:brand-gradient group-hover:text-white transition-colors">
-                  <Icon className="h-4 w-4" />
-                </div>
-                <h3 className="mt-4 text-[15px] font-semibold text-ink">{f.title}</h3>
-                <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">{f.body}</p>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function RoiStrip() {
   const stats = [
-    { v: "20 min", k: "économisées avant chaque RDV" },
-    { v: "100%", k: "des calls analysés automatiquement" },
-    { v: "48h", k: "de délai moyen sur les relances (vs 5 jours)" },
-    { v: "1 clic", k: "pour générer un devis à partir d'un call" },
+    { v: "3 min", k: "pour préparer un RDV, au lieu de 20" },
+    { v: "100%", k: "des calls débriefés selon votre playbook" },
+    { v: "R1 → R3", k: "chaque étape du cycle évaluée sur ses propres critères" },
+    { v: "1 équipe", k: "qui capitalise sur chaque objection gagnée" },
   ];
   return (
     <section className="border-y border-border/60 bg-ink text-background">
@@ -1126,8 +762,8 @@ function Testimonial() {
     <section className="mx-auto max-w-4xl px-6 py-24 text-center">
       <Quote className="mx-auto h-8 w-8 text-primary" />
       <blockquote className="mt-6 text-[24px] md:text-[30px] leading-tight italic-serif text-ink/90">
-        « On a arrêté de perdre 30 minutes à préparer chaque call et une heure à écrire le
-        compte-rendu. Nos commerciaux passent enfin leur temps à parler à des clients. »
+        « On sait enfin pourquoi on gagne un deal — et pourquoi on en perd. Nos commerciaux
+        arrivent préparés, et les objections ne prennent plus personne de court. »
       </blockquote>
       <div className="mt-6 inline-flex items-center gap-3">
         <span className="grid h-10 w-10 place-items-center rounded-full brand-gradient text-white text-[13px] font-semibold">CD</span>
@@ -1143,9 +779,9 @@ function Testimonial() {
 function Integrations() {
   const groups = [
     { title: "Visio", items: ["Google Meet", "Microsoft Teams", "Zoom"], icon: Video },
-    { title: "Agenda & mail", items: ["Google Workspace", "Microsoft 365", "Gmail", "Outlook"], icon: Calendar },
-    { title: "CRM", items: ["HubSpot", "Pipedrive", "Sellsy (bientôt)", "Salesforce (bientôt)"], icon: Database },
-    { title: "Collaboration", items: ["Slack", "Notion"], icon: MessageSquare },
+    { title: "Agenda & mail", items: ["Google Workspace", "Gmail", "Google Calendar"], icon: Calendar },
+    { title: "CRM", items: ["HubSpot", "Pipedrive", "Sellsy (bientôt)"], icon: Database },
+    { title: "Playbook & équipe", items: ["Notion", "Slack", "Import Word / PDF"], icon: MessageSquare },
   ];
   return (
     <section id="integrations" className="border-y border-border/60 bg-lavender/20">
@@ -1156,8 +792,8 @@ function Integrations() {
             Se branche sur <span className="italic-serif text-primary">votre stack</span>.
           </h2>
           <p className="mt-3 text-[14.5px] text-muted-foreground">
-            Brief s&apos;intègre à votre stack existante — sans changer les habitudes de vos commerciaux
-            ni imposer un nouvel outil quotidien.
+            Briefs et analyses arrivent là où vos commerciaux travaillent déjà — CRM, agenda, email.
+            Pas un nouvel outil quotidien à imposer.
           </p>
         </div>
         <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1176,6 +812,11 @@ function Integrations() {
             );
           })}
         </div>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[12px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5" /> RGPD by design</span>
+          <span className="inline-flex items-center gap-1.5"><Globe2 className="h-3.5 w-3.5" /> Enregistrements hébergés en Europe</span>
+          <span className="inline-flex items-center gap-1.5"><Play className="h-3.5 w-3.5" /> Consentement à l&apos;enregistrement</span>
+        </div>
       </div>
     </section>
   );
@@ -1183,15 +824,15 @@ function Integrations() {
 
 function Faq() {
   const qas = [
-    { q: "Comment Brief rejoint mes rendez-vous ?", a: "Vous connectez votre agenda Google ou Microsoft. Brief détecte automatiquement les visios (Meet, Teams, Zoom) et envoie un bot pour enregistrer — visible ou discret, selon votre réglage. Vous pouvez exclure des RDV manuellement." },
-    { q: "L'IA est-elle vraiment fiable en français ?", a: "Oui. Brief utilise des modèles de transcription et d'analyse optimisés pour le français commercial, avec identification des locuteurs et prise en compte des tournures propres à la vente B2B." },
-    { q: "Puis-je adapter le scoring à mon équipe ?", a: "Le playbook est entièrement éditable. Vous définissez vos propres dimensions, leur pondération et vos critères. Vous pouvez aussi l'importer depuis un document Notion ou Word existant." },
-    { q: "Que devient l'enregistrement ?", a: "Hébergement européen, chiffrement au repos et en transit, durée de rétention configurable, suppression sur demande. Chaque participant reçoit une information de consentement conforme RGPD." },
-    { q: "Comment ça marche avec mon CRM ?", a: "Brief se synchronise avec HubSpot et Pipedrive (Sellsy et Salesforce prochainement). Les analyses et notes sont poussées automatiquement sur la bonne fiche deal et le bon contact." },
-    { q: "Puis-je tester Brief ?", a: "L'accès est sur invitation. Écrivez-nous pour obtenir une démonstration adaptée à votre équipe et un accès d'essai encadré." },
+    { q: "Comment Brief augmente concrètement le taux de closing ?", a: "En travaillant les trois leviers qui distinguent les top performers : arriver préparé (brief complet avant chaque RDV), savoir ce qui a marché ou pas (débrief noté de chaque call, adapté à l'étape R1/R2/R3), et capitaliser en équipe (bibliothèque d'objections reliée au sort réel des deals)." },
+    { q: "Comment Brief rejoint mes rendez-vous ?", a: "Vous connectez votre agenda Google. Brief détecte les visios (Meet, Teams, Zoom) et envoie un bot pour enregistrer et transcrire. Vous pouvez exclure des rendez-vous manuellement." },
+    { q: "C'est quoi, l'analyse par étape R1/R2/R3 ?", a: "Chaque entreprise nomme ses rendez-vous à sa façon (« Rencontre X » pour un premier RDV, « Présentation X » pour une démo…). Le manager configure ces motifs une fois, et Brief évalue chaque call selon les critères de son étape : on ne juge pas un premier rendez-vous de découverte comme un rendez-vous de closing." },
+    { q: "Puis-je adapter le scoring à ma méthode de vente ?", a: "Oui, le playbook est entièrement éditable : vos dimensions, vos critères, votre pondération. Importable depuis Notion, Word ou PDF. Les consignes d'analyse de chaque étape R1/R2/R3 sont également modifiables." },
+    { q: "Que deviennent les enregistrements ?", a: "Hébergement européen, chiffrement au repos et en transit, suppression sur demande. Chaque participant est informé de l'enregistrement, conformément au RGPD." },
+    { q: "Puis-je tester Brief ?", a: "L'accès est sur invitation. Écrivez-nous pour une démonstration adaptée à votre équipe et un accès d'essai encadré." },
   ];
   return (
-    <section className="mx-auto max-w-4xl px-6 py-24">
+    <section id="faq" className="mx-auto max-w-4xl px-6 py-24">
       <div className="text-center">
         <span className="text-[11.5px] font-semibold uppercase tracking-[0.12em] text-primary">Questions fréquentes</span>
         <h2 className="mt-3 text-[30px] md:text-[34px] leading-tight font-bold tracking-[-0.03em] text-ink">
@@ -1223,11 +864,11 @@ function CTA() {
             <Zap className="h-3 w-3" /> Accès sur invitation
           </span>
           <h2 className="mt-5 text-[34px] md:text-[46px] leading-tight font-bold tracking-[-0.03em]">
-            Prêt à transformer vos <span className="italic-serif text-primary">rendez-vous</span> ?
+            Prêt à closer <span className="italic-serif text-primary">plus</span> ?
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-background/70">
             Rejoignez les équipes commerciales françaises qui utilisent Brief pour préparer mieux,
-            suivre plus vite et vendre davantage.
+            débriefer chaque call et transformer plus de rendez-vous en clients.
           </p>
           <div className="mt-8 inline-flex flex-wrap items-center justify-center gap-3">
             <Link
@@ -1277,12 +918,12 @@ export default function HomePage() {
       <Nav />
       <main>
         <Hero />
-        <Pipeline />
-        <PreCallSection />
-        <ReferencesSection />
-        <AnalyseSection />
-        <CoachingSection />
-        <Features />
+        <ProblemSection />
+        <MethodIntro />
+        <PreparerSection />
+        <DebrieferSection />
+        <ProgresserSection />
+        <ManagerSection />
         <RoiStrip />
         <Testimonial />
         <Integrations />
