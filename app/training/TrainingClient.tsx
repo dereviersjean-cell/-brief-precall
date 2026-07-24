@@ -367,7 +367,7 @@ export default function TrainingClient({
   if (session) {
     const persona = session.scenario.persona;
     return (
-      <main className="brief-ui px-4 sm:px-10 py-8 max-w-4xl">
+      <main className="brief-ui mx-auto px-4 sm:px-10 py-8 max-w-4xl">
         <div className="flex items-start justify-between gap-4 flex-wrap mb-5">
           <div className="flex items-center gap-3 min-w-0">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl brand-gradient text-white text-[14px] font-semibold">
@@ -513,7 +513,7 @@ export default function TrainingClient({
 
   // ── Écran d'accueil ──
   return (
-    <main className="brief-ui px-4 sm:px-10 py-8 max-w-5xl">
+    <main className="brief-ui mx-auto px-4 sm:px-10 py-8 max-w-5xl">
       <PageHeader
         eyebrow="Coach IA"
         title="Entraînement"

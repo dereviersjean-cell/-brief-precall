@@ -1,6 +1,7 @@
 "use client";
 
-import { Lock, Dumbbell, Mic, MessagesSquare, TrendingUp, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { Lock, Dumbbell, Mic, MessagesSquare, TrendingUp, Sparkles, Loader2, Check } from "lucide-react";
 import { PageHeader } from "@/app/components/ui/PageHeader";
 import { Card } from "@/app/components/ui/ui-bits";
 
@@ -10,15 +11,31 @@ const FEATURES = [
   { icon: TrendingUp, text: "Débrief noté après chaque session, avec la réponse à retenir" },
 ];
 
+type RequestState = "idle" | "sending" | "sent" | "error";
+
 // Module additionnel désactivé par défaut (migration 003) — /training rend
 // ceci à la place de TrainingClient tant que
 // isTrainingEnabledForOrganization renvoie false pour l'organisation de
-// l'utilisateur. Le CTA ouvre un mailto plutôt qu'un vrai flux d'achat : pas
-// d'infra de facturation par module à ce stade, le déblocage se fait
-// manuellement côté admin (setTrainingEnabledForOrganization).
+// l'utilisateur. Le CTA appelle /api/training/request-unlock (trace en base
+// + email admin) plutôt qu'un simple mailto — pas d'infra de facturation par
+// module à ce stade, le déblocage se fait manuellement côté admin
+// (setTrainingEnabledForOrganization).
 export default function TrainingLockedClient() {
+  const [state, setState] = useState<RequestState>("idle");
+
+  async function handleRequest() {
+    setState("sending");
+    try {
+      const res = await fetch("/api/training/request-unlock", { method: "POST" });
+      if (!res.ok) throw new Error();
+      setState("sent");
+    } catch {
+      setState("error");
+    }
+  }
+
   return (
-    <main className="brief-ui px-4 sm:px-10 py-8 max-w-3xl">
+    <main className="brief-ui mx-auto px-4 sm:px-10 py-8 max-w-3xl">
       <PageHeader
         eyebrow="Module additionnel"
         title="Entraînement"
@@ -49,21 +66,39 @@ export default function TrainingLockedClient() {
           </Card>
         </div>
 
-        <div className="absolute inset-0 grid place-items-center">
+        <div className="absolute inset-0 grid place-items-center px-4">
           <div className="text-center px-6 py-8 rounded-2xl bg-white/90 backdrop-blur border border-border shadow-[var(--shadow-md)] max-w-sm">
             <span className="mx-auto grid h-11 w-11 place-items-center rounded-xl bg-[color:var(--lavender)] text-[color:var(--violet)] mb-3">
               <Lock className="h-5 w-5" />
             </span>
             <p className="text-[14px] font-semibold text-slate-900">Module non débloqué</p>
             <p className="mt-1 text-[12.5px] text-slate-500">
-              Entraînement est un module additionnel — contactez-nous pour l&apos;activer sur votre organisation.
+              Entraînement est un module additionnel — demandez son activation pour votre organisation.
             </p>
-            <a
-              href="mailto:hello@oliverlist.com?subject=D%C3%A9bloquer%20le%20module%20Entra%C3%AEnement"
-              className="mt-4 inline-flex items-center justify-center gap-1.5 brand-gradient h-9 px-4 rounded-lg text-[13px] font-medium text-white shadow-[var(--shadow-glow)] hover:brightness-110 transition-all"
-            >
-              <Sparkles className="h-3.5 w-3.5" /> Je veux débloquer ce module
-            </a>
+
+            {state === "sent" ? (
+              <p className="mt-4 inline-flex items-center justify-center gap-1.5 text-[13px] font-medium text-emerald-600">
+                <Check className="h-3.5 w-3.5" /> Demande envoyée — on revient vers vous rapidement.
+              </p>
+            ) : (
+              <button
+                onClick={handleRequest}
+                disabled={state === "sending"}
+                className="mt-4 inline-flex items-center justify-center gap-1.5 brand-gradient h-9 px-4 rounded-lg text-[13px] font-medium text-white shadow-[var(--shadow-glow)] hover:brightness-110 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {state === "sending" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                {state === "sending" ? "Envoi…" : "Je veux débloquer ce module"}
+              </button>
+            )}
+            {state === "error" && (
+              <p className="mt-2 text-[11.5px] text-rose-500">
+                Erreur d&apos;envoi — écrivez-nous directement à{" "}
+                <a href="mailto:hello@oliverlist.com" className="underline">
+                  hello@oliverlist.com
+                </a>
+                .
+              </p>
+            )}
           </div>
         </div>
       </div>

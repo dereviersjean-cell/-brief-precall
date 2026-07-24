@@ -1496,6 +1496,37 @@ export async function setTrainingEnabledForOrganization(organizationId: string, 
   if (error) throw error;
 }
 
+// Trace du CTA "Je veux débloquer ce module" (migration 004) — durable en
+// base même si l'email admin échoue. hasRecentTrainingUnlockRequest sert à
+// éviter de spammer l'admin si l'utilisateur reclique plusieurs fois.
+export async function hasRecentTrainingUnlockRequest(userId: string, sinceISO: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin
+    .from("training_unlock_requests")
+    .select("id")
+    .eq("user_id", userId)
+    .gte("created_at", sinceISO)
+    .limit(1);
+  if (error) throw error;
+  return (data ?? []).length > 0;
+}
+
+export async function createTrainingUnlockRequest(params: {
+  organizationId: string | null;
+  userId: string;
+  userName: string | null;
+  userEmail: string;
+  organizationName: string | null;
+}): Promise<void> {
+  const { error } = await supabaseAdmin.from("training_unlock_requests").insert({
+    organization_id: params.organizationId,
+    user_id: params.userId,
+    user_name: params.userName,
+    user_email: params.userEmail,
+    organization_name: params.organizationName,
+  });
+  if (error) throw error;
+}
+
 // Sièges facturables = users actifs (non désactivés) rattachés à l'org.
 // Mêmes filtres que deleteOrganization ci-dessus, plus disabled_at IS NULL.
 export async function getActiveSeatCountForOrganization(orgId: string): Promise<number> {

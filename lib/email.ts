@@ -55,6 +55,49 @@ function buildInvitationHtml(params: {
   `;
 }
 
+// Alerte interne — CTA "Je veux débloquer ce module" sur la page verrouillée
+// d'Entraînement (app/training/TrainingLockedClient.tsx). Destinataire fixé
+// par ADMIN_NOTIFICATION_EMAIL (pas de fallback codé en dur sur une adresse
+// perso) ; si la variable n'est pas configurée, l'appelant journalise et
+// n'envoie rien — la demande reste tracée en base (training_unlock_requests)
+// dans tous les cas.
+export async function sendTrainingUnlockRequestEmail(params: {
+  to: string;
+  userName: string | null;
+  userEmail: string;
+  organizationName: string | null;
+}): Promise<void> {
+  const { to, userName, userEmail, organizationName } = params;
+  const resend = new Resend(process.env.RESEND_API_KEY);
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px; color: #0f172a;">
+      <div style="width: 40px; height: 40px; background: #4f46e5; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 24px;">
+        <span style="color: #ffffff; font-weight: bold; font-size: 18px; line-height: 40px; text-align: center; display: block; width: 40px;">B</span>
+      </div>
+      <h1 style="font-size: 20px; margin: 0 0 16px;">Demande de déblocage — Entraînement</h1>
+      <p style="font-size: 14px; color: #475569; line-height: 1.6; margin: 0 0 8px;">
+        <strong>${userName ?? userEmail}</strong> (${userEmail}) a cliqué sur « Je veux débloquer ce module » depuis
+        l&apos;organisation <strong>${organizationName ?? "sans organisation"}</strong>.
+      </p>
+      <p style="font-size: 14px; color: #475569; line-height: 1.6; margin: 0 0 24px;">
+        Débloquer depuis /admin/organizations → l&apos;organisation → Facturation → Modules additionnels.
+      </p>
+    </div>
+  `;
+
+  const { error } = await resend.emails.send({
+    from: process.env.RESEND_FROM_EMAIL!,
+    to,
+    subject: `Demande de déblocage — Entraînement (${organizationName ?? userEmail})`,
+    html,
+  });
+
+  if (error) {
+    throw new Error(`sendTrainingUnlockRequestEmail failed: ${error.message}`);
+  }
+}
+
 export async function sendInvitationEmail(params: {
   to: string;
   invitedByName: string;
