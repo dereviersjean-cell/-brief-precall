@@ -1,7 +1,7 @@
 "use client";
 
-import { Trophy, MessageSquareWarning } from "lucide-react";
-import type { ObjectionStat, DimensionScoreByOutcome } from "@/lib/db";
+import { Trophy, MessageSquareWarning, Dumbbell } from "lucide-react";
+import type { ObjectionStat, DimensionScoreByOutcome, TrainingTeamStat } from "@/lib/db";
 import FadeIn from "@/app/dashboard/FadeIn";
 
 function successRate(stat: ObjectionStat): number | null {
@@ -57,9 +57,11 @@ function DimensionCompareBar({ dimension }: { dimension: DimensionScoreByOutcome
 export default function TeamInsightsClient({
   objectionStats,
   dimensionScores,
+  trainingStats,
 }: {
   objectionStats: ObjectionStat[];
   dimensionScores: DimensionScoreByOutcome[];
+  trainingStats: TrainingTeamStat[];
 }) {
   const hasEnoughDimensionData = dimensionScores.some((d) => d.wonCount + d.lostCount > 0);
 
@@ -106,6 +108,55 @@ export default function TeamInsightsClient({
                   </div>
                   <div className="shrink-0">
                     <SuccessBadge stat={stat} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </FadeIn>
+
+      <FadeIn delay={0.08}>
+        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-6 mb-6">
+          <div className="flex items-center gap-2 mb-1">
+            <Dumbbell className="w-4 h-4 text-slate-400" />
+            <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Entraînement</h2>
+          </div>
+          <p className="text-xs text-slate-400 mb-4">
+            Qui s&apos;entraîne et progresse — le contenu des sessions reste privé, seuls les compteurs et scores sont visibles.
+          </p>
+          {trainingStats.length === 0 ? (
+            <p className="text-slate-400 text-sm italic">
+              Aucune session d&apos;entraînement terminée pour l&apos;instant.
+            </p>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {trainingStats.map((stat) => (
+                <li key={stat.userId} className="py-3 flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-700 truncate">{stat.name ?? stat.email}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {stat.sessionsCount} session{stat.sessionsCount > 1 ? "s" : ""}
+                      {stat.lastSessionAt &&
+                        ` · dernière le ${new Date(stat.lastSessionAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}`}
+                    </p>
+                  </div>
+                  <div className="shrink-0">
+                    {stat.avgScore === null ? (
+                      <span className="text-xs text-slate-300">—</span>
+                    ) : (
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                          stat.avgScore >= 4
+                            ? "bg-green-100 text-green-700"
+                            : stat.avgScore >= 2.5
+                            ? "bg-orange-100 text-orange-700"
+                            : "bg-red-100 text-red-700"
+                        }`}
+                      >
+                        {stat.avgScore.toFixed(1)}/5 en moyenne
+                      </span>
+                    )}
                   </div>
                 </li>
               ))}

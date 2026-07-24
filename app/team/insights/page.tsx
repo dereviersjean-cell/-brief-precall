@@ -1,5 +1,11 @@
 import { redirect } from "next/navigation";
-import { getUserRole, getUserOrganizationId, getObjectionStatsForOrganization, getDimensionScoresByOutcome } from "@/lib/db";
+import {
+  getUserRole,
+  getUserOrganizationId,
+  getObjectionStatsForOrganization,
+  getDimensionScoresByOutcome,
+  getTrainingStatsForOrganization,
+} from "@/lib/db";
 import { getEffectiveUserId } from "@/lib/session-user";
 import TeamInsightsClient from "./TeamInsightsClient";
 
@@ -16,10 +22,13 @@ export default async function TeamInsightsPage() {
     redirect("/team");
   }
 
-  const [objectionStats, dimensionScores] = await Promise.all([
+  // trainingStats en .catch : la table training_sessions (migration 002) peut
+  // ne pas encore exister en prod — pattern bug #14.
+  const [objectionStats, dimensionScores, trainingStats] = await Promise.all([
     getObjectionStatsForOrganization(orgId),
     getDimensionScoresByOutcome(orgId),
+    getTrainingStatsForOrganization(orgId).catch(() => []),
   ]);
 
-  return <TeamInsightsClient objectionStats={objectionStats} dimensionScores={dimensionScores} />;
+  return <TeamInsightsClient objectionStats={objectionStats} dimensionScores={dimensionScores} trainingStats={trainingStats} />;
 }

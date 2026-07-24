@@ -440,13 +440,21 @@ function ObjectionItem({ objection, response }: { objection: string; response: s
         <span className="text-slate-400">–</span> {objection}
       </p>
       <p className="text-slate-500 pl-4 mt-0.5">↳ {response}</p>
-      <button
-        type="button"
-        onClick={handleToggle}
-        className="pl-4 mt-1 text-xs text-[color:var(--violet)] hover:text-[color:var(--violet)] font-medium"
-      >
-        {expanded ? "Masquer les cas similaires" : "Voir des cas similaires déjà traités"}
-      </button>
+      <span className="pl-4 mt-1 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={handleToggle}
+          className="text-xs text-[color:var(--violet)] hover:text-[color:var(--violet)] font-medium"
+        >
+          {expanded ? "Masquer les cas similaires" : "Voir des cas similaires déjà traités"}
+        </button>
+        <Link
+          href={`/training?objection=${encodeURIComponent(objection)}`}
+          className="text-xs text-[color:var(--violet)] font-medium hover:underline"
+        >
+          M&apos;entraîner sur cette objection →
+        </Link>
+      </span>
       {expanded && (
         <div className="pl-4 mt-2 space-y-2">
           {loading && <p className="text-xs text-slate-400 italic">Recherche en cours…</p>}

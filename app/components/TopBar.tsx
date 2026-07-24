@@ -12,6 +12,7 @@ const LABELS: Record<string, string> = {
   dashboard: "Performance",
   brief: "Brief",
   feedback: "Analyse rendez-vous",
+  training: "Entraînement",
   contacts: "Historique",
   settings: "Paramètres",
   notifications: "Notifications",

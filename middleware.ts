@@ -7,6 +7,7 @@ export const config = {
     "/dashboard/:path*",
     "/brief/:path*",
     "/feedback/:path*",
+    "/training/:path*",
     "/contacts/:path*",
     "/quotes/:path*",
     "/tasks/:path*",

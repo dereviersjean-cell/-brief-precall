@@ -5563,3 +5563,245 @@ export async function getRecentTeamCallScores(userIds: string[], sinceISO: strin
     global_score: normalizeCallAnalysis(row.call_analysis)?.scores?.global_score ?? null,
   }));
 }
+
+// ─── Entraînement (roleplay IA sur les objections mal traitées) ────────────
+// Table training_sessions (migration 002). Le contenu des sessions est
+// strictement personnel : toutes les lectures filtrent par user_id, seul
+// getTrainingStatsForOrganization expose un agrégat (compteurs/scores, pas
+// les transcripts) pour la vue manager.
+
+export type TrainingPersona = {
+  name: string;
+  role: string;
+  company: string;
+  attitude: string;
+};
+
+export type TrainingScenario = {
+  objection: string;
+  // Ce que le commercial avait (ou pas) répondu en vrai — contexte du débrief.
+  originalResponse: string | null;
+  source: "no_response" | "lost_deal" | "unknown_outcome" | "custom";
+  sourceCallId: string | null;
+  companyName: string | null;
+  meetingStage: MeetingStage | null;
+  persona: TrainingPersona;
+};
+
+export type TrainingTurn = { role: "prospect" | "commercial"; text: string; at: string };
+
+export type TrainingDebrief = {
+  global_score: number;
+  objection_handled: "oui" | "partiellement" | "non";
+  axes: { key: string; label: string; score: number; comment: string }[];
+  strengths: string[];
+  weaknesses: string[];
+  better_response: string;
+};
+
+export type TrainingSessionRow = {
+  id: string;
+  user_id: string;
+  organization_id: string | null;
+  scenario: TrainingScenario;
+  transcript: TrainingTurn[];
+  debrief: TrainingDebrief | null;
+  status: "active" | "completed";
+  created_at: string;
+  completed_at: string | null;
+};
+
+export async function createTrainingSession(
+  userId: string,
+  organizationId: string | null,
+  scenario: TrainingScenario,
+  transcript: TrainingTurn[]
+): Promise<{ id: string }> {
+  const { data, error } = await supabaseAdmin
+    .from("training_sessions")
+    .insert({ user_id: userId, organization_id: organizationId, scenario, transcript })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return data as { id: string };
+}
+
+export async function getTrainingSession(sessionId: string, userId: string): Promise<TrainingSessionRow | null> {
+  const { data, error } = await supabaseAdmin
+    .from("training_sessions")
+    .select("*")
+    .eq("id", sessionId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data as TrainingSessionRow | null;
+}
+
+// Remplacement complet du transcript (read-modify-write côté route) — une
+// session n'a qu'un seul participant humain, pas de concurrence à gérer.
+export async function saveTrainingTranscript(sessionId: string, userId: string, transcript: TrainingTurn[]): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("training_sessions")
+    .update({ transcript })
+    .eq("id", sessionId)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
+export async function completeTrainingSession(sessionId: string, userId: string, debrief: TrainingDebrief): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("training_sessions")
+    .update({ debrief, status: "completed", completed_at: new Date().toISOString() })
+    .eq("id", sessionId)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
+export async function listTrainingSessionsForUser(userId: string, limit = 20): Promise<TrainingSessionRow[]> {
+  const { data, error } = await supabaseAdmin
+    .from("training_sessions")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as TrainingSessionRow[];
+}
+
+export type TrainingObjectionCandidate = {
+  objection: string;
+  originalResponse: string;
+  source: "no_response" | "lost_deal" | "unknown_outcome";
+  callId: string;
+  companyName: string | null;
+  contactEmail: string | null;
+  meetingStage: MeetingStage | null;
+  createdAt: string;
+};
+
+// Les « pains » du commercial : SES objections (pas celles de toute l'org),
+// hors deals gagnés, triées par gravité — d'abord celles restées sans
+// réponse, puis celles sur deals perdus, puis issue inconnue. Dédupliquées
+// par texte normalisé (la plus récente gagne).
+export async function listTrainingObjectionCandidatesForUser(
+  userId: string,
+  organizationId: string,
+  limit = 9
+): Promise<TrainingObjectionCandidate[]> {
+  const { data, error } = await supabaseAdmin
+    .from("call_objections")
+    .select("call_id, contact_email, objection, response, created_at, calls!inner(user_id, company_name, meeting_stage)")
+    .eq("organization_id", organizationId)
+    .eq("calls.user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error) throw error;
+
+  type Row = {
+    call_id: string;
+    contact_email: string | null;
+    objection: string;
+    response: string;
+    created_at: string;
+    calls: { user_id: string; company_name: string | null; meeting_stage: MeetingStage | null } | { user_id: string; company_name: string | null; meeting_stage: MeetingStage | null }[];
+  };
+  const rows = (data ?? []) as Row[];
+  const outcomeByEmail = await getDealOutcomesByEmail(organizationId, rows.map((r) => r.contact_email));
+
+  const PRIORITY: Record<TrainingObjectionCandidate["source"], number> = { no_response: 0, lost_deal: 1, unknown_outcome: 2 };
+  const byKey = new Map<string, TrainingObjectionCandidate>();
+
+  for (const r of rows) {
+    const outcome = r.contact_email ? outcomeByEmail.get(r.contact_email) : undefined;
+    if (outcome === "won") continue; // objection bien traitée — rien à travailler
+
+    // Signal « pas su traiter » : le placeholder d'extraction (lib/call-analysis.ts)
+    // ou le placeholder legacy (normalizeObjections, bug #18).
+    const noResponse = /^(pas de réponse|réponse non disponible)/i.test(r.response.trim());
+    const source: TrainingObjectionCandidate["source"] = noResponse ? "no_response" : outcome === "lost" ? "lost_deal" : "unknown_outcome";
+
+    const call = Array.isArray(r.calls) ? r.calls[0] : r.calls;
+    const candidate: TrainingObjectionCandidate = {
+      objection: r.objection.trim(),
+      originalResponse: r.response,
+      source,
+      callId: r.call_id,
+      companyName: call?.company_name ?? null,
+      contactEmail: r.contact_email,
+      meetingStage: call?.meeting_stage ?? null,
+      createdAt: r.created_at,
+    };
+
+    const key = r.objection.trim().toLowerCase();
+    const existing = byKey.get(key);
+    // Rows arrive newest-first — keep the first seen unless a later (older)
+    // row has a more severe source for the same objection text.
+    if (!existing || PRIORITY[candidate.source] < PRIORITY[existing.source]) {
+      byKey.set(key, existing ? { ...candidate, createdAt: existing.createdAt } : candidate);
+    }
+  }
+
+  return Array.from(byKey.values())
+    .sort((a, b) => PRIORITY[a.source] - PRIORITY[b.source] || b.createdAt.localeCompare(a.createdAt))
+    .slice(0, limit);
+}
+
+export type TrainingTeamStat = {
+  userId: string;
+  name: string | null;
+  email: string;
+  sessionsCount: number;
+  avgScore: number | null;
+  lastSessionAt: string | null;
+};
+
+// Agrégat pour la vue manager (Équipe > Insights) — compteurs et scores
+// uniquement, jamais les transcripts ni les débriefs : l'entraînement doit
+// rester un espace sûr pour travailler ses vraies faiblesses.
+export async function getTrainingStatsForOrganization(organizationId: string): Promise<TrainingTeamStat[]> {
+  const { data, error } = await supabaseAdmin
+    .from("training_sessions")
+    .select("user_id, status, debrief, completed_at, users(name, email)")
+    .eq("organization_id", organizationId)
+    .eq("status", "completed");
+  if (error) throw error;
+
+  type Row = {
+    user_id: string;
+    status: string;
+    debrief: TrainingDebrief | null;
+    completed_at: string | null;
+    users: { name: string | null; email: string } | { name: string | null; email: string }[] | null;
+  };
+  const byUser = new Map<string, TrainingTeamStat & { scoreSum: number; scoreCount: number }>();
+
+  for (const r of (data ?? []) as Row[]) {
+    const user = Array.isArray(r.users) ? (r.users[0] ?? null) : r.users;
+    const stat = byUser.get(r.user_id) ?? {
+      userId: r.user_id,
+      name: user?.name ?? null,
+      email: user?.email ?? "",
+      sessionsCount: 0,
+      avgScore: null,
+      lastSessionAt: null,
+      scoreSum: 0,
+      scoreCount: 0,
+    };
+    stat.sessionsCount += 1;
+    if (typeof r.debrief?.global_score === "number") {
+      stat.scoreSum += r.debrief.global_score;
+      stat.scoreCount += 1;
+    }
+    if (r.completed_at && (!stat.lastSessionAt || r.completed_at > stat.lastSessionAt)) {
+      stat.lastSessionAt = r.completed_at;
+    }
+    byUser.set(r.user_id, stat);
+  }
+
+  return Array.from(byUser.values())
+    .map(({ scoreSum, scoreCount, ...stat }) => ({
+      ...stat,
+      avgScore: scoreCount > 0 ? scoreSum / scoreCount : null,
+    }))
+    .sort((a, b) => b.sessionsCount - a.sessionsCount);
+}

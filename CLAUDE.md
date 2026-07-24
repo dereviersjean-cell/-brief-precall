@@ -22,6 +22,18 @@
 - **Migration `migrations/001_meeting_stages.sql`** (premier fichier du dossier `migrations/` recommandé par l'audit) : appliquée en prod le 24 juillet 2026.
 - **Landing allégée** façon eagr.ai/fr : promesse unique « Augmentez votre taux de closing », section problème (écart top performer), 3 piliers numérotés (Préparer / Débriefer / Progresser) calqués sur la structure de l'app, section manager, schéma récapitulatif de la structure (`StructureDiagram` dans `app/page.tsx`, remplace l'ancien bandeau de stats `RoiStrip`), FAQ resserrée à 5 questions. Zéro mention devis/tasks.
 
+## Bloc Entraînement (roleplay IA) — 24 juillet 2026
+
+Inspiration muchbetter.ai (simulations vocales + coach IA), mais paramétré automatiquement sur les **vrais pains du commercial** : ses objections restées sans réponse ou sur deals perdus, extraites de ses calls analysés.
+
+- **Architecture voix à coût quasi nul** (~0,05 €/session, décision explicite — pas de speech-to-speech temps réel à 2-5 €/session) : reconnaissance vocale navigateur (Web Speech API, `fr-FR`, Chrome/Edge/Safari — repli clavier sur Firefox), Claude en texte pour le prospect, synthèse vocale navigateur (`speechSynthesis`) pour la voix du prospect (coupable via toggle). Si la voix navigateur s'avère trop robotique : brancher une TTS premium dans `speak()` (TrainingClient.tsx), point unique.
+- **Table `training_sessions`** (migration `002_training_sessions.sql` — **à exécuter sur Supabase prod avant déploiement** ; les pages ont des `.catch` de repli mais les sessions ne démarreront pas sans la table) : scenario jsonb (objection + persona + source + étape R1/R2/R3), transcript jsonb, debrief jsonb, status active/completed.
+- **`lib/training.ts`** : persona générée par Haiku (repli persona par défaut, ne bloque jamais), prospect joué par Sonnet (system prompt codé en dur, registre oral, ne cède que face à de bonnes réponses — reformulation, questions, preuves), débrief JSON validé par `validateTrainingDebriefShape` (pattern bug #20), enrichi best-effort des réponses de l'équipe sur objections similaires (`findSimilarObjections`). 4 axes de notation fixes (`TRAINING_AXES`), 12 tours max (`MAX_COMMERCIAL_TURNS`).
+- **Scénarios suggérés** = `listTrainingObjectionCandidatesForUser` (lib/db.ts) : SES objections (jointure `calls!inner` sur user_id), deals gagnés exclus, priorité sans-réponse (regex sur les placeholders « Pas de réponse apportée » / « Réponse non disponible ») > deal perdu > issue inconnue, dédup par texte normalisé. + objection libre, + lien « M'entraîner sur cette objection » depuis chaque objection de `/feedback/[id]`.
+- **Routes** : `/api/training/scenarios` (lecture, pas de rate limit), `POST /api/training/sessions`, `.../turn`, `.../finish` — toutes `requireActiveUser` + `checkAiGenerationRateLimit`. `finish` est idempotent (session déjà complétée → renvoie le débrief existant).
+- **Confidentialité** : le contenu des sessions est strictement personnel (toutes les lectures filtrent `user_id`). Le manager ne voit qu'un agrégat (compteurs, score moyen, dernière session) dans `/team/insights` via `getTrainingStatsForOrganization` — jamais les transcripts. Ne PAS exposer les transcripts côté manager : décision produit explicite (espace sûr).
+- UI : `/training` (sidebar « Entraînement », groupe Commercial, entre Analyse RDV et Performance), tout dans `TrainingClient.tsx` (accueil scénarios/objection libre/historique dépliable + écran session avec micro/dictée, bulles, débrief).
+
 ## Décisions architecturales — pourquoi ces choix
 
 | Service | Raison |
