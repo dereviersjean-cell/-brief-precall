@@ -28,7 +28,6 @@ import {
   Users,
   Settings,
   LayoutDashboard,
-  Dumbbell,
 } from "lucide-react";
 
 // Refonte juillet 2026 — structure inspirée d'eagr.ai/fr : une promesse
@@ -764,26 +763,6 @@ function MiniAnalysePreview() {
   );
 }
 
-function MiniTrainingPreview() {
-  const bars = [5, 9, 14, 8, 16, 11, 6, 13, 17, 9, 5, 12, 7, 15, 10, 6];
-  return (
-    <div className="flex items-center gap-2.5">
-      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/30 border border-primary/40 text-white">
-        <Dumbbell className="h-3 w-3" />
-      </span>
-      <div className="flex flex-1 items-center gap-[3px] h-7">
-        {bars.map((h, i) => (
-          <span
-            key={i}
-            className={`w-[3px] rounded-full ${i % 4 === 0 ? "brand-gradient" : "bg-white/25"}`}
-            style={{ height: `${h}px` }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function MiniPerformancePreview() {
   return (
     <div className="relative">
@@ -866,9 +845,10 @@ function SupportCard({ icon: Icon, title, subtitle, items }: { icon: React.Compo
 }
 
 // Schéma récapitulatif — comment les sections de l'app s'articulent : le fil
-// commercial (préparer → débriefer → s'entraîner → suivre) irrigué par deux
-// blocs de configuration (Équipe, Paramètres). Reflète la nav réelle de
-// l'app ; chaque carte embarque un mini-aperçu du produit (pur CSS/SVG).
+// commercial en 3 étapes (préparer → débriefer → suivre), irrigué par deux
+// blocs de configuration (Équipe, Paramètres). L'Entraînement existe dans
+// l'app mais reste volontairement hors du schéma (choix marketing : 3 étapes,
+// message simple) ; chaque carte embarque un mini-aperçu produit (CSS/SVG).
 function StructureDiagram() {
   return (
     <section className="relative overflow-hidden border-y border-border/60 bg-ink">
@@ -889,9 +869,7 @@ function StructureDiagram() {
           <FlowConnector />
           <FlowCard n="02" icon={Video} title="Analyse rendez-vous" subtitle="Débriefer chaque call, noté selon son étape R1/R2/R3." preview={<MiniAnalysePreview />} />
           <FlowConnector />
-          <FlowCard n="03" icon={Dumbbell} title="Entraînement" subtitle="Rejouer à la voix les objections mal traitées." preview={<MiniTrainingPreview />} />
-          <FlowConnector />
-          <FlowCard n="04" icon={LayoutDashboard} title="Performance" subtitle="Suivre la progression — scores, historique, win/loss." preview={<MiniPerformancePreview />} />
+          <FlowCard n="03" icon={LayoutDashboard} title="Performance" subtitle="Suivre la progression — scores, historique, win/loss." preview={<MiniPerformancePreview />} />
         </div>
 
         <div className="flex justify-center my-5" aria-hidden>
