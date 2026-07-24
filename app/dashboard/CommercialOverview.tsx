@@ -22,7 +22,19 @@ import FadeIn from "./FadeIn";
 const TREND_WEEKS = 6;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-export default async function CommercialOverview({ userId, userName }: { userId: string; userName: string | null }) {
+export default async function CommercialOverview({
+  userId,
+  userName,
+  viewerRole = "self",
+}: {
+  userId: string;
+  userName: string | null;
+  // "manager" : un manager consulte la performance d'un commercial de son
+  // équipe (via le sélecteur de /dashboard) — lecture seule, on masque les
+  // actions qui n'agiraient de toute façon que sur le compte du manager
+  // (Nouveau brief, connexions CRM/Slack du commercial viewé).
+  viewerRole?: "self" | "manager";
+}) {
   const now = new Date();
   // "This week so far" — same range shape as the Friday-evening digest,
   // reused here rather than recomputed (module Distribution Flexible's week
@@ -61,32 +73,40 @@ export default async function CommercialOverview({ userId, userName }: { userId:
     <div className="max-w-6xl mx-auto px-6 py-10">
       <FadeIn>
         <div className="mb-8">
-          <PageHeader
-            eyebrow="Vue d'ensemble"
-            title={
-              <>
-                Bonjour{userName ? ` ${userName.split(" ")[0]}` : ""}{" "}
-                <span className="italic-serif text-[color:var(--violet)]">👋</span>
-              </>
-            }
-            subtitle={`${now.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })} — voici votre semaine.`}
-            actions={
-              <>
-                <Button variant="secondary" icon={<Calendar className="h-3.5 w-3.5" />} disabled title="Bientôt disponible">
-                  Cette semaine
-                </Button>
-                <Button variant="secondary" icon={<Download className="h-3.5 w-3.5" />} disabled title="Bientôt disponible">
-                  Exporter
-                </Button>
-                <Link
-                  href="/brief"
-                  className="brand-gradient inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-lg text-[13px] font-medium text-white shadow-[var(--shadow-glow)] hover:brightness-110 transition-all"
-                >
-                  <Sparkles className="h-3.5 w-3.5" /> Nouveau brief
-                </Link>
-              </>
-            }
-          />
+          {viewerRole === "manager" ? (
+            <PageHeader
+              eyebrow="Performance individuelle"
+              title={userName ?? "Commercial"}
+              subtitle="Vue en lecture seule — même contenu que son propre tableau de bord."
+            />
+          ) : (
+            <PageHeader
+              eyebrow="Vue d'ensemble"
+              title={
+                <>
+                  Bonjour{userName ? ` ${userName.split(" ")[0]}` : ""}{" "}
+                  <span className="italic-serif text-[color:var(--violet)]">👋</span>
+                </>
+              }
+              subtitle={`${now.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })} — voici votre semaine.`}
+              actions={
+                <>
+                  <Button variant="secondary" icon={<Calendar className="h-3.5 w-3.5" />} disabled title="Bientôt disponible">
+                    Cette semaine
+                  </Button>
+                  <Button variant="secondary" icon={<Download className="h-3.5 w-3.5" />} disabled title="Bientôt disponible">
+                    Exporter
+                  </Button>
+                  <Link
+                    href="/brief"
+                    className="brand-gradient inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-lg text-[13px] font-medium text-white shadow-[var(--shadow-glow)] hover:brightness-110 transition-all"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" /> Nouveau brief
+                  </Link>
+                </>
+              }
+            />
+          )}
         </div>
       </FadeIn>
 
@@ -118,9 +138,11 @@ export default async function CommercialOverview({ userId, userName }: { userId:
         </div>
 
         <div className="space-y-5">
-          <FadeIn delay={0.15}>
-            <ConnectionsStatus userId={userId} />
-          </FadeIn>
+          {viewerRole === "self" && (
+            <FadeIn delay={0.15}>
+              <ConnectionsStatus userId={userId} />
+            </FadeIn>
+          )}
 
           <FadeIn delay={0.2}>
             <Card padded={false} className="p-5">
