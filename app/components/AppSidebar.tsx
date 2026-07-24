@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, FileText, Video, Bell, Users, Settings, HelpCircle, LogOut, Sparkles, Menu, X, Dumbbell } from "lucide-react";
+import { LayoutDashboard, FileText, Video, Bell, Users, Settings, HelpCircle, LogOut, Sparkles, Menu, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 type OrgStatus = {
@@ -105,12 +105,13 @@ export default function AppSidebar() {
 
   const isManager = session?.role === "manager";
 
-  // « Performance » regroupe Dashboard + Historique (Objections a déménagé
-  // dans Paramètres) — page digest unique, plus d'onglets internes.
-  const performanceActive = pathname === "/dashboard" || pathname.startsWith("/contacts");
+  // « Performance » regroupe Vue d'ensemble + Historique + Entraînement,
+  // navigables en onglets (app/components/PerformanceTabs.tsx) — Objections
+  // reste dans Paramètres.
+  const performanceActive =
+    pathname === "/dashboard" || pathname.startsWith("/contacts") || pathname.startsWith("/training");
   const briefActive = pathname.startsWith("/brief");
   const feedbackActive = pathname.startsWith("/feedback");
-  const trainingActive = pathname.startsWith("/training");
   const notificationsActive = pathname.startsWith("/notifications");
   // Équipe est un lien unique — les sous-pages (Playbook, Templates emails,
   // Insights) se naviguent via des onglets en haut de /team (TeamTabs.tsx),
@@ -122,7 +123,6 @@ export default function AppSidebar() {
   const commercialGroup: { href: string; label: string; icon: LucideIcon; active: boolean; badge?: number }[] = [
     { href: "/brief", label: "Brief", icon: FileText, active: briefActive },
     { href: "/feedback", label: "Analyse rendez-vous", icon: Video, active: feedbackActive },
-    { href: "/training", label: "Entraînement", icon: Dumbbell, active: trainingActive },
     { href: "/dashboard", label: "Performance", icon: LayoutDashboard, active: performanceActive },
   ];
   const compteGroup: { href: string; label: string; icon: LucideIcon; active: boolean; badge?: number }[] = [
