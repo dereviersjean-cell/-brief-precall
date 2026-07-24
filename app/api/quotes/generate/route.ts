@@ -10,12 +10,10 @@ import {
   getCallContextForContact,
   getQuoteSettings,
   listQuoteOffers,
-  getGoogleTokens,
   getUserProfile,
   type QuoteGenerationCallContext,
   type QuoteOffer,
 } from "@/lib/db";
-import { refreshGoogleAccessToken, getEmailHistory, type GmailMessage } from "@/lib/gmail";
 import { extractJsonObject } from "@/lib/ai-json";
 
 export type GeneratedQuoteLine = {
@@ -35,16 +33,6 @@ export type GeneratedQuoteDraft = {
   notes: string;
   validity_days: number;
 };
-
-function formatEmails(emails: GmailMessage[]): string {
-  if (emails.length === 0) return "Aucun échange email trouvé avec ce contact.";
-  return emails
-    .map(
-      (e, i) =>
-        `Email ${i + 1}\nDe : ${e.from}\nÀ : ${e.to}\nDate : ${e.date}\nObjet : ${e.subject}\n\n${e.body.slice(0, 500)}${e.body.length > 500 ? "…" : ""}`
-    )
-    .join("\n\n---\n\n");
-}
 
 function formatCalls(calls: QuoteGenerationCallContext[]): string {
   if (calls.length === 0) return "Aucun call analysé trouvé avec ce contact.";
@@ -143,20 +131,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Configurez d'abord vos paramètres devis." }, { status: 400 });
   }
 
-  let emails: GmailMessage[] = [];
-  try {
-    const { refreshToken } = await getGoogleTokens(auth.userId);
-    if (refreshToken) {
-      const accessToken = await refreshGoogleAccessToken(refreshToken);
-      emails = await getEmailHistory(accessToken, contact.email);
-    }
-  } catch (err) {
-    console.log(
-      "[quotes/generate] email history fetch failed (non-blocking):",
-      err instanceof Error ? err.message : String(err)
-    );
-  }
-
   const basePrompt = (await readPromptConfig("quote_generation_prompt")) ?? DEFAULT_QUOTE_GENERATION_PROMPT;
 
   const contextPrompt = `INFOS ENTREPRISE DU COMMERCIAL
@@ -173,10 +147,6 @@ ${contact.last_call_summary ? `Dernier résumé connu : ${contact.last_call_summ
 HISTORIQUE DES CALLS ANALYSÉS
 
 ${formatCalls(calls)}
-
-HISTORIQUE DES EMAILS
-
-${formatEmails(emails)}
 
 CATALOGUE D'OFFRES DISPONIBLES (utilise l'id exact pour offer_id)
 

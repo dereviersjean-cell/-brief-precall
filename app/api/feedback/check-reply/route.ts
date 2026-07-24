@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
 
   // Cache hit — already know they replied, no need to call Gmail
   if (!force && info.replied_at) {
-    return NextResponse.json({ replied: true, repliedAt: info.replied_at, body: null });
+    return NextResponse.json({ replied: true, repliedAt: info.replied_at });
   }
 
   if (!info.gmail_thread_id) {

@@ -6,7 +6,6 @@ import {
   DEFAULT_CONFIG,
   DEFAULT_CALL_ANALYSIS_SYSTEM_PROMPT,
   DEFAULT_EMAIL_FOLLOWUP_PROMPT,
-  DEFAULT_REPLY_SUGGESTION_PROMPT,
   DEFAULT_QUOTE_GENERATION_PROMPT,
   DEFAULT_QUOTE_EMAIL_PROMPT,
   DEFAULT_TASK_EMAIL_PROMPT,
@@ -21,7 +20,6 @@ type PromptKey =
   | "systemPrompt"
   | "call_analysis_system_prompt"
   | "email_followup_prompt"
-  | "reply_suggestion_prompt"
   | "quote_generation_prompt"
   | "quote_email_prompt"
   | "task_email_prompt"
@@ -37,7 +35,6 @@ const DEFAULTS: Prompts = {
   systemPrompt: DEFAULT_CONFIG.systemPrompt,
   call_analysis_system_prompt: DEFAULT_CALL_ANALYSIS_SYSTEM_PROMPT,
   email_followup_prompt: DEFAULT_EMAIL_FOLLOWUP_PROMPT,
-  reply_suggestion_prompt: DEFAULT_REPLY_SUGGESTION_PROMPT,
   quote_generation_prompt: DEFAULT_QUOTE_GENERATION_PROMPT,
   quote_email_prompt: DEFAULT_QUOTE_EMAIL_PROMPT,
   task_email_prompt: DEFAULT_TASK_EMAIL_PROMPT,
@@ -66,22 +63,16 @@ const PROMPT_META: { key: PromptKey; tabLabel: string; title: string; descriptio
     description: "Mission et format injectés lors de la génération de l'email de suivi post-call envoyé au prospect.",
   },
   {
-    key: "reply_suggestion_prompt",
-    tabLabel: "Réponse prospect",
-    title: "Prompt Réponse prospect",
-    description: "Instructions pour rédiger une réponse à un email entrant du prospect, en continuité du fil de conversation.",
-  },
-  {
     key: "quote_generation_prompt",
     tabLabel: "Génération de devis",
     title: "Prompt Génération de devis",
-    description: "Instructions pour pré-remplir un devis (lignes, réduction argumentée, notes) à partir des calls analysés et emails échangés avec un contact.",
+    description: "Instructions pour pré-remplir un devis (lignes, réduction argumentée, notes) à partir des calls analysés avec un contact.",
   },
   {
     key: "quote_email_prompt",
     tabLabel: "Email de devis",
     title: "Prompt Email d'envoi de devis",
-    description: "Instructions pour rédiger le sujet et le corps de l'email d'envoi d'un devis, personnalisé selon l'historique des échanges avec le prospect.",
+    description: "Instructions pour rédiger le sujet et le corps de l'email d'envoi d'un devis, personnalisé selon l'historique des calls avec le prospect.",
   },
   {
     key: "task_email_prompt",

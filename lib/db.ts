@@ -4709,8 +4709,8 @@ export async function deletePlaybookCriterion(criterionId: string, orgId: string
 
 // ─── Email templates module — manager-configurable post-call email prompts
 // (Email Templates sous-étape A). One collection per organization, same
-// architecture as the Playbook module. Not consumed anywhere yet — that's
-// sous-étape B (generate-reply-suggestion, tasks/[id]/generate-email).
+// architecture as the Playbook module. Consumed by
+// tasks/[taskId]/generate-email.
 
 export type EmailTemplate = {
   id: string;
@@ -4744,8 +4744,8 @@ export async function getEmailTemplatesForUser(userId: string): Promise<EmailTem
 // Security-critical (sous-étape B): re-derives the CALLER's org from userId
 // and only returns the template if it belongs to that same org — never
 // trusts the client's claim about which org a template_id belongs to. Used
-// by generate-reply-suggestion and tasks/[taskId]/generate-email so a user
-// can't read/use another organization's system_prompt by guessing an id.
+// by tasks/[taskId]/generate-email so a user can't read/use another
+// organization's system_prompt by guessing an id.
 export async function getEmailTemplateById(templateId: string, userId: string): Promise<EmailTemplate | null> {
   const orgId = await getUserOrganizationId(userId);
   if (!orgId) return null;

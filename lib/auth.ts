@@ -29,12 +29,24 @@ export const authOptions: AuthOptions = {
           // before calendar writes will work for them; until then,
           // hasCalendarWriteAccess(userId) (lib/google-calendar.ts) reports
           // false for them and the calendar channel is skipped, not failed.
+          //
+          // gmail.readonly deliberately dropped (25/07/2026) — it's a
+          // Restricted scope in Google's classification, which requires an
+          // annual paid third-party security audit (CASA) to get the app
+          // verified/out of Testing mode. Decision: stay free, accept the
+          // feature loss. gmail.metadata replaces it for reply detection
+          // (headers only, no body — Sensitive, not Restricted, no CASA).
+          // Removed with it: email-history context in quote/follow-up
+          // generation, and the "suggest a reply" feature entirely (both
+          // genuinely needed message bodies, no lighter scope preserves
+          // them). Same re-consent caveat as calendar.events above — existing
+          // users keep their old token shape until they reconnect.
           scope: [
             "openid",
             "email",
             "profile",
             "https://www.googleapis.com/auth/calendar.events",
-            "https://www.googleapis.com/auth/gmail.readonly",
+            "https://www.googleapis.com/auth/gmail.metadata",
             "https://www.googleapis.com/auth/gmail.send",
           ].join(" "),
           access_type: "offline",

@@ -67,7 +67,13 @@ Inspiration muchbetter.ai (simulations vocales + coach IA), mais paramétré aut
 
 ### OAuth — attention critique
 - **RECALL_GOOGLE_CLIENT_ID ≠ GOOGLE_CLIENT_ID** : deux apps Google séparées, deux flows distincts
-- `lib/auth.ts` : scopes Google = `openid email profile calendar.events gmail.readonly gmail.send`
+- `lib/auth.ts` : scopes Google = `openid email profile calendar.events gmail.metadata gmail.send`
+- **`gmail.readonly` volontairement retiré des scopes (25/07/2026)** : Google le classe scope Restricted (vérifié dans Google Cloud Console, Data Access → Gmail scopes), ce qui exige un audit de sécurité tiers payant (CASA, ~500-1800 $/an) pour sortir l'app du mode Testing. Décision : rester gratuit, accepter la perte de fonctionnalité. `gmail.metadata` le remplace pour la détection de réponse (headers seulement, jamais le corps du message — scope Sensitive, pas Restricted, pas de CASA). Conséquences en cascade, toutes documentées inline aux points de retrait :
+  - `lib/gmail.ts` : `checkThreadReply` passe en `format=metadata` (plus de corps de message, juste `replied`/`repliedAt`/`messageId`). `getEmailHistory` supprimée entièrement (nécessitait le corps).
+  - Fonctionnalité **« Suggérer une réponse au prospect » supprimée** (route `/api/feedback/generate-reply-suggestion`, `generateReplyToProspect(WithTemplate)`, prompt `reply_suggestion_prompt`) — nécessitait de lire ce que le prospect avait écrit, aucun scope allégé ne le permet.
+  - Contexte « historique d'emails » retiré de la génération de devis (`quotes/generate`, `quotes/[quoteId]/generate-email`) et de l'email de suivi post-call (`bot-webhook` Step 5, `generateFollowUpEmail`) — ces générations tournent maintenant sans ce contexte (fallback déjà existant : ton professionnel par défaut).
+  - UI : `/feedback/[id]` et `/contacts/[email]` affichent juste « le prospect a répondu le [date] », sans contenu ni bouton de suggestion IA. Le formulaire de relance manuelle (`send-reply`, scope `gmail.send`) reste inchangé.
+  - Si le produit grandit et justifie l'audit CASA un jour : remettre `gmail.readonly`, restaurer le corps dans `checkThreadReply`/`getEmailHistory` (git log sur ces fichiers), et réactiver la suggestion de réponse.
 
 ## Facturation (Stripe)
 
@@ -188,7 +194,7 @@ git add . && git commit -m "..." && git push
 Fait depuis la dernière mise à jour (20-21 juillet 2026) : **refonte visuelle complète direction Lovable** (nouveau système de tokens oklch bleu #2A5CE0, primitives partagées `ui-bits.tsx`/`PageHeader`/`TopBar`, refonte landing + liste feedback + dashboard, fix du scoping `.brief-ui` qui n'avait jamais fonctionné), **version mobile responsive** (sidebar drawer), **fix bug "William"** (prompt d'analyse admin_config périmé → champs null silencieux, voir bug #20), puis **audit complet du repo** suivi de **6 correctifs** (`after()` généralisé, `/notifications` au middleware, refresh rôle JWT 10 min, validation runtime analyse IA, auth sur google-oauth/start, rate limiting étendu aux 9 routes de génération IA) et **fin de la migration visuelle** (les 25 fichiers non-admin restants — onboarding, modales, références, page publique devis, compte-suspendu — zéro `indigo-*` hors /admin).
 
 ### Déblocants business (priorité immédiate)
-1. Google OAuth — sortir du mode Testing (bloque toute croissance au-delà des comptes whitelistés)
+1. Google OAuth — sortir du mode Testing (bloque toute croissance au-delà des comptes whitelistés). `gmail.readonly` retiré des scopes le 25/07/2026 précisément pour lever ce blocant sans passer par l'audit CASA payant (voir section OAuth ci-dessus) — reste à ajouter/re-déclarer les 3 scopes actuels dans Google Cloud Console (`calendar.events`, `gmail.metadata`, `gmail.send`) et lancer la vérification standard (gratuite, 2-6 semaines)
 2. Stripe en mode Live — activation compte (vérification entreprise). **Avant la bascule, trancher le pricing usage** : recommandation audit = quota d'heures inclus par siège (ex. 10h/mois puis 0,50€/h) plutôt que la refacturation sèche dès la 1ère heure — évite les lignes de facture à 3€ qui font poser des questions, et change la facturation AVANT les premiers clients payants plutôt qu'après
 
 ### Recommandations audit du 21 juillet (par ratio effort/valeur)

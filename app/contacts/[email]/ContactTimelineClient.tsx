@@ -103,32 +103,18 @@ function SummaryRow({ icon, label, value }: { icon: React.ReactNode; label: stri
   );
 }
 
+// Pas de contenu de réponse affiché — gmail.readonly dropped 25/07/2026
+// (évite l'audit CASA payant exigé pour les scopes Restricted), détection
+// metadata-only : on sait juste que le prospect a répondu, pas ce qu'il a
+// écrit. Le formulaire de relance manuelle (send-reply, scope gmail.send,
+// inchangé) reste disponible directement.
 function ReplyEntry({ item }: { item: ContactTimelineItem }) {
-  const [body, setBody] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [sendStatus, setSendStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
-  const [generatingAI, setGeneratingAI] = useState(false);
   const [successToast, setSuccessToast] = useState(false);
 
   if (!item.replied_at) return null;
-
-  const loadBody = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/feedback/check-reply?callId=${item.id}&force=true`);
-      const data = await res.json() as { replied: boolean; body?: string | null };
-      setBody(data.body ?? "");
-      setOpen(true);
-    } catch {
-      setBody("");
-      setOpen(true);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="mt-3 ml-4 relative pl-8">
@@ -148,31 +134,12 @@ function ReplyEntry({ item }: { item: ContactTimelineItem }) {
             <p className="text-xs text-slate-400 mt-0.5">{formatDateTime(item.replied_at)}</p>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
-            {!open && (
-              <button
-                disabled={loading}
-                onClick={() => body !== null ? setOpen(true) : loadBody()}
-                className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors px-2.5 py-1 rounded-lg border border-blue-200 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? "Chargement…" : "Voir la réponse"}
-              </button>
-            )}
-            {open && (
-              <>
-                <button
-                  onClick={() => { setShowReplyForm((v) => !v); setSendStatus("idle"); }}
-                  className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors px-2.5 py-1 rounded-lg border border-blue-200 hover:bg-blue-100"
-                >
-                  Répondre
-                </button>
-                <button
-                  onClick={() => setOpen(false)}
-                  className="text-xs text-slate-400 hover:text-slate-600 transition-colors px-2 py-1 rounded-lg hover:bg-blue-100"
-                >
-                  Refermer
-                </button>
-              </>
-            )}
+            <button
+              onClick={() => { setShowReplyForm((v) => !v); setSendStatus("idle"); }}
+              className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors px-2.5 py-1 rounded-lg border border-blue-200 hover:bg-blue-100"
+            >
+              {showReplyForm ? "Refermer" : "Répondre"}
+            </button>
           </div>
         </div>
 
@@ -184,8 +151,8 @@ function ReplyEntry({ item }: { item: ContactTimelineItem }) {
           </div>
         )}
 
-        {/* Inline reply form — shown before body content */}
-        {open && showReplyForm && (
+        {/* Inline reply form */}
+        {showReplyForm && (
           <div className="px-4 pt-3 pb-3 border-t border-blue-100">
             <textarea
               value={replyText}
@@ -224,28 +191,6 @@ function ReplyEntry({ item }: { item: ContactTimelineItem }) {
                 {sendStatus === "sending" ? "Envoi…" : "Envoyer"}
               </button>
               <button
-                disabled={generatingAI}
-                onClick={async () => {
-                  setGeneratingAI(true);
-                  try {
-                    const res = await fetch("/api/feedback/generate-reply-suggestion", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ callId: item.id }),
-                    });
-                    const data = await res.json() as { suggestion?: string };
-                    if (data.suggestion) setReplyText(data.suggestion);
-                  } catch {
-                    // silent
-                  } finally {
-                    setGeneratingAI(false);
-                  }
-                }}
-                className="text-xs font-medium text-[color:var(--violet)] hover:brightness-90 transition-colors px-3 py-1.5 rounded-lg border border-[color:var(--lavender-strong)] hover:bg-[color:var(--lavender)] disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {generatingAI ? "Génération…" : "Générer avec l'IA"}
-              </button>
-              <button
                 onClick={() => { setShowReplyForm(false); setSendStatus("idle"); }}
                 className="text-xs text-slate-400 hover:text-slate-600 transition-colors px-2 py-1.5"
               >
@@ -255,19 +200,6 @@ function ReplyEntry({ item }: { item: ContactTimelineItem }) {
                 <p className="text-xs text-red-500">Erreur lors de l&apos;envoi, réessaie.</p>
               )}
             </div>
-          </div>
-        )}
-
-        {/* Body */}
-        {open && body !== null && (
-          <div className={`px-4 pb-4 ${showReplyForm ? "" : "border-t border-blue-100"}`}>
-            {body !== "" ? (
-              <pre className="mt-3 text-sm text-slate-600 leading-relaxed whitespace-pre-wrap bg-white rounded-lg px-3 py-3 border border-blue-100 font-sans">
-                {body}
-              </pre>
-            ) : (
-              <p className="mt-3 text-sm text-slate-400 italic">Contenu de la réponse non disponible.</p>
-            )}
           </div>
         )}
       </div>

@@ -10,12 +10,10 @@ import {
   getContactById,
   getContact,
   getCallContextForContact,
-  getGoogleTokens,
   getUserName,
   type QuoteWithLines,
   type QuoteGenerationCallContext,
 } from "@/lib/db";
-import { refreshGoogleAccessToken, getEmailHistory, type GmailMessage } from "@/lib/gmail";
 import { extractJsonObject } from "@/lib/ai-json";
 
 export type GeneratedQuoteEmail = { subject: string; body: string };
@@ -42,16 +40,6 @@ Lignes :
 ${linesText}
 Montant total TTC : ${formatCurrency(quote.total_ttc)}
 ${validity}`;
-}
-
-function formatEmails(emails: GmailMessage[]): string {
-  if (emails.length === 0) return "Aucun échange email trouvé avec ce contact.";
-  return emails
-    .map(
-      (e, i) =>
-        `Email ${i + 1}\nDe : ${e.from}\nÀ : ${e.to}\nDate : ${e.date}\nObjet : ${e.subject}\n\n${e.body.slice(0, 500)}${e.body.length > 500 ? "…" : ""}`
-    )
-    .join("\n\n---\n\n");
 }
 
 function formatCalls(calls: QuoteGenerationCallContext[]): string {
@@ -114,22 +102,6 @@ export async function POST(
     contactEmail ? getCallContextForContact(auth.userId, contactEmail) : Promise.resolve([]),
   ]);
 
-  let emails: GmailMessage[] = [];
-  if (contactEmail) {
-    try {
-      const { refreshToken } = await getGoogleTokens(auth.userId);
-      if (refreshToken) {
-        const accessToken = await refreshGoogleAccessToken(refreshToken);
-        emails = await getEmailHistory(accessToken, contactEmail);
-      }
-    } catch (err) {
-      console.log(
-        "[quotes/generate-email] email history fetch failed (non-blocking):",
-        err instanceof Error ? err.message : String(err)
-      );
-    }
-  }
-
   const basePrompt = (await readPromptConfig("quote_email_prompt")) ?? DEFAULT_QUOTE_EMAIL_PROMPT;
 
   const contextPrompt = `INFOS DU COMMERCIAL
@@ -144,10 +116,6 @@ Email : ${contactEmail ?? "Non renseigné"}
 HISTORIQUE DES CALLS ANALYSÉS
 
 ${formatCalls(calls)}
-
-HISTORIQUE DES EMAILS
-
-${formatEmails(emails)}
 
 CONTENU DU DEVIS
 

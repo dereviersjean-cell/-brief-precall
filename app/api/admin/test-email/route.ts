@@ -27,7 +27,6 @@ export async function POST(request: NextRequest) {
 
   const email = await generateFollowUpEmail(
     transcript.trim(),
-    [],
     nextSteps,
     contactEmail.trim() || "contact@exemple.com"
   );

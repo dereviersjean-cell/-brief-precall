@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { createAsyncTranscript, getBotInfo, getTranscriptContent, transcriptToText, buildTranscriptJson, resolveSpeakerNames } from "@/lib/recall";
-import { createCall, getUserProfile, getUserName, getUserEmail, saveCallAnalysis, updateCallAnalysisKeyPoints, getGoogleTokens, updateCallFollowUp, getContact, createContact, updateContact, generateTasksFromTemplates, getPlaybookSnapshotForUser, getUserOrganizationId, getMeetingStageConfigForOrganization, type CallData } from "@/lib/db";
+import { createCall, getUserProfile, getUserName, getUserEmail, saveCallAnalysis, updateCallAnalysisKeyPoints, updateCallFollowUp, getContact, createContact, updateContact, generateTasksFromTemplates, getPlaybookSnapshotForUser, getUserOrganizationId, getMeetingStageConfigForOrganization, type CallData } from "@/lib/db";
 import { pushNewTasksToHubSpot } from "@/lib/tasks-hubspot-sync";
 import { analyzeCall } from "@/lib/call-analysis";
 import { detectMeetingStage, MEETING_STAGE_LABELS } from "@/lib/meeting-stage";
 import { indexCallObjections } from "@/lib/objections";
-import { refreshGoogleAccessToken, getEmailHistory } from "@/lib/gmail";
 import { generateFollowUpEmail } from "@/lib/email-followup";
 import { generateKeyPoints } from "@/lib/key-points";
 import { dispatchCallAnalysis } from "@/lib/notifications-dispatcher";
@@ -340,28 +339,18 @@ export async function POST(request: NextRequest) {
             console.log("[bot-webhook] contact upsert failed (non-blocking):", contactErr instanceof Error ? contactErr.message : String(contactErr));
           }
 
-          // Step 5 — generate follow-up email (non-blocking)
+          // Step 5 — generate follow-up email (non-blocking). No longer
+          // fetches Google email history for context (gmail.readonly
+          // dropped 25/07/2026, see lib/gmail.ts) — generateFollowUpEmail
+          // falls back to a professional-by-default tone without it.
           try {
             if (!contactEmail) {
               console.log("[bot-webhook] no contactEmail, skipping follow-up email");
             } else {
-              const { refreshToken } = await getGoogleTokens(userId);
-              if (!refreshToken) {
-                console.log("[bot-webhook] no Google refresh token for user, skipping follow-up email");
-              } else {
-                const freshAccessToken = await refreshGoogleAccessToken(refreshToken);
-                const emailHistory = await getEmailHistory(freshAccessToken, contactEmail);
-                console.log("[bot-webhook] email history fetched:", emailHistory.length, "messages");
-                const followUp = await generateFollowUpEmail(
-                  transcriptText,
-                  emailHistory,
-                  savedAnalysis?.next_steps ?? [],
-                  contactEmail
-                );
-                if (followUp) {
-                  await updateCallFollowUp(call.id, followUp);
-                  console.log("[bot-webhook] follow-up email saved, subject:", followUp.subject);
-                }
+              const followUp = await generateFollowUpEmail(transcriptText, savedAnalysis?.next_steps ?? [], contactEmail);
+              if (followUp) {
+                await updateCallFollowUp(call.id, followUp);
+                console.log("[bot-webhook] follow-up email saved, subject:", followUp.subject);
               }
             }
           } catch (followUpErr) {

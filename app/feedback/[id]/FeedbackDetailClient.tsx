@@ -479,10 +479,12 @@ function ObjectionItem({ objection, response }: { objection: string; response: s
 
 type SendStatus = "idle" | "sending" | "sent" | "error" | "auth-error";
 type VideoStatus = "idle" | "loading" | "ready" | "unavailable";
+// No body field — gmail.readonly dropped 25/07/2026 (avoid the paid CASA
+// audit for Restricted scopes), reply detection is metadata-only now.
 type ReplyState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "replied"; repliedAt: string; body: string | null; open: boolean; loadingBody: boolean }
+  | { status: "replied"; repliedAt: string }
   | { status: "none" };
 
 function formatSentAt(iso: string) {
@@ -555,9 +557,6 @@ export default function FeedbackDetailClient({
   const [reply, setReply] = useState<ReplyState>({ status: "idle" });
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
-  const [replySuggestion, setReplySuggestion] = useState<string | null>(null);
-  const [generatingSuggestion, setGeneratingSuggestion] = useState(false);
-  const [suggestionError, setSuggestionError] = useState<string | null>(null);
   const [showPromptSettings, setShowPromptSettings] = useState(false);
 
   // Speaker rename overrides, lifted here from TranscriptSection — both it
@@ -621,9 +620,9 @@ export default function FeedbackDetailClient({
     setReply({ status: "loading" });
     fetch(`/api/feedback/check-reply?callId=${call.id}`)
       .then((r) => r.json())
-      .then((data: { replied: boolean; repliedAt?: string; body?: string | null }) => {
+      .then((data: { replied: boolean; repliedAt?: string }) => {
         if (data.replied && data.repliedAt) {
-          setReply({ status: "replied", repliedAt: data.repliedAt, body: data.body ?? null, open: false, loadingBody: false });
+          setReply({ status: "replied", repliedAt: data.repliedAt });
         } else {
           setReply({ status: "none" });
         }
@@ -652,35 +651,6 @@ export default function FeedbackDetailClient({
     };
   }, [readOnly]);
 
-  // Selecting a template does NOT auto-regenerate — only this explicit
-  // action does (so it never silently overwrites a reply the user is mid-edit
-  // on). Only meaningful once the prospect has actually replied — same
-  // precondition the API route itself enforces.
-  async function handleGenerateSuggestion() {
-    setGeneratingSuggestion(true);
-    setSuggestionError(null);
-    try {
-      const res = await fetch("/api/feedback/generate-reply-suggestion", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          callId: call.id,
-          ...(selectedTemplateId && selectedTemplateId !== DEFAULT_PROMPT_VALUE
-            ? { email_template_id: selectedTemplateId }
-            : {}),
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error((data as { error?: string }).error ?? "La génération a échoué.");
-      }
-      setReplySuggestion((data as { suggestion?: string }).suggestion ?? null);
-    } catch (err) {
-      setSuggestionError(err instanceof Error ? err.message : "La génération a échoué.");
-    } finally {
-      setGeneratingSuggestion(false);
-    }
-  }
 
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
 
@@ -960,25 +930,15 @@ export default function FeedbackDetailClient({
                           Envoyé le {formatSentAt(sentAt)}
                         </span>
                         {reply.status === "replied" && (
-                          <button
-                            onClick={() =>
-                              setReply((r) =>
-                                r.status === "replied" ? { ...r, open: !r.open } : r
-                              )
-                            }
-                            className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
-                          >
+                          // Pas de contenu à afficher — gmail.readonly dropped
+                          // 25/07/2026 (CASA payant sinon), détection
+                          // metadata-only : on sait juste que ça a répondu.
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
                             <svg className="w-3 h-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414L8.414 15l-4.121-4.121a1 1 0 011.414-1.414L8.414 12.172l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
-                            Le prospect a répondu
-                            <svg
-                              className={`w-3 h-3 shrink-0 transition-transform ${reply.open ? "rotate-180" : ""}`}
-                              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                            </svg>
-                          </button>
+                            Le prospect a répondu le {formatSentAt(reply.repliedAt)}
+                          </span>
                         )}
                       </div>
                     )}
@@ -994,69 +954,6 @@ export default function FeedbackDetailClient({
                   )}
                   {sendStatus === "error" && (
                     <p className="mb-4 text-sm text-red-600">Erreur lors de l&apos;envoi, réessaie.</p>
-                  )}
-
-                  {reply.status === "replied" && reply.open && (
-                    <div className="mb-4 rounded-xl bg-green-50 border border-green-200 px-4 py-3">
-                      <p className="text-xs font-semibold text-green-600 uppercase tracking-wider mb-1.5">
-                        Réponse du prospect — {formatSentAt(reply.repliedAt)}
-                      </p>
-                      {reply.body !== null ? (
-                        <pre className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-sans">
-                          {reply.body}
-                        </pre>
-                      ) : (
-                        <div className="flex items-center gap-3">
-                          <p className="text-sm text-slate-500 italic">Contenu non chargé.</p>
-                          <button
-                            disabled={reply.loadingBody}
-                            onClick={async () => {
-                              setReply((r) => r.status === "replied" ? { ...r, loadingBody: true } : r);
-                              try {
-                                const res = await fetch(`/api/feedback/check-reply?callId=${call.id}&force=true`);
-                                const data = await res.json() as { replied: boolean; repliedAt?: string; body?: string | null };
-                                setReply((r) =>
-                                  r.status === "replied"
-                                    ? { ...r, body: data.body ?? null, loadingBody: false }
-                                    : r
-                                );
-                              } catch {
-                                setReply((r) => r.status === "replied" ? { ...r, loadingBody: false } : r);
-                              }
-                            }}
-                            className="text-xs font-medium text-[color:var(--violet)] hover:brightness-90 transition-colors px-2 py-1 rounded border border-[color:var(--lavender-strong)] hover:bg-[color:var(--lavender)] disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {reply.loadingBody ? "Chargement…" : "Charger le contenu"}
-                          </button>
-                        </div>
-                      )}
-
-                      {reply.body !== null && (
-                        <div className="mt-3 pt-3 border-t border-green-100">
-                          <button
-                            disabled={generatingSuggestion}
-                            onClick={handleGenerateSuggestion}
-                            className="text-xs font-medium text-[color:var(--violet)] hover:brightness-90 transition-colors px-2.5 py-1 rounded-lg border border-[color:var(--lavender-strong)] hover:bg-[color:var(--lavender)] disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {generatingSuggestion ? "Génération…" : "✨ Régénérer avec Brief"}
-                          </button>
-                          {suggestionError && <p className="text-xs text-red-500 mt-2">{suggestionError}</p>}
-                          {replySuggestion !== null && (
-                            <div className="mt-2">
-                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
-                                Suggestion de réponse
-                              </p>
-                              <textarea
-                                value={replySuggestion}
-                                onChange={(e) => setReplySuggestion(e.target.value)}
-                                rows={5}
-                                className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] resize-none leading-relaxed"
-                              />
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
                   )}
 
                   {call.follow_up_email ? (

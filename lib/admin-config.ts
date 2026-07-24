@@ -37,11 +37,15 @@ Réponds UNIQUEMENT en JSON strict, sans markdown, avec la structure :
 
 Les clés <key_dimension_X> doivent correspondre EXACTEMENT aux \`key\` fournies dans la liste des dimensions du contexte utilisateur.`;
 
+// Ton par défaut fixe (pas d'historique d'échanges à observer) — gmail.readonly
+// a été retiré des scopes OAuth le 25/07/2026 (évite l'audit CASA payant
+// exigé pour les scopes Restricted), donc plus jamais d'historique email
+// disponible en contexte ici.
 export const DEFAULT_EMAIL_FOLLOWUP_PROMPT =
 `TA MISSION
 
 Rédige un email de suivi à envoyer à ce contact qui :
-- Reprend le ton, le niveau de formalité et le style de signature observés dans l'historique des échanges (s'il y en a — sinon utilise un ton professionnel et chaleureux par défaut)
+- Utilise un ton professionnel et chaleureux
 - Mentionne brièvement 1-2 points clés discutés pendant le call
 - Propose clairement la prochaine étape identifiée
 - Reste concis (5-8 lignes maximum)
@@ -51,18 +55,6 @@ FORMAT DE SORTIE
 Réponds uniquement en JSON valide, sur une seule ligne, sans markdown :
 {"subject":"","body":""}`;
 
-export const DEFAULT_REPLY_SUGGESTION_PROMPT =
-`TA MISSION
-
-Rédige une réponse naturelle et professionnelle à cet email qui :
-- S'inscrit dans le fil de la conversation (pas une nouvelle accroche commerciale)
-- Répond directement aux questions ou objections soulevées par le prospect
-- Garde le même ton et niveau de formalité que l'email original
-- Propose une prochaine étape concrète si pertinent
-- Reste concis (5-8 lignes maximum)
-
-Réponds uniquement avec le corps du message (pas de sujet, pas de balises, pas de markdown). Texte brut uniquement.`;
-
 export const DEFAULT_QUOTE_GENERATION_PROMPT =
 `Tu es un assistant qui aide un commercial à préparer un devis pour un prospect avec qui il a échangé.
 
@@ -70,7 +62,6 @@ Contexte fourni :
 - Infos entreprise du commercial
 - Infos contact/entreprise du prospect
 - Historique des calls analysés (résumé, points clés, objections, budget évoqué)
-- Historique des emails
 - Catalogue d'offres disponibles avec leurs IDs
 
 Tu dois retourner UNIQUEMENT un JSON strict, sans markdown, sans texte avant ou après, avec la structure suivante :
@@ -126,7 +117,7 @@ export const DEFAULT_QUOTE_EMAIL_PROMPT =
 Contexte fourni :
 - Infos du commercial (nom, entreprise)
 - Infos du prospect (nom, entreprise, email)
-- Historique récent des calls et emails
+- Historique récent des calls analysés
 - Contenu du devis (lignes, montant TTC, validité)
 
 Tu retournes UNIQUEMENT un JSON strict :
@@ -288,7 +279,6 @@ export async function initializePromptDefaults(): Promise<{ initialized: string[
   const defaults: Record<string, string> = {
     call_analysis_system_prompt: DEFAULT_CALL_ANALYSIS_SYSTEM_PROMPT,
     email_followup_prompt: DEFAULT_EMAIL_FOLLOWUP_PROMPT,
-    reply_suggestion_prompt: DEFAULT_REPLY_SUGGESTION_PROMPT,
     quote_generation_prompt: DEFAULT_QUOTE_GENERATION_PROMPT,
     quote_email_prompt: DEFAULT_QUOTE_EMAIL_PROMPT,
     task_email_prompt: DEFAULT_TASK_EMAIL_PROMPT,
