@@ -80,12 +80,12 @@ export default async function LoginPage({
 
         <div className="text-xs text-muted-foreground flex flex-wrap gap-4">
           <span>© {new Date().getFullYear()} Brief</span>
-          <a href="#" className="hover:text-ink transition-colors">
+          <Link href="/mentions-legales" className="hover:text-ink transition-colors">
             Mentions légales
-          </a>
-          <a href="#" className="hover:text-ink transition-colors">
+          </Link>
+          <Link href="/confidentialite" className="hover:text-ink transition-colors">
             Confidentialité
-          </a>
+          </Link>
         </div>
       </div>
 

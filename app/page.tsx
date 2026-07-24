@@ -1046,8 +1046,8 @@ function Footer() {
         <BrandMark />
         <div>© {new Date().getFullYear()} Brief · édité par Oliverlist</div>
         <div className="flex items-center gap-5">
-          <a href="#" className="hover:text-ink transition-colors">Mentions légales</a>
-          <a href="#" className="hover:text-ink transition-colors">Confidentialité</a>
+          <Link href="/mentions-legales" className="hover:text-ink transition-colors">Mentions légales</Link>
+          <Link href="/confidentialite" className="hover:text-ink transition-colors">Confidentialité</Link>
           <a href="mailto:hello@oliverlist.com" className="hover:text-ink transition-colors">Nous contacter</a>
         </div>
       </div>
