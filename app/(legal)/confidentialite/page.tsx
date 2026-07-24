@@ -31,8 +31,8 @@ export default function PrivacyPolicyPage() {
         </p>
         <p>
           Pour toute question relative à cette politique ou à vos données, vous pouvez nous écrire à{" "}
-          <a href="mailto:hello@oliverlist.com" className="text-ink font-medium hover:text-primary transition-colors">
-            hello@oliverlist.com
+          <a href="mailto:rgpd@infobrief.com" className="text-ink font-medium hover:text-primary transition-colors">
+            rgpd@infobrief.com
           </a>
           .
         </p>
@@ -125,8 +125,8 @@ export default function PrivacyPolicyPage() {
         <p>
           Conformément au RGPD, vous disposez d&apos;un droit d&apos;accès, de rectification, d&apos;effacement, de
           portabilité et d&apos;opposition sur vos données personnelles. Pour l&apos;exercer, écrivez-nous à{" "}
-          <a href="mailto:hello@oliverlist.com" className="text-ink font-medium hover:text-primary transition-colors">
-            hello@oliverlist.com
+          <a href="mailto:rgpd@infobrief.com" className="text-ink font-medium hover:text-primary transition-colors">
+            rgpd@infobrief.com
           </a>
           . Vous disposez également du droit d&apos;introduire une réclamation auprès de la CNIL (cnil.fr).
         </p>

@@ -38,8 +38,8 @@ export default function LegalNoticePage() {
           <li>N° de TVA intracommunautaire : [à compléter]</li>
           <li>
             Directeur de la publication : Jean de Reviers —{" "}
-            <a href="mailto:hello@oliverlist.com" className="text-ink font-medium hover:text-primary transition-colors">
-              hello@oliverlist.com
+            <a href="mailto:rgpd@infobrief.com" className="text-ink font-medium hover:text-primary transition-colors">
+              rgpd@infobrief.com
             </a>
           </li>
         </ul>
@@ -71,8 +71,8 @@ export default function LegalNoticePage() {
       <Section title="Contact">
         <p>
           Pour toute question relative au service, à ces mentions légales ou à vos données, contactez-nous à{" "}
-          <a href="mailto:hello@oliverlist.com" className="text-ink font-medium hover:text-primary transition-colors">
-            hello@oliverlist.com
+          <a href="mailto:rgpd@infobrief.com" className="text-ink font-medium hover:text-primary transition-colors">
+            rgpd@infobrief.com
           </a>
           . Pour tout ce qui concerne vos données personnelles, consultez notre{" "}
           <a href="/confidentialite" className="text-ink font-medium hover:text-primary transition-colors">
