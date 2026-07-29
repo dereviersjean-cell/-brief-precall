@@ -63,19 +63,18 @@ Pour CHAQUE objection, tu dois :
 
 3. COMMENTAIRE — une phrase (25 mots max) qui dit concrètement ce qui a été bien fait ou ce qui manquait. Pas de généralité : cite l'élément précis.
 
-4. VERBATIM — retrouve dans le transcript les phrases RÉELLEMENT PRONONCÉES :
-   - "prospect_verbatim" : le passage où le prospect soulève cette objection.
-   - "commercial_verbatim" : le passage où le commercial y répond.
-   Règles absolues sur ces deux champs :
-   - COPIE MOT À MOT depuis le transcript. Ne reformule pas, ne corrige pas la grammaire, ne résume pas, ne traduis pas. Recopie les hésitations et les répétitions telles quelles.
-   - Retire le préfixe du locuteur ("Nom: ") mais rien d'autre.
-   - Garde le passage utile : d'une à quatre phrases consécutives. Ne colle pas des morceaux non contigus.
-   - Si tu ne retrouves pas le passage dans le transcript, mets null. N'invente JAMAIS une citation.
+4. VERBATIM — situe dans le transcript numéroté les passages RÉELLEMENT PRONONCÉS, en renvoyant leurs NUMÉROS DE LIGNE, jamais leur texte :
+   - "prospect_lines" : [première ligne, dernière ligne] du passage où le prospect soulève cette objection.
+   - "commercial_lines" : [première ligne, dernière ligne] du passage où le commercial y répond.
+   Règles :
+   - Un intervalle de lignes CONSÉCUTIVES, 4 lignes maximum. Si le passage utile est plus long, garde les lignes les plus significatives.
+   - Une seule ligne : [12, 12].
+   - Si tu ne trouves pas le passage, mets null. Ne devine pas un numéro au hasard.
 
 5. REFORMULATION — "suggested_response" : ce que le commercial aurait dû répondre, rédigé à la première personne, tel qu'il aurait pu le dire à voix haute (2 à 4 phrases). Appuie-toi sur la manière de traiter attendue de la catégorie quand elle existe, et sur ce que le prospect a réellement dit. Mets null si l'objection a été bien traitée : il n'y a alors rien à corriger.
 
 Réponds UNIQUEMENT en JSON strict, sans markdown, avec exactement cette structure :
-{"results": [{"index": 0, "category": 1, "quality": "bien_traitee", "comment": "...", "compared_to_playbook": true, "prospect_verbatim": "...", "commercial_verbatim": "...", "suggested_response": null}]}
+{"results": [{"index": 0, "category": 1, "quality": "bien_traitee", "comment": "...", "compared_to_playbook": true, "prospect_lines": [12, 13], "commercial_lines": [14, 14], "suggested_response": null}]}
 
 "index" est l'index de l'objection dans la liste fournie (à partir de 0), "category" le numéro de la catégorie ou null. Un objet par objection, dans l'ordre, aucun oubli.`;
 
@@ -85,37 +84,64 @@ type RawResult = {
   quality?: string;
   comment?: string;
   compared_to_playbook?: boolean;
-  prospect_verbatim?: string | null;
-  commercial_verbatim?: string | null;
+  prospect_lines?: unknown;
+  commercial_lines?: unknown;
   suggested_response?: string | null;
 };
 
-// Insensible à la ponctuation, à la casse et aux espaces multiples : un
-// modèle qui recopie fidèlement peut malgré tout normaliser une apostrophe
-// ou des points de suspension, ce qui ne doit pas invalider la citation.
-function normalizeForMatching(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[\u2018\u2019\u02bc]/g, "'")
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .trim();
+// Le transcript est envoyé au modèle avec ses lignes numérotées, et le modèle
+// renvoie des INTERVALLES DE LIGNES plutôt que du texte recopié. Deux raisons,
+// toutes deux vérifiées en conditions réelles sur les calls d'Oliverlist :
+//  · fidélité garantie par construction — le texte affiché est extrait du
+//    transcript par le code, le modèle ne peut plus « nettoyer » une phrase ni
+//    recoller des morceaux non contigus. La version précédente demandait une
+//    copie mot à mot et vérifiait après coup : un tiers des citations étaient
+//    rejetées pour de simples retouches de surface, donc perdues.
+//  · sortie beaucoup plus courte — deux paires de nombres au lieu de deux
+//    citations, ce qui divise la taille de la réponse et éloigne la troncature
+//    (voir le découpage en lots plus bas).
+const MAX_VERBATIM_LINES = 4;
+
+function splitTranscriptLines(transcript: string): string[] {
+  return transcript
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
 }
 
-// Garde-fou central : une citation qui n'apparaît pas dans le transcript est
-// une invention du modèle, et un manager pourrait reprendre un commercial sur
-// une phrase qu'il n'a jamais dite. On préfère renvoyer null — l'UI retombe
-// alors sur le résumé en indiquant que c'en est un.
-function findVerbatim(candidate: unknown, normalizedTranscript: string): string | null {
-  if (typeof candidate !== "string") return null;
-  const quote = candidate.trim();
-  if (quote.length < 10) return null;
+function numberTranscript(lines: string[]): string {
+  return lines.map((line, i) => `[${i}] ${line}`).join("\n");
+}
 
-  const normalizedQuote = normalizeForMatching(quote);
-  if (!normalizedQuote || !normalizedTranscript.includes(normalizedQuote)) {
-    console.warn("[objection-classifier] verbatim introuvable dans le transcript, ignoré:", quote.slice(0, 120));
+// Retire le préfixe de locuteur (« Dorian Monaco: ») pour ne garder que la
+// parole. Même prudence que splitSpeaker de lib/transcript-import.ts : un
+// préfixe court et sans ponctuation de phrase, sinon on amputerait le texte.
+function stripSpeakerPrefix(line: string): string {
+  const match = line.match(/^([^:]{1,40}):\s*(.+)$/);
+  if (!match) return line;
+  return /[.!?]/.test(match[1]) ? line : match[2];
+}
+
+function extractVerbatim(range: unknown, lines: string[]): string | null {
+  if (!Array.isArray(range) || range.length !== 2) return null;
+  const [rawStart, rawEnd] = range;
+  if (typeof rawStart !== "number" || typeof rawEnd !== "number") return null;
+
+  const start = Math.floor(rawStart);
+  const end = Math.floor(rawEnd);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+  // Numéro hors du transcript = le modèle a inventé une référence.
+  if (start < 0 || end < start || end >= lines.length) {
+    console.warn(`[objection-classifier] intervalle de lignes hors transcript (${start}-${end}), ignoré`);
     return null;
   }
-  return quote;
+
+  const text = lines
+    .slice(start, Math.min(end, start + MAX_VERBATIM_LINES - 1) + 1)
+    .map(stripSpeakerPrefix)
+    .join(" ")
+    .trim();
+  return text.length >= 10 ? text : null;
 }
 
 function isHandlingQuality(value: unknown): value is HandlingQuality {
@@ -123,24 +149,34 @@ function isHandlingQuality(value: unknown): value is HandlingQuality {
 }
 
 // Rattache chaque objection d'un call à une catégorie du manager et note la
-// réponse apportée, en UN seul appel Claude pour tout le call (pas un par
-// objection : le modèle voit la liste complète des catégories et l'ensemble
-// des objections d'un même échange, ce qui donne de meilleurs rattachements
-// qu'une suite de décisions isolées).
+// réponse apportée, par lots (voir BATCH_SIZE) plutôt qu'un appel par
+// objection : le modèle voit ainsi la liste complète des catégories et
+// plusieurs objections du même échange, ce qui donne de meilleurs
+// rattachements qu'une suite de décisions isolées.
 //
 // Ne throw jamais : la classification est un enrichissement. En cas d'échec,
-// les objections sont renvoyées non classées et restent indexées normalement
-// dans la bibliothèque — exactement comme avant l'existence de ce module.
+// les objections concernées sont renvoyées non classées et restent indexées
+// normalement dans la bibliothèque — comme avant l'existence de ce module.
+//
+// Le découpage en lots vient d'un échec observé en conditions réelles le
+// 29/07/2026 : deux calls d'Oliverlist portaient 34 et 26 objections, la
+// réponse dépassait max_tokens, le JSON arrivait tronqué et la classification
+// de TOUTES les objections de ces calls était perdue d'un coup — 60 objections
+// sur 72. Avec des lots, une réponse tronquée ne coûte plus que son lot.
+const BATCH_SIZE = 10;
+
 export async function classifyAndEvaluateObjections(
   categories: ObjectionCategoryForClassifier[],
   objections: CallObjection[],
   // Le transcript complet : indispensable pour extraire les verbatims. Absent
   // (call trop ancien, transcript perdu), la classification et l'évaluation
   // se font quand même sur les résumés, sans citations.
-  transcript?: string | null
+  transcript?: string | null,
+  // Interne : numéro de tentative, voir la stratégie de reprise dans le catch.
+  attempt = 0
 ): Promise<ClassifiedObjection[]> {
-  const unclassified = (): ClassifiedObjection[] =>
-    objections.map((o) => ({
+  const unclassified = (batch: CallObjection[]): ClassifiedObjection[] =>
+    batch.map((o) => ({
       objection: o.objection,
       response: o.response,
       prospectVerbatim: null,
@@ -156,7 +192,19 @@ export async function classifyAndEvaluateObjections(
   // contre quoi évaluer. On ne consomme pas de tokens pour un résultat que
   // l'UI afficherait de toute façon comme « bibliothèque d'objections non
   // configurée ».
-  if (categories.length === 0 || objections.length === 0) return unclassified();
+  if (categories.length === 0 || objections.length === 0) return unclassified(objections);
+
+  const transcriptLines = transcript?.trim() ? splitTranscriptLines(transcript) : [];
+
+  if (objections.length > BATCH_SIZE) {
+    const results: ClassifiedObjection[] = [];
+    for (let i = 0; i < objections.length; i += BATCH_SIZE) {
+      results.push(
+        ...(await classifyAndEvaluateObjections(categories, objections.slice(i, i + BATCH_SIZE), transcript))
+      );
+    }
+    return results;
+  }
 
   const categoryBlock = categories
     .map((c, i) => {
@@ -178,9 +226,10 @@ export async function classifyAndEvaluateObjections(
     .map((o, i) => `[${i}] Objection : ${o.objection}\n    Réponse du commercial : ${o.response}`)
     .join("\n\n");
 
-  const transcriptBlock = transcript?.trim()
-    ? `\n\nTranscript complet du call (source unique des verbatims — n'invente rien qui n'y figure pas) :\n\n${transcript.trim()}`
-    : "\n\n(Transcript indisponible pour ce call : mets null dans prospect_verbatim et commercial_verbatim.)";
+  const transcriptBlock =
+    transcriptLines.length > 0
+      ? `\n\nTranscript du call, une ligne par prise de parole, numérotée — c'est à ces numéros que renvoient prospect_lines et commercial_lines :\n\n${numberTranscript(transcriptLines)}`
+      : "\n\n(Transcript indisponible pour ce call : mets null dans prospect_lines et commercial_lines.)";
 
   const userMessage = `Catégories d'objections définies par le directeur commercial :
 
@@ -195,10 +244,9 @@ ${objectionBlock}${transcriptBlock}`;
     const client = new Anthropic();
     const message = await client.messages.create({
       model: "claude-sonnet-4-6",
-      // Relevé de 3000 : chaque objection porte désormais deux citations et
-      // une reformulation en plus du verdict. Un call à 8 objections
-      // tronquait la réponse à 3000, et une troncature ici fait perdre la
-      // classification de TOUTES les objections du call (JSON invalide).
+      // Large marge : un lot de 10 objections tient très en dessous, les
+      // verbatims étant renvoyés sous forme de numéros de ligne et non de
+      // texte. C'est la ceinture qui complète les bretelles du découpage.
       max_tokens: 8000,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: userMessage }],
@@ -216,8 +264,6 @@ ${objectionBlock}${transcriptBlock}`;
     for (const r of parsed.results) {
       if (typeof r.index === "number") byIndex.set(r.index, r);
     }
-
-    const normalizedTranscript = transcript?.trim() ? normalizeForMatching(transcript) : "";
 
     return objections.map((o, i) => {
       const result = byIndex.get(i);
@@ -246,8 +292,8 @@ ${objectionBlock}${transcriptBlock}`;
       return {
         objection: o.objection,
         response: o.response,
-        prospectVerbatim: normalizedTranscript ? findVerbatim(result?.prospect_verbatim, normalizedTranscript) : null,
-        commercialVerbatim: normalizedTranscript ? findVerbatim(result?.commercial_verbatim, normalizedTranscript) : null,
+        prospectVerbatim: transcriptLines.length > 0 ? extractVerbatim(result?.prospect_lines, transcriptLines) : null,
+        commercialVerbatim: transcriptLines.length > 0 ? extractVerbatim(result?.commercial_lines, transcriptLines) : null,
         suggestedResponse: suggested,
         categoryId: category?.id ?? null,
         handlingQuality: quality,
@@ -257,10 +303,31 @@ ${objectionBlock}${transcriptBlock}`;
     });
   } catch (err) {
     console.error(
-      "[objection-classifier] classifyAndEvaluateObjections failed (non-blocking):",
+      "[objection-classifier] classifyAndEvaluateObjections failed:",
       err instanceof Error ? err.message : String(err),
       raw ? `\nRaw Claude response:\n${raw}` : "(no response captured — API call itself failed)"
     );
-    return unclassified();
+
+    // Deux reprises, dans cet ordre, avant d'abandonner :
+    //  1. un simple nouvel essai — l'échec observé en conditions réelles était
+    //     un `}` surnuméraire émis par le modèle au milieu d'un JSON par
+    //     ailleurs valide, exactement le type de dérapage intermittent qui ne
+    //     se reproduit pas au tirage suivant (même nature que le bug des
+    //     caractères de contrôle bruts, § génération IA de CLAUDE.md) ;
+    //  2. si ça rate encore et que le lot contient plusieurs objections, on le
+    //     coupe en deux : une réponse plus courte échoue moins, et l'échec
+    //     éventuel ne coûte plus que la moitié.
+    if (attempt === 0) {
+      return classifyAndEvaluateObjections(categories, objections, transcript, 1);
+    }
+    if (objections.length > 1) {
+      const middle = Math.ceil(objections.length / 2);
+      const [head, tail] = [objections.slice(0, middle), objections.slice(middle)];
+      return [
+        ...(await classifyAndEvaluateObjections(categories, head, transcript)),
+        ...(await classifyAndEvaluateObjections(categories, tail, transcript)),
+      ];
+    }
+    return unclassified(objections);
   }
 }
