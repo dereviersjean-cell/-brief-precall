@@ -15,7 +15,10 @@ const NAV_ITEMS: { href: string; label: string; icon: LucideIcon; managerOnly?: 
   { href: "/settings/general", label: "Général", icon: Settings },
   { href: "/settings/connexions", label: "Connexions", icon: LinkIcon },
   { href: "/settings/crm", label: "CRM", icon: Database },
-  { href: "/settings/references", label: "Références clients", icon: Library },
+  // « Références clients » raccourci en « Références » : avec l'ajout de
+  // « Tester un call », la barre débordait de son conteneur max-w-4xl et
+  // faisait apparaître une barre de défilement sous les onglets.
+  { href: "/settings/references", label: "Références", icon: Library },
   { href: "/settings/objections", label: "Objections", icon: MessagesSquare },
   // Banc d'essai du pipeline d'analyse (29/07/2026) : outil de calibrage de
   // la configuration d'équipe (playbook, catégories d'objections), donc
@@ -32,7 +35,7 @@ export default function SettingsTabs() {
   const items = NAV_ITEMS.filter((item) => !item.managerOnly || isManager);
 
   return (
-    <nav className="flex items-center gap-1 overflow-x-auto border-b border-border">
+    <nav className="flex items-center gap-1 overflow-x-auto no-scrollbar border-b border-border">
       {items.map((item) => {
         const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
         const Icon = item.icon;

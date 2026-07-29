@@ -51,7 +51,13 @@ export default function PerformanceTabs() {
   }, []);
 
   return (
-    <nav className="flex items-center gap-1 overflow-x-auto border-b border-border px-4 lg:px-10">
+    // Collée sous la TopBar (elle-même `sticky top-0`, h-14 = 56px) : sans
+    // cela, sur une page longue comme Objections, les onglets défilaient hors
+    // de vue et on se retrouvait bloqué dans une sous-page sans aucun moyen
+    // de revenir. z-index juste en dessous de la TopBar pour passer dessous
+    // et non par-dessus. Même fond translucide flouté qu'elle, sinon le
+    // contenu se voit au travers en défilant.
+    <nav className="sticky top-14 z-[9] flex items-center gap-1 overflow-x-auto no-scrollbar border-b border-border bg-white/70 px-4 backdrop-blur-xl lg:px-10">
       {TABS.map((tab) => {
         const active = tab.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(tab.href);
         const Icon = tab.icon;

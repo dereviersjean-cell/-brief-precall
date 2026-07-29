@@ -30,7 +30,8 @@ export default function TeamTabs() {
   if (firstSegment && !KNOWN_SEGMENTS.has(firstSegment)) return null;
 
   return (
-    <nav className="flex items-center gap-1 overflow-x-auto border-b border-border px-4 lg:px-10">
+    // Collée sous la TopBar, comme PerformanceTabs — voir le commentaire là-bas.
+    <nav className="sticky top-14 z-[9] flex items-center gap-1 overflow-x-auto no-scrollbar border-b border-border bg-white/70 px-4 backdrop-blur-xl lg:px-10">
       {TABS.map((tab) => {
         const active = tab.href === "/team" ? pathname === "/team" : pathname.startsWith(tab.href);
         const Icon = tab.icon;

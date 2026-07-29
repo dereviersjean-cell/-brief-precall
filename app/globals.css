@@ -193,3 +193,16 @@ body {
 @utility animate-float-slower { animation: float-slower 9s ease-in-out infinite; }
 @utility animate-rise { animation: rise 0.9s cubic-bezier(.2,.7,.2,1) both; }
 @utility animate-blob { animation: blob 18s ease-in-out infinite; }
+
+/* Barres d'onglets (Performance, Équipe, Paramètres) : elles défilent
+   horizontalement quand elles ne tiennent pas, mais la barre de défilement
+   native sous les onglets est disgracieuse — surtout sur macOS où elle reste
+   affichée en permanence dès qu'une souris est branchée. Le défilement reste
+   possible (tactile, trackpad, molette shift). */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

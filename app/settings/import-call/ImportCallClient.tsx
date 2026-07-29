@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, FlaskConical, Upload, X } from "lucide-react";
 import { Button, Card } from "@/app/components/ui/ui-bits";
+import Dropdown from "@/app/components/ui/Dropdown";
 
 type Person = { id: string; label: string };
 
@@ -188,14 +189,16 @@ export default function ImportCallClient({
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-600">Commercial</label>
-            <select value={ownerId} onChange={(e) => setOwnerId(e.target.value)} className={inputClass}>
-              <option value={currentUser.id}>{currentUser.label} (moi)</option>
-              {commercials.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
+            <Dropdown
+              className="w-full"
+              ariaLabel="Commercial à qui attribuer le call"
+              value={ownerId}
+              onChange={setOwnerId}
+              options={[
+                { value: currentUser.id, label: `${currentUser.label} (moi)` },
+                ...commercials.map((c) => ({ value: c.id, label: c.label })),
+              ]}
+            />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-600">

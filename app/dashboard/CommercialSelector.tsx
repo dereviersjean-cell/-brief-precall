@@ -1,16 +1,16 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Users } from "lucide-react";
 import type { LinkedUser } from "@/lib/db";
+import Dropdown from "@/app/components/ui/Dropdown";
 
 // Manager only — bascule entre la vue équipe (défaut) et la vue individuelle
-// d'un commercial précis, via le query param ?commercial=<id>. Présent sur
-// les 4 onglets de Performance (Vue d'ensemble, Scores, Objections,
-// Entraînement) ; conserve l'onglet courant en réutilisant usePathname
-// plutôt qu'une route fixe. La liste vient de getCommercialsForManager,
-// déjà scopée aux commerciaux liés à ce manager — pas de vérif
-// supplémentaire nécessaire côté client.
+// d'un commercial précis, via le query param ?commercial=<id>. Présent sur les
+// onglets de statistiques de Performance ; conserve l'onglet courant en
+// réutilisant usePathname plutôt qu'une route fixe. La liste vient de
+// getCommercialsForManager, déjà scopée aux commerciaux liés à ce manager —
+// pas de vérif supplémentaire nécessaire côté client.
 export default function CommercialSelector({
   commercials,
   selectedId,
@@ -20,31 +20,33 @@ export default function CommercialSelector({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   if (commercials.length === 0) return null;
 
+  // Les autres paramètres de la page (notamment le filtre de période
+  // ?period=/from=/to=) doivent survivre au changement de commercial — sinon
+  // on repart sur la période par défaut à chaque bascule.
+  function hrefFor(value: string): string {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value) params.set("commercial", value);
+    else params.delete("commercial");
+    const query = params.toString();
+    return query ? `${pathname}?${query}` : pathname;
+  }
+
   return (
-    <div className="mb-5 inline-flex items-center gap-2.5 rounded-xl border border-border bg-white px-3.5 py-2 shadow-[var(--shadow-xs)]">
-      <Users className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-      <label htmlFor="commercial-selector" className="text-[12.5px] text-slate-500 shrink-0">
-        Vue :
-      </label>
-      <select
-        id="commercial-selector"
-        value={selectedId ?? ""}
-        onChange={(e) => {
-          const value = e.target.value;
-          router.push(value ? `${pathname}?commercial=${value}` : pathname);
-        }}
-        className="text-[13px] font-medium text-slate-900 bg-transparent outline-none cursor-pointer pr-1"
-      >
-        <option value="">Équipe</option>
-        {commercials.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name ?? c.email}
-          </option>
-        ))}
-      </select>
-    </div>
+    <Dropdown
+      className="mb-5"
+      ariaLabel="Vue équipe ou commercial"
+      icon={<Users className="h-3.5 w-3.5" />}
+      prefix="Vue :"
+      value={selectedId ?? ""}
+      onChange={(value) => router.push(hrefFor(value))}
+      options={[
+        { value: "", label: "Équipe" },
+        ...commercials.map((c) => ({ value: c.id, label: c.name ?? c.email })),
+      ]}
+    />
   );
 }
