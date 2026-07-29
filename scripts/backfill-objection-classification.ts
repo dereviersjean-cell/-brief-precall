@@ -11,7 +11,10 @@
 //
 // Traite les objections call par call — le classifieur voit ainsi l'ensemble
 // des objections d'un même échange, ce qui donne de meilleurs rattachements
-// qu'une suite de décisions isolées (même raison que dans lib/objections.ts).
+// qu'une suite de décisions isolées (même raison que dans lib/objections.ts) —
+// et il reçoit le transcript du call, dont il extrait les verbatims
+// (migration 007). Un call dont le transcript a disparu est classé et évalué
+// quand même, simplement sans citations.
 //
 // Depuis la racine du repo :
 //   node --env-file=.env.local --experimental-strip-types \
@@ -64,6 +67,7 @@ async function main() {
 
   let classified = 0;
   let attached = 0;
+  let withVerbatim = 0;
   let skippedNoCategories = 0;
 
   for (const [organizationId, orgCalls] of byOrg) {
@@ -86,9 +90,20 @@ async function main() {
     }));
 
     for (const [callId, callRows] of orgCalls) {
+      const { data: callRow } = await supabaseAdmin
+        .from("calls")
+        .select("transcript")
+        .eq("id", callId)
+        .maybeSingle();
+      const transcript = (callRow as { transcript: string | null } | null)?.transcript ?? null;
+      if (!transcript) {
+        console.warn(`[backfill-classification] call ${callId} — transcript absent, pas de verbatims pour ce call.`);
+      }
+
       const results = await classifyAndEvaluateObjections(
         categoriesForClassifier,
-        callRows.map((r) => ({ objection: r.objection, response: r.response }))
+        callRows.map((r) => ({ objection: r.objection, response: r.response })),
+        transcript
       );
 
       for (let i = 0; i < callRows.length; i++) {
@@ -104,6 +119,9 @@ async function main() {
             handling_comment: result.handlingComment,
             evaluated_against_playbook: result.evaluatedAgainstPlaybook,
             classified_at: new Date().toISOString(),
+            prospect_verbatim: result.prospectVerbatim,
+            commercial_verbatim: result.commercialVerbatim,
+            suggested_response: result.suggestedResponse,
           })
           .eq("id", row.id);
         if (updateError) {
@@ -112,6 +130,7 @@ async function main() {
         }
         classified++;
         if (result.categoryId) attached++;
+        if (result.prospectVerbatim || result.commercialVerbatim) withVerbatim++;
       }
 
       console.log(`[backfill-classification] call ${callId} — ${callRows.length} objection(s) traitée(s)`);
@@ -124,6 +143,7 @@ async function main() {
     classified,
     rattacheesAUneCategorie: attached,
     nonClassees: classified - attached,
+    avecVerbatim: withVerbatim,
     skippedNoCategories,
   });
 }

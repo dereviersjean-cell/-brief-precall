@@ -287,7 +287,7 @@ export async function POST(request: NextRequest) {
 
             if (savedAnalysis.objections.length > 0) {
               if (organizationId) {
-                await indexCallObjections(organizationId, call.id, contactEmail, savedAnalysis.objections).catch((err) =>
+                await indexCallObjections(organizationId, call.id, contactEmail, savedAnalysis.objections, transcriptText).catch((err) =>
                   console.warn("[bot-webhook] indexCallObjections failed (non-blocking):", err instanceof Error ? err.message : String(err))
                 );
               }

@@ -30,7 +30,10 @@ export async function indexCallObjections(
   organizationId: string,
   callId: string,
   contactEmail: string | null,
-  objections: CallObjection[]
+  objections: CallObjection[],
+  // Transcript complet — sert au classifieur à extraire les verbatims
+  // (migration 007). Absent, tout le reste fonctionne, sans citations.
+  transcript?: string | null
 ): Promise<void> {
   if (objections.length === 0) return;
 
@@ -50,7 +53,8 @@ export async function indexCallObjections(
       handling_guidance: c.handlingGuidance,
       example_phrasings: c.examplePhrasings,
     })),
-    objections
+    objections,
+    transcript
   );
 
   const rows = await Promise.all(
@@ -72,6 +76,9 @@ export async function indexCallObjections(
         handling_comment: o.handlingComment,
         evaluated_against_playbook: o.evaluatedAgainstPlaybook,
         classified_at: new Date().toISOString(),
+        prospect_verbatim: o.prospectVerbatim,
+        commercial_verbatim: o.commercialVerbatim,
+        suggested_response: o.suggestedResponse,
       };
     })
   );
@@ -82,16 +89,26 @@ export async function indexCallObjections(
   const { error } = await supabaseAdmin.from("call_objections").insert(validRows);
   if (!error) return;
 
-  // Pattern bug #14 : si la migration 006 n'est pas encore passée en prod,
+  // Pattern bug #14 : si les migrations 006/007 ne sont pas encore passées en prod,
   // l'insert entier échoue sur des colonnes inconnues et on perdrait
   // l'objection. On réessaie sur les seules colonnes historiques — la
   // bibliothèque continue de se remplir, sans classification.
   console.error(
-    "[objections] insert avec classification échoué, retry sans les colonnes de la migration 006 :",
+    "[objections] insert avec classification échoué, retry sans les colonnes des migrations 006/007 :",
     error.message
   );
   const legacyRows = validRows.map(
-    ({ category_id, handling_quality, handling_comment, evaluated_against_playbook, classified_at, ...rest }) => rest
+    ({
+      category_id,
+      handling_quality,
+      handling_comment,
+      evaluated_against_playbook,
+      classified_at,
+      prospect_verbatim,
+      commercial_verbatim,
+      suggested_response,
+      ...rest
+    }) => rest
   );
   const { error: legacyError } = await supabaseAdmin.from("call_objections").insert(legacyRows);
   if (legacyError) throw legacyError;

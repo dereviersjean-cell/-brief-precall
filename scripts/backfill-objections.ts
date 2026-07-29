@@ -86,7 +86,7 @@ async function main() {
     }
 
     if (objections.length > 0) {
-      await indexCallObjections(organizationId, row.id, row.contact_email, objections).catch((err) =>
+      await indexCallObjections(organizationId, row.id, row.contact_email, objections, row.transcript).catch((err) =>
         console.error(`[backfill-objections] indexCallObjections failed for call ${row.id}:`, err instanceof Error ? err.message : String(err))
       );
     }

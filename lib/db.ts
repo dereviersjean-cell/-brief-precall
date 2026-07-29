@@ -6102,8 +6102,14 @@ export type ObjectionOccurrence = {
   companyName: string | null;
   contactEmail: string | null;
   occurredAt: string;
+  // Résumés produits par l'analyse.
   objection: string;
   response: string;
+  // Phrases réellement prononcées, vérifiées contre le transcript
+  // (migration 007). null = indisponible, l'UI affiche le résumé en le disant.
+  prospectVerbatim: string | null;
+  commercialVerbatim: string | null;
+  suggestedResponse: string | null;
   handlingQuality: "bien_traitee" | "partiellement" | "non_traitee" | null;
   handlingComment: string | null;
   evaluatedAgainstPlaybook: boolean;
@@ -6121,6 +6127,9 @@ type ObjectionJoinRow = {
   handling_quality: string | null;
   handling_comment: string | null;
   evaluated_against_playbook: boolean | null;
+  prospect_verbatim: string | null;
+  commercial_verbatim: string | null;
+  suggested_response: string | null;
   calls: { user_id: string | null; company_name: string | null; started_at: string | null; created_at: string } | null;
 };
 
@@ -6140,23 +6149,40 @@ async function fetchObjectionRows(
   period: ObjectionPeriod,
   userId?: string | null
 ): Promise<ObjectionJoinRow[]> {
-  let query = supabaseAdmin
-    .from("call_objections")
-    .select(
-      "id, call_id, contact_email, objection, response, created_at, category_id, handling_quality, handling_comment, evaluated_against_playbook, calls!inner(user_id, company_name, started_at, created_at)"
-    )
-    .eq("organization_id", organizationId);
+  const BASE_COLUMNS =
+    "id, call_id, contact_email, objection, response, created_at, category_id, handling_quality, handling_comment, evaluated_against_playbook, calls!inner(user_id, company_name, started_at, created_at)";
+  const VERBATIM_COLUMNS = "prospect_verbatim, commercial_verbatim, suggested_response";
 
-  if (userId) query = query.eq("calls.user_id", userId);
+  const run = async (columns: string) => {
+    let query = supabaseAdmin.from("call_objections").select(columns).eq("organization_id", organizationId);
+    if (userId) query = query.eq("calls.user_id", userId);
+    return query.order("created_at", { ascending: false });
+  };
 
-  const { data, error } = await query.order("created_at", { ascending: false });
+  // Pattern bug #14 : tant que la migration 007 n'est pas passée en prod,
+  // sélectionner les colonnes de verbatim fait échouer la requête ENTIÈRE.
+  // On retombe alors sur les colonnes historiques — la page affiche les
+  // résumés au lieu des citations plutôt que de planter.
+  let { data, error } = await run(`${BASE_COLUMNS}, ${VERBATIM_COLUMNS}`);
+  if (error) {
+    console.error("[db] select avec verbatims échoué, repli sans (migration 007 pas encore appliquée ?):", error.message);
+    ({ data, error } = await run(BASE_COLUMNS));
+  }
   if (error) throw error;
 
   const rows = ((data ?? []) as unknown[]).map((raw) => {
     const r = raw as ObjectionJoinRow & { calls: ObjectionJoinRow["calls"] | ObjectionJoinRow["calls"][] };
     // calls s'embarque en objet (FK many-to-one) mais on gère la forme
     // tableau défensivement — cf. inférence de relation PostgREST.
-    return { ...r, calls: Array.isArray(r.calls) ? r.calls[0] ?? null : r.calls } as ObjectionJoinRow;
+    return {
+      ...r,
+      // Absentes du repli sans verbatims ci-dessus : on normalise à null
+      // plutôt que undefined pour que les consommateurs n'aient qu'un cas.
+      prospect_verbatim: r.prospect_verbatim ?? null,
+      commercial_verbatim: r.commercial_verbatim ?? null,
+      suggested_response: r.suggested_response ?? null,
+      calls: Array.isArray(r.calls) ? r.calls[0] ?? null : r.calls,
+    } as ObjectionJoinRow;
   });
 
   if (!period.from && !period.to) return rows;
@@ -6280,6 +6306,9 @@ export async function listObjectionOccurrencesForCategory(
         occurredAt: objectionOccurredAt(row),
         objection: row.objection,
         response: row.response,
+        prospectVerbatim: row.prospect_verbatim,
+        commercialVerbatim: row.commercial_verbatim,
+        suggestedResponse: row.suggested_response,
         handlingQuality: (row.handling_quality as ObjectionOccurrence["handlingQuality"]) ?? null,
         handlingComment: row.handling_comment,
         evaluatedAgainstPlaybook: row.evaluated_against_playbook ?? false,
