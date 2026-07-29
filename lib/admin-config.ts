@@ -3,7 +3,7 @@
 // here anymore (sous-étape B). They're injected per-call into the user
 // message (see lib/call-analysis.ts's formatPlaybookForPrompt), driven by
 // the calling commercial's organization playbook, so editing a playbook
-// (/team/playbook) never requires touching this prompt.
+// (/dashboard/playbook) never requires touching this prompt.
 export const DEFAULT_CALL_ANALYSIS_SYSTEM_PROMPT =
 `Tu es un expert en analyse de calls commerciaux B2B. Tu évalues un rendez-vous selon les dimensions fournies dans le contexte utilisateur.
 
@@ -81,7 +81,7 @@ Règles :
 - Reste réaliste sur les quantités et prix
 - validity_days est un nombre entre 7 et 60`;
 
-// Used by /team/playbook's "Importer depuis un doc" flow (sous-étape C) —
+// Used by /dashboard/playbook's "Importer depuis un doc" flow (sous-étape C) —
 // extracts a candidate dimensions/criteria structure from a pasted playbook
 // document, which the manager reviews and can apply via replacePlaybookDimensions.
 export const DEFAULT_PLAYBOOK_EXTRACTION_PROMPT =

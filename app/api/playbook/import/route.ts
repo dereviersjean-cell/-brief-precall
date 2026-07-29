@@ -7,6 +7,7 @@ import { getUserRole, getUserOrganizationId } from "@/lib/db";
 import { readPromptConfig, DEFAULT_PLAYBOOK_EXTRACTION_PROMPT } from "@/lib/admin-config";
 import Anthropic from "@anthropic-ai/sdk";
 import { extractJsonObject } from "@/lib/ai-json";
+import { extractTextFromUploadedFile, UnsupportedFileTypeError, SUPPORTED_DOCUMENT_FORMATS_LABEL } from "@/lib/document-text";
 
 export type PlaybookExtractionDimension = {
   label: string;
@@ -14,48 +15,6 @@ export type PlaybookExtractionDimension = {
   weight: number;
   criteria: string[];
 };
-
-async function extractTextFromPdf(buffer: Buffer): Promise<string> {
-  // Same require() pattern as lib/inngest-functions.ts's extractTextFromFile
-  // — pdf-parse ships as CJS, and this route is the only other PDF consumer.
-  // pdf-parse v2 dropped the v1 callable-function export in favor of a
-  // PDFParse class (new PDFParse({ data }).getText()) — do not revert to
-  // require("pdf-parse")(buffer), it throws "pdfParse is not a function".
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { PDFParse } = require("pdf-parse");
-  const parser = new PDFParse({ data: buffer });
-  try {
-    const result = await parser.getText();
-    return result.text ?? "";
-  } finally {
-    await parser.destroy();
-  }
-}
-
-async function extractTextFromDocx(buffer: Buffer): Promise<string> {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const mammoth = require("mammoth");
-  const result = await mammoth.extractRawText({ buffer });
-  return (result.value as string) ?? "";
-}
-
-async function extractTextFromUploadedFile(file: File): Promise<string> {
-  const name = file.name.toLowerCase();
-  const buffer = Buffer.from(await file.arrayBuffer());
-
-  if (file.type.includes("pdf") || name.endsWith(".pdf")) {
-    return extractTextFromPdf(buffer);
-  }
-  if (
-    file.type.includes("word") ||
-    file.type.includes("officedocument.wordprocessing") ||
-    name.endsWith(".docx") ||
-    name.endsWith(".doc")
-  ) {
-    return extractTextFromDocx(buffer);
-  }
-  throw new Error("UNSUPPORTED_FILE_TYPE");
-}
 
 // Shared by both import sources (this route's paste/file upload, and
 // /api/playbook/notion/import) — the Claude extraction step is identical
@@ -124,8 +83,8 @@ export async function POST(request: NextRequest) {
       try {
         text = await extractTextFromUploadedFile(file);
       } catch (err) {
-        if (err instanceof Error && err.message === "UNSUPPORTED_FILE_TYPE") {
-          return NextResponse.json({ error: "Formats acceptés : PDF, Word (.doc, .docx)." }, { status: 400 });
+        if (err instanceof UnsupportedFileTypeError) {
+          return NextResponse.json({ error: SUPPORTED_DOCUMENT_FORMATS_LABEL }, { status: 400 });
         }
         throw err;
       }

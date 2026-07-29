@@ -9,7 +9,7 @@ import FadeIn from "@/app/dashboard/FadeIn";
 import ImportPlaybookModal from "./ImportPlaybookModal";
 import MeetingStagesSection from "./MeetingStagesSection";
 
-function PlaybookNameEditor({ name, onSave }: { name: string; onSave: (next: string) => void }) {
+function PlaybookNameEditor({ name, onSave, readOnly }: { name: string; onSave: (next: string) => void; readOnly: boolean }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(name);
   const [saving, setSaving] = useState(false);
@@ -68,6 +68,7 @@ function PlaybookNameEditor({ name, onSave }: { name: string; onSave: (next: str
   return (
     <div className="flex items-center gap-2">
       <h1 className="text-2xl font-bold text-slate-900">{name}</h1>
+      {!readOnly && (
       <button
         onClick={() => {
           setDraft(name);
@@ -78,6 +79,7 @@ function PlaybookNameEditor({ name, onSave }: { name: string; onSave: (next: str
       >
         <Pencil className="w-3.5 h-3.5" />
       </button>
+      )}
     </div>
   );
 }
@@ -87,11 +89,13 @@ function InlineText({
   onSave,
   className,
   placeholder,
+  readOnly = false,
 }: {
   value: string;
   onSave: (next: string) => void;
   className?: string;
   placeholder?: string;
+  readOnly?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -122,6 +126,14 @@ function InlineText({
     );
   }
 
+  if (readOnly) {
+    return (
+      <p className={`px-1.5 -mx-1.5 py-0.5 ${className ?? ""}`}>
+        {value || <span className="text-slate-400">{placeholder}</span>}
+      </p>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -146,10 +158,12 @@ function DimensionCard({
   onAddCriterion,
   onUpdateCriterion,
   onDeleteCriterion,
+  readOnly,
 }: {
   dimension: PlaybookDimension;
   index: number;
   total: number;
+  readOnly: boolean;
   onUpdate: (patch: Partial<Pick<PlaybookDimension, "label" | "description" | "weight">>) => void;
   onDelete: () => void;
   onMove: (direction: "up" | "down") => void;
@@ -168,6 +182,7 @@ function DimensionCard({
             value={dimension.label}
             onSave={(v) => onUpdate({ label: v })}
             className="font-semibold text-slate-900"
+            readOnly={readOnly}
           />
         </div>
         <span className="text-xs text-slate-400 font-mono shrink-0 mt-1">{dimension.key}</span>
@@ -179,23 +194,29 @@ function DimensionCard({
           onSave={(v) => onUpdate({ description: v })}
           className="text-sm text-slate-500"
           placeholder="Ajouter une description…"
+          readOnly={readOnly}
         />
       </div>
 
       <div className="flex items-center gap-4 mt-4 pb-4 border-b border-slate-100">
         <label className="flex items-center gap-2 text-xs text-slate-500">
           Poids
-          <input
-            type="number"
-            min={1}
-            value={dimension.weight}
-            onChange={(e) => {
-              const v = parseInt(e.target.value, 10);
-              if (!Number.isNaN(v) && v > 0) onUpdate({ weight: v });
-            }}
-            className="w-14 border border-border rounded-lg px-2 py-1 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
-          />
+          {readOnly ? (
+            <span className="text-sm font-medium text-slate-900">{dimension.weight}</span>
+          ) : (
+            <input
+              type="number"
+              min={1}
+              value={dimension.weight}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10);
+                if (!Number.isNaN(v) && v > 0) onUpdate({ weight: v });
+              }}
+              className="w-14 border border-border rounded-lg px-2 py-1 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
+            />
+          )}
         </label>
+        {!readOnly && (
         <div className="flex items-center gap-1 ml-auto">
           <button
             onClick={() => onMove("up")}
@@ -223,6 +244,7 @@ function DimensionCard({
             Supprimer
           </button>
         </div>
+        )}
       </div>
 
       <div className="space-y-1.5 mt-4">
@@ -233,20 +255,24 @@ function DimensionCard({
                 value={c.question}
                 onSave={(v) => onUpdateCriterion(c.id, v)}
                 className="text-sm text-slate-700"
+                readOnly={readOnly}
               />
             </div>
-            <button
-              onClick={() => onDeleteCriterion(c.id)}
-              className="shrink-0 h-6 w-6 flex items-center justify-center text-slate-300 hover:text-red-600 transition-colors duration-200"
-              aria-label="Supprimer la question"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
+            {!readOnly && (
+              <button
+                onClick={() => onDeleteCriterion(c.id)}
+                className="shrink-0 h-6 w-6 flex items-center justify-center text-slate-300 hover:text-red-600 transition-colors duration-200"
+                aria-label="Supprimer la question"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         ))}
         {dimension.criteria.length === 0 && <p className="text-sm text-slate-400">Aucune question pour cette dimension.</p>}
       </div>
 
+      {!readOnly && (
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -272,6 +298,7 @@ function DimensionCard({
           Ajouter une question
         </button>
       </form>
+      )}
     </div>
   );
 }
@@ -352,12 +379,19 @@ function AddDimensionModal({
   );
 }
 
+// `readOnly` : depuis le 29/07/2026 le Playbook est un onglet de Performance
+// et non plus une page d'Équipe — les commerciaux y accèdent en lecture (c'est
+// la grille sur laquelle ils sont notés, la leur cacher n'avait pas de sens),
+// les managers seuls l'éditent. Purement visuel : les routes /api/playbook/*
+// relisent le rôle en base, un appel direct ne contourne rien.
 export default function PlaybookClient({
   playbook: initialPlaybook,
   meetingStageConfig,
+  readOnly = false,
 }: {
   playbook: Playbook;
   meetingStageConfig: MeetingStageConfig;
+  readOnly?: boolean;
 }) {
   const [playbook, setPlaybook] = useState(initialPlaybook);
   // useState(initialPlaybook) only reads its argument on mount — after the
@@ -573,11 +607,14 @@ export default function PlaybookClient({
                 <BookOpen className="w-3 h-3" />
                 Playbook coaching
               </span>
-              <PlaybookNameEditor name={playbook.name} onSave={handleSaveName} />
+              <PlaybookNameEditor name={playbook.name} onSave={handleSaveName} readOnly={readOnly} />
               <p className="text-slate-500 text-sm mt-1">
-                Ce playbook s&apos;applique à tous les rendez-vous de votre organisation.
+                {readOnly
+                  ? "La grille sur laquelle vos rendez-vous sont notés. Seul votre manager peut la modifier."
+                  : "Ce playbook s'applique à tous les rendez-vous de votre organisation."}
               </p>
             </div>
+            {!readOnly && (
             <button
               onClick={() => setShowImportModal(true)}
               className="shrink-0 inline-flex items-center gap-2 h-9 px-3.5 rounded-lg border border-border bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors duration-200"
@@ -585,6 +622,7 @@ export default function PlaybookClient({
               <Upload className="w-4 h-4" />
               Importer depuis un doc
             </button>
+            )}
           </div>
         </div>
       </FadeIn>
@@ -610,23 +648,26 @@ export default function PlaybookClient({
               onAddCriterion={(q) => handleAddCriterion(dimension.id, q)}
               onUpdateCriterion={(criterionId, q) => handleUpdateCriterion(dimension.id, criterionId, q)}
               onDeleteCriterion={(criterionId) => handleDeleteCriterion(dimension.id, criterionId)}
+              readOnly={readOnly}
             />
           ))}
         </div>
 
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="mt-4 h-9 px-3.5 inline-flex items-center gap-1.5 rounded-lg border border-border bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors duration-200"
-        >
-          <Plus className="w-4 h-4" />
-          Ajouter une dimension
-        </button>
+        {!readOnly && (
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="mt-4 h-9 px-3.5 inline-flex items-center gap-1.5 rounded-lg border border-border bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors duration-200"
+          >
+            <Plus className="w-4 h-4" />
+            Ajouter une dimension
+          </button>
+        )}
       </FadeIn>
 
       {showAddModal && <AddDimensionModal onClose={() => setShowAddModal(false)} onCreate={handleAddDimension} />}
       {showImportModal && <ImportPlaybookModal onClose={() => setShowImportModal(false)} />}
 
-      <MeetingStagesSection initialConfig={meetingStageConfig} />
+      <MeetingStagesSection initialConfig={meetingStageConfig} readOnly={readOnly} />
     </div>
   );
 }

@@ -1,25 +1,9 @@
 import { redirect } from "next/navigation";
-import { getUserRole, getUserOrganizationId, ensureDefaultPlaybookForOrganization, getMeetingStageConfigForOrganization } from "@/lib/db";
-import { getEffectiveUserId } from "@/lib/session-user";
-import PlaybookClient from "./PlaybookClient";
 
-export default async function PlaybookPage() {
-  const userId = await getEffectiveUserId();
-
-  const role = userId ? await getUserRole(userId) : null;
-  if (role !== "manager") {
-    redirect("/team");
-  }
-
-  const orgId = await getUserOrganizationId(userId!);
-  if (!orgId) {
-    redirect("/team");
-  }
-
-  const [playbook, meetingStageConfig] = await Promise.all([
-    ensureDefaultPlaybookForOrganization(orgId, userId!),
-    getMeetingStageConfigForOrganization(orgId),
-  ]);
-
-  return <PlaybookClient playbook={playbook} meetingStageConfig={meetingStageConfig} />;
+// Le Playbook a déménagé dans Performance le 29/07/2026 (onglet à côté de
+// Objections). On garde cette route en redirection plutôt que de la
+// supprimer : elle est en favori chez les managers et référencée dans des
+// emails d'onboarding déjà envoyés.
+export default function LegacyPlaybookPage() {
+  redirect("/dashboard/playbook");
 }

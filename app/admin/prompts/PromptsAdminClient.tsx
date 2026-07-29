@@ -84,7 +84,7 @@ const PROMPT_META: { key: PromptKey; tabLabel: string; title: string; descriptio
     key: "playbook_extraction_prompt",
     tabLabel: "Extraction playbook",
     title: "Prompt Extraction de playbook",
-    description: "Instructions pour extraire une structure de dimensions/questions à partir d'un document playbook collé par un manager (page /team/playbook, import).",
+    description: "Instructions pour extraire une structure de dimensions/questions à partir d'un document playbook collé par un manager (page /dashboard/playbook, import).",
   },
   {
     key: "digest_commercial_prompt",

@@ -2,7 +2,7 @@
 // meeting + consignes d'évaluation par étape injectées dans analyzeCall.
 // Chaque organisation nomme ses RDV à sa façon (« Rencontre Oliverlist » = R1,
 // « Présentation Oliverlist » = R2…) : les motifs sont configurés par le
-// manager dans /team/playbook (section « Étapes de rendez-vous ») et
+// manager dans /dashboard/playbook (section « Étapes de rendez-vous ») et
 // stockés sur organizations.meeting_stage_config.
 // Fichier volontairement sans dépendance (pas de lib/db.ts, pas de SDK) —
 // consommé côté serveur (webhook Recall) ET côté client (aperçu de détection

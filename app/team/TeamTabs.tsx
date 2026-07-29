@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, BookOpen, Mail, BarChart3 } from "lucide-react";
+import { Users, Mail, BarChart3 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 // Sidebar n'a plus qu'un lien unique « Équipe » (AppSidebar.tsx) — la
@@ -10,9 +10,12 @@ import type { LucideIcon } from "lucide-react";
 // SettingsTabs (app/settings/_components/SettingsTabs.tsx). Masqué sur
 // /team/[commercialId] (page de détail d'un commercial, pas une des 4
 // catégories ci-dessous).
+// Playbook a quitté cet onglet le 29/07/2026 pour Performance (voir
+// PerformanceTabs) — /team/playbook survit en redirection pour les favoris,
+// d'où sa présence dans KNOWN_SEGMENTS : sans elle, la barre d'onglets
+// disparaîtrait le temps de la redirection.
 const TABS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/team", label: "Équipe", icon: Users },
-  { href: "/team/playbook", label: "Playbook", icon: BookOpen },
   { href: "/team/email-templates", label: "Templates emails", icon: Mail },
   { href: "/team/insights", label: "Insights", icon: BarChart3 },
 ];

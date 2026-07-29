@@ -23,7 +23,18 @@ const STAGE_HINTS: Record<MeetingStage, string> = {
   r3: "Rendez-vous de closing : négociation et signature.",
 };
 
-export default function MeetingStagesSection({ initialConfig }: { initialConfig: MeetingStageConfig }) {
+// `readOnly` : la page Playbook vit maintenant dans Performance, consultable
+// par les commerciaux (c'est la grille sur laquelle ils sont notés) mais
+// éditable par les seuls managers. Le verrou réel est côté serveur — les
+// routes /api/team/meeting-stages et /api/playbook/* vérifient déjà le rôle
+// en base ; ce prop ne fait que retirer des affordances qui échoueraient.
+export default function MeetingStagesSection({
+  initialConfig,
+  readOnly = false,
+}: {
+  initialConfig: MeetingStageConfig;
+  readOnly?: boolean;
+}) {
   const [config, setConfig] = useState<MeetingStageConfig>(initialConfig);
   const [drafts, setDrafts] = useState<Record<MeetingStage, string>>({ r1: "", r2: "", r3: "" });
   const [testTitle, setTestTitle] = useState("");
@@ -93,9 +104,11 @@ export default function MeetingStagesSection({ initialConfig }: { initialConfig:
             </p>
           </div>
         </div>
-        <Button variant="primary" size="sm" icon={<Save className="h-3.5 w-3.5" />} onClick={save} disabled={saving}>
-          {saving ? "Enregistrement…" : "Enregistrer les étapes"}
-        </Button>
+        {!readOnly && (
+          <Button variant="primary" size="sm" icon={<Save className="h-3.5 w-3.5" />} onClick={save} disabled={saving}>
+            {saving ? "Enregistrement…" : "Enregistrer les étapes"}
+          </Button>
+        )}
       </div>
 
       {message && (
@@ -166,17 +179,23 @@ export default function MeetingStagesSection({ initialConfig }: { initialConfig:
                       className="inline-flex items-center gap-1.5 rounded-full border border-border bg-slate-50 pl-2.5 pr-1.5 py-1 text-[12px] text-slate-700"
                     >
                       {pattern}
-                      <button
-                        onClick={() => removePattern(stage, pattern)}
-                        aria-label={`Retirer le motif ${pattern}`}
-                        className="grid h-4 w-4 place-items-center rounded-full text-slate-400 hover:bg-slate-200 hover:text-slate-700"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
+                      {!readOnly && (
+                        <button
+                          onClick={() => removePattern(stage, pattern)}
+                          aria-label={`Retirer le motif ${pattern}`}
+                          className="grid h-4 w-4 place-items-center rounded-full text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
                     </span>
                   ))}
                 </div>
               )}
+              {readOnly && config[stage].patterns.length === 0 && (
+                <p className="text-[12.5px] italic text-slate-400">Aucun motif défini pour cette étape.</p>
+              )}
+              {!readOnly && (
               <div className="flex items-center gap-2">
                 <input
                   value={drafts[stage]}
@@ -194,18 +213,25 @@ export default function MeetingStagesSection({ initialConfig }: { initialConfig:
                   Ajouter
                 </Button>
               </div>
+              )}
             </div>
 
             <div className="mt-4">
               <label className="block text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-2">
                 Consignes d&apos;analyse pour cette étape
               </label>
-              <textarea
-                value={config[stage].guidance}
-                onChange={(e) => setGuidance(stage, e.target.value)}
-                rows={4}
-                className="w-full rounded-lg border border-border bg-white px-3 py-2.5 text-[13px] leading-relaxed text-slate-900 outline-none focus:ring-2 focus:ring-[color:var(--violet)]/30"
-              />
+              {readOnly ? (
+                <p className="whitespace-pre-wrap rounded-lg bg-slate-50 px-3 py-2.5 text-[13px] leading-relaxed text-slate-700">
+                  {config[stage].guidance || <span className="italic text-slate-400">Aucune consigne pour cette étape.</span>}
+                </p>
+              ) : (
+                <textarea
+                  value={config[stage].guidance}
+                  onChange={(e) => setGuidance(stage, e.target.value)}
+                  rows={4}
+                  className="w-full rounded-lg border border-border bg-white px-3 py-2.5 text-[13px] leading-relaxed text-slate-900 outline-none focus:ring-2 focus:ring-[color:var(--violet)]/30"
+                />
+              )}
               <p className="mt-1.5 text-[11.5px] text-slate-400">
                 Injectées dans l&apos;analyse des calls détectés {MEETING_STAGE_SHORT_LABELS[stage]}, en complément des dimensions ci-dessus.
               </p>

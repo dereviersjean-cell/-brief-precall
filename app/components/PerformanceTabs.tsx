@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Target, MessagesSquare, Dumbbell, Lock } from "lucide-react";
+import { LayoutDashboard, Target, MessagesSquare, BookOpen, BarChart3, Dumbbell, Lock } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 // Sidebar n'a plus qu'un lien unique « Performance » (AppSidebar.tsx) — la
@@ -13,10 +13,17 @@ import type { LucideIcon } from "lucide-react";
 // plus un onglet — les blocs "Scores par dimension" et "Objections
 // importantes" qui n'étaient que des cartes résumées dans Vue d'ensemble
 // deviennent chacun leur propre page détaillée (recentrage du 25/07/2026).
+// Ajouts du 29/07/2026 : « Analytics » (statistiques de conduite de RDV,
+// activité + interactions) et « Playbook », rapatrié depuis /team — le
+// playbook est la grille de notation, il appartient au thème Performance
+// bien plus qu'au pilotage d'équipe, et les commerciaux doivent pouvoir le
+// consulter (en lecture seule, cf. app/dashboard/playbook/page.tsx).
 const TABS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/dashboard", label: "Vue d'ensemble", icon: LayoutDashboard },
   { href: "/dashboard/scores", label: "Scores", icon: Target },
+  { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/dashboard/objections", label: "Objections", icon: MessagesSquare },
+  { href: "/dashboard/playbook", label: "Playbook", icon: BookOpen },
   { href: "/training", label: "Entraînement", icon: Dumbbell },
 ];
 

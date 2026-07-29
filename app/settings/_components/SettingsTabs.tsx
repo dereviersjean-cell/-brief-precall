@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Settings, Link as LinkIcon, Database, Library, CreditCard, MessagesSquare } from "lucide-react";
+import { Settings, Link as LinkIcon, Database, Library, CreditCard, MessagesSquare, FlaskConical } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 // Notifications moved out to its own top-level sidebar item (AppSidebar.tsx,
@@ -17,6 +17,10 @@ const NAV_ITEMS: { href: string; label: string; icon: LucideIcon; managerOnly?: 
   { href: "/settings/crm", label: "CRM", icon: Database },
   { href: "/settings/references", label: "Références clients", icon: Library },
   { href: "/settings/objections", label: "Objections", icon: MessagesSquare },
+  // Banc d'essai du pipeline d'analyse (29/07/2026) : outil de calibrage de
+  // la configuration d'équipe (playbook, catégories d'objections), donc
+  // managerOnly comme Facturation.
+  { href: "/settings/import-call", label: "Tester un call", icon: FlaskConical, managerOnly: true },
   { href: "/settings/billing", label: "Facturation", icon: CreditCard, managerOnly: true },
 ];
 

@@ -2054,7 +2054,7 @@ export type TeamAverageScores = {
 
 // Dimensions shown are always the CURRENT playbook of the org owning
 // `playbookOwnerId` (product choice, sous-étape D) — fetched once here, not
-// per-analysis — so the bandeau stays consistent with what /team/playbook
+// per-analysis — so the bandeau stays consistent with what /dashboard/playbook
 // shows today, even though individual analyses may have been scored against
 // an older/different playbook_snapshot. A dimension average is computed over
 // whichever analyses happen to have a matching key in their `scores`; older
@@ -4435,7 +4435,7 @@ const DEFAULT_PLAYBOOK_DIMENSIONS: DefaultPlaybookDimensionSeed[] = [
 
 // Idempotent — only seeds if the org has no playbook yet (UNIQUE
 // organization_id also protects against a concurrent double-call). Call this
-// from the manager's first visit to /team/playbook.
+// from the manager's first visit to /dashboard/playbook.
 export async function ensureDefaultPlaybookForOrganization(orgId: string, createdBy: string): Promise<Playbook> {
   const existing = await getPlaybookForOrganization(orgId);
   if (existing) return existing;
@@ -5921,4 +5921,620 @@ export async function getTrainingStatsForOrganization(organizationId: string): P
       avgScore: scoreCount > 0 ? scoreSum / scoreCount : null,
     }))
     .sort((a, b) => b.sessionsCount - a.sessionsCount);
+}
+
+// ─── Playbook d'objections du manager (migration 006) ─────────────────────
+//
+// Les catégories que le directeur commercial définit à la main ou par import
+// de document : « les objections qui reviennent le plus souvent » et la
+// manière de les traiter. Par organisation (comme le playbook de scoring),
+// jamais par user. Servent à la fois de grille de rangement au classifieur
+// sémantique (lib/objection-classifier.ts) et de référentiel d'évaluation
+// des réponses réellement apportées.
+
+export type ObjectionCategory = {
+  id: string;
+  organizationId: string;
+  label: string;
+  description: string;
+  handlingGuidance: string;
+  examplePhrasings: string[];
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type ObjectionCategoryRow = {
+  id: string;
+  organization_id: string;
+  label: string;
+  description: string | null;
+  handling_guidance: string | null;
+  example_phrasings: string[] | null;
+  position: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+function mapObjectionCategory(row: ObjectionCategoryRow): ObjectionCategory {
+  return {
+    id: row.id,
+    organizationId: row.organization_id,
+    label: row.label,
+    description: row.description ?? "",
+    handlingGuidance: row.handling_guidance ?? "",
+    examplePhrasings: row.example_phrasings ?? [],
+    position: row.position ?? 0,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+// Pattern bug #14 : la migration 006 peut ne pas encore être passée en prod.
+// Toute lecture retombe sur une liste vide plutôt que de faire tomber la page
+// serveur entière via un Promise.all.
+export async function listObjectionCategories(organizationId: string): Promise<ObjectionCategory[]> {
+  const { data, error } = await supabaseAdmin
+    .from("objection_categories")
+    .select("id, organization_id, label, description, handling_guidance, example_phrasings, position, created_at, updated_at")
+    .eq("organization_id", organizationId)
+    .order("position", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return ((data ?? []) as ObjectionCategoryRow[]).map(mapObjectionCategory);
+}
+
+export type ObjectionCategoryInput = {
+  label: string;
+  description?: string;
+  handlingGuidance?: string;
+  examplePhrasings?: string[];
+  position?: number;
+};
+
+export async function createObjectionCategory(
+  organizationId: string,
+  input: ObjectionCategoryInput
+): Promise<ObjectionCategory> {
+  // Une nouvelle catégorie se range en fin de liste par défaut — le manager
+  // réordonne ensuite s'il le souhaite.
+  const position =
+    input.position ??
+    (await listObjectionCategories(organizationId).then((cats) =>
+      cats.reduce((max, c) => Math.max(max, c.position), -1) + 1
+    ).catch(() => 0));
+
+  const { data, error } = await supabaseAdmin
+    .from("objection_categories")
+    .insert({
+      organization_id: organizationId,
+      label: input.label.trim(),
+      description: input.description?.trim() ?? "",
+      handling_guidance: input.handlingGuidance?.trim() ?? "",
+      example_phrasings: input.examplePhrasings ?? [],
+      position,
+    })
+    .select("id, organization_id, label, description, handling_guidance, example_phrasings, position, created_at, updated_at")
+    .single();
+  if (error) throw error;
+  return mapObjectionCategory(data as ObjectionCategoryRow);
+}
+
+// organizationId dans le WHERE et pas seulement l'id : une route ne peut pas
+// muter la catégorie d'une autre organisation même avec un id valide deviné.
+export async function updateObjectionCategory(
+  organizationId: string,
+  categoryId: string,
+  input: Partial<ObjectionCategoryInput>
+): Promise<ObjectionCategory | null> {
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (input.label !== undefined) patch.label = input.label.trim();
+  if (input.description !== undefined) patch.description = input.description.trim();
+  if (input.handlingGuidance !== undefined) patch.handling_guidance = input.handlingGuidance.trim();
+  if (input.examplePhrasings !== undefined) patch.example_phrasings = input.examplePhrasings;
+  if (input.position !== undefined) patch.position = input.position;
+
+  const { data, error } = await supabaseAdmin
+    .from("objection_categories")
+    .update(patch)
+    .eq("id", categoryId)
+    .eq("organization_id", organizationId)
+    .select("id, organization_id, label, description, handling_guidance, example_phrasings, position, created_at, updated_at")
+    .maybeSingle();
+  if (error) throw error;
+  return data ? mapObjectionCategory(data as ObjectionCategoryRow) : null;
+}
+
+// Les objections déjà rattachées ne sont pas supprimées : la FK est en
+// `on delete set null`, elles repassent simplement en « Non classées ».
+export async function deleteObjectionCategory(organizationId: string, categoryId: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("objection_categories")
+    .delete()
+    .eq("id", categoryId)
+    .eq("organization_id", organizationId);
+  if (error) throw error;
+}
+
+export async function reorderObjectionCategories(organizationId: string, orderedIds: string[]): Promise<void> {
+  await Promise.all(
+    orderedIds.map((id, index) =>
+      supabaseAdmin
+        .from("objection_categories")
+        .update({ position: index, updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .eq("organization_id", organizationId)
+    )
+  );
+}
+
+// ─── Objections : statistiques par catégorie sur une période ──────────────
+
+export type ObjectionPeriod = {
+  // Bornes ISO incluses/exclues appliquées sur la date du CALL
+  // (calls.started_at, repli calls.created_at) — pas sur la date d'insertion
+  // de la ligne call_objections, qui peut décaler d'un backfill.
+  from?: string | null;
+  to?: string | null;
+};
+
+export type ObjectionCategoryStat = {
+  categoryId: string | null;
+  label: string;
+  description: string;
+  handlingGuidance: string;
+  occurrences: number;
+  wellHandled: number;
+  partiallyHandled: number;
+  notHandled: number;
+  unevaluated: number;
+  commercialsCount: number;
+  wonCount: number;
+  lostCount: number;
+};
+
+export type ObjectionOccurrence = {
+  id: string;
+  callId: string;
+  userId: string | null;
+  userName: string | null;
+  userEmail: string | null;
+  companyName: string | null;
+  contactEmail: string | null;
+  occurredAt: string;
+  objection: string;
+  response: string;
+  handlingQuality: "bien_traitee" | "partiellement" | "non_traitee" | null;
+  handlingComment: string | null;
+  evaluatedAgainstPlaybook: boolean;
+  outcome: DealOutcome | null;
+};
+
+type ObjectionJoinRow = {
+  id: string;
+  call_id: string;
+  contact_email: string | null;
+  objection: string;
+  response: string;
+  created_at: string;
+  category_id: string | null;
+  handling_quality: string | null;
+  handling_comment: string | null;
+  evaluated_against_playbook: boolean | null;
+  calls: { user_id: string | null; company_name: string | null; started_at: string | null; created_at: string } | null;
+};
+
+function objectionOccurredAt(row: ObjectionJoinRow): string {
+  return row.calls?.started_at ?? row.calls?.created_at ?? row.created_at;
+}
+
+// Une seule lecture partagée par la vue liste et la vue détail. `userId` se
+// restreint côté SQL via la jointure calls!inner (même pattern que
+// getObjectionStatsForUser) ; la période, elle, se filtre en JS : la date de
+// référence est `started_at ?? created_at` du call, un OR sur ressource
+// embarquée que PostgREST rend illisible pour un volume (quelques centaines
+// à quelques milliers de lignes par organisation) qui ne le justifie pas —
+// même arbitrage que les agrégations JS de getTeamAverageScores.
+async function fetchObjectionRows(
+  organizationId: string,
+  period: ObjectionPeriod,
+  userId?: string | null
+): Promise<ObjectionJoinRow[]> {
+  let query = supabaseAdmin
+    .from("call_objections")
+    .select(
+      "id, call_id, contact_email, objection, response, created_at, category_id, handling_quality, handling_comment, evaluated_against_playbook, calls!inner(user_id, company_name, started_at, created_at)"
+    )
+    .eq("organization_id", organizationId);
+
+  if (userId) query = query.eq("calls.user_id", userId);
+
+  const { data, error } = await query.order("created_at", { ascending: false });
+  if (error) throw error;
+
+  const rows = ((data ?? []) as unknown[]).map((raw) => {
+    const r = raw as ObjectionJoinRow & { calls: ObjectionJoinRow["calls"] | ObjectionJoinRow["calls"][] };
+    // calls s'embarque en objet (FK many-to-one) mais on gère la forme
+    // tableau défensivement — cf. inférence de relation PostgREST.
+    return { ...r, calls: Array.isArray(r.calls) ? r.calls[0] ?? null : r.calls } as ObjectionJoinRow;
+  });
+
+  if (!period.from && !period.to) return rows;
+  return rows.filter((row) => {
+    const at = objectionOccurredAt(row);
+    if (period.from && at < period.from) return false;
+    if (period.to && at > period.to) return false;
+    return true;
+  });
+}
+
+// Liste des catégories du manager avec leur volume sur la période. Renvoie
+// TOUTES les catégories définies, y compris à zéro occurrence (le manager
+// doit voir que l'objection qu'il a formalisée n'est jamais remontée — c'est
+// une information en soi), plus une entrée `categoryId: null` regroupant les
+// objections qu'aucune catégorie ne couvre.
+export async function getObjectionCategoryStats(
+  organizationId: string,
+  period: ObjectionPeriod = {},
+  userId?: string | null
+): Promise<ObjectionCategoryStat[]> {
+  const [categories, rows] = await Promise.all([
+    listObjectionCategories(organizationId).catch(() => [] as ObjectionCategory[]),
+    fetchObjectionRows(organizationId, period, userId),
+  ]);
+
+  const outcomeByEmail = await getDealOutcomesByEmail(organizationId, rows.map((r) => r.contact_email));
+
+  const blank = (categoryId: string | null, label: string, description: string, handlingGuidance: string) => ({
+    categoryId,
+    label,
+    description,
+    handlingGuidance,
+    occurrences: 0,
+    wellHandled: 0,
+    partiallyHandled: 0,
+    notHandled: 0,
+    unevaluated: 0,
+    wonCount: 0,
+    lostCount: 0,
+    commercials: new Set<string>(),
+  });
+
+  const byCategory = new Map<string | null, ReturnType<typeof blank>>();
+  for (const cat of categories) {
+    byCategory.set(cat.id, blank(cat.id, cat.label, cat.description, cat.handlingGuidance));
+  }
+
+  for (const row of rows) {
+    // Un category_id qui ne correspond plus à une catégorie existante
+    // (supprimée entre-temps, FK déjà passée à null côté base) retombe sur
+    // « Non classées » plutôt que de créer une ligne fantôme.
+    const key = row.category_id && byCategory.has(row.category_id) ? row.category_id : null;
+    let stat = byCategory.get(key);
+    if (!stat) {
+      stat = blank(null, "Non classées", "Objections qu'aucune catégorie du playbook ne couvre.", "");
+      byCategory.set(null, stat);
+    }
+
+    stat.occurrences++;
+    if (row.handling_quality === "bien_traitee") stat.wellHandled++;
+    else if (row.handling_quality === "partiellement") stat.partiallyHandled++;
+    else if (row.handling_quality === "non_traitee") stat.notHandled++;
+    else stat.unevaluated++;
+
+    if (row.calls?.user_id) stat.commercials.add(row.calls.user_id);
+
+    const outcome = row.contact_email ? outcomeByEmail.get(row.contact_email) : undefined;
+    if (outcome === "won") stat.wonCount++;
+    else if (outcome === "lost") stat.lostCount++;
+  }
+
+  return Array.from(byCategory.values())
+    .map(({ commercials, ...stat }) => ({ ...stat, commercialsCount: commercials.size }))
+    // Les catégories définies d'abord, par volume décroissant ; « Non
+    // classées » toujours en dernier, c'est un fourre-tout, pas une catégorie.
+    .sort((a, b) => {
+      if (a.categoryId === null) return 1;
+      if (b.categoryId === null) return -1;
+      return b.occurrences - a.occurrences;
+    });
+}
+
+// Drill-down : qui a rencontré cette objection sur la période, et comment il
+// l'a traitée. `categoryId: null` = les objections non classées.
+export async function listObjectionOccurrencesForCategory(
+  organizationId: string,
+  categoryId: string | null,
+  period: ObjectionPeriod = {},
+  userId?: string | null
+): Promise<ObjectionOccurrence[]> {
+  const rows = (await fetchObjectionRows(organizationId, period, userId)).filter((r) =>
+    categoryId === null ? !r.category_id : r.category_id === categoryId
+  );
+  if (rows.length === 0) return [];
+
+  const userIds = Array.from(new Set(rows.map((r) => r.calls?.user_id).filter((id): id is string => !!id)));
+  const [{ data: userRows, error: usersError }, outcomeByEmail] = await Promise.all([
+    userIds.length > 0
+      ? supabaseAdmin.from("users").select("id, name, email").in("id", userIds)
+      : Promise.resolve({ data: [], error: null }),
+    getDealOutcomesByEmail(organizationId, rows.map((r) => r.contact_email)),
+  ]);
+  if (usersError) throw usersError;
+
+  const userById = new Map(
+    ((userRows ?? []) as { id: string; name: string | null; email: string }[]).map((u) => [u.id, u])
+  );
+
+  return rows
+    .map((row) => {
+      const user = row.calls?.user_id ? userById.get(row.calls.user_id) ?? null : null;
+      return {
+        id: row.id,
+        callId: row.call_id,
+        userId: row.calls?.user_id ?? null,
+        userName: user?.name ?? null,
+        userEmail: user?.email ?? null,
+        companyName: row.calls?.company_name ?? null,
+        contactEmail: row.contact_email,
+        occurredAt: objectionOccurredAt(row),
+        objection: row.objection,
+        response: row.response,
+        handlingQuality: (row.handling_quality as ObjectionOccurrence["handlingQuality"]) ?? null,
+        handlingComment: row.handling_comment,
+        evaluatedAgainstPlaybook: row.evaluated_against_playbook ?? false,
+        outcome: (row.contact_email ? outcomeByEmail.get(row.contact_email) : undefined) ?? null,
+      };
+    })
+    .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
+}
+
+export async function getObjectionCategoryById(
+  organizationId: string,
+  categoryId: string
+): Promise<ObjectionCategory | null> {
+  const { data, error } = await supabaseAdmin
+    .from("objection_categories")
+    .select("id, organization_id, label, description, handling_guidance, example_phrasings, position, created_at, updated_at")
+    .eq("id", categoryId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? mapObjectionCategory(data as ObjectionCategoryRow) : null;
+}
+
+// ─── Analytics conversation (onglet Performance > Analytics, migration 006) ─
+//
+// Deux familles de métriques, volontairement sourcées différemment :
+//  · ACTIVITÉ — durée, volume, temps passé : lues directement depuis `calls`
+//    (duration_seconds/started_at), donc disponibles pour TOUS les calls, y
+//    compris ceux sans transcript exploitable.
+//  · INTERACTIONS — ratio de parole, monologues, patience, questions : lues
+//    depuis `call_analytics`, précalculé à l'ingestion par
+//    lib/call-analytics.ts. Un call sans transcript_json n'y figure pas et
+//    est simplement absent de ces moyennes (jamais compté comme un zéro,
+//    qui tirerait la moyenne d'équipe vers le bas sans raison).
+
+export type CallAnalyticsInput = {
+  callId: string;
+  userId: string | null;
+  organizationId: string | null;
+  occurredAt: string | null;
+  duration_ms: number;
+  commercial_talk_ms: number;
+  prospect_talk_ms: number;
+  talk_ratio_pct: number | null;
+  longest_monologue_ms: number;
+  longest_prospect_story_ms: number;
+  commercial_questions_count: number;
+  question_rate: number;
+  interactivity_score: number;
+  patience_ms: number | null;
+  turns_count: number;
+};
+
+// Upsert sur la PK call_id : un backfill relancé, ou un call ré-analysé,
+// écrase proprement au lieu de dupliquer (même règle d'idempotence que
+// partout ailleurs).
+export async function saveCallAnalytics(input: CallAnalyticsInput): Promise<void> {
+  const { error } = await supabaseAdmin.from("call_analytics").upsert(
+    {
+      call_id: input.callId,
+      user_id: input.userId,
+      organization_id: input.organizationId,
+      occurred_at: input.occurredAt,
+      duration_ms: input.duration_ms,
+      commercial_talk_ms: input.commercial_talk_ms,
+      prospect_talk_ms: input.prospect_talk_ms,
+      talk_ratio_pct: input.talk_ratio_pct,
+      longest_monologue_ms: input.longest_monologue_ms,
+      longest_prospect_story_ms: input.longest_prospect_story_ms,
+      commercial_questions_count: input.commercial_questions_count,
+      question_rate: input.question_rate,
+      interactivity_score: input.interactivity_score,
+      patience_ms: input.patience_ms,
+      turns_count: input.turns_count,
+      computed_at: new Date().toISOString(),
+    },
+    { onConflict: "call_id" }
+  );
+  if (error) throw error;
+}
+
+export type AnalyticsPeriod = { from?: string | null; to?: string | null };
+
+export type CommercialAnalytics = {
+  userId: string;
+  name: string | null;
+  email: string;
+  // Activité
+  callsCount: number;
+  totalDurationSeconds: number;
+  avgDurationSeconds: number | null;
+  weeklyCallsVolume: number;
+  weeklyDurationSeconds: number;
+  // Interactions — null quand aucun call de la période n'a de transcript
+  // exploitable pour cette métrique.
+  talkRatioPct: number | null;
+  longestMonologueMs: number | null;
+  longestProspectStoryMs: number | null;
+  interactivityScore: number | null;
+  patienceMs: number | null;
+  questionRate: number | null;
+  analyzedCallsCount: number;
+};
+
+export type TeamAnalytics = {
+  commercials: CommercialAnalytics[];
+  // Moyennes d'équipe — la ligne pointillée « Team average » des graphiques.
+  // Moyenne des commerciaux (chaque commercial pèse pareil), pas moyenne des
+  // calls : la question posée par le manager est « où se situe ce commercial
+  // par rapport aux autres », pas « quel est le call moyen ».
+  teamAverage: Omit<CommercialAnalytics, "userId" | "name" | "email">;
+  periodWeeks: number;
+};
+
+function averageOrNull(values: number[]): number | null {
+  if (values.length === 0) return null;
+  return values.reduce((sum, v) => sum + v, 0) / values.length;
+}
+
+// `period.to` exclu du calcul du nombre de semaines si absent : on prend
+// « maintenant ». Minimum 1 semaine pour que les métriques hebdomadaires ne
+// partent pas en division par un intervalle proche de zéro sur une période
+// d'un jour.
+function weeksInPeriod(period: AnalyticsPeriod): number {
+  const to = period.to ? new Date(period.to).getTime() : Date.now();
+  const from = period.from ? new Date(period.from).getTime() : to - 90 * 24 * 3600 * 1000;
+  const weeks = (to - from) / (7 * 24 * 3600 * 1000);
+  return Math.max(1, weeks);
+}
+
+export async function getTeamAnalytics(
+  organizationId: string,
+  userIds: string[],
+  period: AnalyticsPeriod = {}
+): Promise<TeamAnalytics> {
+  const periodWeeks = weeksInPeriod(period);
+  const emptyAverage = {
+    callsCount: 0,
+    totalDurationSeconds: 0,
+    avgDurationSeconds: null,
+    weeklyCallsVolume: 0,
+    weeklyDurationSeconds: 0,
+    talkRatioPct: null,
+    longestMonologueMs: null,
+    longestProspectStoryMs: null,
+    interactivityScore: null,
+    patienceMs: null,
+    questionRate: null,
+    analyzedCallsCount: 0,
+  };
+  if (userIds.length === 0) return { commercials: [], teamAverage: emptyAverage, periodWeeks };
+
+  const [usersRes, callsRes, analyticsRes] = await Promise.all([
+    supabaseAdmin.from("users").select("id, name, email").in("id", userIds),
+    supabaseAdmin.from("calls").select("id, user_id, duration_seconds, started_at, created_at").in("user_id", userIds),
+    // Pattern bug #14 : tant que la migration 006 n'est pas passée en prod,
+    // l'onglet doit afficher l'activité plutôt que planter entièrement.
+    supabaseAdmin
+      .from("call_analytics")
+      .select(
+        "call_id, user_id, occurred_at, talk_ratio_pct, longest_monologue_ms, longest_prospect_story_ms, interactivity_score, patience_ms, question_rate"
+      )
+      .eq("organization_id", organizationId)
+      .then((res) => (res.error ? { data: [], error: null } : res)),
+  ]);
+  if (usersRes.error) throw usersRes.error;
+  if (callsRes.error) throw callsRes.error;
+
+  const inPeriod = (at: string | null): boolean => {
+    if (!at) return false;
+    if (period.from && at < period.from) return false;
+    if (period.to && at > period.to) return false;
+    return true;
+  };
+
+  type CallRow = { id: string; user_id: string; duration_seconds: number | null; started_at: string | null; created_at: string };
+  const callsByUser = new Map<string, CallRow[]>();
+  for (const call of (callsRes.data ?? []) as CallRow[]) {
+    if (!inPeriod(call.started_at ?? call.created_at)) continue;
+    const list = callsByUser.get(call.user_id) ?? [];
+    list.push(call);
+    callsByUser.set(call.user_id, list);
+  }
+
+  type AnalyticsRow = {
+    call_id: string;
+    user_id: string | null;
+    occurred_at: string | null;
+    talk_ratio_pct: number | null;
+    longest_monologue_ms: number | null;
+    longest_prospect_story_ms: number | null;
+    interactivity_score: number | null;
+    patience_ms: number | null;
+    question_rate: number | null;
+  };
+  const analyticsByUser = new Map<string, AnalyticsRow[]>();
+  for (const row of (analyticsRes.data ?? []) as AnalyticsRow[]) {
+    if (!row.user_id || !inPeriod(row.occurred_at)) continue;
+    const list = analyticsByUser.get(row.user_id) ?? [];
+    list.push(row);
+    analyticsByUser.set(row.user_id, list);
+  }
+
+  const users = (usersRes.data ?? []) as { id: string; name: string | null; email: string }[];
+
+  const commercials: CommercialAnalytics[] = users.map((user) => {
+    const calls = callsByUser.get(user.id) ?? [];
+    const analytics = analyticsByUser.get(user.id) ?? [];
+
+    const durations = calls.map((c) => c.duration_seconds ?? 0).filter((d) => d > 0);
+    const totalDurationSeconds = durations.reduce((sum, d) => sum + d, 0);
+
+    const pick = (select: (row: AnalyticsRow) => number | null): number[] =>
+      analytics.map(select).filter((v): v is number => typeof v === "number");
+
+    return {
+      userId: user.id,
+      name: user.name,
+      email: user.email,
+      callsCount: calls.length,
+      totalDurationSeconds,
+      avgDurationSeconds: durations.length > 0 ? totalDurationSeconds / durations.length : null,
+      weeklyCallsVolume: calls.length / periodWeeks,
+      weeklyDurationSeconds: totalDurationSeconds / periodWeeks,
+      talkRatioPct: averageOrNull(pick((a) => a.talk_ratio_pct)),
+      longestMonologueMs: averageOrNull(pick((a) => a.longest_monologue_ms)),
+      longestProspectStoryMs: averageOrNull(pick((a) => a.longest_prospect_story_ms)),
+      interactivityScore: averageOrNull(pick((a) => a.interactivity_score)),
+      patienceMs: averageOrNull(pick((a) => a.patience_ms)),
+      questionRate: averageOrNull(pick((a) => a.question_rate)),
+      analyzedCallsCount: analytics.length,
+    };
+  });
+
+  // Seuls les commerciaux ayant au moins un call sur la période entrent dans
+  // la moyenne d'équipe — un commercial en congés ne doit pas tirer la
+  // référence vers le bas.
+  const active = commercials.filter((c) => c.callsCount > 0);
+  const avg = (select: (c: CommercialAnalytics) => number | null): number | null =>
+    averageOrNull(active.map(select).filter((v): v is number => typeof v === "number"));
+
+  const teamAverage: TeamAnalytics["teamAverage"] = {
+    callsCount: active.reduce((sum, c) => sum + c.callsCount, 0),
+    totalDurationSeconds: active.reduce((sum, c) => sum + c.totalDurationSeconds, 0),
+    avgDurationSeconds: avg((c) => c.avgDurationSeconds),
+    weeklyCallsVolume: avg((c) => c.weeklyCallsVolume) ?? 0,
+    weeklyDurationSeconds: avg((c) => c.weeklyDurationSeconds) ?? 0,
+    talkRatioPct: avg((c) => c.talkRatioPct),
+    longestMonologueMs: avg((c) => c.longestMonologueMs),
+    longestProspectStoryMs: avg((c) => c.longestProspectStoryMs),
+    interactivityScore: avg((c) => c.interactivityScore),
+    patienceMs: avg((c) => c.patienceMs),
+    questionRate: avg((c) => c.questionRate),
+    analyzedCallsCount: active.reduce((sum, c) => sum + c.analyzedCallsCount, 0),
+  };
+
+  return { commercials, teamAverage, periodWeeks };
 }

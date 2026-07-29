@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { createAsyncTranscript, getBotInfo, getTranscriptContent, transcriptToText, buildTranscriptJson, resolveSpeakerNames } from "@/lib/recall";
-import { createCall, getUserProfile, getUserName, getUserEmail, saveCallAnalysis, updateCallAnalysisKeyPoints, updateCallFollowUp, getContact, createContact, updateContact, generateTasksFromTemplates, getPlaybookSnapshotForUser, getUserOrganizationId, getMeetingStageConfigForOrganization, type CallData } from "@/lib/db";
+import { createCall, getUserProfile, getUserName, getUserEmail, saveCallAnalysis, updateCallAnalysisKeyPoints, updateCallFollowUp, getContact, createContact, updateContact, generateTasksFromTemplates, getPlaybookSnapshotForUser, getUserOrganizationId, getMeetingStageConfigForOrganization, saveCallAnalytics, type CallData } from "@/lib/db";
+import { computeCallInteractionMetrics } from "@/lib/call-analytics";
 import { pushNewTasksToHubSpot } from "@/lib/tasks-hubspot-sync";
 import { analyzeCall } from "@/lib/call-analysis";
 import { detectMeetingStage, MEETING_STAGE_LABELS } from "@/lib/meeting-stage";
@@ -155,9 +156,13 @@ export async function POST(request: NextRequest) {
           // for any historical call ingested before this existed.
           let transcriptJson: ReturnType<typeof buildTranscriptJson> | null = null;
           let speakerNamesOverride: Record<string, string> = {};
+          // Hoisté hors du try : réutilisé à l'étape 2b pour identifier le
+          // commercial parmi les speakers (métriques d'interaction).
+          let commercialName: string | null = null;
           try {
             transcriptJson = buildTranscriptJson(content);
-            const [commercialName, commercialEmail] = await Promise.all([getUserName(userId), getUserEmail(userId)]);
+            let commercialEmail: string | null;
+            [commercialName, commercialEmail] = await Promise.all([getUserName(userId), getUserEmail(userId)]);
             speakerNamesOverride = resolveSpeakerNames(content, {
               commercialName,
               commercialEmail,
@@ -223,6 +228,34 @@ export async function POST(request: NextRequest) {
             call = await createCall(legacyCallData);
           }
           console.log("[bot-webhook] call created:", call.id);
+
+          // Step 2b — métriques d'interaction (onglet Performance >
+          // Analytics). Précalculées ici plutôt qu'à l'affichage : l'onglet
+          // agrège tous les calls de l'organisation, relire chaque
+          // transcript_json à chaque rendu serait intenable. Non bloquant, et
+          // silencieux quand le transcript est trop pauvre (< 5 tours) — un
+          // call sans ligne call_analytics est simplement absent des
+          // moyennes, jamais compté comme un zéro.
+          if (transcriptJson) {
+            try {
+              const metrics = computeCallInteractionMetrics(transcriptJson, speakerNamesOverride, commercialName);
+              if (metrics) {
+                await saveCallAnalytics({
+                  callId: call.id,
+                  userId,
+                  organizationId,
+                  occurredAt: timing.started_at ?? new Date().toISOString(),
+                  ...metrics,
+                });
+                console.log("[bot-webhook] call_analytics saved, talk_ratio_pct:", metrics.talk_ratio_pct);
+              }
+            } catch (analyticsErr) {
+              console.error(
+                "[bot-webhook] saveCallAnalytics failed (non-blocking, migration 006 pas encore appliquée ?):",
+                analyticsErr instanceof Error ? analyticsErr.message : String(analyticsErr)
+              );
+            }
+          }
 
           // Step 3 — analyze call with Claude (non-blocking, result shared with step 4)
           let savedAnalysis: Awaited<ReturnType<typeof analyzeCall>> | null = null;
