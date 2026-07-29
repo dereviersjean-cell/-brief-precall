@@ -7,34 +7,50 @@ import type { TranscriptJson } from "./recall";
 // Sans dépendance : importable côté client (pour un aperçu avant envoi)
 // comme côté serveur — cf. bug #12.
 
+// Ce que la source permet réellement de mesurer :
+//  · "exact"  — début ET fin de chaque prise de parole (VTT, SRT, JSON) :
+//               toutes les métriques d'interaction sont calculables, patience
+//               comprise (elle a besoin d'une vraie fin de parole).
+//  · "coarse" — début seulement (« 00:45 Nom: … ») : la fin d'un tour est
+//               déduite du début du suivant, ce qui est factuel (le locuteur
+//               a la parole jusqu'à ce que l'autre reprenne) mais referme
+//               mécaniquement tous les silences. Ratio de parole, monologues,
+//               interactivité et taux de questions restent valides ; la
+//               patience, elle, vaudrait 0 partout et n'est PAS mesurée.
+//  · "none"   — aucun horodatage : rien n'est mesuré. On n'estime pas les
+//               durées au nombre de mots, cela produirait des chiffres
+//               plausibles mais fabriqués.
+export type TimingPrecision = "exact" | "coarse" | "none";
+
 export type ParsedTranscript = {
   // Texte à plat « Speaker: phrase », ce que consomme analyzeCall.
   text: string;
-  // Non-null uniquement quand la source porte de VRAIS horodatages. Un
-  // transcript en texte brut ne permet pas d'inventer des durées : sans
-  // timings, les métriques d'interaction (ratio de parole, patience, durée
-  // des monologues) seraient plausibles mais fabriquées. On préfère ne rien
-  // produire — l'analyse, les scores et les objections, eux, marchent très
-  // bien sans horodatage.
+  // Null quand timingPrecision vaut "none" — l'analyse, les scores et les
+  // objections marchent très bien sans, seules les métriques d'interaction
+  // sont concernées.
   transcriptJson: TranscriptJson | null;
   speakerNames: Record<string, string>;
   durationSeconds: number | null;
-  hasTimings: boolean;
-  format: "vtt" | "srt" | "json" | "text";
+  timingPrecision: TimingPrecision;
+  format: "vtt" | "srt" | "json" | "timestamped" | "text";
 };
 
 type Entry = { speaker: string; startMs: number | null; endMs: number | null; text: string };
 
-// « 00:01:23.456 » / « 00:01:23,456 » / « 01:23.4 »
+// « 00:01:23.456 », « 00:01:23,456 », « 01:23.4 » (VTT/SRT) mais aussi
+// « 00:45 » et « 01:02:03 » (exports type Google Meet / Zoom, sans fraction).
 function parseTimestamp(raw: string): number | null {
-  const match = raw.trim().match(/^(?:(\d+):)?(\d{1,2}):(\d{1,2})[.,](\d{1,3})$/);
+  const match = raw.trim().match(/^(?:(\d+):)?(\d{1,2}):(\d{1,2})(?:[.,](\d{1,3}))?$/);
   if (!match) return null;
   const [, hours, minutes, seconds, fraction] = match;
   return (
     (Number(hours ?? 0) * 3600 + Number(minutes) * 60 + Number(seconds)) * 1000 +
-    Number(fraction.padEnd(3, "0"))
+    (fraction ? Number(fraction.padEnd(3, "0")) : 0)
   );
 }
+
+// Horodatage en tête de ligne : « 00:45 Dorian Monaco: Bonjour. »
+const LEADING_TIMESTAMP = /^\s*\[?(\d{1,2}:\d{2}(?::\d{2})?)\]?\s+(.+)$/;
 
 // « Nom : texte » ou « Nom: texte » en tête de ligne. Le nom doit rester
 // court et sans ponctuation de phrase, sinon « Bref, on en reparle : ... »
@@ -44,6 +60,11 @@ function splitSpeaker(line: string): { speaker: string | null; text: string } {
   if (!match) return { speaker: null, text: line.trim() };
   const [, speaker, text] = match;
   if (/[.!?]/.test(speaker)) return { speaker: null, text: line.trim() };
+  // Sur « 00:45 Dorian Monaco: Bonjour », le premier « : » est celui de
+  // l'horodatage : sans ce garde-fou, le locuteur retenu serait « 00 » et
+  // tout le transcript s'effondrerait sur deux ou trois faux locuteurs.
+  // Les appelants retirent l'horodatage avant, ceci est la ceinture.
+  if (/^\d+$/.test(speaker.trim())) return { speaker: null, text: line.trim() };
   return { speaker: speaker.trim(), text: text.trim() };
 }
 
@@ -76,6 +97,54 @@ function parseCueBased(content: string): Entry[] {
   }
 
   return entries;
+}
+
+// Format « 00:45 Dorian Monaco: Bonjour. » — un horodatage de DÉBUT en tête
+// de ligne, suivi du locuteur. C'est ce que sortent Google Meet, Zoom, Fathom
+// et la plupart des outils de visio. Les lignes suivantes sans horodatage
+// sont la suite de la même prise de parole et lui sont rattachées.
+function parseTimestampedText(content: string): Entry[] {
+  const entries: Entry[] = [];
+
+  for (const rawLine of content.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    const stamped = line.match(LEADING_TIMESTAMP);
+    if (!stamped) {
+      // Continuation de la prise de parole en cours. Avant le premier
+      // horodatage (en-tête de fichier, titre), il n'y a rien à continuer.
+      const last = entries[entries.length - 1];
+      if (last) last.text = `${last.text} ${line}`.trim();
+      continue;
+    }
+
+    const [, rawTimestamp, rest] = stamped;
+    const startMs = parseTimestamp(rawTimestamp);
+    const { speaker, text } = splitSpeaker(rest);
+    if (!text) continue;
+
+    if (speaker) {
+      entries.push({ speaker, startMs, endMs: null, text });
+    } else {
+      // Ligne horodatée sans locuteur : même locuteur que la précédente.
+      const last = entries[entries.length - 1];
+      if (last) last.text = `${last.text} ${text}`.trim();
+      else entries.push({ speaker: "Locuteur inconnu", startMs, endMs: null, text });
+    }
+  }
+
+  return entries;
+}
+
+// Débit de parole français courant, ~150 mots/minute. Sert UNIQUEMENT à
+// donner une fin au dernier tour d'un transcript qui n'a que des débuts —
+// jamais à fabriquer les durées de tous les tours.
+const WORDS_PER_MINUTE = 150;
+
+function estimateSpeechDurationMs(text: string): number {
+  const words = text.split(/\s+/).filter(Boolean).length;
+  return Math.round((words / WORDS_PER_MINUTE) * 60_000);
 }
 
 function parsePlainText(content: string): Entry[] {
@@ -154,6 +223,15 @@ function detectFormat(content: string, fileName?: string): ParsedTranscript["for
   if (name.endsWith(".json") || trimmed.startsWith("[") || trimmed.startsWith("{")) return "json";
   if (name.endsWith(".vtt") || /^WEBVTT/m.test(content)) return "vtt";
   if (name.endsWith(".srt") || /^\d+\s*\r?\n\d{2}:\d{2}:\d{2},\d{3}\s*-->/m.test(content)) return "srt";
+
+  // Au moins trois lignes « 00:45 Nom: … » : un seul horodatage isolé peut
+  // être une date ou une heure citée dans le corps du texte, trois lignes
+  // structurées de la sorte ne sont pas un hasard.
+  const timestampedLines = content
+    .split(/\r?\n/)
+    .filter((line) => LEADING_TIMESTAMP.test(line.trim()) && /:/.test(line.replace(LEADING_TIMESTAMP, "$2")));
+  if (timestampedLines.length >= 3) return "timestamped";
+
   return "text";
 }
 
@@ -168,7 +246,12 @@ export function parseTranscript(content: string, fileName?: string): ParsedTrans
     if (!entries) format = "text";
   }
   if (!entries) {
-    entries = format === "vtt" || format === "srt" ? parseCueBased(content) : parsePlainText(content);
+    entries =
+      format === "vtt" || format === "srt"
+        ? parseCueBased(content)
+        : format === "timestamped"
+        ? parseTimestampedText(content)
+        : parsePlainText(content);
   }
   if (entries.length === 0) {
     entries = parsePlainText(content);
@@ -191,24 +274,49 @@ export function parseTranscript(content: string, fileName?: string): ParsedTrans
 
   const text = merged.map((e) => `${e.speaker}: ${e.text}`).join("\n");
 
-  const hasTimings = merged.length > 0 && merged.every((e) => e.startMs !== null && e.endMs !== null);
   const speakerNames: Record<string, string> = {};
   for (const entry of merged) speakerNames[entry.speaker] = entry.speaker;
 
-  if (!hasTimings) {
-    return { text, transcriptJson: null, speakerNames, durationSeconds: null, hasTimings: false, format };
+  const hasStarts = merged.length > 0 && merged.every((e) => e.startMs !== null);
+  const hasEnds = hasStarts && merged.every((e) => e.endMs !== null);
+  const timingPrecision: TimingPrecision = hasEnds ? "exact" : hasStarts ? "coarse" : "none";
+
+  if (timingPrecision === "none") {
+    return { text, transcriptJson: null, speakerNames, durationSeconds: null, timingPrecision, format };
   }
 
-  const turns = merged.map((entry) => ({
-    // Le nom sert d'identifiant de locuteur : sans participant Recall, c'est
-    // la seule clé stable dont on dispose, et speakerNames la mappe sur
-    // elle-même pour que l'affichage reste correct.
-    speaker_id: entry.speaker,
-    speaker_name_raw: entry.speaker,
-    start_ms: entry.startMs as number,
-    end_ms: Math.max(entry.startMs as number, entry.endMs as number),
-    text: entry.text,
-  }));
+  const turns = merged.map((entry, index) => {
+    const startMs = entry.startMs as number;
+    // Fin connue (VTT/SRT/JSON) : on la prend telle quelle.
+    //
+    // Sinon (seuls les débuts sont horodatés) la prise de parole est bornée
+    // par DEUX limites, dont on garde la plus courte :
+    //  · le début du tour suivant — le locuteur ne peut pas avoir parlé
+    //    au-delà ;
+    //  · la durée de lecture de son texte à un débit de parole français
+    //    courant — sans ce plafond, un blanc de 30 s après une réponse serait
+    //    compté comme 30 s de parole, et le ratio parole/écoute créditerait
+    //    systématiquement celui qui précède les silences.
+    // Le plafond ne fait jamais que RÉDUIRE : il n'invente pas de temps de
+    // parole que le transcript ne montre pas.
+    const spokenEstimateMs = startMs + estimateSpeechDurationMs(entry.text);
+    const endMs =
+      entry.endMs ??
+      (index + 1 < merged.length
+        ? Math.min(merged[index + 1].startMs as number, spokenEstimateMs)
+        : spokenEstimateMs);
+
+    return {
+      // Le nom sert d'identifiant de locuteur : sans participant Recall, c'est
+      // la seule clé stable dont on dispose, et speakerNames la mappe sur
+      // elle-même pour que l'affichage reste correct.
+      speaker_id: entry.speaker,
+      speaker_name_raw: entry.speaker,
+      start_ms: startMs,
+      end_ms: Math.max(startMs, endMs),
+      text: entry.text,
+    };
+  });
   const totalDurationMs = turns.reduce((max, turn) => Math.max(max, turn.end_ms), 0);
 
   return {
@@ -216,7 +324,7 @@ export function parseTranscript(content: string, fileName?: string): ParsedTrans
     transcriptJson: { turns, total_duration_ms: totalDurationMs },
     speakerNames,
     durationSeconds: Math.round(totalDurationMs / 1000),
-    hasTimings: true,
+    timingPrecision,
     format,
   };
 }

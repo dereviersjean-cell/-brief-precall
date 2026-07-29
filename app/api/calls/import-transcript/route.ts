@@ -217,11 +217,13 @@ export async function POST(request: NextRequest) {
     warnings.push("L'analyse du call a échoué — le transcript est enregistré, relancez depuis le détail du call.");
   }
 
-  // Métriques d'interaction : uniquement si le transcript portait de vrais
+  // Métriques d'interaction : uniquement si le transcript portait des
   // horodatages (cf. lib/transcript-import.ts — pas de durées inventées).
   if (parsed.transcriptJson) {
     try {
-      const metrics = computeCallInteractionMetrics(parsed.transcriptJson, parsed.speakerNames, commercialName);
+      const metrics = computeCallInteractionMetrics(parsed.transcriptJson, parsed.speakerNames, commercialName, {
+        measurePatience: parsed.timingPrecision === "exact",
+      });
       if (metrics) {
         await saveCallAnalytics({
           callId: call.id,
@@ -230,13 +232,26 @@ export async function POST(request: NextRequest) {
           occurredAt: startedAt,
           ...metrics,
         });
+        if (parsed.timingPrecision === "coarse") {
+          warnings.push(
+            "Le transcript ne donne que l'heure de début de chaque prise de parole : ratio de parole, monologues, interactivité et taux de questions sont calculés, mais pas la patience (elle demande de savoir quand chacun s'arrête de parler)."
+          );
+        }
+      } else {
+        // Le cas de loin le plus fréquent : le nom du commercial dans Brief
+        // ne correspond à aucun nom de locuteur du transcript. On le dit
+        // explicitement, sinon l'onglet Analytics reste muet sans raison
+        // visible.
+        warnings.push(
+          `Aucun locuteur du transcript ne correspond à « ${commercialName ?? "le commercial sélectionné"} » : les métriques d'interaction ne sont pas calculées. Vérifiez que le nom du commercial dans Brief est écrit comme dans le transcript (${Object.keys(parsed.speakerNames).join(", ")}).`
+        );
       }
     } catch (err) {
       console.warn("[import-transcript] saveCallAnalytics failed:", err instanceof Error ? err.message : String(err));
     }
   } else {
     warnings.push(
-      "Transcript sans horodatage : les métriques d'interaction (ratio de parole, patience, monologues) ne sont pas calculées. Utilisez un .vtt, un .srt ou un JSON pour les obtenir."
+      "Transcript sans horodatage : les métriques d'interaction (ratio de parole, monologues, patience) ne sont pas calculées. Un export avec les heures de passage (« 00:45 Nom : … »), un .vtt, un .srt ou un JSON les débloque."
     );
   }
 

@@ -52,8 +52,17 @@ export function computeCallInteractionMetrics(
   transcriptJson: TranscriptJson,
   speakerNamesOverride: Record<string, string>,
   commercialName: string | null,
-  commercialSpeakerId?: string
+  options: {
+    commercialSpeakerId?: string;
+    // À passer à false quand la fin de chaque prise de parole n'est pas
+    // connue et a été déduite du début de la suivante (transcripts au format
+    // « 00:45 Nom: … », cf. lib/transcript-import.ts) : tous les silences
+    // sont alors mécaniquement refermés, la patience vaudrait 0 partout et
+    // ce zéro se lirait comme « coupe systématiquement la parole ».
+    measurePatience?: boolean;
+  } = {}
 ): CallInteractionMetrics | null {
+  const { commercialSpeakerId, measurePatience = true } = options;
   const turns = transcriptJson.turns;
   if (turns.length < MIN_TURNS_FOR_METRICS) return null;
 
@@ -119,7 +128,7 @@ export function computeCallInteractionMetrics(
   // temps à répondre ne dit rien du comportement du commercial.
   let silenceSum = 0;
   let silenceCount = 0;
-  for (let i = 1; i < turns.length; i++) {
+  for (let i = 1; measurePatience && i < turns.length; i++) {
     const prev = turns[i - 1];
     const curr = turns[i];
     if (isCommercialSpeaker(prev.speaker_id) || !isCommercialSpeaker(curr.speaker_id)) continue;

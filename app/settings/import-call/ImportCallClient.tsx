@@ -21,7 +21,8 @@ const FORMAT_LABELS: Record<string, string> = {
   vtt: "WebVTT (horodaté)",
   srt: "SubRip (horodaté)",
   json: "JSON (horodaté)",
-  text: "Texte brut",
+  timestamped: "Texte horodaté (« 00:45 Nom : … »)",
+  text: "Texte brut, sans horodatage",
 };
 
 export default function ImportCallClient({
@@ -132,9 +133,10 @@ export default function ImportCallClient({
           <div>
             <p className="mb-3 text-[12.5px] text-slate-500">
               Formats acceptés : <strong>.vtt</strong>, <strong>.srt</strong>, <strong>.json</strong> (transcript Recall
-              ou export Brief) et <strong>.txt</strong>. Les trois premiers portent des horodatages et débloquent aussi
-              les métriques d&apos;interaction (ratio de parole, patience, monologues) ; un .txt ne donnera que la
-              notation et les objections.
+              ou export Brief) et <strong>.txt</strong>. Un .txt au format «&nbsp;<code>00:45 Nom : texte</code>&nbsp;»
+              — ce que sortent Google Meet, Zoom ou Fathom — est reconnu et débloque lui aussi les métriques
+              d&apos;interaction. Sans aucun horodatage, vous aurez la notation et les objections, mais pas les
+              métriques d&apos;interaction.
             </p>
             <input
               ref={fileInputRef}
@@ -170,14 +172,15 @@ export default function ImportCallClient({
         ) : (
           <div>
             <p className="mb-3 text-[12.5px] text-slate-500">
-              Une ligne par prise de parole, préfixée du nom du locuteur — par exemple «&nbsp;Hubert : Bonjour, merci
-              d&apos;avoir pris le temps…&nbsp;».
+              Une ligne par prise de parole, préfixée du nom du locuteur. Si votre export porte les heures de passage
+              («&nbsp;<code>00:45 Hubert : Bonjour…</code>&nbsp;»), gardez-les : elles débloquent les métriques
+              d&apos;interaction. Les lignes sans horodatage sont rattachées à la prise de parole précédente.
             </p>
             <textarea
               value={transcript}
               onChange={(e) => setTranscript(e.target.value)}
               rows={12}
-              placeholder={"Hubert : Bonjour, merci d'avoir pris le temps.\nProspect : Avec plaisir. Alors, concrètement, ça coûte combien ?"}
+              placeholder={"00:12 Hubert : Bonjour, merci d'avoir pris le temps.\n00:18 Prospect : Avec plaisir. Alors, concrètement, ça coûte combien ?"}
               className={`${inputClass} resize-y font-mono text-[12.5px]`}
             />
           </div>
