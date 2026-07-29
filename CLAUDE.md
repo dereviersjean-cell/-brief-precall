@@ -161,6 +161,15 @@ Calqué sur Claap : deux familles, une tuile par métrique, classement en barres
 - Quand aucun locuteur du transcript ne correspond au nom du commercial dans Brief, l'import le dit explicitement avec la liste des locuteurs trouvés — sinon l'onglet Analytics reste muet sans raison visible.
 - Le call créé est un **call normal** (décision du 29/07/2026, pas de bac à sable) : il compte dans les statistiques, les analytics et la bibliothèque d'objections. Le call peut être attribué au manager ou à un de **ses** commerciaux liés — jamais un id arbitraire.
 
+### Mesure du pipeline d'objections (`evals/objections/`)
+
+**Aucun réglage de prompt ne doit plus se juger sur une capture d'écran.** Le 29/07/2026, la définition d'une objection a été desserrée puis resserrée dans la même journée sans qu'on puisse dire lequel des deux réglages valait mieux : passer de 30 à 11 objections peut vouloir dire « on a retiré le bruit » comme « on a perdu la moitié du signal ». D'où ce socle.
+
+- `evals/objections/<callId>.json` : la vérité terrain, annotée à la main (voir le README du dossier). Committée — c'est un actif, pas un fichier de travail.
+- `scripts/eval-objections-scaffold.ts` prépare les fiches pré-remplies avec la sortie courante du pipeline (pour éviter la saisie, pas pour faire valider l'existant — le README prévient du biais d'ancrage). `reviewed: false` par défaut, et **l'éval refuse de compter une fiche non relue** : sinon on mesurerait le pipeline contre lui-même et on afficherait 100 % partout.
+- `scripts/eval-objections.ts` rejoue l'extraction ET le rattachement sur le transcript réel (jamais les données stockées, qui peuvent dater d'un prompt antérieur) et sort précision / rappel / F1 / justesse du rattachement, plus le détail des objections ratées, en trop et mal rangées.
+- `lib/objection-eval.ts` : appariement attendu ↔ obtenu par **similarité d'embeddings** (Voyage, seuil `MATCH_THRESHOLD`), parce que deux formulations de la même objection ne se ressemblent pas mot pour mot. C'est le bon usage des embeddings — reconnaître deux paraphrases — **à ne pas confondre avec le rattachement à une catégorie**, où la proximité thématique induit activement en erreur (« où sont vos équipes ? » est proche de « impossibilité d'écouter les appels » : deux sujets d'appels, deux intentions opposées). Micro-moyenne sur les objections, pas macro sur les calls, pour qu'un petit call parfait ne masque pas un gros call raté.
+
 ### Backfills
 - `scripts/backfill-objection-classification.ts` : classe les objections déjà en base. À lancer **après** avoir créé les catégories. Ne retouche que les lignes jamais classées (`classified_at` null) sauf `--all`. Sans backfill, l'onglet Objections démarre entièrement en « Non classées ».
 - `scripts/backfill-call-analytics.ts` : remplit `call_analytics` depuis les `transcript_json` existants. Sans lui, seul l'onglet Activité a des données au déploiement.
