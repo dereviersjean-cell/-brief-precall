@@ -61,7 +61,7 @@ Pour CHAQUE objection, tu dois :
    - "non_traitee" : aucune réponse, une esquive, un changement de sujet, ou une réponse qui ne traite pas l'objection.
    Quand la catégorie rattachée a une manière de traiter attendue, évalue PAR RAPPORT À ELLE et mets "compared_to_playbook": true. Sinon, évalue au jugement commercial général et mets "compared_to_playbook": false.
 
-3. COMMENTAIRE — une phrase (25 mots max) qui dit concrètement ce qui a été bien fait ou ce qui manquait. Pas de généralité : cite l'élément précis.
+3. COMMENTAIRE — une phrase (25 mots max) qui dit concrètement ce qui a été bien fait ou ce qui manquait. Pas de généralité : cite l'élément précis. Le commentaire doit se suffire à lui-même : ne renvoie JAMAIS à une autre objection (« comme pour l'objection 3 », « même réponse que plus haut ») — chaque objection est lue séparément, ces numéros n'existent pas pour le lecteur. Si deux objections appellent le même constat, réécris-le entièrement.
 
 4. VERBATIM — situe dans le transcript numéroté les passages RÉELLEMENT PRONONCÉS, en renvoyant leurs NUMÉROS DE LIGNE, jamais leur texte :
    - "prospect_lines" : [première ligne, dernière ligne] du passage où le prospect soulève cette objection.

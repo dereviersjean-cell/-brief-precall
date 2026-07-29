@@ -86,8 +86,40 @@ export async function indexCallObjections(
   const validRows = rows.filter((r): r is NonNullable<typeof r> => r !== null);
   if (validRows.length === 0) return;
 
+  // Idempotence par call (règle « UPSERT + contrainte UNIQUE » de CLAUDE.md,
+  // qui manquait ici) : un call ré-analysé doit REMPLACER ses objections, pas
+  // les empiler. Sans cela, trois calls d'Oliverlist ré-analysés 5 à 7 fois en
+  // juillet 2026 avaient produit 72 lignes pour 13 objections réelles, et la
+  // même objection s'affichait huit fois de suite dans le détail d'une
+  // catégorie. Pas de contrainte UNIQUE possible ici : le texte de l'objection
+  // est reformulé à chaque extraction, il ne peut pas servir de clé.
+  //
+  // Ordre volontaire — on insère AVANT de supprimer, et on ne supprime que les
+  // ids relevés avant l'insertion : si l'insert échoue, l'ancienne version
+  // reste en base plutôt que de laisser le call sans aucune objection.
+  const { data: previous } = await supabaseAdmin
+    .from("call_objections")
+    .select("id")
+    .eq("call_id", callId)
+    .eq("organization_id", organizationId);
+  const previousIds = ((previous ?? []) as { id: string }[]).map((r) => r.id);
+
+  const purgePrevious = async () => {
+    if (previousIds.length === 0) return;
+    const { error: deleteError } = await supabaseAdmin.from("call_objections").delete().in("id", previousIds);
+    if (deleteError) {
+      // Non bloquant : on a bien la nouvelle version, il reste juste
+      // l'ancienne à côté — le cas exact que ce code est censé éviter, donc
+      // on le trace explicitement.
+      console.error("[objections] purge des objections précédentes échouée (doublons possibles):", deleteError.message);
+    }
+  };
+
   const { error } = await supabaseAdmin.from("call_objections").insert(validRows);
-  if (!error) return;
+  if (!error) {
+    await purgePrevious();
+    return;
+  }
 
   // Pattern bug #14 : si les migrations 006/007 ne sont pas encore passées en prod,
   // l'insert entier échoue sur des colonnes inconnues et on perdrait
@@ -112,6 +144,7 @@ export async function indexCallObjections(
   );
   const { error: legacyError } = await supabaseAdmin.from("call_objections").insert(legacyRows);
   if (legacyError) throw legacyError;
+  await purgePrevious();
 }
 
 // Mirrors lib/embeddings.ts's findSimilarReferences — same shape (embed the
