@@ -12,10 +12,16 @@
 // any yet, via a narrow dedicated extraction (extractObjectionsFromTranscript),
 // not a full re-analysis (see lib/call-analysis.ts for why).
 //
+// --force : retraite AUSSI les calls qui ont déjà des objections, au lieu de
+// les sauter. Utile après une correction du pipeline pour repartir d'une
+// extraction propre — indexCallObjections remplace désormais les objections
+// d'un call au lieu de les empiler (correctif du 29/07/2026), donc relancer
+// avec --force ne crée plus de doublons.
+//
 // Run from the repo root:
 //   node --env-file=.env.local --experimental-strip-types \
 //     --import ./scripts/lib/register-loader.mjs \
-//     scripts/backfill-objections.ts
+//     scripts/backfill-objections.ts [--force]
 
 import { supabaseAdmin } from "../lib/supabase";
 import { getUserOrganizationId, type CallObjection } from "../lib/db";
@@ -36,6 +42,8 @@ function normalizeAnalysis<T>(raw: T | T[] | null): T | null {
 }
 
 async function main() {
+  const force = process.argv.includes("--force");
+
   const { data, error } = await supabaseAdmin
     .from("calls")
     .select("id, user_id, contact_email, transcript, call_analysis(id, objections)")
@@ -57,7 +65,7 @@ async function main() {
       skippedNoAnalysis += 1;
       continue;
     }
-    if (analysis.objections && analysis.objections.length > 0) {
+    if (!force && analysis.objections && analysis.objections.length > 0) {
       skippedAlreadyDone += 1;
       continue;
     }
