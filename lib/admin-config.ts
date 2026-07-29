@@ -4,6 +4,29 @@
 // message (see lib/call-analysis.ts's formatPlaybookForPrompt), driven by
 // the calling commercial's organization playbook, so editing a playbook
 // (/dashboard/playbook) never requires touching this prompt.
+// Ce qui compte comme une objection — définition partagée par les DEUX
+// chemins d'extraction (le prompt d'analyse ci-dessous, éditable en admin, et
+// extractObjectionsFromTranscript dans lib/call-analysis.ts, codé en dur), qui
+// doivent impérativement s'accorder : un call analysé en direct et le même
+// call rejoué par un backfill doivent produire les mêmes objections.
+//
+// Écrite le 29/07/2026 après constat sur les vrais calls d'Oliverlist :
+// l'extraction remontait comme « objections » de simples questions
+// d'information (« vos équipes sont où ? », « les RDV arrivent dans mon
+// agenda ? »), ce qui gonflait les volumes et brouillait entièrement la
+// lecture manager — la moitié des « objections » n'en étaient pas.
+export const OBJECTION_DEFINITION = `Définition stricte d'une objection : une réticence, un frein ou une résistance exprimée par le prospect, qui S'OPPOSE à l'avancée de la vente. Test à appliquer systématiquement : la remarque peut-elle se reformuler en « oui mais… » ? Si non, ce n'est PAS une objection.
+
+SONT des objections : le prix est trop élevé, le budget n'est pas disponible, un concurrent est consulté, le moment est mal choisi, il faut l'accord d'un tiers, un doute sur l'efficacité de la solution, une mauvaise expérience passée, « on a déjà un prestataire », « je ne suis pas convaincu que ça marche chez nous ».
+
+NE SONT PAS des objections, même si le commercial y répond longuement :
+- une question d'information neutre sur le fonctionnement, l'entreprise ou le produit (« vos équipes sont basées où ? », « les rendez-vous arrivent dans mon agenda ? », « vous existez depuis quand ? ») ;
+- une demande de précision ou de clarification ;
+- une remarque factuelle sur le contexte du prospect qui n'exprime aucune opposition ;
+- une étape logistique du processus de vente (caler un second rendez-vous, envoyer un récapitulatif).
+
+Dans le doute, n'extrais pas : mieux vaut manquer une objection que d'en inventer une. Formule chaque objection de façon courte et spécifique (une phrase), du point de vue du prospect.`;
+
 export const DEFAULT_CALL_ANALYSIS_SYSTEM_PROMPT =
 `Tu es un expert en analyse de calls commerciaux B2B. Tu évalues un rendez-vous selon les dimensions fournies dans le contexte utilisateur.
 
@@ -18,7 +41,9 @@ Tu produis aussi :
 - Une liste de \`strong_points\` (points forts, 2-4)
 - Une liste de \`weak_points\` (points d'amélioration, 2-4)
 - Une liste de \`next_steps\` suggérées (2-4)
-- Une liste d'\`objections\` : chaque objection concrète soulevée par le prospect pendant le call (prix, concurrent, timing, besoin d'en parler à un tiers, etc.), avec la réponse effectivement apportée par le commercial dans le transcript. Liste vide si aucune objection identifiable. Ne pas inventer de réponse si le commercial n'a pas répondu — indiquer alors "Pas de réponse apportée dans ce call."
+- Une liste d'\`objections\` : chaque objection soulevée par le prospect pendant le call, avec la réponse effectivement apportée par le commercial dans le transcript. Liste vide si aucune objection identifiable. Ne pas inventer de réponse si le commercial n'a pas répondu — indiquer alors "Pas de réponse apportée dans ce call."
+
+${OBJECTION_DEFINITION}
 
 Réponds UNIQUEMENT en JSON strict, sans markdown, avec la structure :
 {

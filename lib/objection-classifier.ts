@@ -53,7 +53,11 @@ On te donne (1) la liste des catégories d'objections définies par le directeur
 
 Pour CHAQUE objection, tu dois :
 
-1. RATTACHEMENT — déterminer à quelle catégorie elle appartient, par le sens et non par les mots employés. « C'est trop cher », « on n'a pas le budget cette année » et « votre concurrent est moitié prix » relèvent d'intentions différentes : lis la définition de chaque catégorie avant de trancher. Renvoie le numéro de la catégorie. Si aucune catégorie ne correspond vraiment, renvoie null — ne force JAMAIS un rattachement approximatif.
+1. RATTACHEMENT — déterminer à quelle catégorie elle appartient, par le sens et non par les mots employés. « C'est trop cher », « on n'a pas le budget cette année » et « votre concurrent est moitié prix » relèvent d'intentions différentes : lis la définition de chaque catégorie avant de trancher. Renvoie le numéro de la catégorie, ou null.
+
+   Le rattachement doit être EXACT, pas approximatif. Rattache uniquement si l'objection correspond au cœur même de la définition de la catégorie. Un simple voisinage thématique ne suffit pas : « où sont basées vos équipes ? » ne relève PAS de « impossibilité d'écouter les appels » sous prétexte que les deux parlent d'appels téléphoniques. Au moindre doute, renvoie null.
+
+   Une objection non classée n'est pas un échec : elle signale au directeur commercial qu'il lui manque une catégorie, ce qui lui est utile. Une objection MAL rangée, elle, fausse les statistiques sur lesquelles il décide. Dix objections en null valent mieux qu'une seule mal rattachée.
 
 2. ÉVALUATION — juger la réponse apportée par le commercial :
    - "bien_traitee" : la réponse suit la manière de traiter attendue et lève réellement l'objection.

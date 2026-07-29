@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { readPromptConfig, DEFAULT_CALL_ANALYSIS_SYSTEM_PROMPT } from "./admin-config";
+import { readPromptConfig, DEFAULT_CALL_ANALYSIS_SYSTEM_PROMPT, OBJECTION_DEFINITION } from "./admin-config";
 import { DEFAULT_PLAYBOOK_SNAPSHOT } from "./db";
 import type { PlaybookSnapshot, CallObjection } from "./db";
 import { extractJsonObject } from "./ai-json";
@@ -150,7 +150,9 @@ export async function extractObjectionsFromTranscript(transcript: string): Promi
     const message = await client.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 1500,
-      system: `Tu analyses la transcription d'un call commercial B2B. Identifie chaque objection concrète soulevée par le prospect (prix, concurrent, timing, besoin d'en parler à un tiers, etc.), avec la réponse effectivement apportée par le commercial dans le transcript. N'invente pas de réponse si le commercial n'a pas répondu — indique alors "Pas de réponse apportée dans ce call.". Liste vide si aucune objection identifiable.
+      system: `Tu analyses la transcription d'un call commercial B2B. Identifie chaque objection soulevée par le prospect, avec la réponse effectivement apportée par le commercial dans le transcript. N'invente pas de réponse si le commercial n'a pas répondu — indique alors "Pas de réponse apportée dans ce call.". Liste vide si aucune objection identifiable.
+
+${OBJECTION_DEFINITION}
 
 Réponds UNIQUEMENT en JSON strict, sans markdown, avec la structure :
 { "objections": [{ "objection": "...", "response": "..." }] }`,
