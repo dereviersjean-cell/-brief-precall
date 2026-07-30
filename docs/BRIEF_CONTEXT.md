@@ -1,4 +1,4 @@
-﻿Contexte Brief — reprise de session (version complète unifiée) — MàJ 21 juillet 2026
+﻿Contexte Brief — reprise de session (version complète unifiée) — MàJ 30 juillet 2026
 Je continue le développement de Brief avec toi sur plusieurs sessions successives. Ce document contient l'intégralité de l'état du projet depuis le début.
 
 
@@ -1199,6 +1199,18 @@ ________________
 
 
 Modules terminés — récap chronologique
+
+Objections mesurables — 29-30 juillet 2026 (migrations 006, 007, 008)
+* Playbook d'objections du manager (objection_categories) : le directeur commercial définit les objections récurrentes ET la manière de les traiter, à la main ou par import de document (PDF/Word/collage). L'import est ADDITIF, contrairement à l'import du playbook de scoring qui remplace — on complète une bibliothèque, on ne l'écrase pas.
+* Classification sémantique + évaluation (lib/objection-classifier.ts) : un appel Claude par lot de 10 objections range chaque objection dans une catégorie ET note la réponse du commercial par rapport au handling_guidance du manager (bien traitée / partiellement / non traitée + commentaire). Branché dans indexCallObjections, seul chokepoint des écritures call_objections, donc rien n'entre en base non classé.
+* Verbatims (migration 007) : le transcript est envoyé au modèle AVEC SES LIGNES NUMÉROTÉES et il renvoie des intervalles de lignes, jamais du texte recopié — le code extrait le texte lui-même. Fidélité garantie par construction. La première version demandait une copie mot à mot vérifiée après coup : un tiers des citations étaient rejetées pour de simples retouches de surface. Le passage aux numéros de ligne a fait passer le taux de 12/72 à 72/72.
+* Onglet Performance > Objections : filtre de période (7j/30j/3m/12m/tout/dates précises), liste des catégories avec volume + barre bien/partiellement/non traitée, et une page de détail par objection (qui l'a rencontrée, quand, verbatim des deux côtés, ce qu'il aurait fallu répondre).
+* Onglet Performance > Analytics : Activité (durée, volumes, temps) lue directement depuis calls donc disponible sans backfill ; Interactions (ratio parole/écoute, monologue, réponse prospect, interactivité, patience, taux de questions) précalculées dans call_analytics par lib/call-analytics.ts.
+* Playbook déplacé de /team vers /dashboard/playbook, en lecture seule pour les commerciaux (c'est la grille sur laquelle ils sont notés).
+* Banc d'essai /settings/import-call : dépose un transcript et rejoue tout le pipeline. Recall ne sait PAS transcrire un fichier uploadé (vérifié dans leur doc le 29/07/2026) — d'où le choix transcript seul plutôt qu'un prestataire STT supplémentaire. Formats : .vtt, .srt, .json, et le texte horodaté « 00:45 Nom: … » des exports Google Meet / Zoom / Fathom.
+* Calibrage /settings/calibrage (migration 008) : le directeur commercial annote de vrais calls dans l'app (transcript et liste côte à côte), valide, puis lance une mesure qui rejoue le pipeline et sort rappel / précision / bon rangement avec le détail des objections ratées, en trop et mal rangées. Une première version en fichiers JSON + script node a été abandonnée : la personne qui a l'expertise métier n'est pas celle qui ouvre un terminal.
+* Décision d'architecture actée : le PROMPT porte la méthode (universelle : ce qu'est une objection), la CONFIGURATION CLIENT porte la spécificité (les catégories, par organisation). Il n'y a donc pas de « prompt parfait » à trouver pour le rattachement — il y a un mécanisme qui doit tenir sur n'importe quel jeu de catégories. Corollaire : ne JAMAIS mettre de contre-exemple spécifique à un client dans le prompt partagé, ça dégraderait tous les autres.
+
 Fondations (sessions initiales)
 * Setup Next.js + Supabase + NextAuth (Google + Microsoft OAuth)
 * Génération de brief IA avec web search natif Claude
@@ -1645,12 +1657,36 @@ Workflow de développement habituel
 7. Je teste en prod sur brief-precall.vercel.app (screenshots)
 8. Je te renvoie le screenshot ou dis "OK"
 9. On enchaine ou on ajuste
+55. call_objections empilait les objections à chaque ré-analyse : indexCallObjections faisait un insert nu, sans idempotence. Trois calls d'Oliverlist ré-analysés 5 à 7 fois en juillet avaient produit 72 lignes pour 13 objections réelles, et la même objection s'affichait huit fois dans le détail d'une catégorie. Bug latent depuis juillet, rendu visible seulement par la nouvelle page de détail. Pas de contrainte UNIQUE possible (le texte de l'objection est reformulé à chaque extraction, il ne peut pas servir de clé) : on relève les ids existants du call, on insère la nouvelle version, PUIS on supprime les anciens — dans cet ordre, pour qu'un insert en échec laisse l'ancienne version plutôt qu'un call sans rien. Règle : « UPSERT + contrainte UNIQUE » de la doc vaut aussi quand la clé naturelle n'existe pas, il faut alors un remplacement explicite par parent.
+
+56. L'extraction confondait objection et question : « vos équipes sont basées où ? » remontait comme objection, et la moitié des lignes n'en étaient pas. Fix : constante OBJECTION_DEFINITION (lib/admin-config.ts) injectée dans les DEUX chemins d'extraction — le prompt d'analyse éditable en admin ET extractObjectionsFromTranscript codé en dur — pour qu'ils ne divergent pas. Règle centrale : une objection doit pouvoir se reformuler en « oui mais… ». Effet mesuré : 30 → 11 objections, toutes réelles.
+
+57. Un prompt admin_config édité en base prime silencieusement sur le défaut du code : modifier DEFAULT_CALL_ANALYSIS_SYSTEM_PROMPT n'avait AUCUN effet sur Oliverlist, dont la ligne admin_config contenait une version personnalisée. Toute évolution d'un prompt par défaut doit être répercutée dans la ligne en base — en vérifiant d'abord si elle est une copie conforme de l'ancien défaut (remplacement complet) ou une vraie personnalisation (n'insérer que le bloc concerné). Cousin du bug #51 (« William »), mais dans l'autre sens : là c'était le prompt en base qui était périmé, ici c'est le fix du code qui n'atteignait pas la base.
+
+58. Une réponse JSON tronquée fait perdre TOUT le lot, pas seulement le surplus : deux calls portant 34 et 26 objections dépassaient max_tokens, le JSON arrivait coupé et la classification de toutes les objections du call était perdue d'un coup (60 sur 72). Fix à trois niveaux : découpage en lots de 10, sortie raccourcie (numéros de ligne au lieu de citations recopiées), et reprise sur échec de parsing — un nouvel essai (l'échec observé était un « } » surnuméraire au milieu d'un JSON par ailleurs valide, dérapage intermittent), puis découpage du lot en deux. Après correction : 0 échec sur les 5 calls.
+
+59. Barre d'onglets non collante = navigation perdue : la TopBar était sticky, pas PerformanceTabs. Sur une page à peine plus haute que l'écran (Objections), quelques pixels de défilement suffisaient à faire glisser les onglets sous la TopBar sans aucun moyen de revenir. Corrigé sur PerformanceTabs et TeamTabs (sticky top-14, sous la TopBar de 56px de haut).
 
 
 ________________
 
 
-Roadmap restante (au 21 juillet 2026)
+Roadmap restante (au 30 juillet 2026)
+
+Fait les 29-30 juillet : bloc « Objections mesurables » complet (voir Modules terminés) — playbook d'objections du manager, classification sémantique + évaluation contre la méthode du manager, verbatims des deux côtés, filtre de période et page de détail par objection, onglet Analytics, Playbook déplacé dans Performance, banc d'essai d'import de transcript, et socle de calibrage mesurable. Bugs #55 à #59 documentés au passage.
+
+Actions manuelles en attente côté Jean (bloquantes) :
+* Exécuter la migration 008 (objection_eval_annotations) sur Supabase prod — sans elle la page /settings/calibrage ne peut rien enregistrer. Migrations 006 et 007 déjà passées.
+* Faire annoter 3-4 calls par l'associé (directeur commercial) dans Paramètres > Calibrage, puis lancer la mesure. C'est ce qui débloque toute la suite du chantier objections.
+* Test d'accord inter-annotateur : Jean ET l'associé annotent le MÊME call chacun de leur côté, sans se concerter, puis comparent. Ce pourcentage d'accord est le plafond réel de l'IA — inutile de viser au-delà, elle ne peut pas être plus cohérente que la définition elle-même. Vingt minutes, et ça cadre tout le reste.
+
+Prochaines étapes du chantier objections, dans l'ordre (à décider APRÈS la première mesure — c'est elle qui dit quel levier tirer) :
+1. Contre-exemples réels dans le prompt, tirés de ce que l'associé aura marqué « RATÉE » et « EN TROP ». ATTENTION au sur-apprentissage : seuls les cas vrais pour n'importe quel commercial B2B vont dans le prompt partagé ; un cas propre à un client devra passer par sa configuration (prévoir un champ « ce qui ne compte pas comme une objection chez nous » par organisation si le besoin se confirme).
+2. Passe de vérification sur le rattachement (« cette objection appartient-elle vraiment à cette catégorie ? oui/non »), seulement si le « bon rangement » reste bas après l'étape 1.
+3. Clustering Voyage des objections non classées, pour que l'app propose elle-même les catégories manquantes au manager. Indépendant des deux précédents, peut être lancé en parallèle.
+4. Vote à trois sur l'extraction (triple le coût) — en dernier recours seulement.
+
+Discipline de mesure : UN changement à la fois, mesure avant, mesure après. Avec 4 calls et une quinzaine d'objections, une objection pèse ~7 points : ne poursuivre que les écarts francs (15 points et plus). Ajouter un call au jeu de référence à chaque fois qu'un cas surprend en production — c'est ce qui empêche une régression de revenir.
 Fait depuis la dernière mise à jour (19 juillet) : refonte visuelle complète direction Lovable (tokens bleus #2A5CE0, primitives ui-bits.tsx/PageHeader/TopBar, landing, liste feedback, dashboard, fix .brief-ui) + version mobile responsive (sidebar drawer), fix bug "William" (prompt d'analyse périmé, bug #51), audit complet du repo suivi de 6 correctifs (after() généralisé, /notifications au middleware, refresh rôle JWT, validation runtime analyse IA, auth google-oauth/start, rate limiting sur les 9 routes de génération IA — bugs #52-54) et fin de la migration visuelle (zéro indigo-* hors /admin, y compris onboarding, modales, références, page publique devis) — voir "Modules terminés" ci-dessus. L'ancien item "Harmoniser design system" et la "Restructuration finale UI de tous les modules" sont soldés.
 
 Actions manuelles en attente côté Jean :

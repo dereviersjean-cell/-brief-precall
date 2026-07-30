@@ -242,6 +242,14 @@ Livré et testé en conditions réelles sur le compte Oliverlist le 19 juillet 2
 21. **`/notifications` absent du matcher middleware** : la page vérifiait la session elle-même mais le middleware est le seul à appliquer `disabled_at` + blocage facturation — un user désactivé ou une org bloquée y accédait encore. À chaque nouvelle page top-level : ajouter la route au matcher de `middleware.ts`.
 22. **`token.role` figé jusqu'à re-login** : le callback `jwt` ne posait le rôle qu'à la connexion (`if (account)`) — un commercial promu manager ne voyait pas le menu "Équipe" avant de se déconnecter/reconnecter. Fix : refresh du rôle depuis la base toutes les 10 min max (`roleRefreshedAt` dans le JWT). Les routes API relisaient déjà le rôle en base (à conserver — le JWT peut avoir jusqu'à 10 min de retard).
 
+23. **`call_objections` empilait les objections à chaque ré-analyse** (30 juillet 2026) : `indexCallObjections` faisait un `insert` nu. Trois calls d'Oliverlist ré-analysés 5 à 7 fois avaient produit 72 lignes pour 13 objections réelles — la même objection s'affichait huit fois dans le détail d'une catégorie. Bug latent depuis juillet, révélé seulement par la nouvelle page de détail. Pas de contrainte UNIQUE possible ici : le texte de l'objection est reformulé à chaque extraction, il ne peut pas servir de clé. Fix : relever les ids existants du call, insérer la nouvelle version, PUIS supprimer les anciens — dans cet ordre, pour qu'un insert en échec laisse l'ancienne version plutôt qu'un call sans rien. **Généralisation : la règle « UPSERT + UNIQUE » vaut aussi quand aucune clé naturelle n'existe — il faut alors un remplacement explicite par parent.**
+
+24. **Un prompt `admin_config` édité en base prime silencieusement sur le défaut du code** : modifier `DEFAULT_CALL_ANALYSIS_SYSTEM_PROMPT` n'avait AUCUN effet sur Oliverlist, dont la ligne `admin_config` contenait une version personnalisée. Toute évolution d'un prompt par défaut doit être répercutée dans la ligne en base — en vérifiant d'abord si elle est une copie conforme de l'ancien défaut (remplacement complet) ou une vraie personnalisation (n'insérer que le bloc concerné). Cousin du bug #20 mais dans l'autre sens : là le prompt en base était périmé, ici c'est le fix du code qui n'atteignait pas la base.
+
+25. **Une réponse JSON tronquée fait perdre TOUT le lot, pas seulement le surplus** : deux calls portant 34 et 26 objections dépassaient `max_tokens`, le JSON arrivait coupé et la classification de toutes les objections de ces calls était perdue d'un coup (60 sur 72). Relever `max_tokens` ne suffit pas — il faut **borner la taille du lot**. Fix à trois niveaux : lots de 10, sortie raccourcie (numéros de ligne plutôt que citations recopiées), et reprise sur échec de parsing (un nouvel essai, puis découpage du lot en deux). Règle : toute route qui traite une liste de taille non bornée par un seul appel IA doit découper.
+
+26. **Barre d'onglets non collante = navigation perdue** : la `TopBar` était `sticky`, pas `PerformanceTabs`. Sur une page à peine plus haute que l'écran, quelques pixels de défilement suffisaient à faire glisser les onglets sous la TopBar sans aucun moyen de revenir en arrière. Toute barre de navigation persistante placée sous une TopBar collante doit l'être aussi (`sticky top-14`, z-index en dessous).
+
 ## Règles — NE JAMAIS faire
 
 - ❌ Utiliser le client Supabase anon côté serveur (toujours service_role)
@@ -258,6 +266,10 @@ Livré et testé en conditions réelles sur le compte Oliverlist le 19 juillet 2
 - ❌ Ajouter une page top-level sans l'ajouter au matcher de `middleware.ts`
 - ❌ Utiliser des classes `indigo-*` (ou violet/purple Tailwind littéral pour la marque) hors `/admin` — toujours les tokens du design system
 - ❌ Créer une route de génération IA sans `checkAiGenerationRateLimit`
+- ❌ Faire traiter par un seul appel IA une liste dont la taille n'est pas bornée — découper en lots (cf. bug #25)
+- ❌ Modifier un prompt par défaut sans vérifier si une version éditée existe dans `admin_config` (cf. bug #24)
+- ❌ Afficher comme une citation un texte produit par le modèle sans l'avoir ancré au transcript (numéros de ligne, jamais de copie mot à mot vérifiée après coup)
+- ❌ Mettre dans un prompt partagé un contre-exemple propre à un client — ça dégrade tous les autres ; la spécificité client vit dans sa configuration
 
 ## Commandes
 
@@ -271,6 +283,16 @@ cd Brief && hs project upload && cd ..
 # Backfill call unique
 npx ts-node scripts/backfill-single-call.ts <call_id>
 
+# Scripts du chantier objections (préfixe commun)
+#   node --env-file=.env.local --experimental-strip-types \
+#     --import ./scripts/lib/register-loader.mjs scripts/<script>.ts
+#
+#   backfill-objections.ts [--force]        ré-extrait les objections (--force = même si déjà présentes)
+#   backfill-objection-classification.ts    classe les objections déjà en base (--all pour tout reclasser)
+#   backfill-call-analytics.ts              remplit call_analytics (local, aucun appel IA)
+#   dedupe-call-objections.ts [--apply]     nettoie les doublons de ré-analyses (simulation par défaut)
+#   eval-objections.ts --org=<id>           mesure le pipeline contre le jeu de référence annoté
+
 # Toujours avant push
 git status
 git add . && git commit -m "..." && git push
@@ -279,6 +301,12 @@ git add . && git commit -m "..." && git push
 ## Roadmap prioritaire
 
 Fait depuis la dernière mise à jour (20-21 juillet 2026) : **refonte visuelle complète direction Lovable** (nouveau système de tokens oklch bleu #2A5CE0, primitives partagées `ui-bits.tsx`/`PageHeader`/`TopBar`, refonte landing + liste feedback + dashboard, fix du scoping `.brief-ui` qui n'avait jamais fonctionné), **version mobile responsive** (sidebar drawer), **fix bug "William"** (prompt d'analyse admin_config périmé → champs null silencieux, voir bug #20), puis **audit complet du repo** suivi de **6 correctifs** (`after()` généralisé, `/notifications` au middleware, refresh rôle JWT 10 min, validation runtime analyse IA, auth sur google-oauth/start, rate limiting étendu aux 9 routes de génération IA) et **fin de la migration visuelle** (les 25 fichiers non-admin restants — onboarding, modales, références, page publique devis, compte-suspendu — zéro `indigo-*` hors /admin).
+
+### Chantier objections — en cours (30 juillet 2026)
+0. **Migration 008 à exécuter sur Supabase prod** (`objection_eval_annotations`) — sans elle `/settings/calibrage` ne peut rien enregistrer. 006 et 007 déjà passées.
+0b. **Faire annoter 3-4 calls par le directeur commercial** dans Paramètres > Calibrage, puis lancer la mesure. Tout le reste du chantier en dépend : c'est la première mesure qui dit quel levier tirer.
+0c. **Test d'accord inter-annotateur** : Jean et son associé annotent le MÊME call séparément et comparent. Ce pourcentage est le plafond réel de l'IA — elle ne peut pas être plus cohérente que la définition elle-même. Vingt minutes, et ça évite de courir après un 100 % qui n'existe pas.
+Puis, dans l'ordre et **un changement à la fois, mesure avant / mesure après** : (1) contre-exemples réels dans le prompt, en veillant à n'y mettre que ce qui vaut pour tout commercial B2B ; (2) passe de vérification sur le rattachement, seulement si le « bon rangement » reste bas ; (3) clustering Voyage des non classées pour proposer les catégories manquantes (indépendant, parallélisable) ; (4) vote à trois sur l'extraction, en dernier recours. Avec 4 calls, une objection pèse ~7 points : ne poursuivre que les écarts francs.
 
 ### Déblocants business (priorité immédiate)
 1. Google OAuth — sortir du mode Testing (bloque toute croissance au-delà des comptes whitelistés). `gmail.readonly` retiré des scopes le 25/07/2026 précisément pour lever ce blocant sans passer par l'audit CASA payant (voir section OAuth ci-dessus) — reste à ajouter/re-déclarer les 3 scopes actuels dans Google Cloud Console (`calendar.events`, `gmail.metadata`, `gmail.send`) et lancer la vérification standard (gratuite, 2-6 semaines)
