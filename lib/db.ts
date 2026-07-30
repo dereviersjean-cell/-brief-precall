@@ -6778,3 +6778,46 @@ export async function listReviewedObjectionEvalAnnotations(
     }
   );
 }
+
+// ─── Regroupement des objections non classées ─────────────────────────────
+
+export type UnclassifiedObjectionRow = {
+  id: string;
+  objection: string;
+  verbatim: string | null;
+  embedding: number[];
+};
+
+// pgvector revient de PostgREST tantôt en tableau, tantôt en littéral texte
+// « [0.1,0.2,…] » selon la version — on accepte les deux plutôt que de
+// dépendre d'un comportement qui a déjà changé entre deux versions.
+function parseEmbedding(raw: unknown): number[] {
+  if (Array.isArray(raw)) return raw.filter((v): v is number => typeof v === "number");
+  if (typeof raw !== "string") return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((v): v is number => typeof v === "number") : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function listUnclassifiedObjectionsForClustering(
+  organizationId: string
+): Promise<UnclassifiedObjectionRow[]> {
+  const { data, error } = await supabaseAdmin
+    .from("call_objections")
+    .select("id, objection, prospect_verbatim, embedding")
+    .eq("organization_id", organizationId)
+    .is("category_id", null);
+  if (error) throw error;
+
+  return ((data ?? []) as { id: string; objection: string; prospect_verbatim: string | null; embedding: unknown }[])
+    .map((row) => ({
+      id: row.id,
+      objection: row.objection,
+      verbatim: row.prospect_verbatim,
+      embedding: parseEmbedding(row.embedding),
+    }))
+    .filter((row) => row.embedding.length > 0);
+}

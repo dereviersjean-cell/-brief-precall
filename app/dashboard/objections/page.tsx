@@ -18,6 +18,7 @@ import FadeIn from "../FadeIn";
 import CommercialSelector from "../CommercialSelector";
 import PeriodFilter from "../PeriodFilter";
 import ObjectionsLibrary from "./ObjectionsLibrary";
+import SuggestedCategories from "./SuggestedCategories";
 
 export const dynamic = "force-dynamic";
 
@@ -137,6 +138,15 @@ export default async function ObjectionsStatsPage({
       {isManager && <CommercialSelector commercials={commercials} selectedId={selected?.id ?? null} />}
 
       {isManager && <ObjectionsLibrary categories={categories} />}
+
+      {/* Ne s'affiche que s'il y a des objections qu'aucune catégorie ne
+          couvre — c'est ce fourre-tout qui contient les catégories
+          manquantes. Compté sur toute la période affichée. */}
+      {isManager && (
+        <SuggestedCategories
+          unclassifiedCount={stats.find((s) => s.categoryId === null)?.occurrences ?? 0}
+        />
+      )}
 
       <PeriodFilter preset={period.preset} from={period.from} to={period.to} />
 
