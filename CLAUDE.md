@@ -327,9 +327,9 @@ Puis, dans l'ordre et **un changement à la fois, mesure avant / mesure après**
 4. **Checklist d'activation** sur le dashboard ("Démarrage : 2/4 étapes" — agenda, CRM, playbook, premier brief) — à faire avant d'ouvrir Google OAuth, sinon les invités décrochent sur un dashboard vide
 5. **Notifications inbox** : la cloche TopBar mène vers des préférences, pas une inbox — les événements existent déjà en base (devis accepté, réponse prospect, call analysé), il manque une table + un compteur
 6. **Recherche globale v1** (contacts + calls, simple `ilike`) — l'élément "pas fini" le plus visible de l'app (input désactivé dans la TopBar)
-7. **Dossier `migrations/`** committé (SQL numérotées, même appliquées à la main) — le workflow actuel a déjà produit le bug #14
+7. ~~**Dossier `migrations/`** committé~~ — FAIT (8 migrations numérotées au 30/07/2026). Règle en vigueur : toute nouvelle migration y est committée, même appliquée à la main.
 8. **Tests sur les flux irréversibles uniquement** : webhook Stripe, webhook Recall, acceptation devis
-9. **Validation runtime des 6 autres prompts JSON** admin_config (même pattern que `validateCallAnalysisShape`) + bouton "restaurer le défaut" par prompt
+9. **Validation runtime des autres prompts JSON** `admin_config` (même pattern que `validateCallAnalysisShape` — au 30/07/2026 seuls `lib/call-analysis.ts` et `lib/training.ts` l'ont) + bouton "restaurer le défaut" par prompt. Renforcé par le bug #24 : un prompt édité en base prime silencieusement sur le code, donc la validation runtime est la seule protection.
 
 ### Expansion produit
 10. Ringover/Aircall — téléphonie. **Passé devant Sellsy** (reco audit) : la cible PME/ETI FR fait plus d'appels tél que de visios, Brief ne voit aujourd'hui qu'une fraction de l'activité réelle
