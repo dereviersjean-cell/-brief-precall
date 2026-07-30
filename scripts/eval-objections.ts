@@ -1,5 +1,7 @@
-// Mesure le pipeline d'objections contre les fiches annotées à la main dans
-// evals/objections/ (voir eval-objections-scaffold.ts pour les créer).
+// Mesure le pipeline d'objections contre le jeu de référence annoté dans
+// l'app (Paramètres > Calibrage). Équivalent en ligne de commande de ce que
+// fait le bouton « Lancer la mesure » — pratique pour comparer deux versions
+// de prompt sans passer par l'interface.
 //
 // Rejoue l'extraction ET le rattachement à chaque exécution, sur le transcript
 // réel — on mesure le PIPELINE tel qu'il est aujourd'hui, pas les données
@@ -18,22 +20,11 @@
 //     --import ./scripts/lib/register-loader.mjs \
 //     scripts/eval-objections.ts [--verbose]
 
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 import { supabaseAdmin } from "../lib/supabase";
-import { getUserOrganizationId, listObjectionCategories } from "../lib/db";
+import { getUserOrganizationId, listObjectionCategories, listReviewedObjectionEvalAnnotations } from "../lib/db";
 import { extractObjectionsFromTranscript } from "../lib/call-analysis";
 import { classifyAndEvaluateObjections } from "../lib/objection-classifier";
-import { evaluateObjections, aggregate, MATCH_THRESHOLD, type EvalResult, type ExpectedObjection } from "../lib/objection-eval";
-
-const EVAL_DIR = join(process.cwd(), "evals", "objections");
-
-type Fixture = {
-  callId: string;
-  company?: string | null;
-  reviewed?: boolean;
-  expected: ExpectedObjection[];
-};
+import { evaluateObjections, aggregate, MATCH_THRESHOLD, type EvalResult } from "../lib/objection-eval";
 
 function pct(value: number | null): string {
   return value === null ? "n/a" : `${(value * 100).toFixed(0)} %`;
@@ -42,29 +33,25 @@ function pct(value: number | null): string {
 async function main() {
   const verbose = process.argv.includes("--verbose");
 
-  let files: string[];
-  try {
-    files = readdirSync(EVAL_DIR).filter((f) => f.endsWith(".json"));
-  } catch {
-    console.error(`Aucune fiche dans ${EVAL_DIR}. Lancez d'abord scripts/eval-objections-scaffold.ts.`);
+  const orgId = process.argv.find((a) => a.startsWith("--org="))?.slice(6);
+  if (!orgId) {
+    console.error("Usage : scripts/eval-objections.ts --org=<organizationId> [--verbose]");
+    process.exit(1);
+  }
+
+  // listReviewedObjectionEvalAnnotations ne renvoie QUE les calls validés :
+  // une annotation non validée n'est que la sortie du pipeline recopiée, la
+  // compter reviendrait à mesurer le pipeline contre lui-même.
+  const fixtures = await listReviewedObjectionEvalAnnotations(orgId);
+  if (fixtures.length === 0) {
+    console.error("Aucun call validé dans Paramètres > Calibrage.");
     process.exit(1);
   }
 
   const results: EvalResult[] = [];
   let skipped = 0;
 
-  for (const file of files) {
-    const fixture = JSON.parse(readFileSync(join(EVAL_DIR, file), "utf8")) as Fixture;
-
-    // Une fiche non relue n'est que la sortie du pipeline recopiée : la
-    // compter reviendrait à mesurer le pipeline contre lui-même et à afficher
-    // 100 % partout. C'est le seul garde-fou contre une éval qui se ment.
-    if (!fixture.reviewed) {
-      console.warn(`· ${fixture.callId.slice(0, 8)} — IGNORÉ (reviewed: false, fiche pas encore annotée)`);
-      skipped++;
-      continue;
-    }
-
+  for (const fixture of fixtures) {
     const { data } = await supabaseAdmin
       .from("calls")
       .select("user_id, transcript")
@@ -104,7 +91,7 @@ async function main() {
     results.push(result);
 
     console.log(
-      `\n· ${fixture.company ?? fixture.callId.slice(0, 8)} — attendu ${fixture.expected.length}, trouvé ${classified.length} | ` +
+      `\n· ${fixture.companyName ?? fixture.callId.slice(0, 8)} — attendu ${fixture.expected.length}, trouvé ${classified.length} | ` +
         `précision ${pct(result.precision)}, rappel ${pct(result.recall)}, catégorie ${pct(result.categoryAccuracy)}`
     );
 

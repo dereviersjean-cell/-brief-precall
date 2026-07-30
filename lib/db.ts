@@ -6567,3 +6567,214 @@ export async function getTeamAnalytics(
 
   return { commercials, teamAverage, periodWeeks };
 }
+
+// ─── Calibrage de la détection d'objections (migration 008) ───────────────
+//
+// Le jeu de référence annoté par l'expert métier : ce que le pipeline DEVRAIT
+// trouver sur un call donné. Sert à mesurer précision et rappel après chaque
+// évolution des prompts, au lieu de juger sur un cas isolé.
+
+export type ExpectedObjectionAnnotation = {
+  objection: string;
+  // Libellé de la catégorie attendue, ou null pour « doit rester non classée ».
+  category: string | null;
+};
+
+export type ObjectionEvalAnnotation = {
+  callId: string;
+  companyName: string | null;
+  contactEmail: string | null;
+  occurredAt: string;
+  expected: ExpectedObjectionAnnotation[];
+  reviewed: boolean;
+  reviewedAt: string | null;
+  // Nombre d'objections que le pipeline a effectivement produites sur ce call
+  // (lecture de call_objections) — sert à afficher un écart d'un coup d'œil.
+  detectedCount: number;
+};
+
+function normalizeExpected(raw: unknown): ExpectedObjectionAnnotation[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item) => {
+      const o = item as { objection?: unknown; category?: unknown };
+      return {
+        objection: typeof o.objection === "string" ? o.objection.trim() : "",
+        category: typeof o.category === "string" && o.category.trim() ? o.category.trim() : null,
+      };
+    })
+    .filter((o) => o.objection.length > 0);
+}
+
+// Tous les calls analysés de l'organisation, avec leur annotation quand elle
+// existe. Le calibrage part des calls, pas des annotations : l'expert doit
+// pouvoir choisir n'importe quel call, y compris un qui n'a encore rien.
+export async function listObjectionEvalCalls(organizationId: string): Promise<ObjectionEvalAnnotation[]> {
+  const members = await getUsersInOrganization(organizationId);
+  const userIds = members.map((m) => m.id);
+  if (userIds.length === 0) return [];
+
+  const [callsRes, annotationsRes, objectionsRes] = await Promise.all([
+    supabaseAdmin
+      .from("calls")
+      .select("id, company_name, contact_email, started_at, created_at, call_analysis(id)")
+      .in("user_id", userIds)
+      .not("transcript", "is", null),
+    supabaseAdmin
+      .from("objection_eval_annotations")
+      .select("call_id, expected, reviewed, reviewed_at")
+      .eq("organization_id", organizationId)
+      // Pattern bug #14 : migration 008 pas encore appliquée → page vide
+      // plutôt qu'un plantage.
+      .then((res) => (res.error ? { data: [], error: null } : res)),
+    supabaseAdmin.from("call_objections").select("call_id").eq("organization_id", organizationId),
+  ]);
+  if (callsRes.error) throw callsRes.error;
+
+  type CallRow = {
+    id: string;
+    company_name: string | null;
+    contact_email: string | null;
+    started_at: string | null;
+    created_at: string;
+    call_analysis: { id: string } | { id: string }[] | null;
+  };
+
+  const annotationByCall = new Map(
+    ((annotationsRes.data ?? []) as { call_id: string; expected: unknown; reviewed: boolean; reviewed_at: string | null }[]).map(
+      (a) => [a.call_id, a]
+    )
+  );
+  const detectedByCall = new Map<string, number>();
+  for (const row of ((objectionsRes.data ?? []) as { call_id: string }[])) {
+    detectedByCall.set(row.call_id, (detectedByCall.get(row.call_id) ?? 0) + 1);
+  }
+
+  return ((callsRes.data ?? []) as CallRow[])
+    // Sans analyse, il n'y a rien à calibrer sur ce call.
+    .filter((c) => (Array.isArray(c.call_analysis) ? c.call_analysis.length > 0 : !!c.call_analysis))
+    .map((call) => {
+      const annotation = annotationByCall.get(call.id);
+      return {
+        callId: call.id,
+        companyName: call.company_name,
+        contactEmail: call.contact_email,
+        occurredAt: call.started_at ?? call.created_at,
+        expected: normalizeExpected(annotation?.expected),
+        reviewed: annotation?.reviewed ?? false,
+        reviewedAt: annotation?.reviewed_at ?? null,
+        detectedCount: detectedByCall.get(call.id) ?? 0,
+      };
+    })
+    .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
+}
+
+export type ObjectionEvalCallDetail = {
+  callId: string;
+  companyName: string | null;
+  occurredAt: string;
+  transcript: string;
+  expected: ExpectedObjectionAnnotation[];
+  reviewed: boolean;
+  // Ce que le pipeline a trouvé sur ce call, pour amorcer l'annotation.
+  detected: ExpectedObjectionAnnotation[];
+};
+
+export async function getObjectionEvalCall(
+  organizationId: string,
+  callId: string
+): Promise<ObjectionEvalCallDetail | null> {
+  const members = await getUsersInOrganization(organizationId);
+  const userIds = members.map((m) => m.id);
+  if (userIds.length === 0) return null;
+
+  const { data, error } = await supabaseAdmin
+    .from("calls")
+    .select("id, company_name, started_at, created_at, transcript")
+    .eq("id", callId)
+    .in("user_id", userIds)
+    .maybeSingle();
+  if (error) throw error;
+  const call = data as {
+    id: string;
+    company_name: string | null;
+    started_at: string | null;
+    created_at: string;
+    transcript: string | null;
+  } | null;
+  // Scopé aux membres de l'organisation : un id d'une autre org renvoie null,
+  // jamais une confirmation qu'il existe ailleurs.
+  if (!call?.transcript) return null;
+
+  const [annotationRes, objectionsRes, categories] = await Promise.all([
+    supabaseAdmin
+      .from("objection_eval_annotations")
+      .select("expected, reviewed")
+      .eq("call_id", callId)
+      .maybeSingle()
+      .then((res) => (res.error ? { data: null } : res)),
+    supabaseAdmin.from("call_objections").select("objection, category_id").eq("call_id", callId),
+    listObjectionCategories(organizationId).catch(() => [] as ObjectionCategory[]),
+  ]);
+
+  const labelById = new Map(categories.map((c) => [c.id, c.label]));
+  const detected = ((objectionsRes.data ?? []) as { objection: string; category_id: string | null }[]).map((o) => ({
+    objection: o.objection,
+    category: o.category_id ? labelById.get(o.category_id) ?? null : null,
+  }));
+
+  const annotation = annotationRes.data as { expected: unknown; reviewed: boolean } | null;
+
+  return {
+    callId: call.id,
+    companyName: call.company_name,
+    occurredAt: call.started_at ?? call.created_at,
+    transcript: call.transcript,
+    // Première ouverture : on amorce avec ce que le pipeline a trouvé, pour
+    // éviter la ressaisie. Le drapeau `reviewed` reste faux tant que l'expert
+    // n'a pas explicitement validé.
+    expected: annotation ? normalizeExpected(annotation.expected) : detected,
+    reviewed: annotation?.reviewed ?? false,
+    detected,
+  };
+}
+
+export async function saveObjectionEvalAnnotation(
+  organizationId: string,
+  callId: string,
+  userId: string,
+  expected: ExpectedObjectionAnnotation[],
+  reviewed: boolean
+): Promise<void> {
+  const { error } = await supabaseAdmin.from("objection_eval_annotations").upsert(
+    {
+      call_id: callId,
+      organization_id: organizationId,
+      expected,
+      reviewed,
+      reviewed_by: reviewed ? userId : null,
+      reviewed_at: reviewed ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "call_id" }
+  );
+  if (error) throw error;
+}
+
+export async function listReviewedObjectionEvalAnnotations(
+  organizationId: string
+): Promise<{ callId: string; companyName: string | null; expected: ExpectedObjectionAnnotation[] }[]> {
+  const { data, error } = await supabaseAdmin
+    .from("objection_eval_annotations")
+    .select("call_id, expected, calls(company_name)")
+    .eq("organization_id", organizationId)
+    .eq("reviewed", true);
+  if (error) throw error;
+
+  return ((data ?? []) as { call_id: string; expected: unknown; calls: { company_name: string | null } | { company_name: string | null }[] | null }[]).map(
+    (row) => {
+      const call = Array.isArray(row.calls) ? row.calls[0] ?? null : row.calls;
+      return { callId: row.call_id, companyName: call?.company_name ?? null, expected: normalizeExpected(row.expected) };
+    }
+  );
+}

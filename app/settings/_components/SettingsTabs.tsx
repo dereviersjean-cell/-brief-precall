@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Settings, Link as LinkIcon, Database, Library, CreditCard, MessagesSquare, FlaskConical } from "lucide-react";
+import { Settings, Link as LinkIcon, Database, Library, CreditCard, MessagesSquare, FlaskConical, Gauge } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 // Notifications moved out to its own top-level sidebar item (AppSidebar.tsx,
@@ -24,6 +24,10 @@ const NAV_ITEMS: { href: string; label: string; icon: LucideIcon; managerOnly?: 
   // la configuration d'équipe (playbook, catégories d'objections), donc
   // managerOnly comme Facturation.
   { href: "/settings/import-call", label: "Tester un call", icon: FlaskConical, managerOnly: true },
+  // Annotation de référence pour mesurer la détection d'objections — faite par
+  // le directeur commercial, d'où une page d'app et non des fichiers + un
+  // terminal.
+  { href: "/settings/calibrage", label: "Calibrage", icon: Gauge, managerOnly: true },
   { href: "/settings/billing", label: "Facturation", icon: CreditCard, managerOnly: true },
 ];
 
