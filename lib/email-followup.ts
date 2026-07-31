@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { readPromptConfig, DEFAULT_EMAIL_FOLLOWUP_PROMPT } from "./admin-config";
 import { extractJsonObject } from "./ai-json";
+import { validateAiShape } from "./ai-shape";
 
 export type FollowUpEmail = {
   subject: string;
@@ -57,9 +58,20 @@ ${missionInstructions}`;
   }
 
   try {
-    return JSON.parse(extractJsonObject(raw)) as FollowUpEmail;
-  } catch {
-    console.log("[email-followup] JSON parse failed, raw:", raw.slice(0, 200));
-    return { subject: "", body: raw };
+    return validateAiShape<FollowUpEmail>("email-followup", "email_followup_prompt", JSON.parse(extractJsonObject(raw)), {
+      subject: "nonEmptyString",
+      body: "nonEmptyString",
+    });
+  } catch (err) {
+    // Renvoyait auparavant `{ subject: "", body: raw }` : la réponse BRUTE du
+    // modèle — prose, markdown, excuses — atterrissait dans le corps d'un
+    // email de suivi prêt à partir au prospect. Un email absent est gênant ;
+    // un email au contenu aberrant envoyé au client ne se rattrape pas.
+    console.error(
+      "[email-followup] réponse hors contrat, aucun email généré:",
+      err instanceof Error ? err.message : String(err),
+      `\nRaw Claude response:\n${raw.slice(0, 500)}`
+    );
+    return null;
   }
 }

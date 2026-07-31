@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "./supabase";
+import { canTransitionQuote } from "./billing-rules";
 import { generateEmbedding } from "./embeddings";
 import { computeQuoteTotals } from "./quote-calc";
 import type { TranscriptJson } from "./recall";
@@ -3615,7 +3616,9 @@ export async function acceptQuoteByPublicToken(token: string): Promise<AcceptQuo
   if (!existing) return { ok: false, error: "Devis introuvable." };
 
   const status = (existing as { status: string }).status;
-  if (status === "accepted" || status === "rejected") {
+  // Règle partagée et testée (lib/billing-rules.ts) : un devis ne se
+  // transitionne qu'une fois.
+  if (!canTransitionQuote(status)) {
     return { ok: false, error: `Ce devis a déjà été ${status === "accepted" ? "accepté" : "refusé"}.` };
   }
 
@@ -3661,7 +3664,9 @@ export async function rejectQuoteByPublicToken(token: string, reason: string | n
   if (!existing) return { ok: false, error: "Devis introuvable." };
 
   const status = (existing as { status: string }).status;
-  if (status === "accepted" || status === "rejected") {
+  // Règle partagée et testée (lib/billing-rules.ts) : un devis ne se
+  // transitionne qu'une fois.
+  if (!canTransitionQuote(status)) {
     return { ok: false, error: `Ce devis a déjà été ${status === "accepted" ? "accepté" : "refusé"}.` };
   }
 

@@ -15,6 +15,7 @@ import {
   type QuoteGenerationCallContext,
 } from "@/lib/db";
 import { extractJsonObject } from "@/lib/ai-json";
+import { validateAiShape } from "@/lib/ai-shape";
 
 export type GeneratedQuoteEmail = { subject: string; body: string };
 
@@ -133,7 +134,10 @@ ${formatQuoteSummary(quote)}`;
 
     const textBlock = message.content.find((b) => b.type === "text");
     raw = textBlock?.type === "text" ? textBlock.text : "";
-    const parsed = JSON.parse(extractJsonObject(raw)) as unknown;
+    const parsed = validateAiShape<unknown>("quotes.generateEmail", "quote_email_prompt", JSON.parse(extractJsonObject(raw)), {
+      subject: "nonEmptyString",
+      body: "nonEmptyString",
+    });
 
     return NextResponse.json(sanitizeEmail(parsed, quote));
   } catch (err) {

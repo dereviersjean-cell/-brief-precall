@@ -7,6 +7,7 @@ import { getUserRole, getUserOrganizationId } from "@/lib/db";
 import { readPromptConfig, DEFAULT_PLAYBOOK_EXTRACTION_PROMPT } from "@/lib/admin-config";
 import Anthropic from "@anthropic-ai/sdk";
 import { extractJsonObject } from "@/lib/ai-json";
+import { validateAiShape } from "@/lib/ai-shape";
 import { extractTextFromUploadedFile, UnsupportedFileTypeError, SUPPORTED_DOCUMENT_FORMATS_LABEL } from "@/lib/document-text";
 
 export type PlaybookExtractionDimension = {
@@ -33,8 +34,17 @@ export async function extractPlaybookDimensions(text: string): Promise<PlaybookE
   const textBlock = message.content.find((b) => b.type === "text");
   const raw = textBlock?.type === "text" ? textBlock.text : "";
   try {
-    const parsed = JSON.parse(extractJsonObject(raw)) as { dimensions?: PlaybookExtractionDimension[] };
-    return parsed.dimensions ?? [];
+    // `dimensions ?? []` renvoyait silencieusement une liste vide, que l'UI
+    // affichait comme « aucune dimension trouvée dans ce document » — un
+    // diagnostic faux qui envoyait le manager chercher le problème dans son
+    // document plutôt que dans le prompt.
+    const parsed = validateAiShape<{ dimensions: PlaybookExtractionDimension[] }>(
+      "playbook.import",
+      "playbook_extraction_prompt",
+      JSON.parse(extractJsonObject(raw)),
+      { dimensions: "nonEmptyArray" }
+    );
+    return parsed.dimensions;
   } catch (err) {
     console.error(
       "[playbook/import] extractPlaybookDimensions JSON parse failed:",

@@ -18,6 +18,7 @@ import {
 } from "@/lib/db";
 import { formatContactDisplayName } from "@/lib/format";
 import { extractJsonObject } from "@/lib/ai-json";
+import { validateAiShape } from "@/lib/ai-shape";
 
 export type GeneratedTaskEmail = { subject: string; body: string };
 
@@ -204,7 +205,13 @@ ${sourceContext}`;
     stopReason = message.stop_reason;
     const textBlock = message.content.find((b) => b.type === "text");
     raw = textBlock?.type === "text" ? textBlock.text : "";
-    const parsed = JSON.parse(extractJsonObject(raw)) as unknown;
+    // Valider AVANT de nettoyer : sanitizeEmail remplace un corps manquant
+    // par une chaîne vide, ce qui donnait un email blanc sans la moindre
+    // alerte. On veut une erreur visible, pas un contenu vide.
+    const parsed = validateAiShape<unknown>("tasks.generateEmail", "task_email_prompt", JSON.parse(extractJsonObject(raw)), {
+      subject: "nonEmptyString",
+      body: "nonEmptyString",
+    });
 
     return NextResponse.json(sanitizeEmail(parsed, task));
   } catch (err) {

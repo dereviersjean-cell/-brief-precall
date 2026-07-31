@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { billingStatusFromStripeStatus, shouldActivateOnPaymentSucceeded } from "@/lib/billing-rules";
 import { reportError } from "@/lib/monitoring";
 import type Stripe from "stripe";
 import { constructWebhookEvent, getSeatSubscriptionItem } from "@/lib/stripe";
@@ -14,23 +15,6 @@ import {
 // directement — un customer.subscription.updated à 'past_due' peut arriver
 // avant ou après l'invoice.payment_failed correspondant, les deux handlers
 // écrivent vers le même état donc l'ordre n'a pas d'importance.
-function billingStatusFromStripeStatus(status: Stripe.Subscription.Status): string {
-  switch (status) {
-    case "trialing":
-      return "trialing";
-    case "active":
-      return "active";
-    case "past_due":
-    case "unpaid":
-      return "grace_period";
-    case "canceled":
-    case "incomplete_expired":
-      return "canceled";
-    default:
-      return "blocked";
-  }
-}
-
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const organizationId = session.client_reference_id;
   if (!organizationId) {
@@ -117,7 +101,7 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
 
   const org = await getOrganizationByStripeSubscriptionId(subscriptionId);
   if (!org) return;
-  if (org.billing_status !== "grace_period") return;
+  if (!shouldActivateOnPaymentSucceeded(org.billing_status)) return;
 
   await updateOrganizationBilling(org.id, { billing_status: "active", grace_period_ends_at: null });
 }

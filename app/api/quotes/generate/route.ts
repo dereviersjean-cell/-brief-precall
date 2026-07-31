@@ -15,6 +15,7 @@ import {
   type QuoteOffer,
 } from "@/lib/db";
 import { extractJsonObject } from "@/lib/ai-json";
+import { validateAiShape } from "@/lib/ai-shape";
 
 export type GeneratedQuoteLine = {
   offer_id: string | null;
@@ -164,7 +165,12 @@ ${formatCatalog(offers)}`;
 
     const textBlock = message.content.find((b) => b.type === "text");
     raw = textBlock?.type === "text" ? textBlock.text : "";
-    const parsed = JSON.parse(extractJsonObject(raw)) as unknown;
+    // `lines` non vide : sanitizeDraft renvoyait sinon un devis sans aucune
+    // ligne, que l'utilisateur devait entièrement ressaisir sans comprendre
+    // pourquoi la génération n'avait « rien trouvé ».
+    const parsed = validateAiShape<unknown>("quotes.generate", "quote_generation_prompt", JSON.parse(extractJsonObject(raw)), {
+      lines: "nonEmptyArray",
+    });
 
     return NextResponse.json(sanitizeDraft(parsed, settings.default_vat_rate));
   } catch (err) {
