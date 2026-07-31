@@ -8,6 +8,7 @@ import { Spinner, AdminPageShell, AdminPageHeader } from "../AdminShell";
 import StatTile from "@/app/dashboard/StatTile";
 import FadeIn from "@/app/dashboard/FadeIn";
 import RecallStatusSection from "./RecallStatusSection";
+import MonitoringSection from "./MonitoringSection";
 import { RoleBadge, CrmBadge, formatAdminDate } from "./AdminBadges";
 
 type RoleFilter = "all" | UserRole;
@@ -321,6 +322,12 @@ export default function DashboardAdminClient() {
 
       <FadeIn delay={0.15}>
         <RecallStatusSection />
+      </FadeIn>
+
+      <FadeIn delay={0.2}>
+        <div className="mt-6">
+          <MonitoringSection />
+        </div>
       </FadeIn>
     </AdminPageShell>
   );
