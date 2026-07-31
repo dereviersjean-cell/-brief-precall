@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { reportError, reportWarning } from "./monitoring";
 import { inngest } from "./inngest";
 import { generateEmbeddingsBatch } from "./embeddings";
 import {
@@ -511,7 +512,7 @@ export const syncDealOutcomes = inngest.createFunction(
           if (!organizationId) return 0;
 
           const emails = await getContactEmailsNeedingDealOutcomeSync(userId, organizationId, provider.name, sinceISO).catch((err) => {
-            console.warn(`[sync-deal-outcomes] getContactEmailsNeedingDealOutcomeSync failed for user ${userId} (non-blocking):`, err instanceof Error ? err.message : String(err));
+            reportWarning("cron.syncDealOutcomes.listContacts", err, { userId });
             return [] as string[];
           });
 
@@ -530,7 +531,7 @@ export const syncDealOutcomes = inngest.createFunction(
               outcome: closed.outcome,
               amount: closed.amount,
               closedAt: closed.closedAt,
-            }).catch((err) => console.warn(`[sync-deal-outcomes] upsertDealOutcome failed for ${email} (non-blocking):`, err instanceof Error ? err.message : String(err)));
+            }).catch((err) => reportWarning("cron.syncDealOutcomes.upsert", err));
             synced += 1;
           }
           return synced;
@@ -575,7 +576,7 @@ export const sendFridayEveningDigests = inngest.createFunction(
       if (result.outcome === "sent") sent++;
       else {
         failed++;
-        console.error("[send-friday-evening-digests] digest failed for user", user.id, ":", result.detail);
+        reportError("cron.fridayDigest", result.detail, { userId: user.id });
       }
     }
 
@@ -607,7 +608,7 @@ export const sendMondayMorningDigests = inngest.createFunction(
       if (result.outcome === "sent") sent++;
       else {
         failed++;
-        console.error("[send-monday-morning-digests] digest failed for user", user.id, ":", result.detail);
+        reportError("cron.mondayDigest", result.detail, { userId: user.id });
       }
     }
 
@@ -637,7 +638,9 @@ export const reportBillingUsage = inngest.createFunction(
           const { amountCents } = await reportMonthlyUsageForOrganization(org.id);
           if (amountCents > 0) reported++;
         } catch (err) {
-          console.warn(`[report-billing-usage] failed for org ${org.id}:`, err);
+          // Usage non facturé pour ce mois et cette organisation : personne
+          // ne s'en apercevra, la facture sera simplement plus légère.
+          reportError("cron.reportBillingUsage", err, { organizationId: org.id });
         }
       });
     }
@@ -660,7 +663,9 @@ export const checkBillingGracePeriods = inngest.createFunction(
           await updateOrganizationBilling(org.id, { billing_status: "blocked" });
           blocked++;
         } catch (err) {
-          console.warn(`[check-billing-grace-periods] failed to block org ${org.id}:`, err);
+          // Une organisation dont la période de grâce est expirée garde son
+          // accès : c'est un blocage payant qui ne s'applique pas.
+          reportError("cron.blockOrganization", err, { organizationId: org.id });
         }
       });
     }

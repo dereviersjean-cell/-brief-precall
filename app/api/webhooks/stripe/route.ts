@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { reportError } from "@/lib/monitoring";
 import type Stripe from "stripe";
 import { constructWebhookEvent, getSeatSubscriptionItem } from "@/lib/stripe";
 import {
@@ -140,7 +141,9 @@ export async function POST(request: NextRequest) {
   const organizationIdHint =
     "metadata" in event.data.object ? (event.data.object as { metadata?: Record<string, string> }).metadata?.organization_id ?? null : null;
   const isNew = await recordBillingEventIfNew(event.id, event.type, organizationIdHint).catch((err) => {
-    console.error("[webhooks/stripe] recordBillingEventIfNew failed (non-blocking, processing anyway):", err);
+    // Idempotence perdue : l'événement sera potentiellement rejoué. Muet
+    // jusqu'ici — exactement le profil des bugs #15/#16.
+    reportError("webhooks/stripe.recordBillingEvent", err, { eventType: event.type, eventId: event.id });
     return true;
   });
   if (!isNew) {
@@ -167,7 +170,10 @@ export async function POST(request: NextRequest) {
         break;
     }
   } catch (err) {
-    console.error(`[webhooks/stripe] handler failed for ${event.type} (non-blocking):`, err instanceof Error ? err.message : String(err));
+    // Le webhook répond 200 quoi qu'il arrive (Stripe ne doit pas rejouer
+    // en boucle), donc SANS cette remontée un abonnement mal synchronisé
+    // reste invisible jusqu'à ce qu'un client s'en plaigne.
+    reportError("webhooks/stripe.handler", err, { eventType: event.type, eventId: event.id });
   }
 
   return NextResponse.json({ received: true });

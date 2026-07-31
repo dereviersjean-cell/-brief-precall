@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { extractJsonObject } from "./ai-json";
+import { reportWarning } from "./monitoring";
 import type { CallObjection } from "./db";
 
 export type ObjectionCategoryForClassifier = {
@@ -306,11 +307,15 @@ ${objectionBlock}${transcriptBlock}`;
       };
     });
   } catch (err) {
-    console.error(
-      "[objection-classifier] classifyAndEvaluateObjections failed:",
-      err instanceof Error ? err.message : String(err),
-      raw ? `\nRaw Claude response:\n${raw}` : "(no response captured — API call itself failed)"
-    );
+    // Remonté même si une reprise suit : un lot qui échoue systématiquement
+    // se verrait sinon uniquement dans les logs, et c'est exactement comme ça
+    // que deux calls entiers ont perdu leur classification sans que personne
+    // ne le sache (bug #25).
+    reportWarning("objection-classifier.classify", err, {
+      objectionsInBatch: objections.length,
+      attempt,
+      rawPreview: raw.slice(0, 500),
+    });
 
     // Deux reprises, dans cet ordre, avant d'abandonner :
     //  1. un simple nouvel essai — l'échec observé en conditions réelles était

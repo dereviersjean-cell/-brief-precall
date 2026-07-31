@@ -65,6 +65,7 @@ Inspiration muchbetter.ai (simulations vocales + coach IA), mais paramétré aut
 | **Voyage AI** | Embeddings 1024 dim (voyage-3) pour similarité références clients via pgvector. |
 | **Resend** | Emails transactionnels depuis jean@lartisangroupe.com — jamais le Gmail du commercial. |
 | **react-pdf** | Génération PDF devis côté serveur. |
+| **Sentry (serveur uniquement)** | Remontée des échecs SILENCIEUX des webhooks et crons. Pas de config client : le besoin est ciblé sur les chemins sans utilisateur devant l'écran, et le bundle envoyé aux utilisateurs reste inchangé. `tracesSampleRate: 0` — on cherche des erreurs invisibles, pas des millisecondes. Inerte sans `SENTRY_DSN`. |
 | **Notion (token intégration interne)** | Connexion playbook Notion. Pas OAuth : les intégrations publiques Notion nécessitent une review de sécurité Notion avant de fonctionner (bloquant pour un "connecte et utilise immédiatement"). Connexion **par organisation** (table `playbook_notion_connections`), pas par user — le playbook est un par organisation. |
 | **Stripe (Checkout + Invoice Items, pas Billing Meters/Metronome)** | Facturation **par organisation** (pas par user) : abonnement par siège (`checkout.sessions.create`, `mode: subscription`) + usage (0,50€/h d'enregistrement, refacturation directe du coût Recall) via `invoiceItems.create` mensuel plutôt que l'API Billing Meters — Stripe pousse tout nouveau usage-based billing vers Metronome (plateforme tierce rachetée), disproportionné pour une seule métrique simple. On calcule le total nous-mêmes (agrégation `duration_seconds`), Stripe ne fait qu'encaisser. |
 
@@ -209,6 +210,7 @@ Livré et testé en conditions réelles sur le compte Oliverlist le 19 juillet 2
 - Server components : `getEffectiveUserId()` de `lib/session-user.ts`
 - Route handlers : `requireActiveUser(session)` de `lib/api-auth.ts`
 - Effets de bord post-réponse (sync HubSpot, tracking, dispatch) : TOUJOURS dans `after()` de `next/server` — jamais une promesse `.catch()` nue, Vercel gèle la fonction dès la réponse envoyée (cf. bug #19)
+- Échec volontairement NON bloquant : passer par `reportError`/`reportWarning` de `lib/monitoring.ts` plutôt qu'un `console.error` nu. Un `catch` qui log et continue est le bon comportement fonctionnel, mais sur un webhook ou un cron **personne n'apprend jamais qu'il se déclenche** — c'est le fil rouge des bugs #15, #19, #20 et #25. Le `scope` passé en premier argument est une clé de regroupement stable (`module.étape`), à ne pas faire varier d'un appel à l'autre. Ces helpers ne throw jamais : ils sont appelés depuis des blocs catch.
 - Rate limiting : `lib/rate-limit.ts` (fabrique in-memory) — `checkRateLimit` pour les briefs (quotas serrés), `checkAiGenerationRateLimit` pour les 9 autres routes de génération IA (60/h IP, 200/j user). Toute NOUVELLE route de génération IA doit brancher `checkAiGenerationRateLimit` + `requestIp`
 
 ### Design system (migration Lovable terminée le 21 juillet 2026)
@@ -323,7 +325,7 @@ Puis, dans l'ordre et **un changement à la fois, mesure avant / mesure après**
 2. Stripe en mode Live — activation compte (vérification entreprise). **Avant la bascule, trancher le pricing usage** : recommandation audit = quota d'heures inclus par siège (ex. 10h/mois puis 0,50€/h) plutôt que la refacturation sèche dès la 1ère heure — évite les lignes de facture à 3€ qui font poser des questions, et change la facturation AVANT les premiers clients payants plutôt qu'après
 
 ### Recommandations audit du 21 juillet (par ratio effort/valeur)
-3. **Sentry** sur webhooks (Recall, Stripe) + crons Inngest — le fil rouge des bugs #15/#19/#20 est l'échec silencieux découvert des jours après ; meilleur ratio effort/valeur de la liste
+3. ~~**Sentry** sur webhooks + crons~~ — FAIT le 31/07/2026. **Reste à poser `SENTRY_DSN` dans les variables d'environnement Vercel** : sans elle tout est inerte et rien ne remonte. Les stack traces seront minifiées tant que `withSentryConfig` n'est pas ajouté à `next.config.ts` (nécessite un `SENTRY_AUTH_TOKEN`) — à faire seulement si les traces s'avèrent illisibles.
 4. **Checklist d'activation** sur le dashboard ("Démarrage : 2/4 étapes" — agenda, CRM, playbook, premier brief) — à faire avant d'ouvrir Google OAuth, sinon les invités décrochent sur un dashboard vide
 5. **Notifications inbox** : la cloche TopBar mène vers des préférences, pas une inbox — les événements existent déjà en base (devis accepté, réponse prospect, call analysé), il manque une table + un compteur
 6. **Recherche globale v1** (contacts + calls, simple `ilike`) — l'élément "pas fini" le plus visible de l'app (input désactivé dans la TopBar)

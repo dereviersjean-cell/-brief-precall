@@ -3,6 +3,7 @@ import { Webhook } from "svix";
 import { createAsyncTranscript, getBotInfo, getTranscriptContent, transcriptToText, buildTranscriptJson, resolveSpeakerNames } from "@/lib/recall";
 import { createCall, getUserProfile, getUserName, getUserEmail, saveCallAnalysis, updateCallAnalysisKeyPoints, updateCallFollowUp, getContact, createContact, updateContact, generateTasksFromTemplates, getPlaybookSnapshotForUser, getUserOrganizationId, getMeetingStageConfigForOrganization, saveCallAnalytics, type CallData } from "@/lib/db";
 import { computeCallInteractionMetrics } from "@/lib/call-analytics";
+import { reportError, reportWarning } from "@/lib/monitoring";
 import { pushNewTasksToHubSpot } from "@/lib/tasks-hubspot-sync";
 import { analyzeCall } from "@/lib/call-analysis";
 import { detectMeetingStage, MEETING_STAGE_LABELS } from "@/lib/meeting-stage";
@@ -46,7 +47,7 @@ async function extractCallTiming(botInfo: Record<string, unknown>): Promise<{
       }
     }
   } catch (err) {
-    console.error("[bot-webhook] participant_count fetch failed (non-blocking):", err instanceof Error ? err.message : String(err));
+    reportWarning("bot-webhook.participantCount", err);
   }
 
   return { started_at, ended_at, duration_seconds, participant_count };
@@ -145,7 +146,7 @@ export async function POST(request: NextRequest) {
               timing = await extractCallTiming(botInfo);
               console.log("[bot-webhook] timing — started_at:", timing.started_at, "ended_at:", timing.ended_at, "duration_seconds:", timing.duration_seconds, "participant_count:", timing.participant_count);
             } catch (err) {
-              console.error("[bot-webhook] getBotInfo failed (non-blocking):", err instanceof Error ? err.message : String(err));
+              reportWarning("bot-webhook.getBotInfo", err, { botId });
             }
           }
 
@@ -250,10 +251,7 @@ export async function POST(request: NextRequest) {
                 console.log("[bot-webhook] call_analytics saved, talk_ratio_pct:", metrics.talk_ratio_pct);
               }
             } catch (analyticsErr) {
-              console.error(
-                "[bot-webhook] saveCallAnalytics failed (non-blocking, migration 006 pas encore appliquée ?):",
-                analyticsErr instanceof Error ? analyticsErr.message : String(analyticsErr)
-              );
+              reportWarning("bot-webhook.saveCallAnalytics", analyticsErr, { callId: call.id });
             }
           }
 
@@ -288,7 +286,7 @@ export async function POST(request: NextRequest) {
             if (savedAnalysis.objections.length > 0) {
               if (organizationId) {
                 await indexCallObjections(organizationId, call.id, contactEmail, savedAnalysis.objections, transcriptText).catch((err) =>
-                  console.warn("[bot-webhook] indexCallObjections failed (non-blocking):", err instanceof Error ? err.message : String(err))
+                    reportError("bot-webhook.indexCallObjections", err, { callId: call.id })
                 );
               }
             }
@@ -338,7 +336,7 @@ export async function POST(request: NextRequest) {
               );
             }
           } catch (analysisErr) {
-            console.log("[bot-webhook] analyzeCall failed (non-blocking):", analysisErr instanceof Error ? analysisErr.message : String(analysisErr));
+            reportError("bot-webhook.analyzeCall", analysisErr, { callId: call.id });
           }
 
           // Step 4 — upsert contact (non-blocking)
@@ -369,7 +367,7 @@ export async function POST(request: NextRequest) {
               }
             }
           } catch (contactErr) {
-            console.log("[bot-webhook] contact upsert failed (non-blocking):", contactErr instanceof Error ? contactErr.message : String(contactErr));
+            reportWarning("bot-webhook.contactUpsert", contactErr, { callId: call.id });
           }
 
           // Step 5 — generate follow-up email (non-blocking). No longer
@@ -387,7 +385,7 @@ export async function POST(request: NextRequest) {
               }
             }
           } catch (followUpErr) {
-            console.log("[bot-webhook] follow-up email failed (non-blocking):", followUpErr instanceof Error ? followUpErr.message : String(followUpErr));
+            reportWarning("bot-webhook.followUpEmail", followUpErr, { callId: call.id });
           }
 
           // Step 6 — dispatch post-call analysis notifications (module
@@ -418,7 +416,7 @@ export async function POST(request: NextRequest) {
             }
           }
         } catch (err) {
-          console.log("[bot-webhook] transcript.done pipeline failed:", err instanceof Error ? err.message : String(err));
+          reportError("bot-webhook.pipeline", err, { transcriptId, botId });
         }
       }
     }
