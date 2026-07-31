@@ -88,6 +88,8 @@ Pour CHAQUE objection, tu dois :
    - Un intervalle de lignes CONSÉCUTIVES, 4 lignes maximum. Si le passage utile est plus long, garde les lignes les plus significatives.
    - Une seule ligne : [12, 12].
    - Si tu ne trouves pas le passage, mets null. Ne devine pas un numéro au hasard.
+   - **La réponse du commercial est celle qui SUIT IMMÉDIATEMENT l'objection**, dans les quelques lignes qui viennent après "prospect_lines". Ne va PAS chercher plus loin dans le call un passage qui ressemblerait à une bonne réponse à cette objection : ce n'est pas ce que le commercial a répondu sur le moment, et c'est le moment qui est évalué. Un même call revient souvent sur le budget, le planning ou les prochaines étapes à plusieurs reprises — seule la reprise qui suit l'objection compte.
+   - Si le commercial enchaîne sur autre chose sans traiter l'objection (il pose une question sans rapport, change de sujet), c'est une information en soi : renvoie quand même les lignes de ce qu'il a dit juste après, et note la qualité "non_traitee". Ne compense pas en cherchant ailleurs une réponse qui l'arrangerait.
 
 5. RESTITUTION EN PUCES — deux listes courtes, c'est ce que le manager lit en premier :
    - "prospect_bullets" : 1 à 3 puces disant ce que le prospect exprime. Une idée par puce, 12 mots maximum, à l'infinitif ou en groupe nominal (« Trouve le fixe mensuel trop élevé », « Compare avec deux autres prestataires »). Pas de phrase complète, pas de « Le prospect… » répété.
@@ -133,6 +135,19 @@ function parseBullets(raw: unknown): string[] {
 //    (voir le découpage en lots plus bas).
 const MAX_VERBATIM_LINES = 4;
 
+// Fenêtre au-delà de laquelle un passage ne peut plus être « la réponse à
+// cette objection ». Constaté en conditions réelles le 31/07/2026 : sur une
+// objection budget à 25:40, le modèle est allé chercher un « je vous envoie un
+// mail récap » situé bien plus loin dans le call, parce qu'il RESSEMBLE à un
+// traitement d'objection budget. Le commercial avait en réalité enchaîné sur
+// une question de panier moyen — donc l'objection n'était pas traitée, et
+// l'évaluation affichée était fausse en plus d'être flatteuse.
+//
+// 8 tours : assez large pour absorber un prospect qui poursuit sur deux ou
+// trois tours avant que le commercial reprenne, assez serré pour interdire un
+// saut à l'autre bout de l'appel.
+const MAX_RESPONSE_GAP_TURNS = 8;
+
 // Une ligne numérotée présentée au modèle. Quand le call vient d'un
 // enregistrement, la ligne EST un tour de parole horodaté — c'est ce qui
 // permet de renvoyer une position dans la vidéo en plus du verbatim. Sans
@@ -169,15 +184,24 @@ function numberTranscript(lines: TranscriptLine[]): string {
 function stripSpeakerPrefix(line: string): string {
   const match = line.match(/^([^:]{1,40}):\s*(.+)$/);
   if (!match) return line;
+  // Même garde-fou que splitSpeaker de lib/transcript-import.ts : sur une
+  // ligne « 00:45 Nom: texte », le premier « : » est celui de l'horodatage.
+  // Sans ça on retire « 00: » et on laisse « 45 Nom: texte » dans le verbatim.
+  if (/^\d+$/.test(match[1].trim())) return line;
   return /[.!?]/.test(match[1]) ? line : match[2];
 }
 
 // Résout un intervalle de lignes en texte ET en position temporelle.
-function resolveRange(
-  range: unknown,
-  lines: TranscriptLine[]
-): { verbatim: string | null; startMs: number | null; endMs: number | null } {
-  const empty = { verbatim: null, startMs: null, endMs: null };
+type ResolvedRange = {
+  verbatim: string | null;
+  startMs: number | null;
+  endMs: number | null;
+  startIndex: number | null;
+  endIndex: number | null;
+};
+
+function resolveRange(range: unknown, lines: TranscriptLine[]): ResolvedRange {
+  const empty: ResolvedRange = { verbatim: null, startMs: null, endMs: null, startIndex: null, endIndex: null };
   if (!Array.isArray(range) || range.length !== 2) return empty;
   const [rawStart, rawEnd] = range;
   if (typeof rawStart !== "number" || typeof rawEnd !== "number") return empty;
@@ -198,6 +222,8 @@ function resolveRange(
     verbatim: text.length >= 10 ? text : null,
     startMs: slice[0]?.startMs ?? null,
     endMs: slice[slice.length - 1]?.endMs ?? null,
+    startIndex: start,
+    endIndex: Math.min(end, start + MAX_VERBATIM_LINES - 1),
   };
 }
 
@@ -341,14 +367,37 @@ ${objectionBlock}${transcriptBlock}`;
       const categoryIndex = typeof result?.category === "number" ? result.category - 1 : -1;
       const category = categoryIndex >= 0 && categoryIndex < categories.length ? categories[categoryIndex] : null;
       const quality = isHandlingQuality(result?.quality) ? result.quality : null;
+      const emptyRange: ResolvedRange = {
+        verbatim: null,
+        startMs: null,
+        endMs: null,
+        startIndex: null,
+        endIndex: null,
+      };
       const prospectRange =
-        transcriptLines.length > 0
-          ? resolveRange(result?.prospect_lines, transcriptLines)
-          : { verbatim: null, startMs: null, endMs: null };
-      const commercialRange =
-        transcriptLines.length > 0
-          ? resolveRange(result?.commercial_lines, transcriptLines)
-          : { verbatim: null, startMs: null, endMs: null };
+        transcriptLines.length > 0 ? resolveRange(result?.prospect_lines, transcriptLines) : emptyRange;
+      const rawCommercialRange =
+        transcriptLines.length > 0 ? resolveRange(result?.commercial_lines, transcriptLines) : emptyRange;
+
+      // Une réponse ne peut être la réponse À CETTE objection que si elle vient
+      // après elle et peu après. Hors fenêtre, le modèle est allé pêcher
+      // ailleurs un passage qui sonnait bien : on écarte le passage ET on
+      // dégrade la confiance, parce que sa note de traitement a été formée sur
+      // le mauvais extrait — la garder reviendrait à afficher une évaluation
+      // fausse. Le modèle qui renvoie null de lui-même, en revanche, est un cas
+      // légitime : le commercial n'a pas répondu, l'objection est non traitée.
+      const outOfWindow =
+        rawCommercialRange.startIndex !== null &&
+        prospectRange.endIndex !== null &&
+        (rawCommercialRange.startIndex <= prospectRange.startIndex! ||
+          rawCommercialRange.startIndex > prospectRange.endIndex + MAX_RESPONSE_GAP_TURNS);
+
+      if (outOfWindow) {
+        console.warn(
+          `[objection-classifier] réponse hors fenêtre (objection lignes ${prospectRange.startIndex}-${prospectRange.endIndex}, réponse ligne ${rawCommercialRange.startIndex}) — passage écarté et objection déclassée en incertaine`
+        );
+      }
+      const commercialRange = outOfWindow ? emptyRange : rawCommercialRange;
       const comment = typeof result?.comment === "string" && result.comment.trim() ? result.comment.trim() : null;
 
       // On ne prend pas le flag du modèle au mot : « comparé au playbook »
@@ -375,7 +424,8 @@ ${objectionBlock}${transcriptBlock}`;
         // Le modèle doit se prononcer explicitement : toute valeur autre que
         // « certaine » (absente, mal orthographiée, inventée) est traitée comme
         // un doute, donc masquée. Le défaut penche du côté prudent.
-        confidence: result?.confidence === "certaine" ? ("certaine" as const) : ("incertaine" as const),
+        confidence:
+          result?.confidence === "certaine" && !outOfWindow ? ("certaine" as const) : ("incertaine" as const),
         // Le passage du PROSPECT donne le moment de l'objection : c'est là que
         // le manager veut que la vidéo démarre, pas sur la réponse.
         startMs: prospectRange.startMs,
