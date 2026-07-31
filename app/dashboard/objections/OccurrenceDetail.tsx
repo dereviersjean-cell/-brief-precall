@@ -62,7 +62,15 @@ export default function OccurrenceDetail({ occurrence }: { occurrence: Objection
       const res = await fetch(`/api/recall/video-url?callId=${occurrence.callId}`);
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error((data as { error?: string }).error ?? "Vidéo indisponible.");
-      setVideoUrl((data as { url: string }).url);
+
+      // La route renvoie `videoUrl` (cf. app/api/recall/video-url/route.ts).
+      const url = (data as { videoUrl?: string }).videoUrl;
+      // Sans ce garde-fou, une réponse OK mais de forme inattendue laissait un
+      // cadre noir vide, sans message ni erreur — le lecteur paraissait cassé
+      // sans qu'on sache pourquoi. Une réponse qu'on ne sait pas lire doit se
+      // dire, pas se taire.
+      if (!url) throw new Error("Réponse inattendue du serveur : aucune URL vidéo.");
+      setVideoUrl(url);
     } catch (err) {
       setVideoError(err instanceof Error ? err.message : "Vidéo indisponible.");
     } finally {
@@ -157,6 +165,12 @@ export default function OccurrenceDetail({ occurrence }: { occurrence: Objection
         <div className="rounded-xl border border-border bg-slate-900 p-2">
           {loadingVideo && <p className="px-2 py-6 text-center text-[13px] text-slate-300">Chargement de la vidéo…</p>}
           {videoError && <p className="px-2 py-6 text-center text-[13px] text-rose-300">{videoError}</p>}
+          {/* Dernier filet : aucun des trois états attendus n'est vrai. Ne
+              jamais laisser un cadre vide, qui se lit comme « c'est cassé »
+              sans dire quoi. */}
+          {!loadingVideo && !videoError && !videoUrl && (
+            <p className="px-2 py-6 text-center text-[13px] text-slate-300">Aucune vidéo à afficher pour ce passage.</p>
+          )}
           {videoUrl && (
             <video
               ref={videoRef}
