@@ -83,19 +83,26 @@ export async function POST(request: NextRequest) {
   for (const annotation of annotations) {
     const { data } = await supabaseAdmin
       .from("calls")
-      .select("transcript")
+      .select("transcript, transcript_json")
       .eq("id", annotation.callId)
       .maybeSingle();
-    const transcript = (data as { transcript: string | null } | null)?.transcript;
+    const row = data as { transcript: string | null; transcript_json: { turns?: unknown[] } | null } | null;
+    const transcript = row?.transcript;
+    const turns = (row?.transcript_json?.turns ?? null) as { text: string; start_ms: number; end_ms: number; speaker_id: string }[] | null;
     if (!transcript) continue;
 
     const objections = await extractObjectionsFromTranscript(transcript);
-    const classified = await classifyAndEvaluateObjections(categoriesForClassifier, objections, transcript);
+    const classified = await classifyAndEvaluateObjections(categoriesForClassifier, objections, transcript, turns);
 
-    const predicted = classified.map((c) => ({
-      objection: c.objection,
-      categoryLabel: c.categoryId ? labelById.get(c.categoryId) ?? null : null,
-    }));
+    // On mesure ce que le manager VOIT : les objections marquées incertaines
+    // sont filtrées à l'affichage, les compter ici gonflerait artificiellement
+    // le rappel et dégraderait la précision sans rapport avec le vécu.
+    const predicted = classified
+      .filter((c) => c.confidence === "certaine")
+      .map((c) => ({
+        objection: c.objection,
+        categoryLabel: c.categoryId ? labelById.get(c.categoryId) ?? null : null,
+      }));
 
     const result = await evaluateObjections(annotation.expected, predicted);
     results.push(result);

@@ -1,7 +1,7 @@
 import { supabaseAdmin } from "./supabase";
 import { generateEmbedding } from "./embeddings";
 import { listObjectionCategories } from "./db";
-import { classifyAndEvaluateObjections } from "./objection-classifier";
+import { classifyAndEvaluateObjections, type TimedTurn } from "./objection-classifier";
 import type { CallObjection } from "./db";
 
 export type SimilarObjection = {
@@ -33,7 +33,11 @@ export async function indexCallObjections(
   objections: CallObjection[],
   // Transcript complet — sert au classifieur à extraire les verbatims
   // (migration 007). Absent, tout le reste fonctionne, sans citations.
-  transcript?: string | null
+  transcript?: string | null,
+  // Tours horodatés (calls.transcript_json) — permettent en plus de situer
+  // l'objection dans l'enregistrement, donc de caler la vidéo dessus
+  // (migration 009).
+  turns?: TimedTurn[] | null
 ): Promise<void> {
   if (objections.length === 0) return;
 
@@ -54,7 +58,8 @@ export async function indexCallObjections(
       example_phrasings: c.examplePhrasings,
     })),
     objections,
-    transcript
+    transcript,
+    turns
   );
 
   const rows = await Promise.all(
@@ -79,6 +84,11 @@ export async function indexCallObjections(
         prospect_verbatim: o.prospectVerbatim,
         commercial_verbatim: o.commercialVerbatim,
         suggested_response: o.suggestedResponse,
+        prospect_bullets: o.prospectBullets,
+        commercial_bullets: o.commercialBullets,
+        confidence: o.confidence,
+        start_ms: o.startMs,
+        end_ms: o.endMs,
       };
     })
   );
@@ -121,12 +131,12 @@ export async function indexCallObjections(
     return;
   }
 
-  // Pattern bug #14 : si les migrations 006/007 ne sont pas encore passées en prod,
+  // Pattern bug #14 : si les migrations 006/007/009 ne sont pas encore passées en prod,
   // l'insert entier échoue sur des colonnes inconnues et on perdrait
   // l'objection. On réessaie sur les seules colonnes historiques — la
   // bibliothèque continue de se remplir, sans classification.
   console.error(
-    "[objections] insert avec classification échoué, retry sans les colonnes des migrations 006/007 :",
+    "[objections] insert avec classification échoué, retry sans les colonnes des migrations 006/007/009 :",
     error.message
   );
   const legacyRows = validRows.map(
@@ -139,6 +149,11 @@ export async function indexCallObjections(
       prospect_verbatim,
       commercial_verbatim,
       suggested_response,
+      prospect_bullets,
+      commercial_bullets,
+      confidence,
+      start_ms,
+      end_ms,
       ...rest
     }) => rest
   );

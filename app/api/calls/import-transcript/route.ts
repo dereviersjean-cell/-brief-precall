@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
 
     if (analysis.objections.length > 0) {
       // indexCallObjections classe et évalue au passage (lib/objections.ts).
-      await indexCallObjections(organizationId, call.id, contactEmail, analysis.objections, parsed.text).catch((err) => {
+      await indexCallObjections(organizationId, call.id, contactEmail, analysis.objections, parsed.text, parsed.transcriptJson?.turns ?? null).catch((err) => {
         console.warn("[import-transcript] indexCallObjections failed:", err instanceof Error ? err.message : String(err));
         warnings.push("Les objections n'ont pas pu être indexées ni classées.");
       });

@@ -6110,6 +6110,16 @@ export type ObjectionOccurrence = {
   prospectVerbatim: string | null;
   commercialVerbatim: string | null;
   suggestedResponse: string | null;
+  // Restitution en puces — ce qui s'affiche en premier (migration 009).
+  prospectBullets: string[];
+  commercialBullets: string[];
+  // Position du passage dans l'enregistrement, pour caler la vidéo. Null quand
+  // le transcript n'était pas horodaté.
+  startMs: number | null;
+  endMs: number | null;
+  // Identifiant du bot Recall du call : sans lui, pas d'enregistrement à
+  // rejouer (import manuel de transcript, ou call trop ancien).
+  recallBotId: string | null;
   handlingQuality: "bien_traitee" | "partiellement" | "non_traitee" | null;
   handlingComment: string | null;
   evaluatedAgainstPlaybook: boolean;
@@ -6130,7 +6140,18 @@ type ObjectionJoinRow = {
   prospect_verbatim: string | null;
   commercial_verbatim: string | null;
   suggested_response: string | null;
-  calls: { user_id: string | null; company_name: string | null; started_at: string | null; created_at: string } | null;
+  prospect_bullets: string[] | null;
+  commercial_bullets: string[] | null;
+  confidence: string | null;
+  start_ms: number | null;
+  end_ms: number | null;
+  calls: {
+    user_id: string | null;
+    company_name: string | null;
+    started_at: string | null;
+    created_at: string;
+    recall_bot_id: string | null;
+  } | null;
 };
 
 function objectionOccurredAt(row: ObjectionJoinRow): string {
@@ -6150,8 +6171,9 @@ async function fetchObjectionRows(
   userId?: string | null
 ): Promise<ObjectionJoinRow[]> {
   const BASE_COLUMNS =
-    "id, call_id, contact_email, objection, response, created_at, category_id, handling_quality, handling_comment, evaluated_against_playbook, calls!inner(user_id, company_name, started_at, created_at)";
-  const VERBATIM_COLUMNS = "prospect_verbatim, commercial_verbatim, suggested_response";
+    "id, call_id, contact_email, objection, response, created_at, category_id, handling_quality, handling_comment, evaluated_against_playbook, calls!inner(user_id, company_name, started_at, created_at, recall_bot_id)";
+  const VERBATIM_COLUMNS =
+    "prospect_verbatim, commercial_verbatim, suggested_response, prospect_bullets, commercial_bullets, confidence, start_ms, end_ms";
 
   const run = async (columns: string) => {
     let query = supabaseAdmin.from("call_objections").select(columns).eq("organization_id", organizationId);
@@ -6181,12 +6203,26 @@ async function fetchObjectionRows(
       prospect_verbatim: r.prospect_verbatim ?? null,
       commercial_verbatim: r.commercial_verbatim ?? null,
       suggested_response: r.suggested_response ?? null,
+      prospect_bullets: r.prospect_bullets ?? null,
+      commercial_bullets: r.commercial_bullets ?? null,
+      confidence: r.confidence ?? null,
+      start_ms: r.start_ms ?? null,
+      end_ms: r.end_ms ?? null,
       calls: Array.isArray(r.calls) ? r.calls[0] ?? null : r.calls,
     } as ObjectionJoinRow;
   });
 
-  if (!period.from && !period.to) return rows;
-  return rows.filter((row) => {
+  // Décision du 31/07/2026 : on n'affiche QUE les objections dont le système
+  // est sûr. Mieux vaut en manquer une que d'en montrer une qui n'en est pas.
+  // Le filtre est ici, à la lecture, et non à l'extraction : les incertaines
+  // restent en base, ce qui permet de déplacer le curseur sans tout
+  // ré-analyser et au calibrage de chiffrer ce qu'on écarte à tort.
+  // `confidence` null = ligne antérieure à la migration 009, conservée pour ne
+  // rien faire disparaître rétroactivement.
+  const confident = rows.filter((row) => row.confidence !== "incertaine");
+
+  if (!period.from && !period.to) return confident;
+  return confident.filter((row) => {
     const at = objectionOccurredAt(row);
     if (period.from && at < period.from) return false;
     if (period.to && at > period.to) return false;
@@ -6309,6 +6345,11 @@ export async function listObjectionOccurrencesForCategory(
         prospectVerbatim: row.prospect_verbatim,
         commercialVerbatim: row.commercial_verbatim,
         suggestedResponse: row.suggested_response,
+        prospectBullets: row.prospect_bullets ?? [],
+        commercialBullets: row.commercial_bullets ?? [],
+        startMs: row.start_ms,
+        endMs: row.end_ms,
+        recallBotId: row.calls?.recall_bot_id ?? null,
         handlingQuality: (row.handling_quality as ObjectionOccurrence["handlingQuality"]) ?? null,
         handlingComment: row.handling_comment,
         evaluatedAgainstPlaybook: row.evaluated_against_playbook ?? false,

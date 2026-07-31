@@ -28,6 +28,17 @@ export type ClassifiedObjection = {
   // retombe alors sur le résumé ci-dessus en le disant.
   prospectVerbatim: string | null;
   commercialVerbatim: string | null;
+  // Restitution en puces courtes — ce que le manager lit en premier, le
+  // verbatim restant disponible d'un clic.
+  prospectBullets: string[];
+  commercialBullets: string[];
+  // « certaine » : à afficher. « incertaine » : stockée mais jamais montrée
+  // (décision du 31/07/2026 — ne rien montrer dont on n'est pas sûr).
+  confidence: "certaine" | "incertaine";
+  // Position du passage dans l'enregistrement, pour caler la vidéo. Null
+  // quand le transcript n'est pas horodaté.
+  startMs: number | null;
+  endMs: number | null;
   // Ce qu'il aurait fallu répondre, dérivé du handling_guidance de la
   // catégorie. null quand l'objection a été bien traitée.
   suggestedResponse: string | null;
@@ -54,6 +65,8 @@ On te donne (1) la liste des catégories d'objections définies par le directeur
 
 Pour CHAQUE objection, tu dois :
 
+0. CONFIANCE — « certaine » ou « incertaine ». Mets « certaine » UNIQUEMENT si, en relisant le passage, il ne fait aucun doute que le prospect exprime une réticence qui freine la vente. Au moindre doute — remarque ambiguë, ton neutre, question qui pourrait n'être qu'une demande d'information, passage trop court pour trancher — mets « incertaine ». Les incertaines ne seront montrées à personne : il vaut infiniment mieux en manquer une que d'en afficher une qui n'en est pas.
+
 1. RATTACHEMENT — déterminer à quelle catégorie elle appartient, par le sens et non par les mots employés. « C'est trop cher », « on n'a pas le budget cette année » et « votre concurrent est moitié prix » relèvent d'intentions différentes : lis la définition de chaque catégorie avant de trancher. Renvoie le numéro de la catégorie, ou null.
 
    Le rattachement doit être EXACT, pas approximatif. Rattache uniquement si l'objection correspond au cœur même de la définition de la catégorie. Un simple voisinage thématique ne suffit pas : « où sont basées vos équipes ? » ne relève PAS de « impossibilité d'écouter les appels » sous prétexte que les deux parlent d'appels téléphoniques. Au moindre doute, renvoie null.
@@ -76,10 +89,15 @@ Pour CHAQUE objection, tu dois :
    - Une seule ligne : [12, 12].
    - Si tu ne trouves pas le passage, mets null. Ne devine pas un numéro au hasard.
 
-5. REFORMULATION — "suggested_response" : ce que le commercial aurait dû répondre, rédigé à la première personne, tel qu'il aurait pu le dire à voix haute (2 à 4 phrases). Appuie-toi sur la manière de traiter attendue de la catégorie quand elle existe, et sur ce que le prospect a réellement dit. Mets null si l'objection a été bien traitée : il n'y a alors rien à corriger.
+5. RESTITUTION EN PUCES — deux listes courtes, c'est ce que le manager lit en premier :
+   - "prospect_bullets" : 1 à 3 puces disant ce que le prospect exprime. Une idée par puce, 12 mots maximum, à l'infinitif ou en groupe nominal (« Trouve le fixe mensuel trop élevé », « Compare avec deux autres prestataires »). Pas de phrase complète, pas de « Le prospect… » répété.
+   - "commercial_bullets" : 1 à 3 puces disant ce que le commercial a répondu, même format. Liste vide s'il n'a pas répondu.
+   Ces puces résument, elles ne citent pas — le verbatim exact est déjà couvert par les numéros de ligne ci-dessus.
+
+6. REFORMULATION — "suggested_response" : ce que le commercial aurait dû répondre, rédigé à la première personne, tel qu'il aurait pu le dire à voix haute (2 à 4 phrases). Appuie-toi sur la manière de traiter attendue de la catégorie quand elle existe, et sur ce que le prospect a réellement dit. Mets null si l'objection a été bien traitée : il n'y a alors rien à corriger.
 
 Réponds UNIQUEMENT en JSON strict, sans markdown, avec exactement cette structure :
-{"results": [{"index": 0, "category": 1, "quality": "bien_traitee", "comment": "...", "compared_to_playbook": true, "prospect_lines": [12, 13], "commercial_lines": [14, 14], "suggested_response": null}]}
+{"results": [{"index": 0, "confidence": "certaine", "category": 1, "quality": "bien_traitee", "comment": "...", "compared_to_playbook": true, "prospect_lines": [12, 13], "commercial_lines": [14, 14], "prospect_bullets": ["..."], "commercial_bullets": ["..."], "suggested_response": null}]}
 
 "index" est l'index de l'objection dans la liste fournie (à partir de 0), "category" le numéro de la catégorie ou null. Un objet par objection, dans l'ordre, aucun oubli.`;
 
@@ -91,8 +109,16 @@ type RawResult = {
   compared_to_playbook?: boolean;
   prospect_lines?: unknown;
   commercial_lines?: unknown;
+  prospect_bullets?: unknown;
+  commercial_bullets?: unknown;
   suggested_response?: string | null;
+  confidence?: string;
 };
+
+function parseBullets(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((b) => String(b).trim()).filter(Boolean).slice(0, 3);
+}
 
 // Le transcript est envoyé au modèle avec ses lignes numérotées, et le modèle
 // renvoie des INTERVALLES DE LIGNES plutôt que du texte recopié. Deux raisons,
@@ -107,15 +133,34 @@ type RawResult = {
 //    (voir le découpage en lots plus bas).
 const MAX_VERBATIM_LINES = 4;
 
-function splitTranscriptLines(transcript: string): string[] {
+// Une ligne numérotée présentée au modèle. Quand le call vient d'un
+// enregistrement, la ligne EST un tour de parole horodaté — c'est ce qui
+// permet de renvoyer une position dans la vidéo en plus du verbatim. Sans
+// horodatage (import de texte brut), on retombe sur un découpage par ligne et
+// les timings restent nuls.
+type TranscriptLine = { text: string; startMs: number | null; endMs: number | null };
+
+export type TimedTurn = { text: string; start_ms: number; end_ms: number; speaker_id: string };
+
+function buildLines(transcript: string, turns?: TimedTurn[] | null): TranscriptLine[] {
+  if (turns && turns.length > 0) {
+    return turns.map((t) => ({
+      // Préfixe conservé pour que le modèle sache qui parle ; stripSpeakerPrefix
+      // le retire à l'extraction du verbatim.
+      text: `${t.speaker_id}: ${t.text}`.trim(),
+      startMs: t.start_ms,
+      endMs: t.end_ms,
+    }));
+  }
   return transcript
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .map((text) => ({ text, startMs: null, endMs: null }));
 }
 
-function numberTranscript(lines: string[]): string {
-  return lines.map((line, i) => `[${i}] ${line}`).join("\n");
+function numberTranscript(lines: TranscriptLine[]): string {
+  return lines.map((line, i) => `[${i}] ${line.text}`).join("\n");
 }
 
 // Retire le préfixe de locuteur (« Dorian Monaco: ») pour ne garder que la
@@ -127,26 +172,33 @@ function stripSpeakerPrefix(line: string): string {
   return /[.!?]/.test(match[1]) ? line : match[2];
 }
 
-function extractVerbatim(range: unknown, lines: string[]): string | null {
-  if (!Array.isArray(range) || range.length !== 2) return null;
+// Résout un intervalle de lignes en texte ET en position temporelle.
+function resolveRange(
+  range: unknown,
+  lines: TranscriptLine[]
+): { verbatim: string | null; startMs: number | null; endMs: number | null } {
+  const empty = { verbatim: null, startMs: null, endMs: null };
+  if (!Array.isArray(range) || range.length !== 2) return empty;
   const [rawStart, rawEnd] = range;
-  if (typeof rawStart !== "number" || typeof rawEnd !== "number") return null;
+  if (typeof rawStart !== "number" || typeof rawEnd !== "number") return empty;
 
   const start = Math.floor(rawStart);
   const end = Math.floor(rawEnd);
-  if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return empty;
   // Numéro hors du transcript = le modèle a inventé une référence.
   if (start < 0 || end < start || end >= lines.length) {
     console.warn(`[objection-classifier] intervalle de lignes hors transcript (${start}-${end}), ignoré`);
-    return null;
+    return empty;
   }
 
-  const text = lines
-    .slice(start, Math.min(end, start + MAX_VERBATIM_LINES - 1) + 1)
-    .map(stripSpeakerPrefix)
-    .join(" ")
-    .trim();
-  return text.length >= 10 ? text : null;
+  const slice = lines.slice(start, Math.min(end, start + MAX_VERBATIM_LINES - 1) + 1);
+  const text = slice.map((l) => stripSpeakerPrefix(l.text)).join(" ").trim();
+
+  return {
+    verbatim: text.length >= 10 ? text : null,
+    startMs: slice[0]?.startMs ?? null,
+    endMs: slice[slice.length - 1]?.endMs ?? null,
+  };
 }
 
 function isHandlingQuality(value: unknown): value is HandlingQuality {
@@ -177,6 +229,11 @@ export async function classifyAndEvaluateObjections(
   // (call trop ancien, transcript perdu), la classification et l'évaluation
   // se font quand même sur les résumés, sans citations.
   transcript?: string | null,
+  // Tours de parole horodatés (calls.transcript_json). Quand ils sont fournis,
+  // ce sont EUX qui sont numérotés pour le modèle, ce qui permet de rendre en
+  // plus la position du passage dans l'enregistrement — donc de caler la vidéo
+  // sur le moment de l'objection.
+  turns?: TimedTurn[] | null,
   // Interne : numéro de tentative, voir la stratégie de reprise dans le catch.
   attempt = 0
 ): Promise<ClassifiedObjection[]> {
@@ -186,6 +243,12 @@ export async function classifyAndEvaluateObjections(
       response: o.response,
       prospectVerbatim: null,
       commercialVerbatim: null,
+      prospectBullets: [],
+      commercialBullets: [],
+      // Rien n'a pu être vérifié : on ne peut pas la déclarer certaine.
+      confidence: "incertaine" as const,
+      startMs: null,
+      endMs: null,
       suggestedResponse: null,
       categoryId: null,
       handlingQuality: null,
@@ -199,13 +262,13 @@ export async function classifyAndEvaluateObjections(
   // configurée ».
   if (categories.length === 0 || objections.length === 0) return unclassified(objections);
 
-  const transcriptLines = transcript?.trim() ? splitTranscriptLines(transcript) : [];
+  const transcriptLines = transcript?.trim() || (turns && turns.length > 0) ? buildLines(transcript ?? "", turns) : [];
 
   if (objections.length > BATCH_SIZE) {
     const results: ClassifiedObjection[] = [];
     for (let i = 0; i < objections.length; i += BATCH_SIZE) {
       results.push(
-        ...(await classifyAndEvaluateObjections(categories, objections.slice(i, i + BATCH_SIZE), transcript))
+        ...(await classifyAndEvaluateObjections(categories, objections.slice(i, i + BATCH_SIZE), transcript, turns))
       );
     }
     return results;
@@ -278,6 +341,14 @@ ${objectionBlock}${transcriptBlock}`;
       const categoryIndex = typeof result?.category === "number" ? result.category - 1 : -1;
       const category = categoryIndex >= 0 && categoryIndex < categories.length ? categories[categoryIndex] : null;
       const quality = isHandlingQuality(result?.quality) ? result.quality : null;
+      const prospectRange =
+        transcriptLines.length > 0
+          ? resolveRange(result?.prospect_lines, transcriptLines)
+          : { verbatim: null, startMs: null, endMs: null };
+      const commercialRange =
+        transcriptLines.length > 0
+          ? resolveRange(result?.commercial_lines, transcriptLines)
+          : { verbatim: null, startMs: null, endMs: null };
       const comment = typeof result?.comment === "string" && result.comment.trim() ? result.comment.trim() : null;
 
       // On ne prend pas le flag du modèle au mot : « comparé au playbook »
@@ -297,8 +368,18 @@ ${objectionBlock}${transcriptBlock}`;
       return {
         objection: o.objection,
         response: o.response,
-        prospectVerbatim: transcriptLines.length > 0 ? extractVerbatim(result?.prospect_lines, transcriptLines) : null,
-        commercialVerbatim: transcriptLines.length > 0 ? extractVerbatim(result?.commercial_lines, transcriptLines) : null,
+        prospectVerbatim: prospectRange.verbatim,
+        commercialVerbatim: commercialRange.verbatim,
+        prospectBullets: parseBullets(result?.prospect_bullets),
+        commercialBullets: parseBullets(result?.commercial_bullets),
+        // Le modèle doit se prononcer explicitement : toute valeur autre que
+        // « certaine » (absente, mal orthographiée, inventée) est traitée comme
+        // un doute, donc masquée. Le défaut penche du côté prudent.
+        confidence: result?.confidence === "certaine" ? ("certaine" as const) : ("incertaine" as const),
+        // Le passage du PROSPECT donne le moment de l'objection : c'est là que
+        // le manager veut que la vidéo démarre, pas sur la réponse.
+        startMs: prospectRange.startMs,
+        endMs: commercialRange.endMs ?? prospectRange.endMs,
         suggestedResponse: suggested,
         categoryId: category?.id ?? null,
         handlingQuality: quality,
@@ -327,14 +408,14 @@ ${objectionBlock}${transcriptBlock}`;
     //     coupe en deux : une réponse plus courte échoue moins, et l'échec
     //     éventuel ne coûte plus que la moitié.
     if (attempt === 0) {
-      return classifyAndEvaluateObjections(categories, objections, transcript, 1);
+      return classifyAndEvaluateObjections(categories, objections, transcript, turns, 1);
     }
     if (objections.length > 1) {
       const middle = Math.ceil(objections.length / 2);
       const [head, tail] = [objections.slice(0, middle), objections.slice(middle)];
       return [
-        ...(await classifyAndEvaluateObjections(categories, head, transcript)),
-        ...(await classifyAndEvaluateObjections(categories, tail, transcript)),
+        ...(await classifyAndEvaluateObjections(categories, head, transcript, turns)),
+        ...(await classifyAndEvaluateObjections(categories, tail, transcript, turns)),
       ];
     }
     return unclassified(objections);

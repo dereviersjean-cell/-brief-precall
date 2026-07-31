@@ -33,6 +33,7 @@ type Row = {
   user_id: string;
   contact_email: string | null;
   transcript: string | null;
+  transcript_json: { turns: { text: string; start_ms: number; end_ms: number; speaker_id: string }[] } | null;
   call_analysis: { id: string; objections: CallObjection[] | null } | { id: string; objections: CallObjection[] | null }[] | null;
 };
 
@@ -46,7 +47,7 @@ async function main() {
 
   const { data, error } = await supabaseAdmin
     .from("calls")
-    .select("id, user_id, contact_email, transcript, call_analysis(id, objections)")
+    .select("id, user_id, contact_email, transcript, transcript_json, call_analysis(id, objections)")
     .not("transcript", "is", null);
   if (error) throw error;
 
@@ -94,7 +95,7 @@ async function main() {
     }
 
     if (objections.length > 0) {
-      await indexCallObjections(organizationId, row.id, row.contact_email, objections, row.transcript).catch((err) =>
+      await indexCallObjections(organizationId, row.id, row.contact_email, objections, row.transcript, row.transcript_json?.turns ?? null).catch((err) =>
         console.error(`[backfill-objections] indexCallObjections failed for call ${row.id}:`, err instanceof Error ? err.message : String(err))
       );
     }

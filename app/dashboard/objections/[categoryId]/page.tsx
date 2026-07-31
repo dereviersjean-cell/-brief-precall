@@ -15,6 +15,7 @@ import { Card } from "@/app/components/ui/ui-bits";
 import { ArrowLeft, CheckCircle2, CircleSlash, ExternalLink, MinusCircle, Trophy, XCircle } from "lucide-react";
 import FadeIn from "../../FadeIn";
 import PeriodFilter from "../../PeriodFilter";
+import OccurrenceDetail from "../OccurrenceDetail";
 
 export const dynamic = "force-dynamic";
 
@@ -32,44 +33,6 @@ const QUALITY_LABELS = {
   partiellement: "Partiellement traitée",
   non_traitee: "Non traitée",
 } as const;
-
-// Un échange, côté prospect ou côté commercial. Affiche en priorité la phrase
-// RÉELLEMENT prononcée (vérifiée contre le transcript côté serveur) : c'est
-// ce sur quoi un manager peut coacher. Le résumé de l'analyse ne sert que de
-// repli, et il est alors explicitement annoncé comme un résumé — laisser
-// croire qu'une reformulation est une citation serait la pire des confusions
-// dans un entretien de coaching.
-function Exchange({
-  label,
-  verbatim,
-  summary,
-  tone,
-}: {
-  label: string;
-  verbatim: string | null;
-  summary: string;
-  tone: "prospect" | "commercial";
-}) {
-  const accent = tone === "prospect" ? "border-slate-300" : "border-[color:var(--lavender-strong)]";
-
-  return (
-    <div>
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</p>
-      {verbatim ? (
-        <blockquote className={`mt-1.5 border-l-2 pl-3 ${accent}`}>
-          <p className="text-[13.5px] leading-relaxed text-slate-800">«&nbsp;{verbatim}&nbsp;»</p>
-        </blockquote>
-      ) : (
-        <>
-          <p className="mt-1 text-[13.5px] leading-relaxed text-slate-700">{summary}</p>
-          <p className="mt-1 text-xs italic text-slate-400">
-            Résumé de l&apos;analyse — le verbatim n&apos;a pas pu être retrouvé dans le transcript.
-          </p>
-        </>
-      )}
-    </div>
-  );
-}
 
 function QualityBadge({ occurrence }: { occurrence: ObjectionOccurrence }) {
   if (!occurrence.handlingQuality) {
@@ -226,45 +189,7 @@ export default async function ObjectionCategoryDetailPage({
                     <QualityBadge occurrence={occurrence} />
                   </div>
 
-                  <div className="mt-4 space-y-3">
-                    <Exchange
-                      label="Ce que le prospect a dit"
-                      verbatim={occurrence.prospectVerbatim}
-                      summary={occurrence.objection}
-                      tone="prospect"
-                    />
-                    <Exchange
-                      label="Ce que le commercial a répondu"
-                      verbatim={occurrence.commercialVerbatim}
-                      summary={occurrence.response}
-                      tone="commercial"
-                    />
-
-                    {occurrence.suggestedResponse && (
-                      <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-                          Ce qu&apos;il aurait fallu répondre
-                        </p>
-                        <p className="mt-1.5 text-[13.5px] leading-relaxed text-emerald-900">
-                          {occurrence.suggestedResponse}
-                        </p>
-                      </div>
-                    )}
-
-                    {occurrence.handlingComment && (
-                      <div className="rounded-lg bg-slate-50 px-3.5 py-2.5">
-                        <p className="text-[13px] text-slate-600">{occurrence.handlingComment}</p>
-                        {!occurrence.evaluatedAgainstPlaybook && (
-                          // Dire d'où vient la note : une appréciation
-                          // générale n'a pas le même poids qu'un écart mesuré
-                          // par rapport à la méthode écrite par le manager.
-                          <p className="mt-1.5 text-xs italic text-slate-400">
-                            Appréciation générale — aucune méthode définie pour cette objection au moment de l&apos;analyse.
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  <OccurrenceDetail occurrence={occurrence} />
 
                   <Link
                     href={`/feedback/${occurrence.callId}`}

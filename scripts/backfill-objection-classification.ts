@@ -92,10 +92,16 @@ async function main() {
     for (const [callId, callRows] of orgCalls) {
       const { data: callRow } = await supabaseAdmin
         .from("calls")
-        .select("transcript")
+        .select("transcript, transcript_json")
         .eq("id", callId)
         .maybeSingle();
-      const transcript = (callRow as { transcript: string | null } | null)?.transcript ?? null;
+      const row = callRow as { transcript: string | null; transcript_json: { turns?: unknown[] } | null } | null;
+      const transcript = row?.transcript ?? null;
+      // Tours horodatés : c'est ce qui permet de situer l'objection dans
+      // l'enregistrement et donc de caler la vidéo dessus (migration 009).
+      const turns = (row?.transcript_json?.turns ?? null) as
+        | { text: string; start_ms: number; end_ms: number; speaker_id: string }[]
+        | null;
       if (!transcript) {
         console.warn(`[backfill-classification] call ${callId} — transcript absent, pas de verbatims pour ce call.`);
       }
@@ -103,7 +109,8 @@ async function main() {
       const results = await classifyAndEvaluateObjections(
         categoriesForClassifier,
         callRows.map((r) => ({ objection: r.objection, response: r.response })),
-        transcript
+        transcript,
+        turns
       );
 
       for (let i = 0; i < callRows.length; i++) {
@@ -122,6 +129,11 @@ async function main() {
             prospect_verbatim: result.prospectVerbatim,
             commercial_verbatim: result.commercialVerbatim,
             suggested_response: result.suggestedResponse,
+            prospect_bullets: result.prospectBullets,
+            commercial_bullets: result.commercialBullets,
+            confidence: result.confidence,
+            start_ms: result.startMs,
+            end_ms: result.endMs,
           })
           .eq("id", row.id);
         if (updateError) {

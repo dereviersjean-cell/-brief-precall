@@ -54,10 +54,10 @@ async function main() {
   for (const fixture of fixtures) {
     const { data } = await supabaseAdmin
       .from("calls")
-      .select("user_id, transcript")
+      .select("user_id, transcript, transcript_json")
       .eq("id", fixture.callId)
       .maybeSingle();
-    const call = data as { user_id: string; transcript: string | null } | null;
+    const call = data as { user_id: string; transcript: string | null; transcript_json: { turns?: unknown[] } | null } | null;
     if (!call?.transcript) {
       console.warn(`· ${fixture.callId.slice(0, 8)} — transcript introuvable, ignoré`);
       skipped++;
@@ -78,15 +78,19 @@ async function main() {
         example_phrasings: c.examplePhrasings,
       })),
       objections,
-      call.transcript
+      call.transcript,
+      (call.transcript_json?.turns ?? null) as { text: string; start_ms: number; end_ms: number; speaker_id: string }[] | null
     );
 
     const result = await evaluateObjections(
       fixture.expected,
-      classified.map((c) => ({
-        objection: c.objection,
-        categoryLabel: c.categoryId ? labelById.get(c.categoryId) ?? null : null,
-      }))
+      // Même filtre qu'à l'affichage : on mesure ce que le manager voit.
+      classified
+        .filter((c) => c.confidence === "certaine")
+        .map((c) => ({
+          objection: c.objection,
+          categoryLabel: c.categoryId ? labelById.get(c.categoryId) ?? null : null,
+        }))
     );
     results.push(result);
 
