@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Search, Bell, ChevronRight } from "lucide-react";
+import { Bell, ChevronRight } from "lucide-react";
+import GlobalSearch from "./GlobalSearch";
 
-// Porté du mockup Lovable (app-shell.tsx TopBar), juillet 2026. Recherche
-// volontairement désactivée (pas de moteur de recherche global côté
-// serveur) plutôt que de simuler un champ fonctionnel qui ne ferait rien.
+// Porté du mockup Lovable (app-shell.tsx TopBar), juillet 2026. Le champ de
+// recherche est resté désactivé jusqu'au 31/07/2026 — il est maintenant
+// fonctionnel (GlobalSearch.tsx).
 const LABELS: Record<string, string> = {
   dashboard: "Performance",
   brief: "Brief",
@@ -77,15 +78,7 @@ export default function TopBar() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
-          <div className="relative hidden lg:block">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-            <input
-              disabled
-              placeholder="Recherche bientôt disponible…"
-              title="Recherche globale — bientôt disponible"
-              className="h-9 w-[280px] rounded-lg border border-border bg-white/60 pl-8 pr-3 text-[12.5px] text-slate-400 outline-none cursor-not-allowed"
-            />
-          </div>
+          <GlobalSearch />
           <Link
             href="/notifications"
             title="Notifications"

@@ -6862,3 +6862,114 @@ export async function listUnclassifiedObjectionsForClustering(
     }))
     .filter((row) => row.embedding.length > 0);
 }
+
+// ─── Recherche globale (v1) ───────────────────────────────────────────────
+//
+// Volontairement simple : `ilike` sur les colonnes qui portent un nom lisible,
+// pas de recherche plein texte ni d'embeddings. Le besoin est « retrouver
+// rapidement un contact ou un call dont je me rappelle le nom », pas de
+// l'exploration sémantique — la recherche sémantique existe déjà, ailleurs et
+// pour un autre usage (bibliothèque d'objections, références clients).
+//
+// Périmètre : les données de l'utilisateur, PLUS celles de ses commerciaux
+// liés s'il est manager. Sans cette extension la fonction est inutile pour son
+// premier utilisateur — un manager passe peu d'appels lui-même, et une
+// recherche qui ne renvoie jamais rien ne sert à personne (constaté sur les
+// vraies données avant déploiement). L'autorisation réutilise
+// getCommercialsForManager, la même règle que partout ailleurs : jamais une
+// liste d'ids arbitraire.
+
+export type SearchResult = {
+  type: "contact" | "call";
+  id: string;
+  title: string;
+  subtitle: string | null;
+  href: string;
+  date: string | null;
+  // Nom du commercial quand le résultat n'appartient pas à celui qui cherche —
+  // sans ça un manager ne sait pas de qui vient le call qu'il ouvre.
+  ownerName: string | null;
+};
+
+// Échappe les jokers PostgREST : sans ça, une recherche contenant % ou _
+// renvoie n'importe quoi (et « % » seul renverrait tout).
+function escapeIlike(value: string): string {
+  return value.replace(/[%_\\]/g, (c) => `\\${c}`);
+}
+
+export async function searchEverything(userId: string, rawQuery: string, limit = 6): Promise<SearchResult[]> {
+  const query = rawQuery.trim();
+  // Deux caractères minimum : en dessous, tout ressort et la liste n'aide pas.
+  if (query.length < 2) return [];
+  const pattern = `%${escapeIlike(query)}%`;
+
+  const role = await getUserRole(userId).catch(() => null);
+  const commercials = role === "manager" ? await getCommercialsForManager(userId).catch(() => []) : [];
+  const scopeIds = [userId, ...commercials.map((c) => c.id)];
+  const nameById = new Map(commercials.map((c) => [c.id, c.name ?? c.email]));
+
+  const [contactsRes, callsRes] = await Promise.all([
+    supabaseAdmin
+      .from("contacts")
+      .select("id, user_id, email, company_name, updated_at")
+      .in("user_id", scopeIds)
+      .or(`email.ilike.${pattern},company_name.ilike.${pattern}`)
+      .order("updated_at", { ascending: false })
+      .limit(limit),
+    supabaseAdmin
+      .from("calls")
+      .select("id, user_id, company_name, contact_email, meeting_title, started_at, created_at")
+      .in("user_id", scopeIds)
+      .or(`company_name.ilike.${pattern},contact_email.ilike.${pattern},meeting_title.ilike.${pattern}`)
+      .order("created_at", { ascending: false })
+      .limit(limit),
+  ]);
+
+  const results: SearchResult[] = [];
+
+  for (const row of (contactsRes.data ?? []) as {
+    id: string;
+    user_id: string;
+    email: string;
+    company_name: string | null;
+    updated_at: string;
+  }[]) {
+    results.push({
+      type: "contact",
+      id: row.id,
+      title: row.company_name || row.email,
+      subtitle: row.company_name ? row.email : null,
+      // L'historique d'un contact est indexé par email, pas par id.
+      href: `/contacts/${encodeURIComponent(row.email)}`,
+      date: row.updated_at,
+      ownerName: row.user_id === userId ? null : nameById.get(row.user_id) ?? null,
+    });
+  }
+
+  for (const row of (callsRes.data ?? []) as {
+    id: string;
+    user_id: string;
+    company_name: string | null;
+    contact_email: string | null;
+    meeting_title: string | null;
+    started_at: string | null;
+    created_at: string;
+  }[]) {
+    results.push({
+      type: "call",
+      id: row.id,
+      title: row.meeting_title || row.company_name || row.contact_email || "Call sans titre",
+      subtitle: row.meeting_title ? row.company_name ?? row.contact_email : row.contact_email,
+      href: `/feedback/${row.id}`,
+      date: row.started_at ?? row.created_at,
+      ownerName: row.user_id === userId ? null : nameById.get(row.user_id) ?? null,
+    });
+  }
+
+  // Les contacts d'abord (on cherche plus souvent « qui » que « quand »), puis
+  // par fraîcheur — un call d'hier est plus probablement celui qu'on cherche.
+  return results.sort((a, b) => {
+    if (a.type !== b.type) return a.type === "contact" ? -1 : 1;
+    return (b.date ?? "").localeCompare(a.date ?? "");
+  });
+}
