@@ -204,6 +204,16 @@ Quand le classifieur laisse une objection en « Non classées », c'est un signa
 - **Règle générale** : un état d'attente ne doit être affiché que si quelque chose est effectivement en cours. Sinon, dire ce qui manque et proposer l'action qui débloque.
 - L'import de transcript (`/settings/import-call`) ne génère pas non plus d'email de suivi — c'est un banc d'essai du scoring, pas un remplaçant du pipeline complet. Le bouton de génération à la demande couvre ce cas aussi.
 
+## Onboarding — expliquer avant de demander (17/08/2026)
+
+L'onboarding enchaînait 4 questions sur l'offre sans jamais dire à quoi elles servaient : on y répondait vite pour passer à la suite, et on arrivait sur un tableau de bord vide sans comprendre pourquoi.
+
+- **Chaque étape annonce d'abord ce que fait Brief, puis demande ce dont il a besoin pour le faire.** Les étapes portent un `pillar` (Préparer / Débriefer / Progresser, mêmes mots que la landing) et une `promise` affichée AVANT la question.
+- **Aperçu du futur brief en direct** (`BriefPreview.tsx`) à côté des étapes de profil : chaque réponse se matérialise dans le document que l'utilisateur recevra. Un bloc figé montre ce que Brief récupère tout seul (entreprise, actualité, historique), pour faire comprendre que l'essentiel est automatique et que les questions ne servent qu'à personnaliser. Les lignes non remplies restent visibles en gris — montrer ce qui manque motive plus que masquer. Masqué en mobile et sur les étapes 4-5, où il détournerait de l'action attendue.
+- **La connexion agenda est DANS le flux** (étape 4), plus renvoyée aux paramètres : c'est l'étape qui conditionne tout le reste, la reporter revient à la perdre.
+- `/api/recall/google-oauth/start` accepte un `?return=` (chemin **relatif uniquement**, `..` rejeté — sinon la route devient une redirection ouverte exploitable pour de l'hameçonnage depuis un lien qui semble venir de Brief). Le callback lit le cookie posé et y revient. L'onboarding s'en sert pour reprendre à l'étape 4 au lieu d'éjecter dans les paramètres, et **enregistre le profil avant de partir chez Google** — l'OAuth quitte la page, les étapes déjà remplies seraient sinon perdues.
+- `useSearchParams` est à proscrire sur cette page : elle impose une frontière Suspense au prérendu et fait échouer le build. Lire `window.location.search` dans un initialiseur `useState`.
+
 ## Bibliothèque d'objections & win/loss
 
 Livré et testé en conditions réelles sur le compte Oliverlist le 19 juillet 2026 (backfill lancé, RPC vérifiée contre la vraie base, un bug de données legacy trouvé et corrigé au passage — voir bug #18).

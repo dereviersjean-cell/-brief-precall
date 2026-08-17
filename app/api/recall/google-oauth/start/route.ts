@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { randomBytes } from "crypto";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
   const auth = await requireActiveUser(session);
   if (!auth.ok) return auth.response;
@@ -16,7 +16,27 @@ export async function GET() {
   }
 
   const state = randomBytes(32).toString("hex");
+
+  // Où revenir après la connexion. Par défaut /settings/connexions, mais
+  // l'onboarding a besoin de reprendre son fil plutôt que d'éjecter
+  // l'utilisateur dans les paramètres au milieu du parcours.
+  //
+  // SEULS les chemins relatifs sont acceptés : un `return` absolu ou
+  // protocole-relatif (« //evil.com ») transformerait cette route en redirection
+  // ouverte, utilisable pour de l'hameçonnage depuis un lien qui semble venir
+  // de Brief.
+  const requested = request.nextUrl.searchParams.get("return") ?? "";
+  const safeReturn = /^\/(?!\/)[\w\-/?=&.]*$/.test(requested) && !requested.includes("..") ? requested : "";
   const cookieStore = await cookies();
+  if (safeReturn) {
+    cookieStore.set("recall_oauth_return", safeReturn, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      maxAge: 600,
+      path: "/",
+    });
+  }
   cookieStore.set("recall_oauth_state", state, {
     httpOnly: true,
     secure: true,

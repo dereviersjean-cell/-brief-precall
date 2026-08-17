@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import BriefPreview from "./BriefPreview";
 
 const SECTOR_SUGGESTIONS = [
   "SaaS B2B",
@@ -13,26 +14,49 @@ const SECTOR_SUGGESTIONS = [
   "Autre",
 ];
 
+// Chaque étape annonce d'abord CE QUE FAIT Brief, puis demande ce dont il a
+// besoin pour le faire. L'onboarding précédent enchaînait quatre questions
+// sans jamais dire à quoi elles servaient : on y répondait vite pour passer à
+// la suite, et on arrivait sur un tableau de bord vide sans comprendre.
+// Les trois piliers sont ceux de la landing (Préparer / Débriefer /
+// Progresser) — mêmes mots, mêmes repères.
 const STEPS = [
   {
     step: 1,
+    pillar: "Préparer",
+    promise: "Avant chaque rendez-vous, Brief prépare un dossier sur le prospect.",
     title: "Qu'est-ce que vous vendez ?",
-    subtitle: "Décrivez votre produit ou service en quelques mots.",
+    subtitle: "Pour que vos briefs parlent de votre offre, et pas d'une offre générique.",
   },
   {
     step: 2,
+    pillar: "Préparer",
+    promise: "Brief compare chaque prospect à votre cible pour vous dire s'il y ressemble.",
     title: "À qui vous le vendez ?",
     subtitle: "Décrivez votre client idéal et choisissez votre secteur.",
   },
   {
     step: 3,
+    pillar: "Préparer",
+    promise: "Ces éléments alimentent vos briefs et vos emails de suivi.",
     title: "Comment vous présentez-vous ?",
-    subtitle: "Ces informations personnaliseront vos briefs.",
+    subtitle: "Le nom sous lequel vos prospects vous connaissent, et votre promesse.",
   },
   {
     step: 4,
+    pillar: "Débriefer",
+    promise:
+      "Un assistant rejoint vos visios, prend des notes, et vous envoie le compte-rendu, les objections et un email de suivi prêt à relire.",
+    title: "Connectez votre agenda",
+    subtitle: "C'est l'étape qui déclenche tout : sans elle, aucun rendez-vous n'est repéré.",
+  },
+  {
+    step: 5,
+    pillar: "Progresser",
+    promise:
+      "Chaque rendez-vous est noté sur la grille de votre équipe, et vous voyez quelles objections reviennent et comment vous les traitez.",
     title: "Vos références clients",
-    subtitle: "Importez des cas clients pour personnaliser vos arguments de vente.",
+    subtitle: "Vos cas clients servent d'arguments quand une objection ressemble à une déjà traitée.",
   },
 ];
 
@@ -57,7 +81,13 @@ function ProgressBar({ current, total }: { current: number; total: number }) {
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const [step, setStep] = useState(1);
+  // Le retour d'OAuth ramène sur ?step=4 : sans ça l'utilisateur repartirait
+  // de l'étape 1 après avoir connecté son agenda.
+  const [step, setStep] = useState(() => {
+    if (typeof window === "undefined") return 1;
+    const requested = Number(new URLSearchParams(window.location.search).get("step"));
+    return Number.isInteger(requested) && requested >= 1 && requested <= 5 ? requested : 1;
+  });
   const [saving, setSaving] = useState(false);
 
   const [whatYouSell, setWhatYouSell] = useState("");
@@ -71,7 +101,35 @@ export default function OnboardingPage() {
   const [refLoading, setRefLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Reprise après le retour d'OAuth : /api/recall/google-oauth/start ramène
+  // sur ?step=4&recall=connected. Lu depuis window plutôt qu'avec
+  // useSearchParams, qui impose une frontière Suspense au prérendu et fait
+  // échouer le build de cette page.
+  const [calendarConnected] = useState(() =>
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("recall") === "connected"
+  );
+
+  // Enregistre le profil sans quitter le flux — appelé avant toute
+  // redirection OAuth, qui ferait sinon perdre les étapes déjà remplies.
+  async function persistProfile() {
+    try {
+      await fetch("/api/onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          company_name: companyName || null,
+          product_description: valueProposition || whatYouSell || null,
+          icp: icp || null,
+          sector: sector || null,
+        }),
+      });
+    } catch {
+      // Best-effort : la connexion agenda prime, le profil se resaisit.
+    }
+  }
+
   const totalSteps = STEPS.length;
+  const showPreview = step <= 3;
   const isLast = step === totalSteps;
 
   function advance() {
@@ -146,13 +204,13 @@ export default function OnboardingPage() {
     }
   }
 
-  const { title, subtitle } = STEPS[step - 1];
+  const { title, subtitle, pillar, promise } = STEPS[step - 1];
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Header */}
       <header className="bg-white border-b border-slate-100">
-        <div className="max-w-lg mx-auto px-6 h-14 flex items-center justify-between">
+        <div className="max-w-4xl mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 brand-gradient rounded-lg flex items-center justify-center">
               <span className="text-white text-xs font-bold">B</span>
@@ -169,17 +227,23 @@ export default function OnboardingPage() {
       </header>
 
       <main className="flex-1 flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-lg">
+        <div className="w-full max-w-4xl">
           {/* Progress */}
           <ProgressBar current={step} total={totalSteps} />
 
           {/* Step indicator */}
           <p className="text-xs font-semibold text-[color:var(--violet)] uppercase tracking-wider mb-2">
-            Étape {step} sur {totalSteps}
+            {pillar} · étape {step} sur {totalSteps}
           </p>
 
+          <div className={showPreview ? "grid gap-6 lg:grid-cols-[1fr_320px] lg:items-start" : ""}>
           {/* Card */}
           <div className="bg-white rounded-2xl border border-border shadow-sm p-8">
+            {/* La promesse AVANT la question : on explique ce que Brief fera,
+                puis on demande ce dont il a besoin pour le faire. */}
+            <p className="mb-5 rounded-xl bg-[color:var(--lavender)] px-4 py-3 text-[13px] leading-relaxed text-slate-700">
+              {promise}
+            </p>
             <h1 className="text-xl font-bold text-slate-900 mb-1">{title}</h1>
             <p className="text-sm text-slate-500 mb-6">{subtitle}</p>
 
@@ -268,8 +332,47 @@ export default function OnboardingPage() {
               </div>
             )}
 
-            {/* ── Step 4 ── */}
+            {/* ── Étape 4 — connexion agenda ── */}
             {step === 4 && (
+              <div className="space-y-4">
+                {calendarConnected ? (
+                  <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                    Agenda connecté. Vos prochains rendez-vous en visio seront enregistrés et analysés
+                    automatiquement.
+                  </p>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap gap-3">
+                      {/* Le profil est enregistré AVANT de partir chez Google :
+                          l'OAuth quitte la page, et sans ça les trois premières
+                          étapes seraient perdues. Le `return` ramène ici plutôt
+                          que dans les paramètres. */}
+                      <a
+                        href="/api/recall/google-oauth/start?return=/onboarding%3Fstep%3D4"
+                        onClick={() => void persistProfile()}
+                        className="inline-flex items-center gap-2 brand-gradient text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:brightness-110 transition-all"
+                      >
+                        Connecter Google Agenda
+                      </a>
+                      <a
+                        href="/api/recall/microsoft-oauth/start"
+                        onClick={() => void persistProfile()}
+                        className="inline-flex items-center gap-2 bg-slate-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-slate-800 transition-colors"
+                      >
+                        Connecter Outlook
+                      </a>
+                    </div>
+                    <p className="text-xs text-slate-400">
+                      Brief lit uniquement vos rendez-vous à venir pour savoir quand se joindre. Vous pourrez le
+                      déconnecter à tout moment.
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* ── Étape 5 — références clients ── */}
+            {step === 5 && (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <button
@@ -399,6 +502,23 @@ export default function OnboardingPage() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* L'aperçu n'accompagne que les étapes de profil : sur l'agenda et
+              les références, il n'apporterait rien et détournerait de l'action
+              attendue. Masqué en mobile, où il pousserait le formulaire hors
+              de l'écran. */}
+          {showPreview && (
+            <div className="hidden lg:block">
+              <BriefPreview
+                whatYouSell={whatYouSell}
+                icp={icp}
+                sector={sector}
+                companyName={companyName}
+                valueProposition={valueProposition}
+              />
+            </div>
+          )}
           </div>
 
           {/* Step dots */}

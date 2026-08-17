@@ -6,7 +6,25 @@ import { requireActiveUser } from "@/lib/api-auth";
 import { createRecallCalendarV2 } from "@/lib/recall";
 import { saveRecallCalendarId } from "@/lib/db";
 
-const SUCCESS_URL = "https://brief-precall.vercel.app/settings/connexions?recall=connected";
+const BASE_URL = "https://brief-precall.vercel.app";
+const SUCCESS_URL = `${BASE_URL}/settings/connexions?recall=connected`;
+
+// Destination de retour posée par la route /start (chemin relatif déjà
+// validé là-bas). Absente ou illisible : on retombe sur les paramètres.
+async function resolveSuccessUrl(): Promise<string> {
+  try {
+    const { cookies } = await import("next/headers");
+    const store = await cookies();
+    const target = store.get("recall_oauth_return")?.value;
+    store.delete("recall_oauth_return");
+    if (target && /^\/(?!\/)/.test(target)) {
+      return `${BASE_URL}${target}${target.includes("?") ? "&" : "?"}recall=connected`;
+    }
+  } catch {
+    // Repli silencieux : la connexion a réussi, seule la destination change.
+  }
+  return SUCCESS_URL;
+}
 const ERROR_URL = "https://brief-precall.vercel.app/settings/connexions?recall=error";
 
 export async function GET(request: NextRequest) {
@@ -89,7 +107,7 @@ export async function GET(request: NextRequest) {
     console.log("[recall oauth callback] Calendar created, id:", calendar.id);
     await saveRecallCalendarId(userId, calendar.id);
     console.log("[recall oauth callback] recall_calendar_id saved to DB");
-    return NextResponse.redirect(SUCCESS_URL);
+    return NextResponse.redirect(await resolveSuccessUrl());
   } catch (err) {
     console.log("[recall oauth callback] createRecallCalendarV2 failed:", err instanceof Error ? err.message : String(err));
     return NextResponse.redirect(ERROR_URL);
