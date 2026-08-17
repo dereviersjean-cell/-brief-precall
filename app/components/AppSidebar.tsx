@@ -29,16 +29,22 @@ function NavLink({
   icon: Icon,
   active,
   badge,
+  tourId,
 }: {
   href: string;
   label: string;
   icon: LucideIcon;
   active: boolean;
   badge?: number;
+  // Ancre de la visite guidée (app/components/GuidedTour.tsx) — attribut
+  // dédié plutôt qu'un sélecteur de href, pour que ce lien soit visiblement
+  // référencé ailleurs.
+  tourId?: string;
 }) {
   return (
     <Link
       href={href}
+      data-tour={tourId}
       className={`group relative flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm transition-all ${
         active
           ? "bg-[color:var(--lavender)] text-[color:var(--violet)] font-medium"
@@ -185,7 +191,19 @@ export default function AppSidebar() {
           <NavGroupLabel>Commercial</NavGroupLabel>
           <div className="space-y-0.5">
             {commercialGroup.map((item) => (
-              <NavLink key={item.href} {...item} />
+              <NavLink
+                key={item.href}
+                {...item}
+                tourId={
+                  item.href === "/brief"
+                    ? "nav-brief"
+                    : item.href === "/feedback"
+                    ? "nav-feedback"
+                    : item.href === "/dashboard"
+                    ? "nav-performance"
+                    : undefined
+                }
+              />
             ))}
           </div>
         </div>

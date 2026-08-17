@@ -214,6 +214,17 @@ L'onboarding enchaînait 4 questions sur l'offre sans jamais dire à quoi elles 
 - `/api/recall/google-oauth/start` accepte un `?return=` (chemin **relatif uniquement**, `..` rejeté — sinon la route devient une redirection ouverte exploitable pour de l'hameçonnage depuis un lien qui semble venir de Brief). Le callback lit le cookie posé et y revient. L'onboarding s'en sert pour reprendre à l'étape 4 au lieu d'éjecter dans les paramètres, et **enregistre le profil avant de partir chez Google** — l'OAuth quitte la page, les étapes déjà remplies seraient sinon perdues.
 - `useSearchParams` est à proscrire sur cette page : elle impose une frontière Suspense au prérendu et fait échouer le build. Lire `window.location.search` dans un initialiseur `useState`.
 
+### Visite guidée de l'interface (`app/components/GuidedTour.tsx`)
+
+Bulles ancrées sur les vrais éléments (sidebar, recherche). Complète — sans doublonner — `/bienvenue` (ce que fait le produit) et l'onboarding (à quoi sert chaque question) : savoir ce que fait Brief ne dit pas où cliquer.
+
+- **Ne démarre JAMAIS toute seule** : uniquement sur `?tour=1`, déclenché depuis `/bienvenue` ou l'aide. Un tutoriel qui s'ouvre sans prévenir chez un utilisateur installé depuis six mois est une nuisance.
+- **Désactivée sous 1024 px** : la sidebar y est un tiroir replié, les cibles sont invisibles, et pointer une bulle vers du vide est pire que ne rien montrer.
+- **Ancrage par `data-tour`**, jamais par sélecteur de classe ou de href : l'attribut signale à qui édite ces composants qu'ils sont référencés ailleurs.
+- **Les textes disent ce qui VA s'y trouver**, jamais « voici vos calls » — au premier jour les écrans pointés sont vides, c'est l'écueil classique du format.
+- Cible introuvable → l'étape est passée, jamais de bulle orpheline.
+- Les deux `eslint-disable react-hooks/set-state-in-effect` sont assumés : lire l'URL/le viewport au montage et mesurer le DOM après peinture sont les cas d'usage prévus d'un effet, et un initialiseur `useState` provoquerait un écart d'hydratation.
+
 ## Bibliothèque d'objections & win/loss
 
 Livré et testé en conditions réelles sur le compte Oliverlist le 19 juillet 2026 (backfill lancé, RPC vérifiée contre la vraie base, un bug de données legacy trouvé et corrigé au passage — voir bug #18).

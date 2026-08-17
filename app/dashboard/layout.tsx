@@ -3,6 +3,7 @@ import ImpersonationBanner from "@/app/components/ImpersonationBanner";
 import BillingGraceBanner from "@/app/components/BillingGraceBanner";
 import TopBar from "@/app/components/TopBar";
 import PerformanceTabs from "@/app/components/PerformanceTabs";
+import GuidedTour from "@/app/components/GuidedTour";
 import type { ReactNode } from "react";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
@@ -15,6 +16,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <TopBar />
         <PerformanceTabs />
         {children}
+        {/* Ne se déclenche que sur ?tour=1 — voir GuidedTour. */}
+        <GuidedTour />
       </div>
     </div>
   );

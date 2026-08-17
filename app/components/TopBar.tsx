@@ -78,7 +78,9 @@ export default function TopBar() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
-          <GlobalSearch />
+          <div data-tour="topbar-search">
+            <GlobalSearch />
+          </div>
           <Link
             href="/notifications"
             title="Notifications"

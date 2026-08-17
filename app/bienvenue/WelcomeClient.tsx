@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Calendar, CheckCircle2, Circle, FileText, TrendingUp, Video } from "lucide-react";
+import { ArrowRight, Calendar, CheckCircle2, Circle, Compass, FileText, TrendingUp, Video } from "lucide-react";
 import type { ActivationState } from "@/lib/db";
 
 // Présentation du produit pour un nouveau compte.
@@ -168,11 +168,18 @@ export default function WelcomeClient({
 
       <div className="mt-8 flex flex-wrap items-center gap-3">
         <Link
-          href="/brief"
+          href="/dashboard?tour=1"
           className="inline-flex h-10 items-center gap-2 rounded-lg brand-gradient px-4 text-[14px] font-medium text-white transition-all hover:brightness-110"
         >
+          <Compass className="h-4 w-4" />
+          Faire le tour de l&apos;interface
+        </Link>
+        <Link
+          href="/brief"
+          className="inline-flex h-10 items-center gap-2 rounded-lg border border-border bg-white px-4 text-[14px] font-medium text-slate-700 hover:bg-slate-50"
+        >
           <Calendar className="h-4 w-4" />
-          Commencer
+          Aller directement à Brief
         </Link>
         <Link href="/help" className="text-[13px] text-slate-500 hover:text-slate-900">
           Consulter l&apos;aide
@@ -180,7 +187,7 @@ export default function WelcomeClient({
       </div>
 
       <p className="mt-6 text-xs text-slate-400">
-        Cette page reste accessible depuis l&apos;aide — revenez-y quand vous voulez.
+        Cette page et la visite guidée restent accessibles depuis l&apos;aide — revenez-y quand vous voulez.
       </p>
     </div>
   );
