@@ -1,6 +1,7 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { HelpCircle } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, HelpCircle } from "lucide-react";
 import { getEffectiveUserId } from "@/lib/session-user";
 import { getUserRole, getHelpArticlesForRole, type HelpArticle } from "@/lib/db";
 import { markdownComponents } from "@/lib/markdown-components";
@@ -51,6 +52,16 @@ export default async function HelpPage() {
             </span>
             <h1 className="text-2xl font-bold text-slate-900">Comment ça marche ?</h1>
             <p className="text-slate-500 text-sm mt-1">À quoi sert Brief, et comment faire telle ou telle action sur la plateforme.</p>
+            {/* La présentation n'est vue qu'une fois, à la sortie de
+                l'onboarding. On revient chercher « comment ça marche déjà ? »
+                une semaine plus tard, pas le premier jour — et c'est ici
+                qu'on le cherche. */}
+            <Link
+              href="/bienvenue"
+              className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-[color:var(--violet)] hover:underline"
+            >
+              Revoir la présentation de Brief <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
 
           {categories.length > 1 && (

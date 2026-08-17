@@ -97,7 +97,7 @@ export default function OnboardingPage() {
       // Best-effort — on redirige quoi qu'il arrive
     } finally {
       setSaving(false);
-      router.push("/dashboard");
+      router.push("/bienvenue");
     }
   }
 
@@ -142,7 +142,7 @@ export default function OnboardingPage() {
     } finally {
       setRefLoading(false);
       setSaving(false);
-      router.push("/dashboard");
+      router.push("/bienvenue");
     }
   }
 

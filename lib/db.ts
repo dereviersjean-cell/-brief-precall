@@ -6978,3 +6978,60 @@ export async function searchEverything(userId: string, rawQuery: string, limit =
     return (b.date ?? "").localeCompare(a.date ?? "");
   });
 }
+
+// ─── Activation d'un nouveau compte ───────────────────────────────────────
+//
+// L'onboarding existant (/onboarding) ne collecte que le profil commercial :
+// il ne dit pas ce qu'est Brief, ni ce qu'il reste à brancher pour que le
+// produit fasse réellement quelque chose. Un utilisateur pouvait le terminer
+// et arriver sur un tableau de bord vide, sans savoir pourquoi il l'était.
+//
+// Ces quatre étapes sont celles qui séparent un compte créé d'un compte qui
+// produit de la valeur — dans l'ordre où elles la produisent.
+
+export type ActivationStep = {
+  key: "profil" | "agenda" | "playbook" | "premier-call";
+  done: boolean;
+};
+
+export type ActivationState = {
+  steps: ActivationStep[];
+  completed: number;
+  total: number;
+};
+
+export async function getActivationState(userId: string): Promise<ActivationState> {
+  const organizationId = await getUserOrganizationId(userId).catch(() => null);
+
+  const [profile, calendarRow, playbook, callCount] = await Promise.all([
+    getUserProfile(userId).catch(() => null),
+    supabaseAdmin
+      .from("users")
+      .select("recall_calendar_id")
+      .eq("id", userId)
+      .maybeSingle()
+      .then((res) => (res.error ? null : (res.data as { recall_calendar_id: string | null } | null))),
+    organizationId ? getPlaybookForOrganization(organizationId).catch(() => null) : Promise.resolve(null),
+    supabaseAdmin
+      .from("calls")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .then((res) => res.count ?? 0),
+  ]);
+
+  const steps: ActivationStep[] = [
+    // Sans profil, les briefs sont génériques : c'est lui qui personnalise
+    // tout le reste.
+    { key: "profil", done: !!profile?.product_description?.trim() },
+    // L'agenda est le déclencheur de TOUT l'automatique — sans lui, aucun bot
+    // n'est programmé et Brief n'observe rien.
+    { key: "agenda", done: !!calendarRow?.recall_calendar_id },
+    // Le playbook définit la grille de notation. Sans lui, l'analyse tourne
+    // sur les 4 dimensions par défaut, rarement celles de l'équipe.
+    { key: "playbook", done: !!playbook },
+    // Le premier call analysé est le moment où le produit devient concret.
+    { key: "premier-call", done: callCount > 0 },
+  ];
+
+  return { steps, completed: steps.filter((s) => s.done).length, total: steps.length };
+}

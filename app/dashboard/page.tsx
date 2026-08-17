@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
-import { getUserRole, getUserName, getCommercialsForManager } from "@/lib/db";
+import { getUserRole, getUserName, getCommercialsForManager, getActivationState } from "@/lib/db";
 import { getEffectiveUserId } from "@/lib/session-user";
 import CommercialOverview from "./CommercialOverview";
 import ManagerOverview from "./ManagerOverview";
 import CommercialSelector from "./CommercialSelector";
+import ActivationBanner from "./ActivationBanner";
 
 export const dynamic = "force-dynamic";
 
@@ -15,11 +16,20 @@ export default async function DashboardPage({
   const userId = await getEffectiveUserId();
   if (!userId) redirect("/login");
 
-  const [role, userName] = await Promise.all([getUserRole(userId), getUserName(userId)]);
+  const [role, userName, activation] = await Promise.all([
+    getUserRole(userId),
+    getUserName(userId),
+    // Ne doit jamais faire tomber le tableau de bord : le bandeau est un
+    // rappel, pas une fonctionnalité.
+    getActivationState(userId).catch(() => ({ steps: [], completed: 0, total: 0 })),
+  ]);
 
   if (role !== "manager") {
     return (
       <div className="min-h-screen bg-background">
+        <div className="max-w-6xl mx-auto px-6 pt-6">
+          <ActivationBanner activation={activation} />
+        </div>
         <CommercialOverview userId={userId} userName={userName} />
       </div>
     );
@@ -37,6 +47,7 @@ export default async function DashboardPage({
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-6xl mx-auto px-6 pt-6">
+        <ActivationBanner activation={activation} />
         <CommercialSelector commercials={commercials} selectedId={selected?.id ?? null} />
       </div>
       {selected ? (
