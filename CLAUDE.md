@@ -196,6 +196,14 @@ Quand le classifieur laisse une objection en « Non classées », c'est un signa
 - `scripts/backfill-objection-classification.ts` : classe les objections déjà en base. À lancer **après** avoir créé les catégories. Ne retouche que les lignes jamais classées (`classified_at` null) sauf `--all`. Sans backfill, l'onglet Objections démarre entièrement en « Non classées ».
 - `scripts/backfill-call-analytics.ts` : remplit `call_analytics` depuis les `transcript_json` existants. Sans lui, seul l'onglet Activité a des données au déploiement.
 
+## Email de suivi — génération à la demande (17/08/2026)
+
+- À l'ingestion, le bot-webhook **saute** l'email de suivi quand le call n'a pas de `contact_email`. Or `contactEmail` vient du **premier participant externe de l'invitation d'agenda** (`syncAndScheduleForUser`, lib/recall.ts) : une réunion créée sans inviter le prospect, une invitation acceptée depuis une autre adresse, ou un RDV posé à la main donnent un `contact_email` nul. Corrélation vérifiée sur les calls d'Oliverlist : tout call sans contact est sans email de suivi, tous les autres en ont un.
+- L'écran affichait alors « Email de suivi en cours de génération… » **indéfiniment**, alors que rien ne tournait et que rien ne permettait de rattraper. Un message d'attente sur une opération qui n'aura jamais lieu est pire qu'un message d'erreur : l'utilisateur revient, attend, et finit par croire le produit cassé.
+- `POST /api/feedback/[id]/follow-up` génère à la demande, avec un destinataire saisi par l'utilisateur. Le transcript et l'analyse existent déjà — seul le destinataire manquait. Même résolution propriétaire-puis-manager que `/feedback/[id]/key-points`.
+- **Règle générale** : un état d'attente ne doit être affiché que si quelque chose est effectivement en cours. Sinon, dire ce qui manque et proposer l'action qui débloque.
+- L'import de transcript (`/settings/import-call`) ne génère pas non plus d'email de suivi — c'est un banc d'essai du scoring, pas un remplaçant du pipeline complet. Le bouton de génération à la demande couvre ce cas aussi.
+
 ## Bibliothèque d'objections & win/loss
 
 Livré et testé en conditions réelles sur le compte Oliverlist le 19 juillet 2026 (backfill lancé, RPC vérifiée contre la vraie base, un bug de données legacy trouvé et corrigé au passage — voir bug #18).

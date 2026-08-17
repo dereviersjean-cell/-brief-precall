@@ -558,6 +558,33 @@ export default function FeedbackDetailClient({
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [showPromptSettings, setShowPromptSettings] = useState(false);
+  // Génération à la demande de l'email de suivi, quand l'ingestion l'a sauté.
+  const [followUpRecipient, setFollowUpRecipient] = useState(call.contact_email ?? "");
+  const [followUpStatus, setFollowUpStatus] = useState<"idle" | "loading">("idle");
+  const [followUpError, setFollowUpError] = useState<string | null>(null);
+
+  async function generateFollowUp() {
+    setFollowUpStatus("loading");
+    setFollowUpError(null);
+    try {
+      const res = await fetch(`/api/feedback/${call.id}/follow-up`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contactEmail: followUpRecipient.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((data as { error?: string }).error ?? "La génération a échoué.");
+      const followUp = (data as { followUp: { subject: string; body: string } }).followUp;
+      // Alimente directement les champs éditables : l'utilisateur enchaîne sur
+      // la relecture et l'envoi sans recharger la page.
+      setSubject(followUp.subject);
+      setBody(followUp.body);
+    } catch (err) {
+      setFollowUpError(err instanceof Error ? err.message : "La génération a échoué.");
+    } finally {
+      setFollowUpStatus("idle");
+    }
+  }
 
   // Speaker rename overrides, lifted here from TranscriptSection — both it
   // and SpeakerTimelineBlock need the same renamed display names.
@@ -973,7 +1000,34 @@ export default function FeedbackDetailClient({
                       />
                     </>
                   ) : (
-                    <p className="text-slate-400 text-sm italic">Email de suivi en cours de génération…</p>
+                    // Affichait « en cours de génération… » alors que RIEN ne
+                    // tournait : à l'ingestion, l'email est sauté quand le call
+                    // n'a pas d'email de contact (invitation d'agenda sans
+                    // participant externe). Le message était donc faux, et il
+                    // n'existait aucun moyen de rattraper.
+                    <div className="space-y-3">
+                      <p className="text-sm text-slate-600">
+                        Aucun email de suivi n&apos;a été généré pour ce call
+                        {call.contact_email ? "." : " : aucun participant externe n'était identifié dans l'invitation, donc aucun destinataire."}
+                      </p>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          value={followUpRecipient}
+                          onChange={(e) => setFollowUpRecipient(e.target.value)}
+                          type="email"
+                          placeholder="Email du destinataire"
+                          className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+                        />
+                        <button
+                          onClick={generateFollowUp}
+                          disabled={followUpStatus === "loading" || !followUpRecipient.trim()}
+                          className="h-9 px-3.5 inline-flex items-center justify-center rounded-lg brand-gradient text-white text-sm font-medium hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                        >
+                          {followUpStatus === "loading" ? "Génération…" : "Générer l'email"}
+                        </button>
+                      </div>
+                      {followUpError && <p className="text-sm text-red-600">{followUpError}</p>}
+                    </div>
                   )}
                 </div>
                 )
