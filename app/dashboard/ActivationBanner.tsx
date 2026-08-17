@@ -11,12 +11,21 @@ import type { ActivationState } from "@/lib/db";
 //
 // Disparaît dès que tout est fait : un bandeau permanent devient du décor.
 
+// Toutes à l'infinitif : elles s'enchaînent après « Il reste à », et mélanger
+// un groupe nominal (« votre premier rendez-vous analysé ») dans une liste de
+// verbes produisait une phrase bancale.
 const LABELS: Record<ActivationState["steps"][number]["key"], string> = {
   profil: "décrire ce que vous vendez",
   agenda: "connecter votre agenda",
   playbook: "définir votre playbook",
-  "premier-call": "votre premier rendez-vous analysé",
+  "premier-call": "tenir un premier rendez-vous",
 };
+
+// Énumération française : « a, b et c » — pas « a, b, c ».
+function enumerate(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? "";
+  return `${items.slice(0, -1).join(", ")} et ${items[items.length - 1]}`;
+}
 
 export default function ActivationBanner({ activation }: { activation: ActivationState }) {
   const remaining = activation.steps.filter((s) => !s.done);
@@ -32,7 +41,7 @@ export default function ActivationBanner({ activation }: { activation: Activatio
               Démarrage : {activation.completed} étape{activation.completed > 1 ? "s" : ""} sur {activation.total}
             </p>
             <p className="mt-0.5 text-[12.5px] text-slate-600">
-              Il reste {remaining.map((s) => LABELS[s.key]).join(", ")}.
+              Il reste à {enumerate(remaining.map((s) => LABELS[s.key]))}.
             </p>
           </div>
         </div>

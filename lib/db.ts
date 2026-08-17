@@ -7001,7 +7001,10 @@ export type ActivationState = {
 };
 
 export async function getActivationState(userId: string): Promise<ActivationState> {
-  const organizationId = await getUserOrganizationId(userId).catch(() => null);
+  const [organizationId, role] = await Promise.all([
+    getUserOrganizationId(userId).catch(() => null),
+    getUserRole(userId).catch(() => null),
+  ]);
 
   const [profile, calendarRow, playbook, callCount] = await Promise.all([
     getUserProfile(userId).catch(() => null),
@@ -7026,9 +7029,12 @@ export async function getActivationState(userId: string): Promise<ActivationStat
     // L'agenda est le déclencheur de TOUT l'automatique — sans lui, aucun bot
     // n'est programmé et Brief n'observe rien.
     { key: "agenda", done: !!calendarRow?.recall_calendar_id },
-    // Le playbook définit la grille de notation. Sans lui, l'analyse tourne
-    // sur les 4 dimensions par défaut, rarement celles de l'équipe.
-    { key: "playbook", done: !!playbook },
+    // Le playbook définit la grille de notation. Étape du MANAGER uniquement :
+    // il est par organisation et la page est en lecture seule pour un
+    // commercial. Lui demander de « définir votre playbook » l'enverrait sur
+    // un écran où il ne peut rien faire, et le laisserait avec une checklist
+    // qu'il ne peut pas terminer.
+    ...(role === "manager" ? [{ key: "playbook" as const, done: !!playbook }] : []),
     // Le premier call analysé est le moment où le produit devient concret.
     { key: "premier-call", done: callCount > 0 },
   ];
