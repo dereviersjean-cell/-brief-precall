@@ -125,7 +125,7 @@ export default function FeedbackClient({ calls }: { calls: CallWithAnalysis[] })
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-6xl mx-auto px-6 py-10">
+      <div data-tour="feedback-content" className="max-w-6xl mx-auto px-6 py-10">
         <PageHeader
           eyebrow="Analyse IA"
           title={

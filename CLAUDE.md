@@ -220,6 +220,8 @@ Bulles ancrées sur les vrais éléments (sidebar, recherche). Complète — san
 
 - **Ne démarre JAMAIS toute seule** : uniquement sur `?tour=1`, déclenché depuis `/bienvenue` ou l'aide. Un tutoriel qui s'ouvre sans prévenir chez un utilisateur installé depuis six mois est une nuisance.
 - **Désactivée sous 1024 px** : la sidebar y est un tiroir replié, les cibles sont invisibles, et pointer une bulle vers du vide est pire que ne rien montrer.
+- **La visite NAVIGUE entre les pages** (`path` sur chaque étape) : une première version ne pointait que la sidebar, donc ne montrait que la navigation et jamais ce que chaque section contient. La position est portée par l'URL (`?tour=1&step=N`) — seul état qui survit à un changement de page.
+- **`rect` a trois états** : `undefined` (pas encore mesuré), `null` (mesuré, cible absente), `DOMRect`. Confondre les deux premiers faisait **sauter systématiquement l'étape 1** : au premier rendu la mesure n'a pas encore eu lieu, et l'étape était traitée comme introuvable. Piège classique de tout composant qui mesure le DOM pour décider quoi afficher.
 - **Ancrage par `data-tour`**, jamais par sélecteur de classe ou de href : l'attribut signale à qui édite ces composants qu'ils sont référencés ailleurs.
 - **Les textes disent ce qui VA s'y trouver**, jamais « voici vos calls » — au premier jour les écrans pointés sont vides, c'est l'écueil classique du format.
 - Cible introuvable → l'étape est passée, jamais de bulle orpheline.

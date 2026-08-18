@@ -567,7 +567,7 @@ export default function BriefToolClient() {
             aria-hidden
             className="pointer-events-none absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-gradient-to-tr from-emerald-100/40 to-transparent blur-3xl"
           />
-          <div className="relative flex items-start justify-between gap-4 flex-wrap">
+          <div data-tour="brief-content" className="relative flex items-start justify-between gap-4 flex-wrap">
             <div>
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[color:var(--violet)] bg-[color:var(--lavender)] px-2.5 py-1 rounded-full mb-3">
                 <Sparkles className="w-3 h-3" />
