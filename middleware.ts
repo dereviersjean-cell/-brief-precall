@@ -17,6 +17,7 @@ export const config = {
     "/notifications/:path*",
     "/onboarding/:path*",
     "/bienvenue/:path*",
+    "/demo/:path*",
   ],
 };
 
