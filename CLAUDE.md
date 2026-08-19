@@ -389,6 +389,22 @@ Déclarés des deux côtés (ancienne + nouvelle URL, elles cohabitent) : les 2 
 
 **Si une bascule d'URL se représente** : poser `NEXT_PUBLIC_APP_URL` à l'ancienne valeur AVANT de déployer le code (le déploiement devient alors neutre), déclarer les URIs partout, puis basculer la variable + `NEXTAUTH_URL` et **redéployer** — `NEXT_PUBLIC_*` est inliné au build, changer la variable sans redéployer ne fait rien, silencieusement. Rollback = remettre les deux variables.
 
+### Vérification Google — état au 19 août 2026, 19h
+
+**Le branding a été refusé deux fois dans la journée**, sur deux griefs : « your home page does not explain the purpose of your app » et « the app name "Brief" does not match the app name on your home page ».
+
+**Cause trouvée, et ce n'était aucun des deux énoncés.** L'inspection d'URL de Search Console répond `URL is unknown to Google`, `Last crawl: N/A` : Googlebot n'a **jamais** exploré `brief-ai.fr`, acheté le matin même. Le vérificateur s'appuyant sur l'index, il n'avait aucun contenu pour l'URL — d'où deux griefs qui tombent ensemble alors que la page servie était correcte (vérifié en direct : HTTP 200, aucun `noindex`, `h1` nommant Brief, objet de l'app décrit, lien vers la politique de confidentialité présent).
+
+**Leçon à ne pas réapprendre** : ne pas relancer une vérification tant que `Last crawl` vaut `N/A`. Le verdict ne peut pas changer, et chaque relance n'ajoute qu'un refus à l'historique. Deux ont été brûlées comme ça.
+
+Fait dans la foulée : `app/robots.ts` et `app/sitemap.ts` (le domaine n'avait ni l'un ni l'autre, `/robots.txt` renvoyait 404), sitemap soumis, indexation demandée pour `/` et `/confidentialite` le 19/08 à 19h05.
+
+**Reprise** : réinspecter `https://brief-ai.fr/` ; dès que `Last crawl` affiche une date, relancer la vérification du branding. Si elle échoue encore alors que la page est explorée, la piste suivante est la langue — le vérificateur automatique de Google raisonne en anglais sur une page entièrement en français. Un changement à la fois, avec une mesure entre les deux.
+
+**Reste ensuite** : Data Access (déclarer et justifier `calendar.events`, `gmail.metadata`, `gmail.send` — justifications à rédiger en anglais), la vidéo YouTube non listée montrant le parcours de consentement et l'usage de chaque scope, puis la soumission. Avant de soumettre : retirer les domaines autorisés `brief-precall.vercel.app` et `recall.ai` de l'écran de consentement — ce sont des domaines dont on ne peut pas prouver la propriété dans Search Console, ce que Google exige. Retirer d'abord les redirect URIs correspondantes, sinon Google refuse la suppression.
+
+**À vérifier** : `GOOGLE_CLIENT_ID` et `RECALL_GOOGLE_CLIENT_ID` sont-ils dans le même projet Google Cloud ? Si non, le second projet a son propre écran de consentement et demandera sa propre vérification, avec un second délai de 2 à 6 semaines.
+
 ### Ce qui bloque et ne dépend PAS du code
 
 1. **Google OAuth en mode Testing → les tokens de rafraîchissement expirent au bout de 7 jours.** *(Le prérequis domaine est levé depuis le 19/08 : `brief-ai.fr` est en production, la vérification peut être soumise.)* Diagnostic posé en août 2026 : aucun utilisateur n'a de refresh token valide, ce qui explique 17 jours sans le moindre call ingéré. **Ce n'est pas un bug** — aucune modification de code ne peut le corriger, seule la vérification Google (standard, gratuite depuis le retrait de `gmail.readonly`, 2 à 6 semaines) le lève. Tant qu'elle n'est pas lancée, le produit se casse chaque semaine pour tout le monde et toute mesure faite sur les données récentes est faussée. **C'est le point le plus urgent du projet.**
