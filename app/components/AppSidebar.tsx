@@ -212,7 +212,11 @@ export default function AppSidebar() {
           <NavGroupLabel>Compte</NavGroupLabel>
           <div className="space-y-0.5">
             {compteGroup.map((item) => (
-              <NavLink key={item.href} {...item} />
+              <NavLink
+                key={item.href}
+                {...item}
+                tourId={item.href === "/notifications" ? "nav-notifications" : undefined}
+              />
             ))}
           </div>
         </div>

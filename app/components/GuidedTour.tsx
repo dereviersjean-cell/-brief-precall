@@ -34,38 +34,56 @@ const STEPS: TourStep[] = [
   {
     path: "/dashboard",
     target: "nav-brief",
-    title: "Trois sections, trois moments",
-    body: "La navigation suit le cycle d'un rendez-vous : le préparer, le débriefer, progresser. On commence par la préparation.",
+    title: "Brief suit le cycle d'un rendez-vous",
+    body: "Les trois sections ne sont pas un menu, ce sont trois moments qui s'enchaînent : préparer le rendez-vous, le débriefer, en tirer de quoi progresser. Chacune alimente la suivante. On commence par le début.",
   },
   {
     path: "/brief",
     target: "brief-content",
-    title: "Avant le rendez-vous",
-    body: "Vos prochains rendez-vous s'affichent ici dès que votre agenda est connecté, chacun avec son brief : l'activité de l'entreprise, son actualité, l'historique de vos échanges. Vous les recevez aussi par email.",
+    title: "1. Préparer — ce qui vous attend avant le rendez-vous",
+    body: "Dès que votre agenda est connecté, vos prochains rendez-vous apparaissent ici avec leur dossier : l'activité de l'entreprise, son actualité, ses données légales, l'historique de vos échanges. Vous n'avez rien à demander — le brief se prépare tout seul.",
   },
   {
     path: "/feedback",
     target: "feedback-content",
-    title: "Après le rendez-vous",
-    body: "Chaque visio enregistrée arrive ici, transcrite et notée : points clés, objections soulevées, prochaines étapes, et un email de suivi prêt à relire. Vous pouvez réécouter n'importe quel passage.",
+    title: "2. Débriefer — ce qui arrive après, sans rien faire",
+    body: "Un assistant rejoint la visio et prend des notes à votre place. Chaque rendez-vous arrive ici transcrit et noté : points clés, objections soulevées, prochaines étapes, et un email de suivi prêt à relire. Vous pouvez réécouter n'importe quel passage pour vérifier ce qui s'est dit.",
   },
   {
     path: "/dashboard",
     target: "performance-tabs",
-    title: "Ce que vous en tirez",
-    body: "Performance se découpe en thèmes : vos scores, la façon dont vous conduisez vos rendez-vous, les objections qui reviennent, et la grille sur laquelle vous êtes noté.",
+    title: "3. Progresser — ce que les rendez-vous accumulés révèlent",
+    body: "Un rendez-vous isolé ne dit rien ; dix rendez-vous disent tout. Scores suit votre progression, Analytics votre façon de conduire un échange, Objections ce qui vous bloque et comment vous y répondez, Playbook la grille sur laquelle vous êtes noté.",
+  },
+  {
+    path: "/dashboard",
+    target: "nav-notifications",
+    title: "Et le plus souvent, vous ne venez même pas ici",
+    body: "Brief pousse ses résultats là où vous travaillez déjà : le brief dans votre boîte mail avant le rendez-vous, le compte-rendu dans votre CRM après. Vous choisissez ici ce que vous voulez recevoir et où. L'application n'est qu'un endroit où revenir quand vous voulez creuser.",
   },
   {
     path: "/dashboard",
     target: "topbar-search",
     title: "Retrouver quelque chose",
-    body: "Tapez un nom de société ou un email pour retrouver un contact ou un rendez-vous. Le raccourci ⌘K fonctionne depuis n'importe quelle page.",
+    body: "Un nom de société, un email, et vous retombez sur le contact ou le rendez-vous. Le raccourci ⌘K fonctionne depuis n'importe quelle page.",
+  },
+  {
+    path: "/dashboard",
+    target: "nav-performance",
+    title: "La boucle se referme",
+    body: "Chaque rendez-vous nourrit les suivants : ce que vous avez appris sur une objection sert au prochain brief, et vos statistiques se précisent à mesure. Il ne vous reste qu'à connecter votre agenda pour lancer la machine.",
   },
 ];
 
 const STORAGE_KEY = "brief_tour_seen_v1";
-const BUBBLE_WIDTH = 320;
-const GAP = 12;
+const BUBBLE_WIDTH = 340;
+// Hauteur retenue pour décider si la bulle tient sous la cible. Généreuse
+// exprès : sous-estimer ferait sortir la bulle de l'écran sur les textes longs.
+const BUBBLE_HEIGHT = 230;
+const GAP = 16;
+// Marge autour de la zone mise en avant. Trop serrée, la surbrillance semble
+// couper l'élément ; c'est ce qui rendait le cadrage disgracieux.
+const SPOTLIGHT_PADDING = 8;
 
 type Placement = { top: number; left: number };
 
@@ -105,7 +123,18 @@ export default function GuidedTour() {
     const step = STEPS[index];
     if (!step) return;
     const element = document.querySelector(`[data-tour="${step.target}"]`);
-    setRect(element ? element.getBoundingClientRect() : null);
+    if (!element) {
+      setRect(null);
+      return;
+    }
+    // Amène la cible dans l'écran avant de mesurer : sans ça, une étape
+    // portant sur un élément sous la ligne de flottaison montrait une bulle
+    // ancrée hors du champ visible.
+    const box = element.getBoundingClientRect();
+    if (box.top < GAP || box.bottom > window.innerHeight - GAP) {
+      element.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+    setRect(element.getBoundingClientRect());
   }, [index]);
 
   // Une nouvelle étape repart d'un état « non mesuré », sinon le rectangle de
@@ -188,12 +217,25 @@ export default function GuidedTour() {
   }
 
   const placement: Placement = (() => {
-    const below = rect.bottom + GAP;
-    const fitsBelow = below + 170 < window.innerHeight;
-    const left = Math.min(Math.max(GAP, rect.left), window.innerWidth - BUBBLE_WIDTH - GAP);
+    const maxLeft = window.innerWidth - BUBBLE_WIDTH - GAP;
+
+    // Cible étroite (une entrée de menu) : la bulle se pose à sa droite, ce
+    // qui la laisse entièrement visible. Cible large (une carte pleine
+    // largeur) : à droite il n'y a plus de place, on passe dessous.
+    const fitsRight = rect.right + GAP + BUBBLE_WIDTH < window.innerWidth;
+    if (fitsRight) {
+      const top = Math.min(
+        Math.max(GAP, rect.top),
+        Math.max(GAP, window.innerHeight - BUBBLE_HEIGHT - GAP)
+      );
+      return { top, left: rect.right + GAP };
+    }
+
+    const left = Math.min(Math.max(GAP, rect.left), Math.max(GAP, maxLeft));
+    const fitsBelow = rect.bottom + GAP + BUBBLE_HEIGHT < window.innerHeight;
     return fitsBelow
-      ? { top: below, left }
-      : { top: Math.max(GAP, rect.top - 170 - GAP), left };
+      ? { top: rect.bottom + GAP, left }
+      : { top: Math.max(GAP, rect.top - BUBBLE_HEIGHT - GAP), left };
   })();
 
   return (
@@ -203,18 +245,18 @@ export default function GuidedTour() {
       <div
         className="pointer-events-none absolute rounded-xl ring-2 ring-white/80 transition-all duration-200"
         style={{
-          top: rect.top - 4,
-          left: rect.left - 4,
-          width: rect.width + 8,
-          height: rect.height + 8,
-          boxShadow: "0 0 0 9999px rgba(15, 23, 42, 0.55)",
+          top: rect.top - SPOTLIGHT_PADDING,
+          left: rect.left - SPOTLIGHT_PADDING,
+          width: rect.width + SPOTLIGHT_PADDING * 2,
+          height: rect.height + SPOTLIGHT_PADDING * 2,
+          boxShadow: "0 0 0 9999px rgba(15, 23, 42, 0.6)",
         }}
       />
       {/* Capte les clics hors bulle pour fermer, sans bloquer la cible. */}
       <div className="absolute inset-0" onClick={close} />
 
       <div
-        className="absolute w-[320px] rounded-2xl border border-border bg-white p-5 shadow-xl"
+        className="absolute w-[340px] rounded-2xl border border-border bg-white p-5 shadow-2xl"
         style={{ top: placement.top, left: placement.left }}
         onClick={(e) => e.stopPropagation()}
       >

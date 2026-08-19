@@ -558,7 +558,7 @@ export default function BriefToolClient() {
     <div className="max-w-6xl mx-auto w-full px-6 py-10">
       {/* Hero header */}
       <FadeIn>
-        <div className="relative overflow-hidden rounded-3xl border border-border bg-white p-8 mb-6">
+        <div data-tour="brief-content" className="relative overflow-hidden rounded-3xl border border-border bg-white p-8 mb-6">
           <div
             aria-hidden
             className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-[color:var(--lavender-strong)]/60 via-[color:var(--lavender)]/40 to-transparent blur-3xl"
@@ -567,7 +567,7 @@ export default function BriefToolClient() {
             aria-hidden
             className="pointer-events-none absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-gradient-to-tr from-emerald-100/40 to-transparent blur-3xl"
           />
-          <div data-tour="brief-content" className="relative flex items-start justify-between gap-4 flex-wrap">
+          <div className="relative flex items-start justify-between gap-4 flex-wrap">
             <div>
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[color:var(--violet)] bg-[color:var(--lavender)] px-2.5 py-1 rounded-full mb-3">
                 <Sparkles className="w-3 h-3" />
