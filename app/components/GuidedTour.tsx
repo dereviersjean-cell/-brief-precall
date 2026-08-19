@@ -17,6 +17,13 @@ import { ArrowRight, X } from "lucide-react";
 // Ancrée sur des `data-tour` explicites plutôt que sur des sélecteurs de
 // classe ou de href : un attribut dédié signale à qui édite ces composants
 // qu'ils sont référencés ailleurs.
+//
+// ⚠ La visite traverse plusieurs pages, et chaque page a son propre layout
+// dans Next : ce composant doit être monté dans le layout de CHACUNE des
+// pages listées dans STEPS.path, faute de quoi la bulle disparaît en y
+// arrivant et la visite s'arrête sans rien dire. Montée aujourd'hui dans
+// app/dashboard/layout.tsx, app/brief/layout.tsx et app/feedback/layout.tsx.
+// Toute nouvelle valeur de `path` impose d'ajouter le montage correspondant.
 
 // `path` : page sur laquelle l'étape doit être jouée. La visite y navigue
 // d'elle-même — pointer uniquement la sidebar ne montrait que la navigation,
