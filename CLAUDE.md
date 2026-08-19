@@ -368,6 +368,31 @@ git status
 git add . && git commit -m "..." && git push
 ```
 
+## Point de reprise — 19 août 2026
+
+Section volontairement en tête de la roadmap : elle dit **où en est le produit et ce qui l'attend**, la partie qui se perd entre deux sessions parce qu'elle ne se lit dans aucun fichier du repo.
+
+### Ce qui bloque et ne dépend PAS du code
+
+1. **Google OAuth en mode Testing → les tokens de rafraîchissement expirent au bout de 7 jours.** Diagnostic posé en août 2026 : aucun utilisateur n'a de refresh token valide, ce qui explique 17 jours sans le moindre call ingéré. **Ce n'est pas un bug** — aucune modification de code ne peut le corriger, seule la vérification Google (standard, gratuite depuis le retrait de `gmail.readonly`, 2 à 6 semaines) le lève. Tant qu'elle n'est pas lancée, le produit se casse chaque semaine pour tout le monde et toute mesure faite sur les données récentes est faussée. **C'est le point le plus urgent du projet.**
+2. **Calibrage des objections : 0 fiche annotée.** Tout le chantier objections (points 1 à 4 ci-dessous) attend cette première mesure — sans elle on règle des prompts à l'aveugle, ce qui a déjà coûté une journée le 29/07. L'écran est prêt et pensé pour un non-technicien : Paramètres → Calibrage, 3-4 calls, puis « Lancer la mesure ».
+3. **Stripe en mode Live** — et trancher le pricing usage AVANT la bascule (voir point 2 de la roadmap).
+4. **Call `ecfb191e` à réimporter** : son transcript a été parsé par l'ancien parseur bogué (locuteur « 00 », cf. le piège documenté dans « Banc d'essai »). Les données en base sont inexploitables telles quelles.
+5. **Jeton GitHub en clair dans `.git/config`** (URL du remote). À révoquer sur GitHub et à remplacer par un credential helper — un jeton dans un fichier de configuration finit par être copié avec le dossier.
+
+### Où en est le code
+
+- **9 migrations** dans `migrations/`, toutes appliquées en prod (006 à 009 le sont depuis fin juillet).
+- **23 tests** (`npm test`), tous au vert — `billing-rules`, `recall-transcript`, `transcript-import`, `uuid`. Chacun nomme le bug qu'il verrouille.
+- **Visite guidée et routes `/demo` terminées** : 10 étapes, 6 écrans réels peuplés de données d'exemple. Voir la section dédiée pour les règles de placement, durement acquises.
+- Chaîne de vérification avant tout push : `npx tsc --noEmit`, `npx eslint`, `npm run build`, `npm test`. Trois erreurs eslint **préexistantes** dans `FeedbackDetailClient.tsx` (lignes 152, 647, 977) sont connues et hors périmètre — ne pas les confondre avec une régression.
+
+### Arbitrages produit en attente (Jean)
+
+- **Notifications** : la cloche mène à des préférences, pas à une inbox. Construire l'inbox (les événements existent déjà en base) ou renommer l'entrée pour ne plus promettre ce qui n'existe pas ? Tant que ce n'est pas tranché, la visite guidée présente l'entrée comme « Notifications » sans détailler.
+- Bouton « restaurer le défaut » par prompt dans l'admin — reste du point 9 de la roadmap.
+- Étendre les tests au classifieur d'objections et aux analytics.
+
 ## Roadmap prioritaire
 
 Fait depuis la dernière mise à jour (20-21 juillet 2026) : **refonte visuelle complète direction Lovable** (nouveau système de tokens oklch bleu #2A5CE0, primitives partagées `ui-bits.tsx`/`PageHeader`/`TopBar`, refonte landing + liste feedback + dashboard, fix du scoping `.brief-ui` qui n'avait jamais fonctionné), **version mobile responsive** (sidebar drawer), **fix bug "William"** (prompt d'analyse admin_config périmé → champs null silencieux, voir bug #20), puis **audit complet du repo** suivi de **6 correctifs** (`after()` généralisé, `/notifications` au middleware, refresh rôle JWT 10 min, validation runtime analyse IA, auth sur google-oauth/start, rate limiting étendu aux 9 routes de génération IA) et **fin de la migration visuelle** (les 25 fichiers non-admin restants — onboarding, modales, références, page publique devis, compte-suspendu — zéro `indigo-*` hors /admin).
@@ -379,7 +404,7 @@ Fait depuis la dernière mise à jour (20-21 juillet 2026) : **refonte visuelle 
 Puis, dans l'ordre et **un changement à la fois, mesure avant / mesure après** : (1) contre-exemples réels dans le prompt, en veillant à n'y mettre que ce qui vaut pour tout commercial B2B ; (2) passe de vérification sur le rattachement, seulement si le « bon rangement » reste bas ; (3) clustering Voyage des non classées pour proposer les catégories manquantes (indépendant, parallélisable) ; (4) vote à trois sur l'extraction, en dernier recours. Avec 4 calls, une objection pèse ~7 points : ne poursuivre que les écarts francs.
 
 ### Déblocants business (priorité immédiate)
-1. Google OAuth — sortir du mode Testing (bloque toute croissance au-delà des comptes whitelistés). `gmail.readonly` retiré des scopes le 25/07/2026 précisément pour lever ce blocant sans passer par l'audit CASA payant (voir section OAuth ci-dessus) — reste à ajouter/re-déclarer les 3 scopes actuels dans Google Cloud Console (`calendar.events`, `gmail.metadata`, `gmail.send`) et lancer la vérification standard (gratuite, 2-6 semaines)
+1. Google OAuth — sortir du mode Testing. **Ne bloque pas que la croissance : en mode Testing les refresh tokens expirent à 7 jours, donc l'ingestion s'arrête pour TOUS les utilisateurs, y compris existants** (voir Point de reprise). `gmail.readonly` retiré des scopes le 25/07/2026 précisément pour lever ce blocant sans passer par l'audit CASA payant (voir section OAuth ci-dessus) — reste à ajouter/re-déclarer les 3 scopes actuels dans Google Cloud Console (`calendar.events`, `gmail.metadata`, `gmail.send`) et lancer la vérification standard (gratuite, 2-6 semaines)
 2. Stripe en mode Live — activation compte (vérification entreprise). **Avant la bascule, trancher le pricing usage** : recommandation audit = quota d'heures inclus par siège (ex. 10h/mois puis 0,50€/h) plutôt que la refacturation sèche dès la 1ère heure — évite les lignes de facture à 3€ qui font poser des questions, et change la facturation AVANT les premiers clients payants plutôt qu'après
 
 ### Recommandations audit du 21 juillet (par ratio effort/valeur)
@@ -388,7 +413,7 @@ Puis, dans l'ordre et **un changement à la fois, mesure avant / mesure après**
 5. **Notifications inbox** : la cloche TopBar mène vers des préférences, pas une inbox — les événements existent déjà en base (devis accepté, réponse prospect, call analysé), il manque une table + un compteur
 6. ~~**Recherche globale v1**~~ — FAIT le 31/07/2026 (`app/components/GlobalSearch.tsx`, `/api/search`, `searchEverything`). `ilike` sur contacts + calls, ⌘K, navigation clavier. **Périmètre : ses propres données + celles de ses commerciaux liés si manager** — sans cette extension la fonction ne renvoyait rien pour son premier utilisateur, un manager passant peu d'appels lui-même (constaté sur les vraies données avant déploiement). Les jokers `%`/`_` sont échappés, sans quoi une recherche sur `%` renverrait tout.
 7. ~~**Dossier `migrations/`** committé~~ — FAIT (8 migrations numérotées au 30/07/2026). Règle en vigueur : toute nouvelle migration y est committée, même appliquée à la main.
-8. ~~**Tests sur les flux irréversibles**~~ — FAIT le 31/07/2026. `npm test` (node:test + le loader strip-types déjà utilisé par les scripts, **zéro dépendance ajoutée**). 21 tests dans `tests/`, chacun nommant le bug qu'il verrouille. Les décisions à risque ont été extraites des routes vers `lib/billing-rules.ts` pour être testables sans simuler Stripe ni la base. Suite validée par mutation : réintroduire les bugs #15 et #1 fait bien échouer 3 tests.
+8. ~~**Tests sur les flux irréversibles**~~ — FAIT le 31/07/2026. `npm test` (node:test + le loader strip-types déjà utilisé par les scripts, **zéro dépendance ajoutée**). 23 tests dans `tests/`, chacun nommant le bug qu'il verrouille. Les décisions à risque ont été extraites des routes vers `lib/billing-rules.ts` pour être testables sans simuler Stripe ni la base. Suite validée par mutation : réintroduire les bugs #15 et #1 fait bien échouer 3 tests.
 9. ~~**Validation runtime des autres prompts JSON**~~ — FAIT le 31/07/2026 (`lib/ai-shape.ts`, appliqué aux 5 routes JSON restantes). Reste le bouton "restaurer le défaut" par prompt. Ancien libellé : **Validation runtime des autres prompts JSON** `admin_config` (même pattern que `validateCallAnalysisShape` — au 30/07/2026 seuls `lib/call-analysis.ts` et `lib/training.ts` l'ont) + bouton "restaurer le défaut" par prompt. Renforcé par le bug #24 : un prompt édité en base prime silencieusement sur le code, donc la validation runtime est la seule protection.
 
 ### Expansion produit
