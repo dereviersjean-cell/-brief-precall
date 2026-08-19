@@ -75,7 +75,7 @@ export default async function DemoObjectionsPage({
   const period = resolvePeriod(await searchParams);
 
   return (
-    <div data-tour="demo-objections" className="mx-auto max-w-4xl px-6 py-10">
+    <div className="mx-auto max-w-4xl px-6 py-10">
       <FadeIn>
         <div className="mb-8">
           <PageHeader
@@ -89,6 +89,9 @@ export default async function DemoObjectionsPage({
       <PeriodFilter preset={period.preset} from={period.from} to={period.to} />
 
       <FadeIn delay={0.05}>
+        {/* Ancre de la visite : la bulle décrit la liste d'objections, c'est
+            donc elle qu'il faut mettre en évidence. */}
+        <div data-tour="demo-objections">
         <Card padded={false} className="p-6">
           <ul className="divide-y divide-slate-100">
             {demoObjectionStats.map((stat) => (
@@ -121,6 +124,7 @@ export default async function DemoObjectionsPage({
             ))}
           </ul>
         </Card>
+        </div>
       </FadeIn>
 
       <p className="mt-4 text-xs text-slate-400">

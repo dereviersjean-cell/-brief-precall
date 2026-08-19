@@ -7,7 +7,6 @@ export const dynamic = "force-dynamic";
 // La vue le gère explicitement plutôt que de recevoir un identifiant bidon.
 export default function DemoDashboardPage() {
   return (
-    <div data-tour="demo-overview">
     <CommercialOverviewView
       userId={null}
       userName={DEMO_USER_NAME}
@@ -19,6 +18,5 @@ export default function DemoDashboardPage() {
       topContacts={demoContacts}
       linksEnabled={false}
     />
-    </div>
   );
 }

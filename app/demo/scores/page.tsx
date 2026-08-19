@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 // en démonstration.
 export default function DemoScoresPage() {
   return (
-    <div data-tour="demo-scores" className="max-w-6xl mx-auto px-6 py-10">
+    <div className="max-w-6xl mx-auto px-6 py-10">
       <FadeIn>
         <div className="mb-8">
           <PageHeader
@@ -25,7 +25,7 @@ export default function DemoScoresPage() {
         </div>
       </FadeIn>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div data-tour="demo-scores" className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2">
           <ScoreTrendChart weeks={demoTrendWeeks} title="Score moyen — 6 dernières semaines" />
         </div>

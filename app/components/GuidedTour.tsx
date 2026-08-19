@@ -53,7 +53,7 @@ const STEPS: TourStep[] = [
   },
   {
     path: "/demo/dashboard",
-    target: "demo-overview",
+    target: "overview-stats",
     phase: "Repères",
     kind: "contenu",
     title: "Votre tableau de bord une fois alimenté",
@@ -69,7 +69,7 @@ const STEPS: TourStep[] = [
   },
   {
     path: "/demo/feedback",
-    target: "demo-feedback",
+    target: "feedback-list",
     phase: "Débriefer",
     kind: "contenu",
     title: "Un compte-rendu par rendez-vous",
@@ -85,7 +85,7 @@ const STEPS: TourStep[] = [
   },
   {
     path: "/demo/analytics",
-    target: "demo-analytics",
+    target: "analytics-tiles",
     phase: "Progresser",
     kind: "contenu",
     title: "Analytics — comment je conduis un échange",
@@ -304,24 +304,29 @@ export default function GuidedTour() {
   // monter après une navigation).
   if (rect === undefined) return null;
 
-  // Cible réellement absente (élément réservé à un rôle, page inattendue) :
-  // on passe l'étape plutôt que d'afficher une bulle orpheline.
-  if (rect === null) {
-    if (isLast) return null;
-    return <SkipEffect onSkip={next} />;
-  }
+  // Cible réellement absente après les tentatives : on affiche la bulle seule,
+  // sans surbrillance.
+  //
+  // L'étape était auparavant PASSÉE automatiquement, ce qui provoquait un
+  // emballement : `next` change d'identité à chaque rendu, l'effet de saut se
+  // rejouait donc en boucle, et comme une étape sur une autre page ne change
+  // pas l'index mais déclenche une navigation, la visite défilait toute seule
+  // à partir de la première cible manquante. Une bulle sans surbrillance est
+  // dégradée mais reste sous le contrôle de l'utilisateur.
+  const missingTarget = rect === null;
 
   // Cible occupant presque tout l'écran (un conteneur de page entier) :
   // l'entourer revient à « percer » toute la fenêtre, ce qui décale le
   // contenu et donne l'impression que l'écran est masqué. Dans ce cas on
   // renonce à la découpe et on affiche seulement la bulle.
-  const coversScreen = rect.height > window.innerHeight * 0.7 || rect.width > window.innerWidth * 0.9;
+  const coversScreen =
+    missingTarget || rect.height > window.innerHeight * 0.7 || rect.width > window.innerWidth * 0.9;
 
   const placement: Placement = (() => {
     // Cible pleine page : la bulle se pose en haut à gauche du contenu plutôt
     // que d'être calculée par rapport à un rectangle qui déborde de l'écran.
     if (coversScreen) {
-      return { top: 96, left: Math.max(GAP, rect.left + GAP), side: "none" };
+      return { top: 96, left: missingTarget ? GAP + 240 : Math.max(GAP, rect.left + GAP), side: "none" };
     }
 
     const maxLeft = window.innerWidth - BUBBLE_WIDTH - GAP;
@@ -329,20 +334,20 @@ export default function GuidedTour() {
     // Cible étroite (une entrée de menu) : la bulle se pose à sa droite, ce
     // qui la laisse entièrement visible. Cible large (une carte pleine
     // largeur) : à droite il n'y a plus de place, on passe dessous.
-    const fitsRight = rect.right + GAP + BUBBLE_WIDTH < window.innerWidth;
+    const fitsRight = rect!.right + GAP + BUBBLE_WIDTH < window.innerWidth;
     if (fitsRight) {
       const top = Math.min(
-        Math.max(GAP, rect.top),
+        Math.max(GAP, rect!.top),
         Math.max(GAP, window.innerHeight - BUBBLE_HEIGHT - GAP)
       );
-      return { top, left: rect.right + GAP, side: "left" };
+      return { top, left: rect!.right + GAP, side: "left" };
     }
 
-    const left = Math.min(Math.max(GAP, rect.left), Math.max(GAP, maxLeft));
-    const fitsBelow = rect.bottom + GAP + BUBBLE_HEIGHT < window.innerHeight;
+    const left = Math.min(Math.max(GAP, rect!.left), Math.max(GAP, maxLeft));
+    const fitsBelow = rect!.bottom + GAP + BUBBLE_HEIGHT < window.innerHeight;
     return fitsBelow
-      ? { top: rect.bottom + GAP, left, side: "top" }
-      : { top: Math.max(GAP, rect.top - BUBBLE_HEIGHT - GAP), left, side: "bottom" };
+      ? { top: rect!.bottom + GAP, left, side: "top" }
+      : { top: Math.max(GAP, rect!.top - BUBBLE_HEIGHT - GAP), left, side: "bottom" };
   })();
 
   return (
@@ -353,10 +358,10 @@ export default function GuidedTour() {
       <div
         className="pointer-events-none absolute rounded-xl transition-all duration-200"
         style={{
-          top: rect.top - SPOTLIGHT_PADDING,
-          left: rect.left - SPOTLIGHT_PADDING,
-          width: rect.width + SPOTLIGHT_PADDING * 2,
-          height: rect.height + SPOTLIGHT_PADDING * 2,
+          top: (rect?.top ?? 0) - SPOTLIGHT_PADDING,
+          left: (rect?.left ?? 0) - SPOTLIGHT_PADDING,
+          width: (rect?.width ?? 0) + SPOTLIGHT_PADDING * 2,
+          height: (rect?.height ?? 0) + SPOTLIGHT_PADDING * 2,
           // Voile volontairement léger : l'écran autour doit rester lisible,
           // sinon on met en avant un élément sans qu'on puisse le situer.
           // L'anneau, lui, est franc — c'est lui qui désigne, pas l'obscurité.
@@ -472,13 +477,4 @@ function Footer({
       </div>
     </>
   );
-}
-
-// Avance d'une étape sans rendu : un effet plutôt qu'un setState pendant le
-// rendu, qui provoquerait un avertissement React.
-function SkipEffect({ onSkip }: { onSkip: () => void }) {
-  useEffect(() => {
-    onSkip();
-  }, [onSkip]);
-  return null;
 }

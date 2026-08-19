@@ -16,7 +16,7 @@ export default function DemoPlaybookPage() {
   const totalWeight = demoPlaybook.dimensions.reduce((sum, d) => sum + d.weight, 0);
 
   return (
-    <div data-tour="demo-playbook" className="mx-auto max-w-4xl px-6 py-10">
+    <div className="mx-auto max-w-4xl px-6 py-10">
       <FadeIn>
         <div className="mb-6">
           <PageHeader
@@ -47,7 +47,7 @@ export default function DemoPlaybookPage() {
       </div>
 
       <FadeIn delay={0.1}>
-        <div className="space-y-4">
+        <div data-tour="demo-playbook" className="space-y-4">
           {demoPlaybook.dimensions.map((dimension) => (
             <Card key={dimension.id} padded={false} className="p-5">
               <div className="flex items-start justify-between gap-4">

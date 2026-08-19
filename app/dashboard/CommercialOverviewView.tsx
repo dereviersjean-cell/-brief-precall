@@ -83,7 +83,10 @@ export default function CommercialOverviewView({
         </div>
       </FadeIn>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+      {/* Ancre de la visite guidée : la bulle parle des chiffres de la
+          semaine, c'est donc cette rangée qu'il faut mettre en évidence, pas
+          la page entière. */}
+      <div data-tour="overview-stats" className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
         <StatTile index={0} accent="indigo" label="Calls cette semaine" value={weekStats.calls_count} icon={<Phone className="w-3.5 h-3.5" />} />
         <StatTile index={1} accent="violet" label="Briefs générés" value={weekStats.briefs_count} icon={<FileText className="w-3.5 h-3.5" />} />
         <StatTile

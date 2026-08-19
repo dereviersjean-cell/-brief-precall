@@ -239,7 +239,7 @@ export default function FeedbackClient({
                     <div className="h-px flex-1 bg-slate-200/70" />
                     <div className="text-[11px] text-slate-400 tabular-nums">{groupRows.length} call{groupRows.length > 1 ? "s" : ""}</div>
                   </div>
-                  <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-[var(--shadow-sm)] divide-y divide-slate-100">
+                  <div data-tour="feedback-list" className="overflow-hidden rounded-2xl border border-border bg-white shadow-[var(--shadow-sm)] divide-y divide-slate-100">
                     {groupRows.map((r) => (
                       <CallRow key={r.call.id} row={r} linksEnabled={linksEnabled} />
                     ))}

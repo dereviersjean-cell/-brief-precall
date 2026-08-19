@@ -217,7 +217,7 @@ export default function AnalyticsClient({
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-[var(--shadow-sm)]">
-        <div className="grid grid-cols-2 divide-x divide-y divide-slate-100 border-b border-slate-100 sm:grid-cols-3 lg:grid-cols-5">
+        <div data-tour="analytics-tiles" className="grid grid-cols-2 divide-x divide-y divide-slate-100 border-b border-slate-100 sm:grid-cols-3 lg:grid-cols-5">
           {metrics.map((m) => {
             const value = m.value(analytics.teamAverage);
             const active = m.key === metric.key;

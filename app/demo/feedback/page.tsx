@@ -7,8 +7,6 @@ export const dynamic = "force-dynamic";
 // filtres, sa recherche et ses badges de score.
 export default function DemoFeedbackPage() {
   return (
-    <div data-tour="demo-feedback">
-      <FeedbackClient calls={demoCalls} linksEnabled={false} />
-    </div>
+    <FeedbackClient calls={demoCalls} linksEnabled={false} />
   );
 }

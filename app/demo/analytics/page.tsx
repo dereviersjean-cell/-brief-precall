@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 // métriques et son classement par commercial.
 export default function DemoAnalyticsPage() {
   return (
-    <div data-tour="demo-analytics" className="mx-auto max-w-5xl px-6 py-10">
+    <div className="mx-auto max-w-5xl px-6 py-10">
       <FadeIn>
         <div className="mb-8">
           <PageHeader
