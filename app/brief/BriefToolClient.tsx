@@ -579,7 +579,7 @@ export default function BriefToolClient() {
                 {showCalendar && ` · ${provider === "azure-ad" ? "Microsoft Calendar" : "Google Calendar"}`}
               </p>
             </div>
-            <button className="flex items-center gap-2 h-9 text-sm font-medium text-slate-600 border border-border bg-white px-3.5 rounded-lg hover:bg-slate-50 hover:text-slate-900 transition-colors duration-200 shrink-0">
+            <button data-tour="brief-add" className="flex items-center gap-2 h-9 text-sm font-medium text-slate-600 border border-border bg-white px-3.5 rounded-lg hover:bg-slate-50 hover:text-slate-900 transition-colors duration-200 shrink-0">
               <Plus className="w-4 h-4" />
               Ajouter un RDV
             </button>

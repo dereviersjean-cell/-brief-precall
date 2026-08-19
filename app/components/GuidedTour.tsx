@@ -28,52 +28,102 @@ import { ArrowRight, X } from "lucide-react";
 // `path` : page sur laquelle l'étape doit être jouée. La visite y navigue
 // d'elle-même — pointer uniquement la sidebar ne montrait que la navigation,
 // jamais ce que chaque section contient réellement.
-type TourStep = { target: string; title: string; body: string; path: string };
+// `phase` : où l'on se trouve dans le cycle, affiché en permanence pour qu'on
+// ne perde jamais le fil. `kind` distingue « voici une section » de « voici ce
+// qu'elle contient » et de « voici à quoi sert ce bouton » — sans cette
+// distinction, toutes les bulles se ressemblaient et on ne savait pas si on
+// regardait une zone ou une commande.
+type TourStep = {
+  path: string;
+  target: string;
+  phase: "Repères" | "Préparer" | "Débriefer" | "Progresser";
+  kind: "section" | "contenu" | "commande";
+  title: string;
+  body: string;
+};
 
 const STEPS: TourStep[] = [
   {
     path: "/dashboard",
     target: "nav-brief",
-    title: "Brief suit le cycle d'un rendez-vous",
-    body: "Les trois sections ne sont pas un menu, ce sont trois moments qui s'enchaînent : préparer le rendez-vous, le débriefer, en tirer de quoi progresser. Chacune alimente la suivante. On commence par le début.",
+    phase: "Repères",
+    kind: "section",
+    title: "Trois sections, un cycle",
+    body: "Le menu n'est pas une liste de fonctionnalités : c'est le déroulé d'un rendez-vous. On le prépare, on le débriefe, on en tire de quoi progresser. Chaque étape alimente la suivante. Suivons-le dans l'ordre.",
   },
   {
     path: "/brief",
     target: "brief-content",
-    title: "1. Préparer — ce qui vous attend avant le rendez-vous",
-    body: "Dès que votre agenda est connecté, vos prochains rendez-vous apparaissent ici avec leur dossier : l'activité de l'entreprise, son actualité, ses données légales, l'historique de vos échanges. Vous n'avez rien à demander — le brief se prépare tout seul.",
+    phase: "Préparer",
+    kind: "contenu",
+    title: "Vos rendez-vous à venir",
+    body: "Cette zone liste les rendez-vous des 7 prochains jours ayant un participant extérieur à votre société. Chacun arrive avec son dossier : activité de l'entreprise, actualité récente, données légales, historique de vos échanges. Elle reste vide tant que l'agenda n'est pas connecté.",
+  },
+  {
+    path: "/brief",
+    target: "brief-add",
+    phase: "Préparer",
+    kind: "commande",
+    title: "Le bouton « Ajouter un RDV »",
+    body: "Pour préparer un rendez-vous qui n'est pas dans votre agenda — un appel imprévu, une réunion posée à la main. Vous saisissez l'entreprise et le contact, Brief fabrique le dossier à la demande.",
+  },
+  {
+    path: "/feedback",
+    target: "nav-feedback",
+    phase: "Débriefer",
+    kind: "section",
+    title: "Deuxième moment : après le rendez-vous",
+    body: "Vous êtes maintenant dans « Analyse rendez-vous ». C'est là qu'atterrit tout ce qui s'est dit pendant vos visios, sans que vous ayez eu à prendre une note.",
   },
   {
     path: "/feedback",
     target: "feedback-content",
-    title: "2. Débriefer — ce qui arrive après, sans rien faire",
-    body: "Un assistant rejoint la visio et prend des notes à votre place. Chaque rendez-vous arrive ici transcrit et noté : points clés, objections soulevées, prochaines étapes, et un email de suivi prêt à relire. Vous pouvez réécouter n'importe quel passage pour vérifier ce qui s'est dit.",
-  },
-  {
-    path: "/dashboard",
-    target: "performance-tabs",
-    title: "3. Progresser — ce que les rendez-vous accumulés révèlent",
-    body: "Un rendez-vous isolé ne dit rien ; dix rendez-vous disent tout. Scores suit votre progression, Analytics votre façon de conduire un échange, Objections ce qui vous bloque et comment vous y répondez, Playbook la grille sur laquelle vous êtes noté.",
-  },
-  {
-    path: "/dashboard",
-    target: "nav-notifications",
-    title: "Et le plus souvent, vous ne venez même pas ici",
-    body: "Brief pousse ses résultats là où vous travaillez déjà : le brief dans votre boîte mail avant le rendez-vous, le compte-rendu dans votre CRM après. Vous choisissez ici ce que vous voulez recevoir et où. L'application n'est qu'un endroit où revenir quand vous voulez creuser.",
-  },
-  {
-    path: "/dashboard",
-    target: "topbar-search",
-    title: "Retrouver quelque chose",
-    body: "Un nom de société, un email, et vous retombez sur le contact ou le rendez-vous. Le raccourci ⌘K fonctionne depuis n'importe quelle page.",
+    phase: "Débriefer",
+    kind: "contenu",
+    title: "Un compte-rendu par rendez-vous",
+    body: "Chaque visio enregistrée apparaît ici avec sa note et son résumé. En l'ouvrant : le transcript complet, les points clés, les objections soulevées et la façon dont vous y avez répondu, les prochaines étapes, et un email de suivi prêt à relire. Chaque phrase est cliquable pour réécouter le passage.",
   },
   {
     path: "/dashboard",
     target: "nav-performance",
-    title: "La boucle se referme",
-    body: "Chaque rendez-vous nourrit les suivants : ce que vous avez appris sur une objection sert au prochain brief, et vos statistiques se précisent à mesure. Il ne vous reste qu'à connecter votre agenda pour lancer la machine.",
+    phase: "Progresser",
+    kind: "section",
+    title: "Troisième moment : ce que l'ensemble révèle",
+    body: "Un rendez-vous isolé ne dit rien. Dix rendez-vous montrent où vous perdez systématiquement. C'est l'objet de cette section — et de votre manager s'il en a une.",
+  },
+  {
+    path: "/dashboard",
+    target: "performance-tabs",
+    phase: "Progresser",
+    kind: "commande",
+    title: "Ces onglets, un par question",
+    body: "Scores : est-ce que je progresse ? Analytics : comment je conduis un échange — temps de parole, questions posées, monologues. Objections : qu'est-ce qui me bloque, et ce qu'il aurait fallu répondre. Playbook : la grille sur laquelle je suis noté.",
+  },
+  {
+    path: "/dashboard",
+    target: "nav-notifications",
+    phase: "Progresser",
+    kind: "commande",
+    title: "Et surtout : Brief vient à vous",
+    body: "Le plus souvent vous n'ouvrirez pas cette application. Le brief arrive dans votre boîte mail avant le rendez-vous, le compte-rendu dans votre CRM après. Ce réglage décide de ce que vous recevez et où. Brief n'est qu'un endroit où revenir pour creuser.",
+  },
+  {
+    path: "/dashboard",
+    target: "topbar-search",
+    phase: "Repères",
+    kind: "commande",
+    title: "Retrouver un contact ou un rendez-vous",
+    body: "Un nom de société, un email. Le raccourci ⌘K fonctionne partout. C'est tout ce qu'il y a à retenir pour naviguer — le reste vient à vous.",
   },
 ];
+
+// Dit explicitement ce qu'on regarde : une section du menu, une zone de
+// contenu, ou une commande. Sans ça toutes les bulles se ressemblaient.
+const KIND_LABEL: Record<TourStep["kind"], string> = {
+  section: "Section",
+  contenu: "Ce que contient cette zone",
+  commande: "À quoi sert cette commande",
+};
 
 const STORAGE_KEY = "brief_tour_seen_v1";
 const BUBBLE_WIDTH = 340;
@@ -85,7 +135,10 @@ const GAP = 16;
 // couper l'élément ; c'est ce qui rendait le cadrage disgracieux.
 const SPOTLIGHT_PADDING = 8;
 
-type Placement = { top: number; left: number };
+// `side` : de quel côté de la bulle se trouve la cible. Sert à orienter la
+// flèche — sans elle, rien ne relie visuellement le texte à la zone désignée,
+// et on lit une explication sans savoir de quoi elle parle.
+type Placement = { top: number; left: number; side: "left" | "top" | "bottom" };
 
 export default function GuidedTour() {
   const router = useRouter();
@@ -228,14 +281,14 @@ export default function GuidedTour() {
         Math.max(GAP, rect.top),
         Math.max(GAP, window.innerHeight - BUBBLE_HEIGHT - GAP)
       );
-      return { top, left: rect.right + GAP };
+      return { top, left: rect.right + GAP, side: "left" };
     }
 
     const left = Math.min(Math.max(GAP, rect.left), Math.max(GAP, maxLeft));
     const fitsBelow = rect.bottom + GAP + BUBBLE_HEIGHT < window.innerHeight;
     return fitsBelow
-      ? { top: rect.bottom + GAP, left }
-      : { top: Math.max(GAP, rect.top - BUBBLE_HEIGHT - GAP), left };
+      ? { top: rect.bottom + GAP, left, side: "top" }
+      : { top: Math.max(GAP, rect.top - BUBBLE_HEIGHT - GAP), left, side: "bottom" };
   })();
 
   return (
@@ -243,13 +296,16 @@ export default function GuidedTour() {
       {/* Fond assombri percé d'un trou sur la cible : une ombre portée
           démesurée évite d'avoir à découper quatre rectangles autour. */}
       <div
-        className="pointer-events-none absolute rounded-xl ring-2 ring-white/80 transition-all duration-200"
+        className="pointer-events-none absolute rounded-xl transition-all duration-200"
         style={{
           top: rect.top - SPOTLIGHT_PADDING,
           left: rect.left - SPOTLIGHT_PADDING,
           width: rect.width + SPOTLIGHT_PADDING * 2,
           height: rect.height + SPOTLIGHT_PADDING * 2,
-          boxShadow: "0 0 0 9999px rgba(15, 23, 42, 0.6)",
+          // Voile volontairement léger : l'écran autour doit rester lisible,
+          // sinon on met en avant un élément sans qu'on puisse le situer.
+          // L'anneau, lui, est franc — c'est lui qui désigne, pas l'obscurité.
+          boxShadow: "0 0 0 9999px rgba(15, 23, 42, 0.38), 0 0 0 3px var(--violet)",
         }}
       />
       {/* Capte les clics hors bulle pour fermer, sans bloquer la cible. */}
@@ -260,6 +316,19 @@ export default function GuidedTour() {
         style={{ top: placement.top, left: placement.left }}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Flèche pointant vers la zone désignée. Un carré pivoté hérite du
+            fond et de la bordure de la bulle, ce qui évite un SVG. */}
+        <span
+          aria-hidden
+          className="absolute h-3 w-3 rotate-45 border border-border bg-white"
+          style={
+            placement.side === "left"
+              ? { left: -7, top: 26, borderRight: "none", borderTop: "none" }
+              : placement.side === "top"
+              ? { top: -7, left: 26, borderRight: "none", borderBottom: "none" }
+              : { bottom: -7, left: 26, borderLeft: "none", borderTop: "none" }
+          }
+        />
         <button
           type="button"
           onClick={close}
@@ -269,11 +338,31 @@ export default function GuidedTour() {
           <X className="h-4 w-4" />
         </button>
 
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-[color:var(--violet)]">
-          {index + 1} sur {STEPS.length}
-        </p>
-        <h3 className="mt-1 pr-5 text-[15px] font-semibold text-slate-900">{step.title}</h3>
+        <div className="flex flex-wrap items-center gap-2 pr-5">
+          <span className="rounded-full bg-[color:var(--lavender)] px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider text-[color:var(--violet)]">
+            {step.phase}
+          </span>
+          <span className="text-[10.5px] font-medium uppercase tracking-wider text-slate-400">{KIND_LABEL[step.kind]}</span>
+        </div>
+
+        <h3 className="mt-2 pr-5 text-[15px] font-semibold text-slate-900">{step.title}</h3>
         <p className="mt-1.5 text-[13px] leading-relaxed text-slate-600">{step.body}</p>
+
+        {/* Progression segmentée : un « 3 sur 9 » ne dit pas s'il reste
+            beaucoup, une barre le montre d'un coup d'œil. */}
+        <div className="mt-4 flex items-center gap-1">
+          {STEPS.map((_, i) => (
+            <span
+              key={i}
+              className={`h-1 flex-1 rounded-full transition-colors ${
+                i <= index ? "bg-[color:var(--violet)]" : "bg-slate-200"
+              }`}
+            />
+          ))}
+        </div>
+        <p className="mt-1.5 text-[11px] text-slate-400">
+          Étape {index + 1} sur {STEPS.length}
+        </p>
 
         <div className="mt-4 flex items-center justify-between gap-3">
           <button type="button" onClick={close} className="text-[12.5px] text-slate-400 hover:text-slate-600">
