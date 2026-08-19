@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { TourDemo } from "./TourDemos";
 import { ArrowRight, X } from "lucide-react";
 
 // Visite guidée de l'interface, par bulles ancrées sur les vrais éléments.
@@ -36,9 +35,6 @@ import { ArrowRight, X } from "lucide-react";
 // regardait une zone ou une commande.
 type TourStep = {
   path: string;
-  // Étape « exemple » : pas d'élément à désigner, on montre le rendu au
-  // centre de l'écran. `target` est alors ignoré.
-  demo?: string;
   target: string;
   phase: "Repères" | "Préparer" | "Débriefer" | "Progresser";
   kind: "section" | "contenu" | "commande";
@@ -48,130 +44,84 @@ type TourStep = {
 
 const STEPS: TourStep[] = [
   {
-    path: "/dashboard",
+    path: "/demo/dashboard",
     target: "nav-brief",
     phase: "Repères",
     kind: "section",
     title: "Trois sections, un cycle",
-    body: "Le menu n'est pas une liste de fonctionnalités : c'est le déroulé d'un rendez-vous. On le prépare, on le débriefe, on en tire de quoi progresser. Chaque étape alimente la suivante. Suivons-le dans l'ordre.",
+    body: "Le menu n'est pas une liste de fonctionnalités : c'est le déroulé d'un rendez-vous. On le prépare, on le débriefe, on en tire de quoi progresser. Pendant cette visite, les écrans sont remplis d'un exemple pour que vous voyiez le résultat — le bandeau orange vous le rappelle.",
   },
   {
-    path: "/brief",
-    target: "brief-content",
-    phase: "Préparer",
+    path: "/demo/dashboard",
+    target: "demo-overview",
+    phase: "Repères",
     kind: "contenu",
-    title: "Vos rendez-vous à venir",
-    body: "Cette zone liste les rendez-vous des 7 prochains jours ayant un participant extérieur à votre société. Chacun arrive avec son dossier : activité de l'entreprise, actualité récente, données légales, historique de vos échanges. Elle reste vide tant que l'agenda n'est pas connecté.",
+    title: "Votre tableau de bord une fois alimenté",
+    body: "Les rendez-vous de la semaine, le score moyen et sa progression, les derniers calls et les contacts actifs. Tout se remplit seul à mesure que vos rendez-vous ont lieu.",
   },
   {
-    path: "/brief",
-    demo: "brief",
-    target: "brief-content",
-    phase: "Préparer",
-    kind: "contenu",
-    title: "Voici à quoi ressemble un brief",
-    body: "Voilà ce que vous trouverez avant chaque rendez-vous, sans l'avoir demandé. Le point de vigilance en bas est celui qui change une conversation : il vous prévient de l'objection probable.",
-  },
-  {
-    path: "/brief",
-    target: "brief-add",
-    phase: "Préparer",
-    kind: "commande",
-    title: "Le bouton « Ajouter un RDV »",
-    body: "Pour préparer un rendez-vous qui n'est pas dans votre agenda — un appel imprévu, une réunion posée à la main. Vous saisissez l'entreprise et le contact, Brief fabrique le dossier à la demande.",
-  },
-  {
-    path: "/feedback",
+    path: "/demo/feedback",
     target: "nav-feedback",
     phase: "Débriefer",
     kind: "section",
-    title: "Deuxième moment : après le rendez-vous",
-    body: "Vous êtes maintenant dans « Analyse rendez-vous ». C'est là qu'atterrit tout ce qui s'est dit pendant vos visios, sans que vous ayez eu à prendre une note.",
+    title: "Après le rendez-vous",
+    body: "Un assistant rejoint la visio et prend les notes à votre place. Chaque échange atterrit ici, transcrit et noté, sans que vous ayez rien saisi.",
   },
   {
-    path: "/feedback",
-    target: "feedback-content",
+    path: "/demo/feedback",
+    target: "demo-feedback",
     phase: "Débriefer",
     kind: "contenu",
     title: "Un compte-rendu par rendez-vous",
-    body: "Chaque visio enregistrée apparaît ici avec sa note et son résumé. En l'ouvrant : le transcript complet, les points clés, les objections soulevées et la façon dont vous y avez répondu, les prochaines étapes, et un email de suivi prêt à relire. Chaque phrase est cliquable pour réécouter le passage.",
+    body: "Chaque ligne porte sa note et son résumé. En l'ouvrant : le transcript complet, les points clés, les objections soulevées et vos réponses, les prochaines étapes, et un email de suivi prêt à relire. Chaque phrase renvoie au moment de la vidéo.",
   },
   {
-    path: "/feedback",
-    demo: "analyse",
-    target: "feedback-content",
-    phase: "Débriefer",
-    kind: "contenu",
-    title: "Voici à quoi ressemble une analyse",
-    body: "La note vient de la grille de votre équipe, pas d'un barème générique. « À travailler » est la partie utile : elle pointe ce qui s'est joué et que vous n'avez pas vu passer.",
-  },
-  {
-    path: "/dashboard",
-    target: "nav-performance",
-    phase: "Progresser",
-    kind: "section",
-    title: "Troisième moment : ce que l'ensemble révèle",
-    body: "Un rendez-vous isolé ne dit rien. Dix rendez-vous montrent où vous perdez systématiquement. C'est l'objet de cette section — et de votre manager s'il en a une.",
-  },
-  {
-    path: "/dashboard",
-    target: "performance-tabs",
-    phase: "Progresser",
-    kind: "commande",
-    title: "Ces onglets, un par question",
-    body: "Scores : est-ce que je progresse ? Analytics : comment je conduis un échange — temps de parole, questions posées, monologues. Objections : qu'est-ce qui me bloque, et ce qu'il aurait fallu répondre. Playbook : la grille sur laquelle je suis noté.",
-  },
-  {
-    path: "/dashboard",
-    demo: "scores",
-    target: "performance-tabs",
+    path: "/demo/scores",
+    target: "demo-scores",
     phase: "Progresser",
     kind: "contenu",
-    title: "Onglet Scores — est-ce que je progresse ?",
-    body: "Votre courbe semaine après semaine, et le détail par dimension du playbook. La barre la plus courte vous dit sur quoi travailler en priorité.",
+    title: "Scores — est-ce que je progresse ?",
+    body: "La courbe semaine après semaine, et le détail par dimension de votre playbook. Ici le traitement des objections est à 2,4 : c'est le point faible, et les autres onglets vont dire pourquoi.",
   },
   {
-    path: "/dashboard",
-    demo: "analytics",
-    target: "performance-tabs",
+    path: "/demo/analytics",
+    target: "demo-analytics",
     phase: "Progresser",
     kind: "contenu",
-    title: "Onglet Analytics — comment je conduis un échange",
-    body: "Temps de parole, longueur de vos monologues, questions posées, temps laissé au prospect avant de reprendre. Comparé à la moyenne de l'équipe, pas à une norme abstraite.",
+    title: "Analytics — comment je conduis un échange",
+    body: "Temps de parole, monologues, questions posées, temps laissé au prospect. Comparé à la moyenne de l'équipe, jamais à une norme abstraite. Cliquez sur une tuile pour changer de métrique.",
   },
   {
-    path: "/dashboard",
-    demo: "objections",
-    target: "performance-tabs",
+    path: "/demo/objections",
+    target: "demo-objections",
     phase: "Progresser",
     kind: "contenu",
-    title: "Onglet Objections — qu'est-ce qui me bloque",
-    body: "Chaque objection rencontrée, ce que le prospect a dit mot pour mot, votre réponse, et ce qu'il aurait fallu répondre selon la méthode de votre équipe. Vous pouvez réécouter le passage.",
+    title: "Objections — qu'est-ce qui me bloque",
+    body: "Chaque objection rencontrée, son volume, et la part que vous traitez bien. Ici « équipe commerciale interne » revient 7 fois, dont 4 sans réponse — et 4 deals perdus. Dans votre compte, un clic ouvre le verbatim, votre réponse, et ce qu'il aurait fallu dire.",
   },
   {
-    path: "/dashboard",
-    demo: "playbook",
-    target: "performance-tabs",
+    path: "/demo/playbook",
+    target: "demo-playbook",
     phase: "Progresser",
     kind: "contenu",
-    title: "Onglet Playbook — la grille qui vous note",
-    body: "Les dimensions évaluées et leur poids, définis par votre manager. La consulter évite les mauvaises surprises : vous savez exactement sur quoi vous êtes attendu.",
+    title: "Playbook — la grille qui vous note",
+    body: "Les dimensions évaluées, leur poids et les questions qui les composent. Définie par votre manager. La consulter évite les mauvaises surprises : vous savez exactement sur quoi vous êtes attendu.",
   },
   {
-    path: "/dashboard",
+    path: "/demo/dashboard",
     target: "nav-notifications",
     phase: "Progresser",
     kind: "commande",
     title: "Et surtout : Brief vient à vous",
-    body: "Le plus souvent vous n'ouvrirez pas cette application. Le brief arrive dans votre boîte mail avant le rendez-vous, le compte-rendu dans votre CRM après. Ce réglage décide de ce que vous recevez et où. Brief n'est qu'un endroit où revenir pour creuser.",
+    body: "Le plus souvent vous n'ouvrirez pas cette application. Le brief arrive dans votre boîte mail avant le rendez-vous, le compte-rendu dans votre CRM après. Ce réglage décide de ce que vous recevez et où.",
   },
   {
-    path: "/dashboard",
+    path: "/demo/dashboard",
     target: "topbar-search",
     phase: "Repères",
     kind: "commande",
     title: "Retrouver un contact ou un rendez-vous",
-    body: "Un nom de société, un email. Le raccourci ⌘K fonctionne partout. C'est tout ce qu'il y a à retenir pour naviguer — le reste vient à vous.",
+    body: "Un nom de société, un email. Le raccourci ⌘K fonctionne partout. La visite est terminée — vous revenez maintenant sur vos propres données, encore vides pour l'instant.",
   },
 ];
 
@@ -274,6 +224,13 @@ export default function GuidedTour() {
 
   const close = useCallback(() => {
     setActive(false);
+    // La visite se déroule sur les routes /demo : la quitter doit ramener sur
+    // les vraies données, sinon on reste devant un exemple sans s'en rendre
+    // compte une fois le bandeau oublié.
+    if (window.location.pathname.startsWith("/demo")) {
+      window.location.href = "/dashboard";
+      return;
+    }
     try {
       window.localStorage.setItem(STORAGE_KEY, "1");
     } catch {
@@ -313,26 +270,6 @@ export default function GuidedTour() {
       return;
     }
     setIndex((i) => i + 1);
-  }
-
-  // Étape « exemple » : rien à désigner, on présente le rendu au centre. Le
-  // fond reste assombri pour signaler qu'on est toujours dans la visite.
-  if (step.demo) {
-    return (
-      <div className="fixed inset-0 z-[60] flex items-center justify-center px-4">
-        <div className="absolute inset-0 bg-slate-900/55" onClick={close} />
-        <div
-          className="relative w-full max-w-[560px] rounded-2xl border border-border bg-white p-5 shadow-2xl"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Header step={step} onClose={close} />
-          <div className="mt-4">
-            <TourDemo id={step.demo} />
-          </div>
-          <Footer index={index} isLast={isLast} onClose={close} onNext={next} />
-        </div>
-      </div>
-    );
   }
 
   // Mesure en attente : on n'affiche rien plutôt que de conclure trop vite à
