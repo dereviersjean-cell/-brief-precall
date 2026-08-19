@@ -127,13 +127,15 @@ function Hero() {
           <Sparkles className="h-3 w-3 text-primary" /> Pour équipes commerciales B2B françaises
         </span>
         <h1 className="mt-6 text-[44px] md:text-[64px] leading-[1.02] font-bold tracking-[-0.03em] text-ink">
-          Augmentez votre <span className="italic-serif text-primary">taux de closing</span>.
+          Brief — augmentez votre <span className="italic-serif text-primary">taux de closing</span>.
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-[18px] leading-relaxed text-ink/80">
           <b className="text-ink">
-            Brief prépare chaque rendez-vous, débriefe chaque call selon votre méthode de vente,
-            et fait circuler ce qui gagne dans toute l&apos;équipe.
+            Brief est une application web pour les équipes commerciales B2B.
           </b>{" "}
+          Elle se connecte à votre agenda Google et à votre messagerie Gmail pour préparer chaque
+          rendez-vous, débriefer chaque call selon votre méthode de vente, et faire circuler ce qui
+          gagne dans toute l&apos;équipe.{" "}
           <span className="text-[15.5px] text-muted-foreground">Un seul objectif : plus de rendez-vous transformés en clients.</span>
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
@@ -156,7 +158,7 @@ function Hero() {
 
         <div className="relative mx-auto mt-14 max-w-5xl">
           <div className="relative rounded-3xl bg-white shadow-[0_30px_80px_-20px_rgba(80,60,180,0.25)] border border-border/60 overflow-hidden text-left">
-            <WindowChrome path="brief.app / analyse / acme-corp" />
+            <WindowChrome path="brief-ai.fr / analyse / acme-corp" />
             <div className="grid grid-cols-1 md:grid-cols-[220px_1fr]">
               <MiniSidebar active="Analyse rendez-vous" />
               <div className="p-6">
@@ -407,7 +409,7 @@ function PreparerSection() {
 
       <div className="relative">
         <div className="relative rounded-3xl border border-border bg-white shadow-[0_20px_60px_-30px_rgba(15,23,42,0.3)] overflow-hidden">
-          <WindowChrome path="brief.app / brief / acme-corp" />
+          <WindowChrome path="brief-ai.fr / brief / acme-corp" />
           <div className="p-6 space-y-4">
             <div className="flex items-start justify-between">
               <div>
@@ -479,7 +481,7 @@ function DebrieferSection() {
       <div className="mx-auto max-w-6xl px-6 py-20 grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
         <div className="relative order-2 lg:order-1">
           <div className="relative rounded-3xl border border-border bg-white shadow-[0_20px_60px_-30px_rgba(15,23,42,0.3)] overflow-hidden">
-            <WindowChrome path="brief.app / analyse / acme-corp" />
+            <WindowChrome path="brief-ai.fr / analyse / acme-corp" />
             <div className="p-5 space-y-4">
               <div className="flex items-center gap-2 flex-wrap">
                 {["R1 — Découverte", "R2 — Présentation", "R3 — Closing"].map((s, i) => (
@@ -584,7 +586,7 @@ function ProgresserSection() {
 
       <div className="relative">
         <div className="relative rounded-3xl border border-border bg-white shadow-[0_20px_60px_-30px_rgba(15,23,42,0.3)] overflow-hidden">
-          <WindowChrome path="brief.app / paramètres / objections" />
+          <WindowChrome path="brief-ai.fr / paramètres / objections" />
           <div className="p-5 space-y-3">
             <div className="flex items-center justify-between">
               <div className="text-[10.5px] font-semibold uppercase tracking-wider text-primary">Bibliothèque d&apos;objections · équipe</div>
@@ -653,7 +655,7 @@ function ManagerSection() {
 
         <div className="relative">
           <div className="relative rounded-3xl border border-border bg-white shadow-[0_20px_60px_-30px_rgba(15,23,42,0.3)] overflow-hidden">
-            <WindowChrome path="brief.app / équipe / insights" />
+            <WindowChrome path="brief-ai.fr / équipe / insights" />
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-3 gap-2">
                 {[
