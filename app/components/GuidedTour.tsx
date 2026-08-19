@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { TourDemo } from "./TourDemos";
 import { ArrowRight, X } from "lucide-react";
 
 // Visite guidée de l'interface, par bulles ancrées sur les vrais éléments.
@@ -35,6 +36,9 @@ import { ArrowRight, X } from "lucide-react";
 // regardait une zone ou une commande.
 type TourStep = {
   path: string;
+  // Étape « exemple » : pas d'élément à désigner, on montre le rendu au
+  // centre de l'écran. `target` est alors ignoré.
+  demo?: string;
   target: string;
   phase: "Repères" | "Préparer" | "Débriefer" | "Progresser";
   kind: "section" | "contenu" | "commande";
@@ -61,6 +65,15 @@ const STEPS: TourStep[] = [
   },
   {
     path: "/brief",
+    demo: "brief",
+    target: "brief-content",
+    phase: "Préparer",
+    kind: "contenu",
+    title: "Voici à quoi ressemble un brief",
+    body: "Voilà ce que vous trouverez avant chaque rendez-vous, sans l'avoir demandé. Le point de vigilance en bas est celui qui change une conversation : il vous prévient de l'objection probable.",
+  },
+  {
+    path: "/brief",
     target: "brief-add",
     phase: "Préparer",
     kind: "commande",
@@ -84,6 +97,15 @@ const STEPS: TourStep[] = [
     body: "Chaque visio enregistrée apparaît ici avec sa note et son résumé. En l'ouvrant : le transcript complet, les points clés, les objections soulevées et la façon dont vous y avez répondu, les prochaines étapes, et un email de suivi prêt à relire. Chaque phrase est cliquable pour réécouter le passage.",
   },
   {
+    path: "/feedback",
+    demo: "analyse",
+    target: "feedback-content",
+    phase: "Débriefer",
+    kind: "contenu",
+    title: "Voici à quoi ressemble une analyse",
+    body: "La note vient de la grille de votre équipe, pas d'un barème générique. « À travailler » est la partie utile : elle pointe ce qui s'est joué et que vous n'avez pas vu passer.",
+  },
+  {
     path: "/dashboard",
     target: "nav-performance",
     phase: "Progresser",
@@ -98,6 +120,42 @@ const STEPS: TourStep[] = [
     kind: "commande",
     title: "Ces onglets, un par question",
     body: "Scores : est-ce que je progresse ? Analytics : comment je conduis un échange — temps de parole, questions posées, monologues. Objections : qu'est-ce qui me bloque, et ce qu'il aurait fallu répondre. Playbook : la grille sur laquelle je suis noté.",
+  },
+  {
+    path: "/dashboard",
+    demo: "scores",
+    target: "performance-tabs",
+    phase: "Progresser",
+    kind: "contenu",
+    title: "Onglet Scores — est-ce que je progresse ?",
+    body: "Votre courbe semaine après semaine, et le détail par dimension du playbook. La barre la plus courte vous dit sur quoi travailler en priorité.",
+  },
+  {
+    path: "/dashboard",
+    demo: "analytics",
+    target: "performance-tabs",
+    phase: "Progresser",
+    kind: "contenu",
+    title: "Onglet Analytics — comment je conduis un échange",
+    body: "Temps de parole, longueur de vos monologues, questions posées, temps laissé au prospect avant de reprendre. Comparé à la moyenne de l'équipe, pas à une norme abstraite.",
+  },
+  {
+    path: "/dashboard",
+    demo: "objections",
+    target: "performance-tabs",
+    phase: "Progresser",
+    kind: "contenu",
+    title: "Onglet Objections — qu'est-ce qui me bloque",
+    body: "Chaque objection rencontrée, ce que le prospect a dit mot pour mot, votre réponse, et ce qu'il aurait fallu répondre selon la méthode de votre équipe. Vous pouvez réécouter le passage.",
+  },
+  {
+    path: "/dashboard",
+    demo: "playbook",
+    target: "performance-tabs",
+    phase: "Progresser",
+    kind: "contenu",
+    title: "Onglet Playbook — la grille qui vous note",
+    body: "Les dimensions évaluées et leur poids, définis par votre manager. La consulter évite les mauvaises surprises : vous savez exactement sur quoi vous êtes attendu.",
   },
   {
     path: "/dashboard",
@@ -257,6 +315,26 @@ export default function GuidedTour() {
     setIndex((i) => i + 1);
   }
 
+  // Étape « exemple » : rien à désigner, on présente le rendu au centre. Le
+  // fond reste assombri pour signaler qu'on est toujours dans la visite.
+  if (step.demo) {
+    return (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center px-4">
+        <div className="absolute inset-0 bg-slate-900/55" onClick={close} />
+        <div
+          className="relative w-full max-w-[560px] rounded-2xl border border-border bg-white p-5 shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Header step={step} onClose={close} />
+          <div className="mt-4">
+            <TourDemo id={step.demo} />
+          </div>
+          <Footer index={index} isLast={isLast} onClose={close} onNext={next} />
+        </div>
+      </div>
+    );
+  }
+
   // Mesure en attente : on n'affiche rien plutôt que de conclure trop vite à
   // une cible absente (le contenu de la page peut encore être en train de se
   // monter après une navigation).
@@ -329,56 +407,87 @@ export default function GuidedTour() {
               : { bottom: -7, left: 26, borderLeft: "none", borderTop: "none" }
           }
         />
-        <button
-          type="button"
-          onClick={close}
-          aria-label="Fermer la visite"
-          className="absolute right-3 top-3 text-slate-300 transition-colors hover:text-slate-500"
-        >
-          <X className="h-4 w-4" />
-        </button>
-
-        <div className="flex flex-wrap items-center gap-2 pr-5">
-          <span className="rounded-full bg-[color:var(--lavender)] px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider text-[color:var(--violet)]">
-            {step.phase}
-          </span>
-          <span className="text-[10.5px] font-medium uppercase tracking-wider text-slate-400">{KIND_LABEL[step.kind]}</span>
-        </div>
-
-        <h3 className="mt-2 pr-5 text-[15px] font-semibold text-slate-900">{step.title}</h3>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-slate-600">{step.body}</p>
-
-        {/* Progression segmentée : un « 3 sur 9 » ne dit pas s'il reste
-            beaucoup, une barre le montre d'un coup d'œil. */}
-        <div className="mt-4 flex items-center gap-1">
-          {STEPS.map((_, i) => (
-            <span
-              key={i}
-              className={`h-1 flex-1 rounded-full transition-colors ${
-                i <= index ? "bg-[color:var(--violet)]" : "bg-slate-200"
-              }`}
-            />
-          ))}
-        </div>
-        <p className="mt-1.5 text-[11px] text-slate-400">
-          Étape {index + 1} sur {STEPS.length}
-        </p>
-
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <button type="button" onClick={close} className="text-[12.5px] text-slate-400 hover:text-slate-600">
-            Passer la visite
-          </button>
-          <button
-            type="button"
-            onClick={next}
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg brand-gradient px-3 text-[12.5px] font-medium text-white transition-all hover:brightness-110"
-          >
-            {isLast ? "Terminer" : "Suivant"}
-            {!isLast && <ArrowRight className="h-3.5 w-3.5" />}
-          </button>
-        </div>
+        <Header step={step} onClose={close} />
+        <Footer index={index} isLast={isLast} onClose={close} onNext={next} />
       </div>
     </div>
+  );
+}
+
+// En-tête et pied partagés par les deux formes d'étape (bulle ancrée sur un
+// élément, panneau d'exemple centré) : même repérage et même navigation dans
+// les deux cas, sinon on aurait l'impression de changer d'outil en cours de
+// route.
+function Header({ step, onClose }: { step: TourStep; onClose: () => void }) {
+  return (
+    <>
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Fermer la visite"
+        className="absolute right-3 top-3 text-slate-300 transition-colors hover:text-slate-500"
+      >
+        <X className="h-4 w-4" />
+      </button>
+
+      <div className="flex flex-wrap items-center gap-2 pr-5">
+        <span className="rounded-full bg-[color:var(--lavender)] px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider text-[color:var(--violet)]">
+          {step.phase}
+        </span>
+        <span className="text-[10.5px] font-medium uppercase tracking-wider text-slate-400">
+          {KIND_LABEL[step.kind]}
+        </span>
+      </div>
+
+      <h3 className="mt-2 pr-5 text-[15px] font-semibold text-slate-900">{step.title}</h3>
+      <p className="mt-1.5 text-[13px] leading-relaxed text-slate-600">{step.body}</p>
+    </>
+  );
+}
+
+function Footer({
+  index,
+  isLast,
+  onClose,
+  onNext,
+}: {
+  index: number;
+  isLast: boolean;
+  onClose: () => void;
+  onNext: () => void;
+}) {
+  return (
+    <>
+      {/* Progression segmentée : un « 3 sur 15 » ne dit pas s'il reste
+          beaucoup, une barre le montre d'un coup d'œil. */}
+      <div className="mt-4 flex items-center gap-1">
+        {STEPS.map((_, i) => (
+          <span
+            key={i}
+            className={`h-1 flex-1 rounded-full transition-colors ${
+              i <= index ? "bg-[color:var(--violet)]" : "bg-slate-200"
+            }`}
+          />
+        ))}
+      </div>
+      <p className="mt-1.5 text-[11px] text-slate-400">
+        Étape {index + 1} sur {STEPS.length}
+      </p>
+
+      <div className="mt-4 flex items-center justify-between gap-3">
+        <button type="button" onClick={onClose} className="text-[12.5px] text-slate-400 hover:text-slate-600">
+          Passer la visite
+        </button>
+        <button
+          type="button"
+          onClick={onNext}
+          className="inline-flex h-8 items-center gap-1.5 rounded-lg brand-gradient px-3 text-[12.5px] font-medium text-white transition-all hover:brightness-110"
+        >
+          {isLast ? "Terminer" : "Suivant"}
+          {!isLast && <ArrowRight className="h-3.5 w-3.5" />}
+        </button>
+      </div>
+    </>
   );
 }
 
