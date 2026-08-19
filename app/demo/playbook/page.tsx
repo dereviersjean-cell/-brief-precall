@@ -47,9 +47,9 @@ export default function DemoPlaybookPage() {
       </div>
 
       <FadeIn delay={0.1}>
-        <div data-tour="demo-playbook" className="space-y-4">
-          {demoPlaybook.dimensions.map((dimension) => (
-            <Card key={dimension.id} padded={false} className="p-5">
+        <div className="space-y-4">
+          {demoPlaybook.dimensions.map((dimension, index) => (
+            <Card key={dimension.id} padded={false} className="p-5" data-tour={index === 0 ? "demo-playbook" : undefined}>
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <p className="font-semibold text-slate-900">{dimension.label}</p>

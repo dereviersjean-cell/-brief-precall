@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowRight, X } from "lucide-react";
+import { ArrowRight, MapPin, X } from "lucide-react";
 
 // Visite guidée de l'interface, par bulles ancrées sur les vrais éléments.
 //
@@ -37,6 +37,9 @@ type TourStep = {
   path: string;
   target: string;
   phase: "Repères" | "Préparer" | "Débriefer" | "Progresser";
+  // Chemin de navigation réel, affiché dans la bulle : sans lui, on comprend
+  // ce qu'on regarde mais pas où le retrouver une fois la visite terminée.
+  where: string;
   kind: "section" | "contenu" | "commande";
   title: string;
   body: string;
@@ -48,6 +51,7 @@ const STEPS: TourStep[] = [
     target: "nav-brief",
     phase: "Repères",
     kind: "section",
+    where: "Menu de gauche",
     title: "Trois sections, un cycle",
     body: "Le menu n'est pas une liste de fonctionnalités : c'est le déroulé d'un rendez-vous. On le prépare, on le débriefe, on en tire de quoi progresser. Pendant cette visite, les écrans sont remplis d'un exemple pour que vous voyiez le résultat — le bandeau orange vous le rappelle.",
   },
@@ -56,6 +60,7 @@ const STEPS: TourStep[] = [
     target: "overview-stats",
     phase: "Repères",
     kind: "contenu",
+    where: "Performance › Vue d'ensemble",
     title: "Votre tableau de bord une fois alimenté",
     body: "Les rendez-vous de la semaine, le score moyen et sa progression, les derniers calls et les contacts actifs. Tout se remplit seul à mesure que vos rendez-vous ont lieu.",
   },
@@ -64,6 +69,7 @@ const STEPS: TourStep[] = [
     target: "nav-feedback",
     phase: "Débriefer",
     kind: "section",
+    where: "Analyse rendez-vous",
     title: "Après le rendez-vous",
     body: "Un assistant rejoint la visio et prend les notes à votre place. Chaque échange atterrit ici, transcrit et noté, sans que vous ayez rien saisi.",
   },
@@ -72,6 +78,7 @@ const STEPS: TourStep[] = [
     target: "feedback-list",
     phase: "Débriefer",
     kind: "contenu",
+    where: "Analyse rendez-vous",
     title: "Un compte-rendu par rendez-vous",
     body: "Chaque ligne porte sa note et son résumé. En l'ouvrant : le transcript complet, les points clés, les objections soulevées et vos réponses, les prochaines étapes, et un email de suivi prêt à relire. Chaque phrase renvoie au moment de la vidéo.",
   },
@@ -80,6 +87,7 @@ const STEPS: TourStep[] = [
     target: "demo-scores",
     phase: "Progresser",
     kind: "contenu",
+    where: "Performance › Scores",
     title: "Scores — est-ce que je progresse ?",
     body: "La courbe semaine après semaine, et le détail par dimension de votre playbook. Ici le traitement des objections est à 2,4 : c'est le point faible, et les autres onglets vont dire pourquoi.",
   },
@@ -88,6 +96,7 @@ const STEPS: TourStep[] = [
     target: "analytics-tiles",
     phase: "Progresser",
     kind: "contenu",
+    where: "Performance › Analytics",
     title: "Analytics — comment je conduis un échange",
     body: "Temps de parole, monologues, questions posées, temps laissé au prospect. Comparé à la moyenne de l'équipe, jamais à une norme abstraite. Cliquez sur une tuile pour changer de métrique.",
   },
@@ -96,6 +105,7 @@ const STEPS: TourStep[] = [
     target: "demo-objections",
     phase: "Progresser",
     kind: "contenu",
+    where: "Performance › Objections",
     title: "Objections — qu'est-ce qui me bloque",
     body: "Chaque objection rencontrée, son volume, et la part que vous traitez bien. Ici « équipe commerciale interne » revient 7 fois, dont 4 sans réponse — et 4 deals perdus. Dans votre compte, un clic ouvre le verbatim, votre réponse, et ce qu'il aurait fallu dire.",
   },
@@ -104,6 +114,7 @@ const STEPS: TourStep[] = [
     target: "demo-playbook",
     phase: "Progresser",
     kind: "contenu",
+    where: "Performance › Playbook",
     title: "Playbook — la grille qui vous note",
     body: "Les dimensions évaluées, leur poids et les questions qui les composent. Définie par votre manager. La consulter évite les mauvaises surprises : vous savez exactement sur quoi vous êtes attendu.",
   },
@@ -112,6 +123,7 @@ const STEPS: TourStep[] = [
     target: "nav-notifications",
     phase: "Progresser",
     kind: "commande",
+    where: "Notifications",
     title: "Et surtout : Brief vient à vous",
     body: "Le plus souvent vous n'ouvrirez pas cette application. Le brief arrive dans votre boîte mail avant le rendez-vous, le compte-rendu dans votre CRM après. Ce réglage décide de ce que vous recevez et où.",
   },
@@ -120,6 +132,7 @@ const STEPS: TourStep[] = [
     target: "topbar-search",
     phase: "Repères",
     kind: "commande",
+    where: "Barre du haut, ou ⌘K",
     title: "Retrouver un contact ou un rendez-vous",
     body: "Un nom de société, un email. Le raccourci ⌘K fonctionne partout. La visite est terminée — vous revenez maintenant sur vos propres données, encore vides pour l'instant.",
   },
@@ -435,7 +448,14 @@ function Header({ step, onClose }: { step: TourStep; onClose: () => void }) {
         </span>
       </div>
 
-      <h3 className="mt-2 pr-5 text-[15px] font-semibold text-slate-900">{step.title}</h3>
+      {/* Où retrouver cet écran une fois la visite finie. Sans ce repère, on
+          comprend ce qu'on regarde sans savoir y revenir. */}
+      <p className="mt-2 flex items-center gap-1.5 text-[11.5px] font-medium text-slate-500">
+        <MapPin className="h-3 w-3 shrink-0 text-slate-300" />
+        {step.where}
+      </p>
+
+      <h3 className="mt-2.5 pr-5 text-[15px] font-semibold text-slate-900">{step.title}</h3>
       <p className="mt-1.5 text-[13px] leading-relaxed text-slate-600">{step.body}</p>
     </>
   );

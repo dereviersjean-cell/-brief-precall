@@ -11,14 +11,24 @@ export default function ConditionalLink({
   href,
   className,
   children,
+  ...rest
 }: {
   href: string | null;
   className?: string;
   children: ReactNode;
+  // `data-tour` notamment : l'ancre de la visite guidée doit survivre au
+  // passage lien → div, sinon la cible disparaît en mode démonstration.
+  [key: `data-${string}`]: string | undefined;
 }) {
-  if (!href) return <div className={className}>{children}</div>;
+  if (!href) {
+    return (
+      <div className={className} {...rest}>
+        {children}
+      </div>
+    );
+  }
   return (
-    <Link href={href} className={className}>
+    <Link href={href} className={className} {...rest}>
       {children}
     </Link>
   );

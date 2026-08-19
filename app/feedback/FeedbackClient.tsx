@@ -232,16 +232,16 @@ export default function FeedbackClient({
 
             {/* Grouped list */}
             <div className="mt-4 space-y-6">
-              {grouped.map(([group, groupRows]) => (
+              {grouped.map(([group, groupRows], groupIndex) => (
                 <section key={group}>
                   <div className="mb-2 flex items-center gap-3">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">{group}</div>
                     <div className="h-px flex-1 bg-slate-200/70" />
                     <div className="text-[11px] text-slate-400 tabular-nums">{groupRows.length} call{groupRows.length > 1 ? "s" : ""}</div>
                   </div>
-                  <div data-tour="feedback-list" className="overflow-hidden rounded-2xl border border-border bg-white shadow-[var(--shadow-sm)] divide-y divide-slate-100">
-                    {groupRows.map((r) => (
-                      <CallRow key={r.call.id} row={r} linksEnabled={linksEnabled} />
+                  <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-[var(--shadow-sm)] divide-y divide-slate-100">
+                    {groupRows.map((r, rowIndex) => (
+                      <CallRow key={r.call.id} row={r} linksEnabled={linksEnabled} tourAnchor={groupIndex === 0 && rowIndex === 0} />
                     ))}
                   </div>
                 </section>
@@ -329,7 +329,17 @@ function FilterTab({
   );
 }
 
-function CallRow({ row, linksEnabled }: { row: Row; linksEnabled: boolean }) {
+function CallRow({
+  row,
+  linksEnabled,
+  // La visite guidée met en évidence la première ligne, pas la liste entière :
+  // un bloc plus haut que l'écran force la bulle à se poser par-dessus.
+  tourAnchor = false,
+}: {
+  row: Row;
+  linksEnabled: boolean;
+  tourAnchor?: boolean;
+}) {
   const { call, contactName, score, sentiment, followUp, dateIso } = row;
   const t = scoreTone(score);
   const sentimentIcon = sentiment === "positif" ? <Smile className="h-3.5 w-3.5" /> : sentiment === "neutre" ? <Meh className="h-3.5 w-3.5" /> : sentiment === "négatif" ? <Frown className="h-3.5 w-3.5" /> : null;
@@ -342,6 +352,7 @@ function CallRow({ row, linksEnabled }: { row: Row; linksEnabled: boolean }) {
       // vraie page de détail, qui interrogerait Postgres avec un identifiant
       // fictif (erreur 22P02 remontée en erreur serveur).
       href={linksEnabled ? `/feedback/${call.id}` : null}
+      data-tour={tourAnchor ? "feedback-list" : undefined}
       className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-4 py-3.5 hover:bg-slate-50/70 transition-colors"
     >
       <div className="flex min-w-0 items-center gap-3.5">

@@ -91,11 +91,14 @@ export default async function DemoObjectionsPage({
       <FadeIn delay={0.05}>
         {/* Ancre de la visite : la bulle décrit la liste d'objections, c'est
             donc elle qu'il faut mettre en évidence. */}
-        <div data-tour="demo-objections">
+        <div>
         <Card padded={false} className="p-6">
           <ul className="divide-y divide-slate-100">
-            {demoObjectionStats.map((stat) => (
-              <li key={stat.categoryId ?? "unclassified"}>
+            {demoObjectionStats.map((stat, index) => (
+              // La visite met en évidence la PREMIÈRE ligne, pas la liste
+              // entière : un bloc plus haut que l'écran force la bulle à se
+              // poser par-dessus, et masque ce qu'elle décrit.
+              <li key={stat.categoryId ?? "unclassified"} data-tour={index === 0 ? "demo-objections" : undefined}>
                 {/* Non cliquable en démonstration : le détail d'une occurrence
                     exposerait un verbatim et un enregistrement qui n'existent
                     pas. Mieux vaut une liste inerte qu'un lien mort. */}
