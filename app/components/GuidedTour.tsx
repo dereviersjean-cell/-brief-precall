@@ -146,7 +146,7 @@ const SPOTLIGHT_PADDING = 8;
 // `side` : de quel côté de la bulle se trouve la cible. Sert à orienter la
 // flèche — sans elle, rien ne relie visuellement le texte à la zone désignée,
 // et on lit une explication sans savoir de quoi elle parle.
-type Placement = { top: number; left: number; side: "left" | "top" | "bottom" };
+type Placement = { top: number; left: number; side: "left" | "top" | "bottom" | "none" };
 
 export default function GuidedTour() {
   const router = useRouter();
@@ -197,7 +197,10 @@ export default function GuidedTour() {
       // portant sur un élément sous la ligne de flottaison montrait une bulle
       // ancrée hors du champ visible.
       const box = element.getBoundingClientRect();
-      if (box.top < GAP || box.bottom > window.innerHeight - GAP) {
+      // Centrer un élément plus haut que l'écran n'a pas de sens et provoque
+      // un saut de défilement déroutant.
+      const fitsOnScreen = box.height < window.innerHeight - 2 * GAP;
+      if (fitsOnScreen && (box.top < GAP || box.bottom > window.innerHeight - GAP)) {
         element.scrollIntoView({ block: "center", behavior: "smooth" });
       }
       setRect(element.getBoundingClientRect());
@@ -308,7 +311,19 @@ export default function GuidedTour() {
     return <SkipEffect onSkip={next} />;
   }
 
+  // Cible occupant presque tout l'écran (un conteneur de page entier) :
+  // l'entourer revient à « percer » toute la fenêtre, ce qui décale le
+  // contenu et donne l'impression que l'écran est masqué. Dans ce cas on
+  // renonce à la découpe et on affiche seulement la bulle.
+  const coversScreen = rect.height > window.innerHeight * 0.7 || rect.width > window.innerWidth * 0.9;
+
   const placement: Placement = (() => {
+    // Cible pleine page : la bulle se pose en haut à gauche du contenu plutôt
+    // que d'être calculée par rapport à un rectangle qui déborde de l'écran.
+    if (coversScreen) {
+      return { top: 96, left: Math.max(GAP, rect.left + GAP), side: "none" };
+    }
+
     const maxLeft = window.innerWidth - BUBBLE_WIDTH - GAP;
 
     // Cible étroite (une entrée de menu) : la bulle se pose à sa droite, ce
@@ -331,9 +346,10 @@ export default function GuidedTour() {
   })();
 
   return (
-    <div className="fixed inset-0 z-[60]">
+    <div className="pointer-events-none fixed inset-0 z-[60]">
       {/* Fond assombri percé d'un trou sur la cible : une ombre portée
           démesurée évite d'avoir à découper quatre rectangles autour. */}
+      {!coversScreen && (
       <div
         className="pointer-events-none absolute rounded-xl transition-all duration-200"
         style={{
@@ -347,19 +363,21 @@ export default function GuidedTour() {
           boxShadow: "0 0 0 9999px rgba(15, 23, 42, 0.38), 0 0 0 3px var(--violet)",
         }}
       />
-      {/* Bloque les clics sur la page pendant la visite, mais ne la ferme PAS :
-          un clic malencontreux interrompait tout et renvoyait au tableau de
-          bord, ce qui donnait l'impression de ne plus pouvoir naviguer. On ne
-          sort que par « Passer la visite » ou la croix. */}
-      <div className="absolute inset-0" />
+      )}
+      {/* Aucun calque bloquant : il avalait la molette et le tactile, on se
+          retrouvait figé sur l'écran sans pouvoir faire défiler. La page reste
+          entièrement utilisable pendant la visite — c'est d'ailleurs préférable,
+          on peut regarder ce que la bulle décrit. */}
 
       <div
-        className="absolute w-[340px] rounded-2xl border border-border bg-white p-5 shadow-2xl"
+        className="pointer-events-auto absolute w-[340px] rounded-2xl border border-border bg-white p-5 shadow-2xl"
         style={{ top: placement.top, left: placement.left }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Flèche pointant vers la zone désignée. Un carré pivoté hérite du
-            fond et de la bordure de la bulle, ce qui évite un SVG. */}
+            fond et de la bordure de la bulle, ce qui évite un SVG. Absente
+            quand la cible couvre l'écran : elle ne désignerait rien. */}
+        {placement.side !== "none" && (
         <span
           aria-hidden
           className="absolute h-3 w-3 rotate-45 border border-border bg-white"
@@ -371,6 +389,7 @@ export default function GuidedTour() {
               : { bottom: -7, left: 26, borderLeft: "none", borderTop: "none" }
           }
         />
+        )}
         <Header step={step} onClose={close} />
         <Footer index={index} isLast={isLast} onClose={close} onNext={next} />
       </div>
