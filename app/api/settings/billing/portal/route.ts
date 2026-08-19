@@ -4,8 +4,9 @@ import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
 import { getUserRole, getOrganizationForUser, getOrganizationBillingRow } from "@/lib/db";
 import { createBillingPortalSession } from "@/lib/stripe";
+import { APP_URL } from "@/lib/app-url";
 
-const BILLING_URL = "https://brief-precall.vercel.app/settings/billing";
+const BILLING_URL = `${APP_URL}/settings/billing`;
 
 export async function POST() {
   const session = await getServerSession(authOptions);

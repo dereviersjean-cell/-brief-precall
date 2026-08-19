@@ -5,10 +5,11 @@ import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
 import { createRecallCalendarV2Microsoft } from "@/lib/recall";
 import { saveRecallCalendarId } from "@/lib/db";
+import { APP_URL } from "@/lib/app-url";
 
-const SUCCESS_URL = "https://brief-precall.vercel.app/settings/connexions?recall=connected";
-const ERROR_URL = "https://brief-precall.vercel.app/settings/connexions?recall=error";
-const REDIRECT_URI = "https://brief-precall.vercel.app/api/recall/microsoft-oauth/callback";
+const SUCCESS_URL = `${APP_URL}/settings/connexions?recall=connected`;
+const ERROR_URL = `${APP_URL}/settings/connexions?recall=error`;
+const REDIRECT_URI = `${APP_URL}/api/recall/microsoft-oauth/callback`;
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");

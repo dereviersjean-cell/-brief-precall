@@ -1,4 +1,5 @@
 import { formatContactDisplayName } from "./format";
+import { APP_URL } from "@/lib/app-url";
 
 const RECALL_BASE_URL = "https://eu-central-1.recall.ai/api/v1";
 
@@ -62,7 +63,7 @@ async function createRecallCalendarV2Generic(
       oauth_client_id: oauthClientId,
       oauth_client_secret: oauthClientSecret,
       oauth_refresh_token: refreshToken,
-      webhook_url: "https://brief-precall.vercel.app/api/recall/webhook",
+      webhook_url: `${APP_URL}/api/recall/webhook`,
       external_id: userId,
     }),
   });

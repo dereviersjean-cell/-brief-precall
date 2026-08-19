@@ -5,9 +5,7 @@ import { formatBriefAsMarkdown, type GeneratedBriefJson } from "./brief-generato
 import { hasHubSpotWriteAccess, htmlBodyForHubSpot, writeToHubSpotCascade } from "./crm/hubspot";
 import { hasPipedriveWriteAccess, htmlBodyForPipedrive, writeToPipedriveCascade } from "./crm/pipedrive";
 import { hasSlackConnection, mrkdwnMessageForSlack, writeToSlackDM } from "./slack";
-
-// Same hardcoded-origin convention as lib/email.ts / lib/recall.ts.
-const APP_URL = "https://brief-precall.vercel.app";
+import { APP_URL } from "@/lib/app-url";
 
 // Single entry point per event type (module Distribution Flexible,
 // sous-étape B) — reads the user's own notification_preferences and

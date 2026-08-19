@@ -4,8 +4,9 @@ import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
 import { getUserRole, getOrganizationForUser, getUserEmail, getActiveSeatCountForOrganization, getOrganizationBillingRow } from "@/lib/db";
 import { createOrganizationCheckoutSession } from "@/lib/stripe";
+import { APP_URL } from "@/lib/app-url";
 
-const BILLING_URL = "https://brief-precall.vercel.app/settings/billing";
+const BILLING_URL = `${APP_URL}/settings/billing`;
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => ({}));

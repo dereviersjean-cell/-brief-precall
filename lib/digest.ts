@@ -11,6 +11,7 @@ import {
 import { readPromptConfig, DEFAULT_DIGEST_COMMERCIAL_PROMPT, DEFAULT_DIGEST_MANAGER_PROMPT } from "./admin-config";
 import { sendCommercialWeeklyDigestEmail, sendManagerWeeklyDigestEmail } from "./email";
 import { mostRecentParisMonday } from "./paris-week";
+import { APP_URL } from "@/lib/app-url";
 
 // Module Distribution Flexible, sous-étape 3 (digest hebdo). Entry point for
 // the two Inngest crons (lib/inngest-functions.ts) — one per timing value.
@@ -18,7 +19,6 @@ import { mostRecentParisMonday } from "./paris-week";
 // only), mirroring how lib/notifications-dispatcher.ts sits above
 // lib/crm/*.ts and lib/email.ts as the orchestration layer.
 
-const APP_URL = "https://brief-precall.vercel.app";
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 // Week-boundary math (mostRecentParisMonday) lives in lib/paris-week.ts,

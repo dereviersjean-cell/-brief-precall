@@ -16,7 +16,7 @@
 
 | # | Quoi tester | Utilité de la fonctionnalité | Ce qui doit marcher |
 |---|---|---|---|
-| 1 | Connexion Google SSO sur brief-precall.vercel.app | Accès sécurisé sans mot de passe | Arrivée sur l'onboarding |
+| 1 | Connexion Google SSO sur brief-ai.fr | Accès sécurisé sans mot de passe | Arrivée sur l'onboarding |
 | 2 | Onboarding 4 étapes (produit, cible, secteur) | Personnalise TOUS les briefs et emails IA générés ensuite | Profil retrouvable dans Paramètres > Général |
 | 3 | Connecter l'agenda (Paramètres > Connexions > Google) | Le bot rejoint automatiquement vos visios pour les enregistrer | Statut "connecté" ; sous 5 min, vos RDV visio à venir apparaissent sur la page Brief |
 | 4 | Connecter le CRM (Paramètres > CRM) | Briefs enrichis des deals en cours + comptes-rendus poussés automatiquement dans le CRM | Statut connecté + proposition d'import des références |

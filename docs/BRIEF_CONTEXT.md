@@ -40,7 +40,8 @@ Stack technique complète
 * NextAuth.js — providers Google OAuth + Microsoft Azure AD (multi-tenant + comptes perso)
 * Vercel — hébergement, déploiement auto sur chaque push vers main
 * Repo GitHub : github.com/dereviersjean-cell/-brief-precall
-* Site prod : brief-precall.vercel.app
+* Site prod : **brief-ai.fr** (domaine OVH, acheté le 19/08/2026 ; www.brief-ai.fr redirige en 308 vers l'apex). brief-precall.vercel.app reste actif comme alias Vercel.
+* L'origine publique n'est plus jamais écrite en dur : `lib/app-url.ts` exporte `APP_URL`, lu depuis `NEXT_PUBLIC_APP_URL` avec repli sur https://brief-ai.fr.
 * Inngest — orchestrateur de jobs asynchrones (cron + event-driven), dashboard sur app.inngest.com
 * Claude API — modèle claude-sonnet-4-6 pour génération, claude-haiku-4-5-20251001 pour tâches légères
 * Voyage AI — voyage-3, embeddings 1024 dimensions
@@ -1055,7 +1056,7 @@ GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 AZURE_AD_CLIENT_ID, AZURE_AD_CLIENT_SECRET, AZURE_AD_TENANT_ID
 
 
-NEXTAUTH_SECRET, NEXTAUTH_URL
+NEXTAUTH_SECRET, NEXTAUTH_URL, NEXT_PUBLIC_APP_URL
 
 
 NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
@@ -1654,7 +1655,7 @@ Workflow de développement habituel
 6. Tu me donnes la commande git : git add . && git commit -m "..." && git push
    * Attention : si Claude Code est dans le sous-dossier Brief/, cd .. d'abord
    * Toujours faire git status avant push pour vérifier que les vrais fichiers sont bien inclus
-7. Je teste en prod sur brief-precall.vercel.app (screenshots)
+7. Je teste en prod sur brief-ai.fr (screenshots)
 8. Je te renvoie le screenshot ou dis "OK"
 9. On enchaine ou on ajuste
 55. call_objections empilait les objections à chaque ré-analyse : indexCallObjections faisait un insert nu, sans idempotence. Trois calls d'Oliverlist ré-analysés 5 à 7 fois en juillet avaient produit 72 lignes pour 13 objections réelles, et la même objection s'affichait huit fois dans le détail d'une catégorie. Bug latent depuis juillet, rendu visible seulement par la nouvelle page de détail. Pas de contrainte UNIQUE possible (le texte de l'objection est reformulé à chaque extraction, il ne peut pas servir de clé) : on relève les ids existants du call, on insère la nouvelle version, PUIS on supprime les anciens — dans cet ordre, pour qu'un insert en échec laisse l'ancienne version plutôt qu'un call sans rien. Règle : « UPSERT + contrainte UNIQUE » de la doc vaut aussi quand la clé naturelle n'existe pas, il faut alors un remplacement explicite par parent.

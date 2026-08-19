@@ -1,9 +1,6 @@
 import { Resend } from "resend";
 import { marked, Renderer } from "marked";
-
-// Same hardcoded-origin convention as the rest of the codebase (lib/recall.ts,
-// the CRM/Recall OAuth routes) — no NEXT_PUBLIC_APP_URL or equivalent exists.
-const APP_URL = "https://brief-precall.vercel.app";
+import { APP_URL } from "@/lib/app-url";
 
 // Palette for the two notification templates below (module Distribution
 // Flexible, sous-étape B) — distinct from the indigo (#4f46e5) used by the

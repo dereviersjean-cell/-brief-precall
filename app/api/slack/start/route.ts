@@ -5,8 +5,9 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
 import { getSlackAuthUrl } from "@/lib/slack";
+import { APP_URL } from "@/lib/app-url";
 
-const ERROR_URL = "https://brief-precall.vercel.app/settings/connexions?slack=error";
+const ERROR_URL = `${APP_URL}/settings/connexions?slack=error`;
 
 export async function GET() {
   const session = await getServerSession(authOptions);

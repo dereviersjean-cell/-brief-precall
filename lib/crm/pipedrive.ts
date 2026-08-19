@@ -1,8 +1,9 @@
 import { marked, Renderer } from "marked";
 import { getCrmTokens, saveCrmTokens } from "../db";
+import { APP_URL } from "@/lib/app-url";
 
 const PIPEDRIVE_OAUTH_BASE = "https://oauth.pipedrive.com/oauth";
-const REDIRECT_URI = "https://brief-precall.vercel.app/api/crm/pipedrive/callback";
+const REDIRECT_URI = `${APP_URL}/api/crm/pipedrive/callback`;
 
 // Distribution Flexible sous-étape C2 (write briefs/analyses into Pipedrive,
 // mirrors the HubSpot C1 cascade). Unlike HubSpot, Pipedrive doesn't accept a

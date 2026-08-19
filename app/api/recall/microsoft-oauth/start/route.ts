@@ -4,6 +4,7 @@ import { randomBytes } from "crypto";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
+import { APP_URL } from "@/lib/app-url";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -27,7 +28,7 @@ export async function GET() {
   const params = new URLSearchParams({
     client_id: clientId,
     response_type: "code",
-    redirect_uri: "https://brief-precall.vercel.app/api/recall/microsoft-oauth/callback",
+    redirect_uri: `${APP_URL}/api/recall/microsoft-oauth/callback`,
     response_mode: "query",
     scope: "offline_access openid email https://graph.microsoft.com/Calendars.Read",
     state,

@@ -1,5 +1,6 @@
 import { marked, Renderer } from "marked";
 import { getCrmTokens, saveCrmTokens, deleteCrmTokens } from "./db";
+import { APP_URL } from "@/lib/app-url";
 
 // Module Distribution Flexible, sous-étape D (Slack, from scratch). Per-user
 // OAuth connection, same shape as lib/crm/hubspot.ts / lib/crm/pipedrive.ts
@@ -19,7 +20,7 @@ import { getCrmTokens, saveCrmTokens, deleteCrmTokens } from "./db";
 // reconnecting, exactly like the CRM "reconnect" banners.
 const SLACK_OAUTH_AUTHORIZE_URL = "https://slack.com/oauth/v2/authorize";
 const SLACK_API_BASE = "https://slack.com/api";
-const REDIRECT_URI = "https://brief-precall.vercel.app/api/slack/callback";
+const REDIRECT_URI = `${APP_URL}/api/slack/callback`;
 
 // Per-user authorization uses "user_scope" (not "scope", which requests
 // bot/workspace-wide permissions) — confirmed against

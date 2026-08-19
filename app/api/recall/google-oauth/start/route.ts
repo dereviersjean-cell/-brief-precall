@@ -4,6 +4,7 @@ import { randomBytes } from "crypto";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
+import { APP_URL } from "@/lib/app-url";
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
 
   const params = new URLSearchParams({
     client_id: clientId,
-    redirect_uri: "https://brief-precall.vercel.app/api/recall/google-oauth/callback",
+    redirect_uri: `${APP_URL}/api/recall/google-oauth/callback`,
     response_type: "code",
     scope: "https://www.googleapis.com/auth/calendar.events.readonly https://www.googleapis.com/auth/userinfo.email",
     access_type: "offline",

@@ -5,9 +5,9 @@ import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
 import { createRecallCalendarV2 } from "@/lib/recall";
 import { saveRecallCalendarId } from "@/lib/db";
+import { APP_URL } from "@/lib/app-url";
 
-const BASE_URL = "https://brief-precall.vercel.app";
-const SUCCESS_URL = `${BASE_URL}/settings/connexions?recall=connected`;
+const SUCCESS_URL = `${APP_URL}/settings/connexions?recall=connected`;
 
 // Destination de retour posée par la route /start (chemin relatif déjà
 // validé là-bas). Absente ou illisible : on retombe sur les paramètres.
@@ -18,14 +18,14 @@ async function resolveSuccessUrl(): Promise<string> {
     const target = store.get("recall_oauth_return")?.value;
     store.delete("recall_oauth_return");
     if (target && /^\/(?!\/)/.test(target)) {
-      return `${BASE_URL}${target}${target.includes("?") ? "&" : "?"}recall=connected`;
+      return `${APP_URL}${target}${target.includes("?") ? "&" : "?"}recall=connected`;
     }
   } catch {
     // Repli silencieux : la connexion a réussi, seule la destination change.
   }
   return SUCCESS_URL;
 }
-const ERROR_URL = "https://brief-precall.vercel.app/settings/connexions?recall=error";
+const ERROR_URL = `${APP_URL}/settings/connexions?recall=error`;
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
         client_secret: process.env.RECALL_GOOGLE_CLIENT_SECRET!,
         code,
         grant_type: "authorization_code",
-        redirect_uri: "https://brief-precall.vercel.app/api/recall/google-oauth/callback",
+        redirect_uri: `${APP_URL}/api/recall/google-oauth/callback`,
       }),
     });
 

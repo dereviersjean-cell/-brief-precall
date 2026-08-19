@@ -1,7 +1,8 @@
 import { marked, Renderer } from "marked";
 import { getCrmTokens, saveCrmTokens } from "../db";
+import { APP_URL } from "@/lib/app-url";
 
-const REDIRECT_URI = "https://brief-precall.vercel.app/api/crm/hubspot/callback";
+const REDIRECT_URI = `${APP_URL}/api/crm/hubspot/callback`;
 // deals.write and contacts.write added for module Distribution Flexible
 // sous-étape C (write briefs/analyses into HubSpot). Notes and meetings are
 // engagements, not their own scoped objects — there's no crm.objects.notes.*

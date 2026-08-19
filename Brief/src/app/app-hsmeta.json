@@ -8,7 +8,7 @@
     "auth": {
       "type": "oauth",
       "redirectUrls": [
-        "https://brief-precall.vercel.app/api/crm/hubspot/callback"
+        "https://brief-ai.fr/api/crm/hubspot/callback"
       ],
       "requiredScopes": [
         "oauth",
@@ -31,8 +31,8 @@
     },
     "support": {
       "supportEmail": "jean.dereviers@oliverlist.com",
-      "documentationUrl": "https://brief-precall.vercel.app",
-      "supportUrl": "https://brief-precall.vercel.app",
+      "documentationUrl": "https://brief-ai.fr",
+      "supportUrl": "https://brief-ai.fr",
       "supportPhone": ""
     }
   }

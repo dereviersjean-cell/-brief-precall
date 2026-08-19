@@ -6,9 +6,7 @@ import { requireActiveUser } from "@/lib/api-auth";
 import { getQuoteWithLines, markQuoteAsSent, getGoogleTokens } from "@/lib/db";
 import { refreshGoogleAccessToken } from "@/lib/gmail";
 import { renderQuoteToPdfBuffer } from "@/lib/pdf/QuoteDocument";
-
-// Same hardcoded-origin convention as lib/email.ts / lib/recall.ts.
-const APP_URL = "https://brief-precall.vercel.app";
+import { APP_URL } from "@/lib/app-url";
 
 function encodeMimeSubject(subject: string): string {
   if (/[^\x00-\x7F]/.test(subject)) {
