@@ -27,6 +27,7 @@ export default function CommercialOverviewView({
   trendWeeks,
   last5Calls,
   topContacts,
+  linksEnabled = true,
 }: {
   // ConnectionsStatus lit la base : en démo on ne le rend pas du tout, d'où
   // un userId optionnel.
@@ -38,6 +39,8 @@ export default function CommercialOverviewView({
   trendWeeks: ScoreTrendWeek[];
   last5Calls: RecentCallRow[];
   topContacts: ContactOverviewItem[];
+  // false en démonstration : ni les calls ni les contacts n'existent en base.
+  linksEnabled?: boolean;
 }) {
   return (
     <div className="max-w-6xl mx-auto px-6 py-10">
@@ -102,7 +105,7 @@ export default function CommercialOverviewView({
           <FadeIn delay={0.1}>
             <Card padded={false} className="p-5">
               <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-4">Calls récents</h2>
-              <RecentCallsList calls={last5Calls} />
+              <RecentCallsList calls={last5Calls} linksEnabled={linksEnabled} />
             </Card>
           </FadeIn>
         </div>

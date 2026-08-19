@@ -17,6 +17,7 @@ export default function DemoDashboardPage() {
       trendWeeks={demoTrendWeeks}
       last5Calls={demoRecentCalls}
       topContacts={demoContacts}
+      linksEnabled={false}
     />
     </div>
   );

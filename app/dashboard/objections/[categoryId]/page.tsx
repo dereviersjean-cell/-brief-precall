@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { isUuid } from "@/lib/uuid";
 import Link from "next/link";
 import { getEffectiveUserId } from "@/lib/session-user";
 import {
@@ -83,6 +84,9 @@ export default async function ObjectionCategoryDetailPage({
   const scopedUserId = isManager ? selected?.id ?? null : userId;
 
   const isUnclassified = categorySlug === UNCLASSIFIED_SLUG;
+  // Hors segment réservé, le slug DOIT être un uuid : sinon Postgres lève une
+  // 22P02 qui remonte en erreur serveur au lieu d'un simple 404.
+  if (!isUnclassified && !isUuid(categorySlug)) notFound();
   // getObjectionCategoryById filtre sur organization_id : un id valide d'une
   // autre organisation renvoie null → 404, jamais une confirmation qu'il
   // existe ailleurs.

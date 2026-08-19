@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default function DemoFeedbackPage() {
   return (
     <div data-tour="demo-feedback">
-      <FeedbackClient calls={demoCalls} />
+      <FeedbackClient calls={demoCalls} linksEnabled={false} />
     </div>
   );
 }

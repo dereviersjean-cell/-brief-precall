@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { isUuid } from "@/lib/uuid";
 import { getEffectiveUserId } from "@/lib/session-user";
 import { getUserRole, getUserOrganizationId, getObjectionEvalCall, listObjectionCategories } from "@/lib/db";
 import AnnotateClient from "./AnnotateClient";
@@ -14,6 +15,8 @@ export default async function AnnotateCallPage({ params }: { params: Promise<{ c
   if (!organizationId) redirect("/settings/general");
 
   const { callId } = await params;
+  // Id malformé : 404 plutôt qu'une 22P02 Postgres remontée en erreur 500.
+  if (!isUuid(callId)) notFound();
   const [call, categories] = await Promise.all([
     getObjectionEvalCall(organizationId, callId),
     listObjectionCategories(organizationId).catch(() => []),

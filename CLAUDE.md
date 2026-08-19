@@ -317,6 +317,8 @@ Livré et testé en conditions réelles sur le compte Oliverlist le 19 juillet 2
 - ❌ `max_tokens` < 1500 sur les routes de génération JSON
 - ❌ Lancer une promesse non-awaitée après la réponse HTTP sans `after()` (Vercel la tue)
 - ❌ Ajouter une page top-level sans l'ajouter au matcher de `middleware.ts`
+- ❌ Interroger Postgres avec un identifiant issu de l'URL sans `isUuid` (lib/uuid.ts) — un id malformé lève une 22P02 qui remonte en **erreur serveur 500** au lieu d'un 404. Appliqué sur toutes les routes `[id]`/`[callId]`/`[quoteId]`/`[commercialId]`/`[categoryId]`
+- ❌ Laisser un écran de démonstration pointer vers une vraie page de détail — ses entités n'existent pas en base (`ConditionalLink` rend la ligne inerte)
 - ❌ Utiliser des classes `indigo-*` (ou violet/purple Tailwind littéral pour la marque) hors `/admin` — toujours les tokens du design system
 - ❌ Créer une route de génération IA sans `checkAiGenerationRateLimit`
 - ❌ Faire traiter par un seul appel IA une liste dont la taille n'est pas bornée — découper en lots (cf. bug #25)

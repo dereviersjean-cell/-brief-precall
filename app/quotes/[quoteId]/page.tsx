@@ -1,4 +1,5 @@
 import { redirect, notFound } from "next/navigation";
+import { isUuid } from "@/lib/uuid";
 import { getQuoteSettings, listQuoteOffers, listContactsForUser, getQuoteWithLines } from "@/lib/db";
 import { getEffectiveUserId } from "@/lib/session-user";
 import QuoteEditor from "../QuoteEditor";
@@ -19,6 +20,8 @@ export default async function EditQuotePage({
   }
 
   const { quoteId } = await params;
+  // Id malformé : 404 plutôt qu'une 22P02 Postgres remontée en erreur 500.
+  if (!isUuid(quoteId)) notFound();
   const [quote, offers, contacts] = await Promise.all([
     getQuoteWithLines(quoteId, userId),
     listQuoteOffers(userId),

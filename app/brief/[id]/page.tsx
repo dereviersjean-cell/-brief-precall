@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { isUuid } from "@/lib/uuid";
 import { getBriefByEventId, getBriefById, getRecentCallsForContact, CallHistoryItem } from "@/lib/db";
 import { getEffectiveUserId } from "@/lib/session-user";
 import { Meeting, Brief, NewsItem } from "@/lib/types";
@@ -33,6 +34,8 @@ export default async function BriefPage({
   searchParams: Promise<{ company?: string; cached?: string; contactEmail?: string }>;
 }) {
   const { id } = await params;
+  // Id malformé : 404 plutôt qu'une 22P02 Postgres remontée en erreur 500.
+  if (!isUuid(id)) notFound();
   const { company, cached, contactEmail } = await searchParams;
   const decodedContactEmail = contactEmail ? decodeURIComponent(contactEmail) : null;
 

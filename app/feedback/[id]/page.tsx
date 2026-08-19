@@ -1,3 +1,4 @@
+import { isUuid } from "@/lib/uuid";
 import { getCallWithAnalysis, getCallWithAnalysisForManager, getUserRole, getUserName } from "@/lib/db";
 import { computeConversationAnalytics } from "@/lib/transcript-analytics";
 import { getEffectiveUserId } from "@/lib/session-user";
@@ -10,6 +11,9 @@ export default async function FeedbackDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  // Id malformé (URL bricolée, lien depuis un écran de démonstration) :
+  // 404 plutôt que de laisser Postgres lever une 22P02 en erreur serveur.
+  if (!isUuid(id)) notFound();
   const userId = await getEffectiveUserId();
 
   if (!userId) notFound();

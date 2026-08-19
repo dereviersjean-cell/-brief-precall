@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import ConditionalLink from "@/app/components/ui/ConditionalLink";
 import Link from "next/link";
 import {
   Search,
@@ -73,7 +74,14 @@ type Row = {
 
 type FilterKey = "all" | "todo" | "sent" | "negative";
 
-export default function FeedbackClient({ calls }: { calls: CallWithAnalysis[] }) {
+export default function FeedbackClient({
+  calls,
+  // false sur /demo/feedback : ces calls n'existent pas en base.
+  linksEnabled = true,
+}: {
+  calls: CallWithAnalysis[];
+  linksEnabled?: boolean;
+}) {
   const [filter, setFilter] = useState<FilterKey>("all");
   const [query, setQuery] = useState("");
 
@@ -233,7 +241,7 @@ export default function FeedbackClient({ calls }: { calls: CallWithAnalysis[] })
                   </div>
                   <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-[var(--shadow-sm)] divide-y divide-slate-100">
                     {groupRows.map((r) => (
-                      <CallRow key={r.call.id} row={r} />
+                      <CallRow key={r.call.id} row={r} linksEnabled={linksEnabled} />
                     ))}
                   </div>
                 </section>
@@ -321,7 +329,7 @@ function FilterTab({
   );
 }
 
-function CallRow({ row }: { row: Row }) {
+function CallRow({ row, linksEnabled }: { row: Row; linksEnabled: boolean }) {
   const { call, contactName, score, sentiment, followUp, dateIso } = row;
   const t = scoreTone(score);
   const sentimentIcon = sentiment === "positif" ? <Smile className="h-3.5 w-3.5" /> : sentiment === "neutre" ? <Meh className="h-3.5 w-3.5" /> : sentiment === "négatif" ? <Frown className="h-3.5 w-3.5" /> : null;
@@ -329,8 +337,11 @@ function CallRow({ row }: { row: Row }) {
   const pct = score == null ? 0 : Math.max(4, (score / 5) * 100);
 
   return (
-    <Link
-      href={`/feedback/${call.id}`}
+    <ConditionalLink
+      // En démonstration le call n'existe pas en base : un lien mènerait à la
+      // vraie page de détail, qui interrogerait Postgres avec un identifiant
+      // fictif (erreur 22P02 remontée en erreur serveur).
+      href={linksEnabled ? `/feedback/${call.id}` : null}
       className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-4 py-3.5 hover:bg-slate-50/70 transition-colors"
     >
       <div className="flex min-w-0 items-center gap-3.5">
@@ -416,6 +427,6 @@ function CallRow({ row }: { row: Row }) {
 
         <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-[color:var(--violet)] group-hover:translate-x-0.5 transition-all" />
       </div>
-    </Link>
+    </ConditionalLink>
   );
 }

@@ -1,4 +1,5 @@
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
+import { isUuid } from "@/lib/uuid";
 import { getUserRole, getCallWithAnalysisForManager, getUserName } from "@/lib/db";
 import { computeConversationAnalytics } from "@/lib/transcript-analytics";
 import { getEffectiveUserId } from "@/lib/session-user";
@@ -10,6 +11,8 @@ export default async function TeamMemberCallDetailPage({
   params: Promise<{ commercialId: string; callId: string }>;
 }) {
   const { commercialId, callId } = await params;
+  // Id malformé : 404 plutôt qu'une 22P02 Postgres remontée en erreur 500.
+  if (!isUuid(commercialId) || !isUuid(callId)) notFound();
   const userId = await getEffectiveUserId();
 
   const role = userId ? await getUserRole(userId) : null;
