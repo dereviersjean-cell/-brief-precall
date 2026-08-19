@@ -180,47 +180,71 @@ export default function GuidedTour() {
     setActive(true);
   }, []);
 
-  const measure = useCallback(() => {
-    const step = STEPS[index];
-    if (!step) return;
-    const element = document.querySelector(`[data-tour="${step.target}"]`);
-    if (!element) {
-      setRect(null);
-      return;
-    }
-    // Amène la cible dans l'écran avant de mesurer : sans ça, une étape
-    // portant sur un élément sous la ligne de flottaison montrait une bulle
-    // ancrée hors du champ visible.
-    const box = element.getBoundingClientRect();
-    if (box.top < GAP || box.bottom > window.innerHeight - GAP) {
-      element.scrollIntoView({ block: "center", behavior: "smooth" });
-    }
-    setRect(element.getBoundingClientRect());
-  }, [index]);
-
-  // Une nouvelle étape repart d'un état « non mesuré », sinon le rectangle de
-  // l'étape précédente resterait affiché le temps de la mesure.
-  useEffect(() => {
-    // Réinitialisation en réaction à un changement d'étape ou de page : c'est
-    // précisément ce qu'un effet doit faire, la valeur ne peut pas être
-    // dérivée au rendu puisqu'elle vient d'une mesure du DOM.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setRect(undefined);
-  }, [index, pathname]);
+  // Mesure la cible, en RÉESSAYANT tant qu'elle n'existe pas encore.
+  //
+  // Sans cette patience, chaque étape suivant une navigation était sautée : le
+  // composant se remonte avant que le contenu de la nouvelle page ne soit dans
+  // le DOM, la cible était donc introuvable et l'étape considérée comme
+  // inexistante. En cascade, la visite se vidait de la moitié de ses étapes.
+  const measureInto = useCallback(
+    (target: string, onMissing: () => void) => {
+      const element = document.querySelector(`[data-tour="${target}"]`);
+      if (!element) {
+        onMissing();
+        return;
+      }
+      // Amène la cible dans l'écran avant de mesurer : sans ça, une étape
+      // portant sur un élément sous la ligne de flottaison montrait une bulle
+      // ancrée hors du champ visible.
+      const box = element.getBoundingClientRect();
+      if (box.top < GAP || box.bottom > window.innerHeight - GAP) {
+        element.scrollIntoView({ block: "center", behavior: "smooth" });
+      }
+      setRect(element.getBoundingClientRect());
+    },
+    []
+  );
 
   useEffect(() => {
     if (!active) return;
-    // Mesure du DOM après peinture : par nature impossible pendant le rendu,
-    // c'est le cas d'usage canonique d'un effet.
+    const step = STEPS[index];
+    if (!step) return;
+
+    // Repart d'un état « non mesuré » : sinon le rectangle de l'étape
+    // précédente resterait affiché le temps de la mesure. Valeur issue du DOM,
+    // donc impossible à dériver au rendu.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    measure();
-    window.addEventListener("resize", measure);
-    window.addEventListener("scroll", measure, true);
-    return () => {
-      window.removeEventListener("resize", measure);
-      window.removeEventListener("scroll", measure, true);
+    setRect(undefined);
+
+    let cancelled = false;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    // 20 tentatives à 100 ms = 2 s. Au-delà, la cible est réellement absente
+    // (élément réservé à un rôle, page inattendue) et l'étape est passée.
+    const attempt = () => {
+      if (cancelled) return;
+      measureInto(step.target, () => {
+        attempts += 1;
+        if (attempts >= 20) {
+          setRect(null);
+          return;
+        }
+        timer = setTimeout(attempt, 100);
+      });
     };
-  }, [active, measure]);
+    attempt();
+
+    const remeasure = () => measureInto(step.target, () => {});
+    window.addEventListener("resize", remeasure);
+    window.addEventListener("scroll", remeasure, true);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      window.removeEventListener("resize", remeasure);
+      window.removeEventListener("scroll", remeasure, true);
+    };
+  }, [active, index, pathname, measureInto]);
 
   const close = useCallback(() => {
     setActive(false);
@@ -323,8 +347,11 @@ export default function GuidedTour() {
           boxShadow: "0 0 0 9999px rgba(15, 23, 42, 0.38), 0 0 0 3px var(--violet)",
         }}
       />
-      {/* Capte les clics hors bulle pour fermer, sans bloquer la cible. */}
-      <div className="absolute inset-0" onClick={close} />
+      {/* Bloque les clics sur la page pendant la visite, mais ne la ferme PAS :
+          un clic malencontreux interrompait tout et renvoyait au tableau de
+          bord, ce qui donnait l'impression de ne plus pouvoir naviguer. On ne
+          sort que par « Passer la visite » ou la croix. */}
+      <div className="absolute inset-0" />
 
       <div
         className="absolute w-[340px] rounded-2xl border border-border bg-white p-5 shadow-2xl"
