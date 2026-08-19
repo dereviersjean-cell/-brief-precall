@@ -372,35 +372,29 @@ git add . && git commit -m "..." && git push
 
 Section volontairement en tête de la roadmap : elle dit **où en est le produit et ce qui l'attend**, la partie qui se perd entre deux sessions parce qu'elle ne se lit dans aucun fichier du repo.
 
-### Domaine — brief-ai.fr (19 août 2026)
+### Domaine — brief-ai.fr (migration terminée le 19 août 2026)
 
-`brief-ai.fr` est acheté chez OVH et servi par Vercel (apex `A 216.198.79.1` en domaine principal, `www` en CNAME vers Vercel puis 308 vers l'apex). `brief-precall.vercel.app` reste un alias valide et **doit le rester** pendant toute la transition.
+**Brief est servi sur `brief-ai.fr`.** Domaine OVH, apex `A 216.198.79.1` en domaine principal Vercel, `www` en CNAME vers Vercel puis 308 vers l'apex. Recette passée de bout en bout le 19/08 : login Google et Microsoft, Slack, agenda Recall, HubSpot, lien de devis, portail Stripe.
 
-Côté code, l'origine publique n'est plus écrite en dur nulle part : `lib/app-url.ts` exporte `APP_URL` (`NEXT_PUBLIC_APP_URL`, repli `https://brief-ai.fr`). Elle était recopiée dans 21 fichiers — routes OAuth, liens des emails sortants, webhook Recall, manifeste HubSpot — et c'est exactement le genre de duplication où un oubli casse une intégration sans rien signaler.
+**`brief-precall.vercel.app` reste un alias actif et doit le rester — indéfiniment.** Raison non évidente : le webhook `/api/recall/webhook` n'est pas configuré dans un tableau de bord, il est transmis à Recall **à la création de chaque agenda** (`lib/recall.ts`). Les agendas déjà enregistrés portent donc l'ancienne URL côté Recall, définitivement. Supprimer l'alias obligerait tous les utilisateurs à reconnecter leur agenda. Seuls les nouveaux agendas prennent `brief-ai.fr`.
 
-**Reste à faire, hors code** (chaque service connaît encore l'ancienne URL — ajouter la nouvelle URI **sans retirer l'ancienne**, elles cohabitent) :
+Côté code, l'origine publique n'est plus écrite en dur nulle part : `lib/app-url.ts` exporte `APP_URL` (`NEXT_PUBLIC_APP_URL`, repli `https://brief-ai.fr`). Elle était recopiée dans 21 fichiers — routes OAuth, liens des emails sortants, webhook Recall, manifeste HubSpot. Toute nouvelle URL absolue vers Brief passe par ce module, sans exception.
 
-| Service | URI |
-|---|---|
-| `NEXT_PUBLIC_APP_URL` + `NEXTAUTH_URL` sur Vercel | `https://brief-ai.fr` — `NEXT_PUBLIC_*` est inliné au build, donc **redéployer**, pas seulement redémarrer |
-| Google Cloud — app NextAuth (`GOOGLE_CLIENT_ID`) | origine JS + `/api/auth/callback/google` |
-| Google Cloud — app Recall (`RECALL_GOOGLE_CLIENT_ID`, app distincte) | `/api/recall/google-oauth/callback` |
-| Azure AD | `/api/recall/microsoft-oauth/callback` |
-| HubSpot | `/api/crm/hubspot/callback` |
-| Pipedrive | `/api/crm/pipedrive/callback` |
-| Slack | `/api/slack/callback` |
-| Recall | webhook `/api/recall/webhook` |
-| Stripe | webhook `/api/webhooks/stripe` |
+Déclarés des deux côtés (ancienne + nouvelle URL, elles cohabitent) : les 2 apps Google (`GOOGLE_CLIENT_ID` et `RECALL_GOOGLE_CLIENT_ID` sont **deux applications distinctes**), Azure AD, Slack, HubSpot, Stripe, Recall, Inngest.
 
-Emails : le domaine émetteur est encore `lartisangroupe.com` (`RESEND_FROM_EMAIL=jean@lartisangroupe.com`). À basculer sur `brief-ai.fr` via Resend. Piège DNS : le domaine porte déjà `v=spf1 include:mx.ovh.com -all` (messagerie OVH, MX `mx1/2/3.mail.ovh.net`) — il faut **fusionner** l'include Resend dans cet enregistrement, deux `v=spf1` sur un même domaine les invalident tous les deux.
+**Deux dettes ouvertes :**
+
+1. **Pipedrive n'est pas déclaré** — essai expiré au 19/08, personne n'est connecté, donc rien ne casse. Mais le code envoie désormais `https://brief-ai.fr/api/crm/pipedrive/callback` : **à mettre dans le Developer Hub avant toute reprise de l'intégration**, sinon la connexion échouera sans que la cause soit visible.
+2. **Le domaine émetteur des emails est encore `lartisangroupe.com`** (`RESEND_FROM_EMAIL=jean@lartisangroupe.com`) — incohérent avec Brief pour un prospect qui reçoit un devis. À basculer sur `brief-ai.fr` via Resend. Piège DNS : le domaine porte déjà `v=spf1 include:mx.ovh.com -all` (messagerie OVH, MX `mx1/2/3.mail.ovh.net`), il faut **fusionner** l'include Resend dans cet enregistrement — deux `v=spf1` sur un même domaine les invalident tous les deux. Un domaine neuf part avec une réputation d'envoi nulle : monter le volume progressivement.
+
+**Si une bascule d'URL se représente** : poser `NEXT_PUBLIC_APP_URL` à l'ancienne valeur AVANT de déployer le code (le déploiement devient alors neutre), déclarer les URIs partout, puis basculer la variable + `NEXTAUTH_URL` et **redéployer** — `NEXT_PUBLIC_*` est inliné au build, changer la variable sans redéployer ne fait rien, silencieusement. Rollback = remettre les deux variables.
 
 ### Ce qui bloque et ne dépend PAS du code
 
-1. **Google OAuth en mode Testing → les tokens de rafraîchissement expirent au bout de 7 jours.** Diagnostic posé en août 2026 : aucun utilisateur n'a de refresh token valide, ce qui explique 17 jours sans le moindre call ingéré. **Ce n'est pas un bug** — aucune modification de code ne peut le corriger, seule la vérification Google (standard, gratuite depuis le retrait de `gmail.readonly`, 2 à 6 semaines) le lève. Tant qu'elle n'est pas lancée, le produit se casse chaque semaine pour tout le monde et toute mesure faite sur les données récentes est faussée. **C'est le point le plus urgent du projet.**
+1. **Google OAuth en mode Testing → les tokens de rafraîchissement expirent au bout de 7 jours.** *(Le prérequis domaine est levé depuis le 19/08 : `brief-ai.fr` est en production, la vérification peut être soumise.)* Diagnostic posé en août 2026 : aucun utilisateur n'a de refresh token valide, ce qui explique 17 jours sans le moindre call ingéré. **Ce n'est pas un bug** — aucune modification de code ne peut le corriger, seule la vérification Google (standard, gratuite depuis le retrait de `gmail.readonly`, 2 à 6 semaines) le lève. Tant qu'elle n'est pas lancée, le produit se casse chaque semaine pour tout le monde et toute mesure faite sur les données récentes est faussée. **C'est le point le plus urgent du projet.**
 2. **Calibrage des objections : 0 fiche annotée.** Tout le chantier objections (points 1 à 4 ci-dessous) attend cette première mesure — sans elle on règle des prompts à l'aveugle, ce qui a déjà coûté une journée le 29/07. L'écran est prêt et pensé pour un non-technicien : Paramètres → Calibrage, 3-4 calls, puis « Lancer la mesure ».
 3. **Stripe en mode Live** — et trancher le pricing usage AVANT la bascule (voir point 2 de la roadmap).
 4. **Call `ecfb191e` à réimporter** : son transcript a été parsé par l'ancien parseur bogué (locuteur « 00 », cf. le piège documenté dans « Banc d'essai »). Les données en base sont inexploitables telles quelles.
-5. **Jeton GitHub en clair dans `.git/config`** (URL du remote). À révoquer sur GitHub et à remplacer par un credential helper — un jeton dans un fichier de configuration finit par être copié avec le dossier.
 
 ### Où en est le code
 
