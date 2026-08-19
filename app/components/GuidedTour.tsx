@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowRight, MapPin, X } from "lucide-react";
 
@@ -148,9 +148,12 @@ const KIND_LABEL: Record<TourStep["kind"], string> = {
 
 const STORAGE_KEY = "brief_tour_seen_v1";
 const BUBBLE_WIDTH = 340;
-// Hauteur retenue pour décider si la bulle tient sous la cible. Généreuse
-// exprès : sous-estimer ferait sortir la bulle de l'écran sur les textes longs.
-const BUBBLE_HEIGHT = 230;
+// Hauteur de repli, le temps du tout premier rendu. La hauteur RÉELLE est
+// mesurée (voir `bubbleHeight`) : une constante devinée ne peut pas marcher,
+// les textes vont de trois à huit lignes selon l'étape. La version précédente
+// pariait sur 230 px pour une bulle qui en fait 450, jugeait qu'elle « tenait
+// sous la cible », et le bouton « Suivant » se retrouvait sous l'écran.
+const BUBBLE_FALLBACK_HEIGHT = 380;
 const GAP = 16;
 // Marge autour de la zone mise en avant. Trop serrée, la surbrillance semble
 // couper l'élément ; c'est ce qui rendait le cadrage disgracieux.
@@ -159,7 +162,14 @@ const SPOTLIGHT_PADDING = 8;
 // `side` : de quel côté de la bulle se trouve la cible. Sert à orienter la
 // flèche — sans elle, rien ne relie visuellement le texte à la zone désignée,
 // et on lit une explication sans savoir de quoi elle parle.
-type Placement = { top: number; left: number; side: "left" | "top" | "bottom" | "none" };
+type Placement = {
+  top: number;
+  left: number;
+  side: "left" | "right" | "top" | "bottom" | "none";
+  // Vrai quand aucun côté ne pouvait accueillir la bulle sans la faire sortir
+  // de l'écran : elle recouvre alors une partie du contenu, et on le sait.
+  overlaps: boolean;
+};
 
 export default function GuidedTour() {
   const router = useRouter();
@@ -171,6 +181,10 @@ export default function GuidedTour() {
   // premier rendu la mesure n'a pas encore eu lieu, et l'étape était traitée
   // comme introuvable.
   const [rect, setRect] = useState<DOMRect | null | undefined>(undefined);
+  // Hauteur réellement occupée par la bulle, mesurée après rendu. Sans elle
+  // aucun placement n'est fiable : c'est la seule inconnue de l'équation.
+  const bubbleRef = useRef<HTMLDivElement | null>(null);
+  const [bubbleHeight, setBubbleHeight] = useState(0);
 
   // Ne démarre JAMAIS toute seule : uniquement sur ?tour=1, déclenché depuis
   // /bienvenue. Un tutoriel qui s'ouvre sans prévenir chez un utilisateur
@@ -193,74 +207,86 @@ export default function GuidedTour() {
     setActive(true);
   }, []);
 
-  // Mesure la cible, en RÉESSAYANT tant qu'elle n'existe pas encore.
+  // Suivi de la cible image par image (requestAnimationFrame), et non par
+  // écouteurs `scroll`/`resize`.
   //
-  // Sans cette patience, chaque étape suivant une navigation était sautée : le
-  // composant se remonte avant que le contenu de la nouvelle page ne soit dans
-  // le DOM, la cible était donc introuvable et l'étape considérée comme
-  // inexistante. En cascade, la visite se vidait de la moitié de ses étapes.
-  const measureInto = useCallback(
-    (target: string, onMissing: () => void) => {
-      const element = document.querySelector(`[data-tour="${target}"]`);
-      if (!element) {
-        onMissing();
-        return;
-      }
-      // Amène la cible dans l'écran avant de mesurer : sans ça, une étape
-      // portant sur un élément sous la ligne de flottaison montrait une bulle
-      // ancrée hors du champ visible.
-      const box = element.getBoundingClientRect();
-      // Centrer un élément plus haut que l'écran n'a pas de sens et provoque
-      // un saut de défilement déroutant.
-      const fitsOnScreen = box.height < window.innerHeight - 2 * GAP;
-      if (fitsOnScreen && (box.top < GAP || box.bottom > window.innerHeight - GAP)) {
-        element.scrollIntoView({ block: "center", behavior: "smooth" });
-      }
-      setRect(element.getBoundingClientRect());
-    },
-    []
-  );
-
+  // Deux raisons. D'abord un écouteur `scroll` ne voit PAS tous les cas : un
+  // conteneur interne qui défile, une animation d'entrée, une image qui se
+  // charge et pousse la mise en page — la surbrillance restait alors sur
+  // l'ancienne position. Ensuite l'écouteur se déclenchait par rafales, et la
+  // transition CSS de 200 ms faisait GLISSER l'anneau derrière le contenu à
+  // chaque geste de molette : c'est le décalage constaté. Une lecture par
+  // image, sans transition, colle exactement à l'élément.
+  //
+  // La boucle ne provoque un rendu que si le rectangle a réellement changé.
   useEffect(() => {
     if (!active) return;
     const step = STEPS[index];
     if (!step) return;
 
     // Repart d'un état « non mesuré » : sinon le rectangle de l'étape
-    // précédente resterait affiché le temps de la mesure. Valeur issue du DOM,
-    // donc impossible à dériver au rendu.
+    // précédente resterait affiché le temps de la mesure.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setRect(undefined);
 
-    let cancelled = false;
-    let attempts = 0;
-    let timer: ReturnType<typeof setTimeout> | undefined;
+    let frame = 0;
+    let signature = "";
+    let scrolledIntoView = false;
+    const startedAt = Date.now();
 
-    // 20 tentatives à 100 ms = 2 s. Au-delà, la cible est réellement absente
-    // (élément réservé à un rôle, page inattendue) et l'étape est passée.
-    const attempt = () => {
-      if (cancelled) return;
-      measureInto(step.target, () => {
-        attempts += 1;
-        if (attempts >= 20) {
-          setRect(null);
-          return;
+    const tick = () => {
+      frame = requestAnimationFrame(tick);
+      const element = document.querySelector(`[data-tour="${step.target}"]`);
+      if (!element) {
+        // La cible peut ne pas être encore montée : après une navigation, ce
+        // composant vit dans un layout partagé et tourne donc AVANT le contenu
+        // de la nouvelle page. On patiente 2 s avant de conclure à l'absence,
+        // sinon chaque étape suivant un changement de page serait dégradée.
+        if (Date.now() - startedAt > 2000) setRect((current) => (current === undefined ? null : current));
+        return;
+      }
+
+      const box = element.getBoundingClientRect();
+
+      // Amener la cible dans l'écran, une seule fois par étape : la répéter à
+      // chaque image empêcherait l'utilisateur de faire défiler lui-même.
+      if (!scrolledIntoView) {
+        scrolledIntoView = true;
+        const fitsOnScreen = box.height < window.innerHeight - 2 * GAP;
+        // `center` laisse de la place des DEUX côtés, donc un endroit où poser
+        // la bulle sans recouvrir ce qu'elle décrit. Une cible plus haute que
+        // l'écran ne peut pas être centrée : on l'aligne en haut.
+        if (fitsOnScreen && (box.top < GAP || box.bottom > window.innerHeight - GAP)) {
+          element.scrollIntoView({ block: "center", behavior: "smooth" });
+        } else if (!fitsOnScreen && (box.top < 0 || box.top > window.innerHeight / 2)) {
+          element.scrollIntoView({ block: "start", behavior: "smooth" });
         }
-        timer = setTimeout(attempt, 100);
-      });
-    };
-    attempt();
+      }
 
-    const remeasure = () => measureInto(step.target, () => {});
-    window.addEventListener("resize", remeasure);
-    window.addEventListener("scroll", remeasure, true);
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-      window.removeEventListener("resize", remeasure);
-      window.removeEventListener("scroll", remeasure, true);
+      const next = `${box.top}|${box.left}|${box.width}|${box.height}`;
+      if (next !== signature) {
+        signature = next;
+        setRect(box);
+      }
     };
-  }, [active, index, pathname, measureInto]);
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [active, index, pathname]);
+
+  // Hauteur réelle de la bulle : elle change d'une étape à l'autre (textes de
+  // longueurs différentes) et au redimensionnement de la fenêtre (retour à la
+  // ligne). Un ResizeObserver est le seul moyen de la connaître sans la
+  // deviner.
+  // La bulle n'est rendue qu'une fois la cible mesurée : il faut donc rebrancher
+  // l'observateur quand elle (re)paraît, d'où cette dépendance explicite.
+  const bubbleMounted = rect !== undefined;
+  useEffect(() => {
+    const element = bubbleRef.current;
+    if (!element) return;
+    const observer = new ResizeObserver(() => setBubbleHeight(element.getBoundingClientRect().height));
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [active, index, bubbleMounted]);
 
   const close = useCallback(() => {
     setActive(false);
@@ -343,52 +369,83 @@ export default function GuidedTour() {
   const coversScreen =
     missingTarget || rect.height > window.innerHeight * 0.7 || rect.width > window.innerWidth * 0.9;
 
+  const viewportHeight = window.innerHeight;
+  const viewportWidth = window.innerWidth;
+  // Hauteur mesurée tant qu'on l'a ; sinon repli, le temps d'une image.
+  const height = bubbleHeight || BUBBLE_FALLBACK_HEIGHT;
+  // La bulle ne dépasse JAMAIS l'écran : au pire elle défile en interne, mais
+  // son pied — donc « Suivant » — reste toujours atteignable. C'est la
+  // garantie qui manquait.
+  const maxHeight = viewportHeight - 2 * GAP;
+  const clampTop = (value: number) => Math.max(GAP, Math.min(value, Math.max(GAP, viewportHeight - height - GAP)));
+  const clampLeft = (value: number) => Math.max(GAP, Math.min(value, Math.max(GAP, viewportWidth - BUBBLE_WIDTH - GAP)));
+
   const placement: Placement = (() => {
-    // Cible pleine page : la bulle se pose en haut à gauche du contenu plutôt
-    // que d'être calculée par rapport à un rectangle qui déborde de l'écran.
+    // Cible pleine page : la bulle se pose en haut du contenu plutôt que
+    // d'être calculée par rapport à un rectangle qui déborde de l'écran.
     if (coversScreen) {
-      return { top: 96, left: missingTarget ? GAP + 240 : Math.max(GAP, rect.left + GAP), side: "none" };
+      return {
+        top: clampTop(96),
+        left: clampLeft(missingTarget ? GAP + 240 : rect.left + GAP),
+        side: "none",
+        overlaps: false,
+      };
     }
 
-    const maxLeft = window.innerWidth - BUBBLE_WIDTH - GAP;
+    // Espace libre de chaque côté de la cible. On choisit le premier côté qui
+    // accueille la bulle ENTIÈRE — mesurée, pas supposée. L'ordre suit la
+    // lecture : à droite, puis dessous, puis dessus, puis à gauche.
+    const spaceRight = viewportWidth - rect.right - GAP;
+    const spaceLeft = rect.left - GAP;
+    const spaceBelow = viewportHeight - rect.bottom - GAP;
+    const spaceAbove = rect.top - GAP;
 
-    // Cible étroite (une entrée de menu) : la bulle se pose à sa droite, ce
-    // qui la laisse entièrement visible. Cible large (une carte pleine
-    // largeur) : à droite il n'y a plus de place, on passe dessous.
-    const fitsRight = rect!.right + GAP + BUBBLE_WIDTH < window.innerWidth;
-    if (fitsRight) {
-      const top = Math.min(
-        Math.max(GAP, rect!.top),
-        Math.max(GAP, window.innerHeight - BUBBLE_HEIGHT - GAP)
-      );
-      return { top, left: rect!.right + GAP, side: "left" };
+    if (spaceRight >= BUBBLE_WIDTH + GAP) {
+      return { top: clampTop(rect.top), left: rect.right + GAP, side: "left", overlaps: false };
+    }
+    if (spaceBelow >= height + GAP) {
+      return { top: rect.bottom + GAP, left: clampLeft(rect.left), side: "top", overlaps: false };
+    }
+    if (spaceAbove >= height + GAP) {
+      return { top: rect.top - height - GAP, left: clampLeft(rect.left), side: "bottom", overlaps: false };
+    }
+    if (spaceLeft >= BUBBLE_WIDTH + GAP) {
+      return { top: clampTop(rect.top), left: rect.left - BUBBLE_WIDTH - GAP, side: "right", overlaps: false };
     }
 
-    const left = Math.min(Math.max(GAP, rect!.left), Math.max(GAP, maxLeft));
-    const fitsBelow = rect!.bottom + GAP + BUBBLE_HEIGHT < window.innerHeight;
-    return fitsBelow
-      ? { top: rect!.bottom + GAP, left, side: "top" }
-      : { top: Math.max(GAP, rect!.top - BUBBLE_HEIGHT - GAP), left, side: "bottom" };
+    // Aucun côté ne suffit. Plutôt que de recouvrir la cible — la seule chose
+    // que la bulle ne doit jamais masquer — on se pose du côté le plus dégagé
+    // et on le signale : la bulle devient translucide au survol pour laisser
+    // relire ce qu'elle cache.
+    const below = spaceBelow >= spaceAbove;
+    return {
+      top: below ? clampTop(rect.bottom + GAP) : clampTop(rect.top - height - GAP),
+      left: clampLeft(rect.left),
+      side: below ? "top" : "bottom",
+      overlaps: true,
+    };
   })();
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[60]">
       {/* Fond assombri percé d'un trou sur la cible : une ombre portée
-          démesurée évite d'avoir à découper quatre rectangles autour. */}
+          démesurée évite d'avoir à découper quatre rectangles autour.
+          AUCUNE transition : elle faisait glisser l'anneau derrière le contenu
+          pendant le défilement, on voyait le cadre se décaler tout seul. */}
       {!coversScreen && (
-      <div
-        className="pointer-events-none absolute rounded-xl transition-all duration-200"
-        style={{
-          top: (rect?.top ?? 0) - SPOTLIGHT_PADDING,
-          left: (rect?.left ?? 0) - SPOTLIGHT_PADDING,
-          width: (rect?.width ?? 0) + SPOTLIGHT_PADDING * 2,
-          height: (rect?.height ?? 0) + SPOTLIGHT_PADDING * 2,
-          // Voile volontairement léger : l'écran autour doit rester lisible,
-          // sinon on met en avant un élément sans qu'on puisse le situer.
-          // L'anneau, lui, est franc — c'est lui qui désigne, pas l'obscurité.
-          boxShadow: "0 0 0 9999px rgba(15, 23, 42, 0.38), 0 0 0 3px var(--violet)",
-        }}
-      />
+        <div
+          className="pointer-events-none absolute rounded-xl"
+          style={{
+            top: rect.top - SPOTLIGHT_PADDING,
+            left: rect.left - SPOTLIGHT_PADDING,
+            width: rect.width + SPOTLIGHT_PADDING * 2,
+            height: rect.height + SPOTLIGHT_PADDING * 2,
+            // Voile volontairement léger : l'écran autour doit rester lisible,
+            // sinon on met en avant un élément sans qu'on puisse le situer.
+            // L'anneau, lui, est franc — c'est lui qui désigne, pas l'obscurité.
+            boxShadow: "0 0 0 9999px rgba(15, 23, 42, 0.38), 0 0 0 3px var(--violet)",
+          }}
+        />
       )}
       {/* Aucun calque bloquant : il avalait la molette et le tactile, on se
           retrouvait figé sur l'écran sans pouvoir faire défiler. La page reste
@@ -396,28 +453,61 @@ export default function GuidedTour() {
           on peut regarder ce que la bulle décrit. */}
 
       <div
-        className="pointer-events-auto absolute w-[340px] rounded-2xl border border-border bg-white p-5 shadow-2xl"
-        style={{ top: placement.top, left: placement.left }}
+        ref={bubbleRef}
+        className={`pointer-events-auto absolute flex w-[340px] flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-2xl transition-opacity ${
+          // Bulle contrainte de recouvrir du contenu : elle s'efface au survol
+          // pour qu'on puisse relire ce qui est dessous, plutôt que d'obliger à
+          // fermer la visite.
+          placement.overlaps ? "hover:opacity-25" : ""
+        }`}
+        style={{
+          top: placement.top,
+          left: placement.left,
+          maxHeight,
+          // Premier rendu d'une étape : la hauteur n'est pas encore mesurée, le
+          // placement serait faux. On la mesure invisible plutôt que de laisser
+          // voir la bulle sauter d'une position à l'autre.
+          opacity: bubbleHeight === 0 ? 0 : undefined,
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Flèche pointant vers la zone désignée. Un carré pivoté hérite du
             fond et de la bordure de la bulle, ce qui évite un SVG. Absente
             quand la cible couvre l'écran : elle ne désignerait rien. */}
         {placement.side !== "none" && (
-        <span
-          aria-hidden
-          className="absolute h-3 w-3 rotate-45 border border-border bg-white"
-          style={
-            placement.side === "left"
-              ? { left: -7, top: 26, borderRight: "none", borderTop: "none" }
-              : placement.side === "top"
-              ? { top: -7, left: 26, borderRight: "none", borderBottom: "none" }
-              : { bottom: -7, left: 26, borderLeft: "none", borderTop: "none" }
-          }
-        />
+          <span
+            aria-hidden
+            className="absolute z-10 h-3 w-3 rotate-45 border border-border bg-white"
+            style={
+              placement.side === "left"
+                ? { left: -7, top: 26, borderRight: "none", borderTop: "none" }
+                : placement.side === "right"
+                ? { right: -7, top: 26, borderLeft: "none", borderBottom: "none" }
+                : placement.side === "top"
+                ? { top: -7, left: 26, borderRight: "none", borderBottom: "none" }
+                : { bottom: -7, left: 26, borderLeft: "none", borderTop: "none" }
+            }
+          />
         )}
-        <Header step={step} onClose={close} />
-        <Footer index={index} isLast={isLast} onClose={close} onNext={next} />
+
+        <button
+          type="button"
+          onClick={close}
+          aria-label="Fermer la visite"
+          className="absolute right-3 top-3 z-10 text-slate-300 transition-colors hover:text-slate-500"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        {/* Seul le TEXTE défile ; le pied reste collé en bas. Sur un petit
+            écran ou un texte long, la bulle ne peut plus reléguer « Suivant »
+            hors de vue — c'est ce qui bloquait la visite à l'étape 6. */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-5">
+          <Header step={step} />
+        </div>
+        <div className="shrink-0 border-t border-slate-100 px-5 pb-5 pt-3">
+          <Footer index={index} isLast={isLast} onClose={close} onNext={next} />
+        </div>
       </div>
     </div>
   );
@@ -427,18 +517,9 @@ export default function GuidedTour() {
 // élément, panneau d'exemple centré) : même repérage et même navigation dans
 // les deux cas, sinon on aurait l'impression de changer d'outil en cours de
 // route.
-function Header({ step, onClose }: { step: TourStep; onClose: () => void }) {
+function Header({ step }: { step: TourStep }) {
   return (
     <>
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Fermer la visite"
-        className="absolute right-3 top-3 text-slate-300 transition-colors hover:text-slate-500"
-      >
-        <X className="h-4 w-4" />
-      </button>
-
       <div className="flex flex-wrap items-center gap-2 pr-5">
         <span className="rounded-full bg-[color:var(--lavender)] px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider text-[color:var(--violet)]">
           {step.phase}
@@ -476,7 +557,7 @@ function Footer({
     <>
       {/* Progression segmentée : un « 3 sur 15 » ne dit pas s'il reste
           beaucoup, une barre le montre d'un coup d'œil. */}
-      <div className="mt-4 flex items-center gap-1">
+      <div className="flex items-center gap-1">
         {STEPS.map((_, i) => (
           <span
             key={i}
