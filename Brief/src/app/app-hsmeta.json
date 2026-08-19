@@ -8,6 +8,7 @@
     "auth": {
       "type": "oauth",
       "redirectUrls": [
+        "https://brief-precall.vercel.app/api/crm/hubspot/callback",
         "https://brief-ai.fr/api/crm/hubspot/callback"
       ],
       "requiredScopes": [
