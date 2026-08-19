@@ -175,8 +175,7 @@ export default async function ObjectionsStatsPage({
                         {stat.occurrences} occurrence{stat.occurrences > 1 ? "s" : ""}
                         {stat.commercialsCount > 0 && (
                           <span className="ml-2 inline-flex items-center gap-1">
-                            <Users className="h-3 w-3" /> {stat.commercialsCount} commercial
-                            {stat.commercialsCount > 1 ? "aux" : ""}
+                            <Users className="h-3 w-3" /> {stat.commercialsCount} {stat.commercialsCount > 1 ? "commerciaux" : "commercial"}
                           </span>
                         )}
                       </p>

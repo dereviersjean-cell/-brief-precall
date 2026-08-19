@@ -290,13 +290,21 @@ export default function GuidedTour() {
       return;
     }
     const target = STEPS[index + 1];
-    // Étape sur une autre page : on y navigue en emportant la position dans
-    // l'URL, seul état qui survive à un changement de page.
+    // L'index avance TOUJOURS, y compris quand on change de page.
+    //
+    // Les pages /demo partagent un layout, et ce composant y est monté : Next
+    // ne le remonte donc PAS lors d'une navigation entre elles. L'effet qui
+    // lit `step` dans l'URL ne se rejouait jamais, l'index restait figé sur
+    // l'étape précédente — la bulle décrivait Analytics alors qu'on était sur
+    // Objections, et la cible cherchée était celle de l'ancienne page, d'où
+    // deux secondes de tentatives avant d'abandonner.
+    //
+    // L'URL reste tenue à jour pour qu'un rechargement ou un lien direct
+    // reprenne au bon endroit.
+    setIndex((i) => i + 1);
     if (target.path !== pathname) {
       router.push(`${target.path}?tour=1&step=${index + 1}`);
-      return;
     }
-    setIndex((i) => i + 1);
   }
 
   // Mesure en attente : on n'affiche rien plutôt que de conclure trop vite à

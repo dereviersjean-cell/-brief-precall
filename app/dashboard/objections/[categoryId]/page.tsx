@@ -149,7 +149,7 @@ export default async function ObjectionCategoryDetailPage({
       {occurrences.length > 0 && (
         <p className="mb-4 text-[13px] text-slate-500">
           {occurrences.length} occurrence{occurrences.length > 1 ? "s" : ""} sur {period.label}
-          {byCommercial > 0 && `, ${byCommercial} commercial${byCommercial > 1 ? "aux" : ""} concerné${byCommercial > 1 ? "s" : ""}`}
+          {byCommercial > 0 && `, ${byCommercial} ${byCommercial > 1 ? "commerciaux concernés" : "commercial concerné"}`}
           {evaluated > 0 && ` — ${Math.round((100 * wellHandled) / evaluated)}% bien traitées`}
         </p>
       )}
