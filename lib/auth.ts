@@ -30,23 +30,35 @@ export const authOptions: AuthOptions = {
           // hasCalendarWriteAccess(userId) (lib/google-calendar.ts) reports
           // false for them and the calendar channel is skipped, not failed.
           //
-          // gmail.readonly deliberately dropped (25/07/2026) — it's a
-          // Restricted scope in Google's classification, which requires an
-          // annual paid third-party security audit (CASA) to get the app
-          // verified/out of Testing mode. Decision: stay free, accept the
-          // feature loss. gmail.metadata replaces it for reply detection
-          // (headers only, no body — Sensitive, not Restricted, no CASA).
-          // Removed with it: email-history context in quote/follow-up
-          // generation, and the "suggest a reply" feature entirely (both
-          // genuinely needed message bodies, no lighter scope preserves
-          // them). Same re-consent caveat as calendar.events above — existing
-          // users keep their old token shape until they reconnect.
+          // Brief ne lit plus rien dans Gmail — il n'y écrit qu'en envoyant.
+          //
+          // gmail.readonly a été retiré le 25/07/2026 : scope Restricted, donc
+          // audit de sécurité tiers annuel et payant (CASA) pour sortir du mode
+          // Testing. Décision : rester gratuit, accepter la perte. Il avait été
+          // remplacé par gmail.metadata (en-têtes seulement) pour la détection
+          // des réponses.
+          //
+          // gmail.metadata a été retiré à son tour le 19/08/2026, au moment de
+          // préparer la vérification Google. Motif : toute lecture de Gmail est
+          // la zone la plus scrutée de l'examen, et la détection de réponse ne
+          // valait pas le risque d'allonger de plusieurs semaines une
+          // vérification dont dépend l'ingestion de TOUS les utilisateurs
+          // (mode Testing = refresh tokens expirés à 7 jours). Supprimés avec
+          // lui : checkThreadReply, la route /api/feedback/check-reply, le
+          // badge « le prospect a répondu » et les indicateurs de taux de
+          // réponse — ces derniers auraient affiché 0 % à perpétuité.
+          //
+          // Il ne reste donc que gmail.send, et la colonne calls.replied_at
+          // conserve l'historique sans plus jamais être alimentée.
+          //
+          // Même réserve de re-consentement que pour calendar.events ci-dessus :
+          // les utilisateurs existants gardent la forme de leur ancien jeton
+          // tant qu'ils ne se reconnectent pas.
           scope: [
             "openid",
             "email",
             "profile",
             "https://www.googleapis.com/auth/calendar.events",
-            "https://www.googleapis.com/auth/gmail.metadata",
             "https://www.googleapis.com/auth/gmail.send",
           ].join(" "),
           access_type: "offline",

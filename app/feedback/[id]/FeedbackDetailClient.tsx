@@ -479,13 +479,6 @@ function ObjectionItem({ objection, response }: { objection: string; response: s
 
 type SendStatus = "idle" | "sending" | "sent" | "error" | "auth-error";
 type VideoStatus = "idle" | "loading" | "ready" | "unavailable";
-// No body field — gmail.readonly dropped 25/07/2026 (avoid the paid CASA
-// audit for Restricted scopes), reply detection is metadata-only now.
-type ReplyState =
-  | { status: "idle" }
-  | { status: "loading" }
-  | { status: "replied"; repliedAt: string }
-  | { status: "none" };
 
 function formatSentAt(iso: string) {
   const d = new Date(iso);
@@ -554,7 +547,6 @@ export default function FeedbackDetailClient({
   const [sentAt, setSentAt] = useState<string | null>(call.follow_up_sent_at ?? null);
   const [videoStatus, setVideoStatus] = useState<VideoStatus>("idle");
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [reply, setReply] = useState<ReplyState>({ status: "idle" });
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [showPromptSettings, setShowPromptSettings] = useState(false);
@@ -640,22 +632,6 @@ export default function FeedbackDetailClient({
       setPendingSeekMs(null);
     }
   }, [videoStatus, pendingSeekMs]);
-
-  useEffect(() => {
-    if (readOnly) return;
-    if (!call.follow_up_sent_at) return;
-    setReply({ status: "loading" });
-    fetch(`/api/feedback/check-reply?callId=${call.id}`)
-      .then((r) => r.json())
-      .then((data: { replied: boolean; repliedAt?: string }) => {
-        if (data.replied && data.repliedAt) {
-          setReply({ status: "replied", repliedAt: data.repliedAt });
-        } else {
-          setReply({ status: "none" });
-        }
-      })
-      .catch(() => setReply({ status: "none" }));
-  }, [call.id, call.follow_up_sent_at, readOnly]);
 
   // Org email templates for the "Type de call" dropdown — an empty result is
   // expected (no manager has visited /team/email-templates yet) and just
@@ -956,17 +932,6 @@ export default function FeedbackDetailClient({
                         <span className="text-xs text-emerald-600 font-medium">
                           Envoyé le {formatSentAt(sentAt)}
                         </span>
-                        {reply.status === "replied" && (
-                          // Pas de contenu à afficher — gmail.readonly dropped
-                          // 25/07/2026 (CASA payant sinon), détection
-                          // metadata-only : on sait juste que ça a répondu.
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                            <svg className="w-3 h-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414L8.414 15l-4.121-4.121a1 1 0 011.414-1.414L8.414 12.172l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                            Le prospect a répondu le {formatSentAt(reply.repliedAt)}
-                          </span>
-                        )}
                       </div>
                     )}
                   </div>

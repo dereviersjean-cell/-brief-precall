@@ -68,7 +68,6 @@ export const demoContacts: ContactOverviewItem[] = [
     last_contact_at: daysAgo(1),
     video_call_count: 2,
     emails_sent_count: 3,
-    replies_count: 1,
   },
   {
     contact_email: "s.marceau@groupe-marceau.com",
@@ -76,7 +75,6 @@ export const demoContacts: ContactOverviewItem[] = [
     last_contact_at: daysAgo(3),
     video_call_count: 1,
     emails_sent_count: 2,
-    replies_count: 2,
   },
   {
     contact_email: "contact@atelier-fontaine.fr",
@@ -84,7 +82,6 @@ export const demoContacts: ContactOverviewItem[] = [
     last_contact_at: daysAgo(4),
     video_call_count: 1,
     emails_sent_count: 1,
-    replies_count: 0,
   },
   {
     contact_email: "p.neveu@neveu-associes.fr",
@@ -92,7 +89,6 @@ export const demoContacts: ContactOverviewItem[] = [
     last_contact_at: daysAgo(6),
     video_call_count: 1,
     emails_sent_count: 2,
-    replies_count: 1,
   },
 ];
 

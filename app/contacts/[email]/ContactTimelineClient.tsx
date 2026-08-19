@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Clock, Calendar, TrendingUp } from "lucide-react";
+import { Clock, Calendar } from "lucide-react";
 import type { ContactTimelineItem } from "@/lib/db";
 import { formatContactDisplayName } from "@/lib/format";
 import FadeIn from "@/app/dashboard/FadeIn";
@@ -55,14 +55,6 @@ function EnvelopeIcon({ className }: { className?: string }) {
   );
 }
 
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="currentColor" viewBox="0 0 20 20">
-      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414L8.414 15l-4.121-4.121a1 1 0 011.414-1.414L8.414 12.172l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-    </svg>
-  );
-}
-
 function ScoreBadge({ score }: { score: number }) {
   const cls =
     score >= 4
@@ -103,11 +95,14 @@ function SummaryRow({ icon, label, value }: { icon: React.ReactNode; label: stri
   );
 }
 
-// Pas de contenu de réponse affiché — gmail.readonly dropped 25/07/2026
-// (évite l'audit CASA payant exigé pour les scopes Restricted), détection
-// metadata-only : on sait juste que le prospect a répondu, pas ce qu'il a
-// écrit. Le formulaire de relance manuelle (send-reply, scope gmail.send,
-// inchangé) reste disponible directement.
+// Bloc HISTORIQUE. Brief ne détecte plus les réponses depuis le retrait de
+// gmail.metadata (19/08/2026, cf. lib/auth.ts) : `replied_at` n'est plus
+// jamais alimenté, donc ce bloc n'apparaît que sur les échanges antérieurs.
+// Il est conservé parce qu'il reste vrai — ces prospects ont réellement
+// répondu — et parce qu'il porte le formulaire de relance manuelle
+// (send-reply, scope gmail.send, conservé). Les AGRÉGATS ont été retirés au
+// même moment : un taux de réponse figé à 0 % aurait laissé croire que
+// personne ne répond, alors qu'on a seulement cessé de mesurer.
 function ReplyEntry({ item }: { item: ContactTimelineItem }) {
   const [replyText, setReplyText] = useState("");
   const [showReplyForm, setShowReplyForm] = useState(false);
@@ -271,8 +266,6 @@ export default function ContactTimelineClient({ contactEmail, timeline }: Props)
   const displayName = formatContactDisplayName(timeline[0]?.company_name ?? null, contactEmail);
   const videoCallCount = timeline.length;
   const emailsSentCount = timeline.filter((i) => !!i.follow_up_sent_at).length;
-  const repliesCount = timeline.filter((i) => !!i.replied_at).length;
-  const replyRate = emailsSentCount > 0 ? Math.round((repliesCount / emailsSentCount) * 100) : null;
   const totalDurationSeconds = timeline.reduce((n, i) => n + (i.duration_seconds ?? 0), 0);
 
   return (
@@ -313,12 +306,6 @@ export default function ContactTimelineClient({ contactEmail, timeline }: Props)
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-600">
                     <EnvelopeIcon className="w-3 h-3 shrink-0" />
                     {emailsSentCount} {emailsSentCount === 1 ? "email envoyé" : "emails envoyés"}
-                  </span>
-                )}
-                {repliesCount > 0 && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600">
-                    <CheckIcon className="w-3 h-3 shrink-0" />
-                    {repliesCount} {repliesCount === 1 ? "réponse" : "réponses"}
                   </span>
                 )}
               </div>
@@ -414,9 +401,6 @@ export default function ContactTimelineClient({ contactEmail, timeline }: Props)
               <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
                 <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Résumé</h2>
                 <div className="divide-y divide-slate-100">
-                  {replyRate !== null && (
-                    <SummaryRow icon={<TrendingUp className="w-4 h-4 text-slate-300" />} label="Taux de réponse" value={`${replyRate}%`} />
-                  )}
                   {totalDurationSeconds > 0 && (
                     <SummaryRow icon={<Clock className="w-4 h-4 text-slate-300" />} label="Durée totale échangée" value={formatTotalDuration(totalDurationSeconds)} />
                   )}

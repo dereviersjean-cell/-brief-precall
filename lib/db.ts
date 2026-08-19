@@ -895,14 +895,6 @@ export async function getCallReplyInfo(callId: string, userId: string): Promise<
   return data as CallReplyInfo;
 }
 
-export async function updateReplyInfo(callId: string, repliedAt: string, messageId: string): Promise<void> {
-  const { error } = await supabaseAdmin
-    .from("calls")
-    .update({ replied_at: repliedAt, reply_message_id: messageId })
-    .eq("id", callId);
-  if (error) throw error;
-}
-
 export type Contact = {
   id: string;
   user_id: string;
@@ -970,7 +962,6 @@ export type ContactOverviewItem = {
   last_contact_at: string;
   video_call_count: number;
   emails_sent_count: number;
-  replies_count: number;
 };
 
 export async function getContactsOverview(userId: string): Promise<ContactOverviewItem[]> {
@@ -985,7 +976,6 @@ export async function getContactsOverview(userId: string): Promise<ContactOvervi
     company_name: string | null;
     dates: string[];
     emails_sent_count: number;
-    replies_count: number;
   }>();
 
   for (const row of (data ?? []) as Array<{
@@ -1004,12 +994,10 @@ export async function getContactsOverview(userId: string): Promise<ContactOvervi
         company_name: row.company_name,
         dates: [date],
         emails_sent_count: row.follow_up_sent_at ? 1 : 0,
-        replies_count: row.replied_at ? 1 : 0,
       });
     } else {
       existing.dates.push(date);
       if (row.follow_up_sent_at) existing.emails_sent_count++;
-      if (row.replied_at) existing.replies_count++;
       // keep most recent company_name (dates are unsorted, update when this row is newer)
       if (date > existing.dates[existing.dates.length - 1]) {
         existing.company_name = row.company_name;
@@ -1025,7 +1013,6 @@ export async function getContactsOverview(userId: string): Promise<ContactOvervi
       last_contact_at: sorted[sorted.length - 1],
       video_call_count: g.dates.length,
       emails_sent_count: g.emails_sent_count,
-      replies_count: g.replies_count,
     };
   }).sort((a, b) => b.last_contact_at.localeCompare(a.last_contact_at));
 }

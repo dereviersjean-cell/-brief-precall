@@ -3,7 +3,7 @@
 import { useState, useMemo, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, ChevronUp, ChevronDown, ChevronRight, Users, TrendingUp } from "lucide-react";
+import { Search, ChevronUp, ChevronDown, ChevronRight, Users } from "lucide-react";
 import type { ContactOverviewItem } from "@/lib/db";
 import { formatContactDisplayName } from "@/lib/format";
 import StatTile from "@/app/dashboard/StatTile";
@@ -30,15 +30,7 @@ function EnvelopeIcon({ className }: { className?: string }) {
   );
 }
 
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="currentColor" viewBox="0 0 20 20">
-      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414L8.414 15l-4.121-4.121a1 1 0 011.414-1.414L8.414 12.172l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-    </svg>
-  );
-}
-
-type SortKey = "name" | "date" | "visios" | "emails" | "replies";
+type SortKey = "name" | "date" | "visios" | "emails";
 type SortDirection = "asc" | "desc";
 
 type Row = {
@@ -119,9 +111,6 @@ export default function ContactsClient({ contacts }: { contacts: ContactOverview
         case "emails":
           cmp = a.contact.emails_sent_count - b.contact.emails_sent_count;
           break;
-        case "replies":
-          cmp = a.contact.replies_count - b.contact.replies_count;
-          break;
       }
       return sortDirection === "asc" ? cmp : -cmp;
     });
@@ -138,9 +127,6 @@ export default function ContactsClient({ contacts }: { contacts: ContactOverview
   }
 
   const totalVisios = contacts.reduce((n, c) => n + c.video_call_count, 0);
-  const totalEmails = contacts.reduce((n, c) => n + c.emails_sent_count, 0);
-  const totalReplies = contacts.reduce((n, c) => n + c.replies_count, 0);
-  const replyRate = totalEmails > 0 ? Math.round((totalReplies / totalEmails) * 100) : null;
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-10">
@@ -184,17 +170,9 @@ export default function ContactsClient({ contacts }: { contacts: ContactOverview
 
       {/* Stats */}
       {contacts.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
           <StatTile index={0} accent="indigo" label="Contacts suivis" value={contacts.length} icon={<Users className="w-3.5 h-3.5" />} />
           <StatTile index={1} accent="violet" label="Visios enregistrées" value={totalVisios} icon={<VideoIcon className="w-3.5 h-3.5" />} />
-          <StatTile
-            index={2}
-            accent="emerald"
-            label="Taux de réponse"
-            value={replyRate}
-            suffix={replyRate !== null ? "%" : undefined}
-            icon={<TrendingUp className="w-3.5 h-3.5" />}
-          />
         </div>
       )}
 
@@ -235,14 +213,6 @@ export default function ContactsClient({ contacts }: { contacts: ContactOverview
                       label="Emails envoyés"
                       icon={<EnvelopeIcon className="w-3 h-3" />}
                       sortKey="emails"
-                      currentSort={sortKey}
-                      currentDirection={sortDirection}
-                      onSort={handleSort}
-                    />
-                    <SortHeader
-                      label="Réponses"
-                      icon={<CheckIcon className="w-3 h-3" />}
-                      sortKey="replies"
                       currentSort={sortKey}
                       currentDirection={sortDirection}
                       onSort={handleSort}
@@ -294,16 +264,6 @@ export default function ContactsClient({ contacts }: { contacts: ContactOverview
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-600">
                             <EnvelopeIcon className="w-3 h-3 shrink-0" />
                             {contact.emails_sent_count}
-                          </span>
-                        ) : (
-                          <span className="text-slate-300 text-xs">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3.5 whitespace-nowrap">
-                        {contact.replies_count > 0 ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600">
-                            <CheckIcon className="w-3 h-3 shrink-0" />
-                            {contact.replies_count}
                           </span>
                         ) : (
                           <span className="text-slate-300 text-xs">—</span>

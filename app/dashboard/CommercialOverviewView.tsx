@@ -136,7 +136,6 @@ export default function CommercialOverviewView({
                         <p className="text-sm text-slate-700 truncate">{formatContactDisplayName(c.company_name, c.contact_email)}</p>
                         <p className="text-xs text-slate-400 mt-0.5">
                           {c.video_call_count} call{c.video_call_count > 1 ? "s" : ""}
-                          {c.emails_sent_count > c.replies_count && " · en attente de réponse"}
                         </p>
                       </div>
                       <span className="text-xs text-slate-400 shrink-0 tabular-nums">

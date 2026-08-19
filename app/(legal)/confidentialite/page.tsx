@@ -43,12 +43,12 @@ export default function PrivacyPolicyPage() {
         <ul className="list-disc pl-5 space-y-1.5">
           <li><b className="text-ink">Identité</b> — nom, adresse email et photo de profil de votre compte Google/Microsoft.</li>
           <li><b className="text-ink">Agenda</b> — les événements de votre calendrier (horaires, participants, titre du rendez-vous), et la possibilité d&apos;écrire dans la description d&apos;un événement pour y déposer votre brief pré-rendez-vous.</li>
-          <li><b className="text-ink">Emails</b> — les en-têtes de vos échanges avec un contact précis (expéditeur, destinataire, date, sujet), pour détecter si votre prospect a répondu à votre relance. <b className="text-ink">Nous ne lisons jamais le contenu de vos messages.</b> Et l&apos;envoi d&apos;emails à votre initiative (relance, devis) depuis votre propre boîte Gmail, en votre nom.</li>
+          <li><b className="text-ink">Emails</b> — l&apos;envoi d&apos;emails à votre initiative (relance, devis) depuis votre propre boîte Gmail, en votre nom, après que vous en ayez relu le contenu. <b className="text-ink">Brief n&apos;a aucun accès en lecture à votre messagerie</b> : ni le contenu de vos messages, ni leurs en-têtes.</li>
         </ul>
         <p>
-          Nous ne demandons jamais un accès plus large que nécessaire : Brief demande à Google l&apos;accès aux
-          en-têtes de messages (scope <code>gmail.metadata</code>), et non à leur contenu. Le scope qui permettrait
-          de lire vos messages n&apos;est délibérément pas demandé.
+          Nous ne demandons jamais un accès plus large que nécessaire : le seul droit Gmail demandé par Brief est
+          <code>gmail.send</code>, qui permet d&apos;envoyer un message en votre nom et rien d&apos;autre. Aucun
+          scope de lecture n&apos;est demandé, pas même celui limité aux en-têtes.
         </p>
         <p>Selon les intégrations que vous ou votre organisation activez, nous pouvons aussi traiter :</p>
         <ul className="list-disc pl-5 space-y-1.5">
@@ -64,7 +64,7 @@ export default function PrivacyPolicyPage() {
         <ul className="list-disc pl-5 space-y-1.5">
           <li>Générer un dossier de préparation avant chaque rendez-vous.</li>
           <li>Transcrire et analyser vos appels selon le playbook de votre équipe.</li>
-          <li>Rédiger des brouillons d&apos;email de suivi et détecter les réponses de vos prospects.</li>
+          <li>Rédiger des brouillons d&apos;email de suivi, que vous relisez avant envoi.</li>
           <li>Vous permettre de vous entraîner sur les objections que vous avez rencontrées.</li>
           <li>Donner à votre manager une vue agrégée de la performance de l&apos;équipe.</li>
         </ul>
