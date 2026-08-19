@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { APP_URL } from "@/lib/app-url";
 import {
   Sparkles,
   ArrowRight,
@@ -36,10 +37,41 @@ import {
 // Débriefer / Progresser), section manager, preuves, FAQ, CTA. Les modules
 // masqués (devis, tasks) n'apparaissent plus nulle part.
 
+const DESCRIPTION =
+  "Brief est une application web pour les équipes commerciales B2B. Elle se connecte à votre agenda Google et à votre messagerie Gmail pour préparer chaque rendez-vous, débriefer chaque call selon votre méthode de vente, et faire circuler ce qui gagne dans toute l'équipe.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(APP_URL),
   title: "Brief — Augmentez le taux de closing de votre équipe commerciale",
-  description:
-    "Brief prépare chaque rendez-vous, débriefe chaque call selon votre playbook et fait circuler ce qui gagne dans toute l'équipe. Pour équipes commerciales B2B françaises.",
+  description: DESCRIPTION,
+  applicationName: "Brief",
+  openGraph: {
+    // siteName déclare le nom du produit de façon lisible par une machine.
+    // Sans lui, le nom de l'app ne se déduit que du texte de la page — c'est
+    // exactement le grief « the app name does not match the app name on your
+    // home page » renvoyé par la vérification Google en août 2026.
+    siteName: "Brief",
+    title: "Brief — Augmentez le taux de closing de votre équipe commerciale",
+    description: DESCRIPTION,
+    url: APP_URL,
+    type: "website",
+    locale: "fr_FR",
+  },
+};
+
+// Même intention que openGraph.siteName, sous la forme que les robots
+// consomment en priorité : une déclaration explicite du nom, de l'objet et
+// de l'éditeur de l'application, à la racine du domaine autorisé.
+const JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Brief",
+  url: APP_URL,
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  inLanguage: "fr-FR",
+  description: DESCRIPTION,
+  publisher: { "@type": "Organization", name: "Oliverlist", url: APP_URL },
 };
 
 function BrandMark() {
@@ -1060,6 +1092,10 @@ function Footer() {
 export default function HomePage() {
   return (
     <div className="brief-ui min-h-screen bg-white text-ink">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
+      />
       <Nav />
       <main>
         <Hero />
