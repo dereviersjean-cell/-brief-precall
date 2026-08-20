@@ -372,7 +372,7 @@ git status
 git add . && git commit -m "..." && git push
 ```
 
-## Point de reprise — 19 août 2026
+## Point de reprise — 20 août 2026
 
 Section volontairement en tête de la roadmap : elle dit **où en est le produit et ce qui l'attend**, la partie qui se perd entre deux sessions parce qu'elle ne se lit dans aucun fichier du repo.
 
@@ -417,17 +417,21 @@ Déclarés des deux côtés (ancienne + nouvelle URL, elles cohabitent) : les 2 
 
 ### Ce qui bloque et ne dépend PAS du code
 
-1. **Google OAuth en mode Testing → les tokens de rafraîchissement expirent au bout de 7 jours.** *(Vérification **soumise le 20/08/2026**, voir la section ci-dessus. Réponse attendue sous 3-5 jours, décision sous 4-6 semaines.)* Diagnostic posé en août 2026 : aucun utilisateur n'a de refresh token valide, ce qui explique 17 jours sans le moindre call ingéré. **Ce n'est pas un bug** — aucune modification de code ne peut le corriger, seule la vérification Google (standard, gratuite depuis le retrait de `gmail.readonly`, 2 à 6 semaines) le lève. Tant qu'elle n'est pas lancée, le produit se casse chaque semaine pour tout le monde et toute mesure faite sur les données récentes est faussée. **C'est le point le plus urgent du projet.**
-2. **Calibrage des objections : 0 fiche annotée.** Tout le chantier objections (points 1 à 4 ci-dessous) attend cette première mesure — sans elle on règle des prompts à l'aveugle, ce qui a déjà coûté une journée le 29/07. L'écran est prêt et pensé pour un non-technicien : Paramètres → Calibrage, 3-4 calls, puis « Lancer la mesure ».
-3. **Stripe en mode Live** — et trancher le pricing usage AVANT la bascule (voir point 2 de la roadmap).
-4. **Call `ecfb191e` à réimporter** : son transcript a été parsé par l'ancien parseur bogué (locuteur « 00 », cf. le piège documenté dans « Banc d'essai »). Les données en base sont inexploitables telles quelles.
+1. **Stripe en mode Live** — activation du compte (vérification entreprise). **Trancher le pricing usage AVANT la bascule.** C'est désormais le premier déblocant business : tant qu'il n'est pas fait, il n'y a pas de client payant possible. Recommandation de l'audit : quota d'heures inclus par siège (ex. 10 h/mois puis 0,50 €/h) plutôt que la refacturation sèche dès la première heure — ça évite les lignes de facture à 3 € qui font poser des questions, et ça change la facturation avant les premiers clients plutôt qu'après.
+2. **Domaine émetteur des emails** — encore `lartisangroupe.com`. Un prospect qui reçoit un devis voit une adresse sans rapport avec Brief. Détail complet et piège SPF dans la section « Domaine » ci-dessus.
+3. **Call `ecfb191e` à réimporter** : son transcript a été parsé par l'ancien parseur bogué (locuteur « 00 », cf. le piège documenté dans « Banc d'essai »). Les données en base sont inexploitables telles quelles.
+4. **Reconnexion Google de chaque utilisateur, une fois.** Le passage en production n'émet pas de nouveau jeton tout seul : les utilisateurs dont le refresh token avait expiré doivent se déconnecter/reconnecter une fois. À faire pour Jean, Hubert et l'associé, sinon leur ingestion reste à l'arrêt alors que la cause est levée.
+
+**Ce qui ne bloque plus** :
+- ~~Google OAuth en mode Testing~~ — **réglé le 20/08/2026**. Projet passé *In production*, l'expiration des refresh tokens à 7 jours ne s'applique plus. Vérification soumise, en attente, mais elle ne conditionne plus le fonctionnement — voir la section dédiée.
+- ~~Jeton GitHub en clair dans `.git/config`~~ — révoqué le 19/08, remote nettoyé, helper `osxkeychain`.
 
 ### Où en est le code
 
 - **9 migrations** dans `migrations/`, toutes appliquées en prod (006 à 009 le sont depuis fin juillet).
 - **23 tests** (`npm test`), tous au vert — `billing-rules`, `recall-transcript`, `transcript-import`, `uuid`. Chacun nomme le bug qu'il verrouille.
 - **Visite guidée et routes `/demo` terminées** : 10 étapes, 6 écrans réels peuplés de données d'exemple. Voir la section dédiée pour les règles de placement, durement acquises.
-- Chaîne de vérification avant tout push : `npx tsc --noEmit`, `npx eslint`, `npm run build`, `npm test`. Référence eslint au 19/08/2026 : **19 erreurs et 16 avertissements préexistants**, tous dans des composants client (`app/**/*.tsx`) plus `lib/objections.ts` — hors périmètre, à ne pas confondre avec une régression. La bonne façon de vérifier qu'on n'a rien cassé n'est pas de lire les messages mais de comparer le total avant / après (`git stash push --include-untracked`, relancer, `git stash pop`). L'ancienne mention « trois erreurs dans FeedbackDetailClient.tsx » était périmée.
+- Chaîne de vérification avant tout push : `npx tsc --noEmit`, `npx eslint`, `npm run build`, `npm test`. Référence eslint au 20/08/2026 : **18 erreurs et 16 avertissements préexistants**, tous dans des composants client (`app/**/*.tsx`) plus `lib/objections.ts` — hors périmètre, à ne pas confondre avec une régression. La bonne façon de vérifier qu'on n'a rien cassé n'est pas de lire les messages mais de comparer le total avant / après (`git stash push --include-untracked`, relancer, `git stash pop`). L'ancienne mention « trois erreurs dans FeedbackDetailClient.tsx » était périmée.
 
 ### Arbitrages produit en attente (Jean)
 
@@ -439,13 +443,20 @@ Déclarés des deux côtés (ancienne + nouvelle URL, elles cohabitent) : les 2 
 
 Fait depuis la dernière mise à jour (20-21 juillet 2026) : **refonte visuelle complète direction Lovable** (nouveau système de tokens oklch bleu #2A5CE0, primitives partagées `ui-bits.tsx`/`PageHeader`/`TopBar`, refonte landing + liste feedback + dashboard, fix du scoping `.brief-ui` qui n'avait jamais fonctionné), **version mobile responsive** (sidebar drawer), **fix bug "William"** (prompt d'analyse admin_config périmé → champs null silencieux, voir bug #20), puis **audit complet du repo** suivi de **6 correctifs** (`after()` généralisé, `/notifications` au middleware, refresh rôle JWT 10 min, validation runtime analyse IA, auth sur google-oauth/start, rate limiting étendu aux 9 routes de génération IA) et **fin de la migration visuelle** (les 25 fichiers non-admin restants — onboarding, modales, références, page publique devis, compte-suspendu — zéro `indigo-*` hors /admin).
 
-### Chantier objections — en cours (30 juillet 2026)
-0b. **Faire annoter 3-4 calls par le directeur commercial** dans Paramètres > Calibrage, puis lancer la mesure. Tout le reste du chantier en dépend : c'est la première mesure qui dit quel levier tirer.
-0c. **Test d'accord inter-annotateur** : Jean et son associé annotent le MÊME call séparément et comparent. Ce pourcentage est le plafond réel de l'IA — elle ne peut pas être plus cohérente que la définition elle-même. Vingt minutes, et ça évite de courir après un 100 % qui n'existe pas.
-Puis, dans l'ordre et **un changement à la fois, mesure avant / mesure après** : (1) contre-exemples réels dans le prompt, en veillant à n'y mettre que ce qui vaut pour tout commercial B2B ; (2) passe de vérification sur le rattachement, seulement si le « bon rangement » reste bas ; (3) clustering Voyage des non classées pour proposer les catégories manquantes (indépendant, parallélisable) ; (4) vote à trois sur l'extraction, en dernier recours. Avec 4 calls, une objection pèse ~7 points : ne poursuivre que les écarts francs.
+### Chantier objections — EN STANDBY (décision de Jean, 20 août 2026)
+
+**Mis en pause volontairement, ce n'est pas la priorité.** Rien n'est perdu : le socle est livré et fonctionnel (playbook d'objections, classification sémantique, verbatims ancrés, Analytics, banc d'essai, page de calibrage). Ce qui est en pause, c'est **l'amélioration mesurée** du classifieur, pas son fonctionnement.
+
+Le chantier reprend exactement là où il s'arrête, sans rien réapprendre :
+
+1. **Faire annoter 3-4 calls** par le directeur commercial dans Paramètres → Calibrage, puis « Lancer la mesure ». C'est la première mesure qui dit quel levier tirer — sans elle on règle des prompts à l'aveugle, ce qui a déjà coûté une journée le 29/07.
+2. **Test d'accord inter-annotateur** : Jean et son associé annotent le MÊME call séparément, puis comparent. Ce pourcentage est le **plafond réel de l'IA** — elle ne peut pas être plus cohérente que la définition elle-même. Vingt minutes, et ça évite de courir après un 100 % qui n'existe pas.
+3. Puis, **un changement à la fois, mesure avant / mesure après** : (a) contre-exemples réels dans le prompt, en n'y mettant que ce qui vaut pour tout commercial B2B ; (b) passe de vérification sur le rattachement, seulement si le « bon rangement » reste bas ; (c) clustering Voyage des non classées pour proposer les catégories manquantes — indépendant, parallélisable ; (d) vote à trois sur l'extraction, en dernier recours.
+
+Avec 4 calls, une objection pèse ~7 points : ne poursuivre que les écarts francs. **Décision d'architecture à ne pas rejouer** : le prompt porte la méthode (universelle), la configuration client porte la spécificité (les catégories, par organisation) — ne jamais mettre un contre-exemple propre à un client dans le prompt partagé.
 
 ### Déblocants business (priorité immédiate)
-1. Google OAuth — sortir du mode Testing. **Ne bloque pas que la croissance : en mode Testing les refresh tokens expirent à 7 jours, donc l'ingestion s'arrête pour TOUS les utilisateurs, y compris existants** (voir Point de reprise). `gmail.readonly` retiré des scopes le 25/07/2026 précisément pour lever ce blocant sans passer par l'audit CASA payant (voir section OAuth ci-dessus) — reste à ajouter/re-déclarer les 3 scopes actuels dans Google Cloud Console (`calendar.events`, `gmail.metadata`, `gmail.send`) et lancer la vérification standard (gratuite, 2-6 semaines)
+1. ~~Google OAuth — sortir du mode Testing~~ — **FAIT le 20/08/2026**. Projet *In production*, vérification soumise et en cours d'examen. Reste l'écran « application non vérifiée » à la première connexion et le plafond de 100 utilisateurs sur la durée de vie du projet (3 utilisés), non réinitialisable — raison de plus pour que la vérification aboutisse avant d'ouvrir vraiment les inscriptions.
 2. Stripe en mode Live — activation compte (vérification entreprise). **Avant la bascule, trancher le pricing usage** : recommandation audit = quota d'heures inclus par siège (ex. 10h/mois puis 0,50€/h) plutôt que la refacturation sèche dès la 1ère heure — évite les lignes de facture à 3€ qui font poser des questions, et change la facturation AVANT les premiers clients payants plutôt qu'après
 
 ### Recommandations audit du 21 juillet (par ratio effort/valeur)

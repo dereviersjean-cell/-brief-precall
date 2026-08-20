@@ -1672,6 +1672,29 @@ Workflow de développement habituel
 ________________
 
 
+Roadmap restante (au 20 août 2026)
+
+Fait les 19-20 août — chantier « domaine + vérification Google » :
+* brief-ai.fr acheté chez OVH, branché sur Vercel, en production. brief-precall.vercel.app reste un alias actif et doit le rester indéfiniment (le webhook Recall est figé à la création de chaque agenda).
+* L'origine publique centralisée dans lib/app-url.ts — elle était recopiée en dur dans 21 fichiers. Toute URL absolue vers Brief passe désormais par ce module.
+* Huit intégrations redéclarées sur le nouveau domaine (2 apps Google, Azure, Slack, HubSpot, Stripe, Recall, Inngest). Pipedrive reste à faire, essai expiré.
+* gmail.metadata retiré : Brief ne lit plus rien dans Gmail, il ne fait qu'envoyer. Supprimés avec le scope : la détection des réponses de prospect et les agrégats de taux de réponse, qui seraient restés figés à 0 %.
+* Politique de confidentialité réécrite pour décrire l'accès réel, robots.txt et sitemap.xml ajoutés, données structurées (og:site_name, JSON-LD) déclarant le nom de l'application.
+* Vérification Google soumise le 20/08 avec vidéo de démonstration (https://youtu.be/YQEbVl19VN0). Surtout : le projet est passé en Publishing status « In production », ce qui met fin à l'expiration des refresh tokens tous les 7 jours — la panne qui arrêtait l'ingestion pour tout le monde.
+* Deux bugs de production trouvés au passage : 404 sur tous les boutons « Préparer le brief » (garde isUuid posé sur une route qui reçoit un id d'événement Google Calendar), et un écran Connexions qui promettait une lecture de messagerie que l'app ne demande plus.
+* Jeton GitHub en clair dans .git/config révoqué, remote nettoyé, credential helper osxkeychain.
+
+Priorité immédiate :
+1. Stripe en mode Live — et trancher le pricing usage AVANT la bascule. C'est le premier déblocant business maintenant que Google est levé.
+2. Faire reconnecter Google une fois à chaque utilisateur (Jean, Hubert, l'associé) : le passage en production n'émet pas de nouveau jeton tout seul.
+3. Basculer le domaine émetteur des emails de lartisangroupe.com vers brief-ai.fr (fusionner l'include Resend dans le SPF OVH existant, jamais un second v=spf1).
+4. Répondre au fil Trust and Safety quand il arrive (contact développeur : jeandereviersde@gmail.com) — un grief de branding reste ouvert sur le nom de l'application.
+
+EN STANDBY, décision de Jean du 20 août 2026 : le chantier objections. Ce n'est pas la priorité. Le socle livré fin juillet fonctionne ; c'est l'amélioration mesurée du classifieur qui est en pause. Il reprend là où il s'arrête — voir le détail ci-dessous, qui reste valable tel quel.
+
+________________
+
+
 Roadmap restante (au 30 juillet 2026)
 
 Fait les 29-30 juillet : bloc « Objections mesurables » complet (voir Modules terminés) — playbook d'objections du manager, classification sémantique + évaluation contre la méthode du manager, verbatims des deux côtés, filtre de période et page de détail par objection, onglet Analytics, Playbook déplacé dans Performance, banc d'essai d'import de transcript, et socle de calibrage mesurable. Bugs #55 à #59 documentés au passage.
