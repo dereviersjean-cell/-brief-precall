@@ -544,6 +544,10 @@ export default function FeedbackDetailClient({
   const [subject, setSubject] = useState(call.follow_up_email?.subject ?? "");
   const [body, setBody] = useState(call.follow_up_email?.body ?? "");
   const [sendStatus, setSendStatus] = useState<SendStatus>("idle");
+  // Message exact renvoyé par la route. Sans lui, « Erreur lors de l'envoi »
+  // couvrait indifféremment un contact sans adresse, un refus de l'API Gmail
+  // et une panne base — trois causes qui ne se corrigent pas pareil.
+  const [sendError, setSendError] = useState<string | null>(null);
   const [sentAt, setSentAt] = useState<string | null>(call.follow_up_sent_at ?? null);
   const [videoStatus, setVideoStatus] = useState<VideoStatus>("idle");
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -900,6 +904,7 @@ export default function FeedbackDetailClient({
                             const to = call.contact_email ?? "ce contact";
                             if (!window.confirm(`Envoyer cet email à ${to} ?`)) return;
                             setSendStatus("sending");
+                            setSendError(null);
                             try {
                               const res = await fetch("/api/feedback/send-follow-up", {
                                 method: "POST",
@@ -911,6 +916,11 @@ export default function FeedbackDetailClient({
                                 return;
                               }
                               if (!res.ok) {
+                                const detail = await res
+                                  .json()
+                                  .then((d: { error?: string }) => d.error ?? null)
+                                  .catch(() => null);
+                                setSendError(detail);
                                 setSendStatus("error");
                                 return;
                               }
@@ -945,7 +955,9 @@ export default function FeedbackDetailClient({
                     </div>
                   )}
                   {sendStatus === "error" && (
-                    <p className="mb-4 text-sm text-red-600">Erreur lors de l&apos;envoi, réessaie.</p>
+                    <p className="mb-4 text-sm text-red-600">
+                      {sendError ?? "Erreur lors de l’envoi, réessaie."}
+                    </p>
                   )}
 
                   {call.follow_up_email ? (
