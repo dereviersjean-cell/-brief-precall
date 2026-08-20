@@ -42,7 +42,16 @@ const DESCRIPTION =
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
-  title: "Brief — Augmentez le taux de closing de votre équipe commerciale",
+  // Titre réduit au seul nom de l'application (20/08/2026). La vérification
+  // Google a retenu « the app name shown on your OAuth consent screen does not
+  // match the app name on your home page » : le nom déclaré est « Brief », et
+  // un titre « Brief — Augmentez le taux de closing… » ne se réduit pas à
+  // « Brief » de façon fiable pour un contrôle automatique. La promesse
+  // commerciale reste dans le h1 et dans la meta description, que les moteurs
+  // lisent tout autant. Coût de référencement nul : au 20/08 la page n'a
+  // jamais été explorée par Googlebot. À rétablir une fois la vérification
+  // obtenue, si le titre long est jugé préférable.
+  title: "Brief",
   description: DESCRIPTION,
   applicationName: "Brief",
   openGraph: {
@@ -51,7 +60,7 @@ export const metadata: Metadata = {
     // exactement le grief « the app name does not match the app name on your
     // home page » renvoyé par la vérification Google en août 2026.
     siteName: "Brief",
-    title: "Brief — Augmentez le taux de closing de votre équipe commerciale",
+    title: "Brief",
     description: DESCRIPTION,
     url: APP_URL,
     type: "website",
