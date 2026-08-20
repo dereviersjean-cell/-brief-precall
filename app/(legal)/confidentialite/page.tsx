@@ -21,7 +21,7 @@ export default function PrivacyPolicyPage() {
       <h1 className="mt-3 text-[32px] md:text-[38px] leading-tight font-bold tracking-[-0.03em] text-ink">
         Politique de <span className="italic-serif text-primary">confidentialité</span>.
       </h1>
-      <p className="mt-3 text-[13px] text-muted-foreground">Dernière mise à jour : 25 juillet 2026.</p>
+      <p className="mt-3 text-[13px] text-muted-foreground">Dernière mise à jour : 20 août 2026.</p>
 
       <Section title="Qui sommes-nous">
         <p>
@@ -46,7 +46,7 @@ export default function PrivacyPolicyPage() {
           <li><b className="text-ink">Emails</b> — l&apos;envoi d&apos;emails à votre initiative (relance, devis) depuis votre propre boîte Gmail, en votre nom, après que vous en ayez relu le contenu. <b className="text-ink">Brief n&apos;a aucun accès en lecture à votre messagerie</b> : ni le contenu de vos messages, ni leurs en-têtes.</li>
         </ul>
         <p>
-          Nous ne demandons jamais un accès plus large que nécessaire : le seul droit Gmail demandé par Brief est
+          Nous ne demandons jamais un accès plus large que nécessaire : le seul droit Gmail demandé par Brief est{" "}
           <code>gmail.send</code>, qui permet d&apos;envoyer un message en votre nom et rien d&apos;autre. Aucun
           scope de lecture n&apos;est demandé, pas même celui limité aux en-têtes.
         </p>

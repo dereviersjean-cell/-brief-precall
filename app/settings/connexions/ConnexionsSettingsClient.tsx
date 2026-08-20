@@ -171,7 +171,7 @@ export default function ConnexionsSettingsClient({
         <div className="px-6 py-5">
           <h2 className="text-sm font-semibold text-slate-900 mb-1">Compte Mail</h2>
           <p className="text-sm text-slate-500 mb-4">
-            Le compte utilisé pour vous connecter à Brief — envoi des emails de suivi et lecture des réponses.
+            Le compte utilisé pour vous connecter à Brief — envoi des emails de suivi en votre nom. Brief ne lit pas votre messagerie.
           </p>
           {mailProvider ? (
             <div className="flex items-center gap-3 flex-wrap">
