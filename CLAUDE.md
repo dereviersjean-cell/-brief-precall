@@ -407,7 +407,13 @@ Déclarés des deux côtés (ancienne + nouvelle URL, elles cohabitent) : les 2 
 
 **PENDANT L'EXAMEN : ne toucher ni aux scopes, ni au branding, ni aux URL.** Toute modification peut relancer le compteur.
 
-**À vérifier tout de suite** : le statut de publication du projet (Audience / Overview). S'il est passé à **In production**, l'expiration des refresh tokens à 7 jours — la vraie panne, celle qui arrête l'ingestion pour tout le monde — **cesse immédiatement**, sans attendre la fin de l'examen. Restent l'écran « application non vérifiée » et le plafond de 100 utilisateurs. S'il est resté en **Testing**, la panne hebdomadaire continue jusqu'à la validation.
+**LA PANNE DES 7 JOURS EST TERMINÉE (20/08/2026).** Le projet est passé en **Publishing status : In production** (User type : External, 3 utilisateurs sur un plafond de 100). L'expiration des refresh tokens au bout de 7 jours est un comportement **propre au mode Testing** : elle ne s'applique plus. L'ingestion ne se recassera plus toute seule chaque semaine, et ce **sans attendre** la fin de l'examen.
+
+- **Ne jamais cliquer « Back to testing »** (bouton juste sous le statut, page Audience) : ce serait revenir dans la panne.
+- Le changement de mode **ne ressuscite pas les jetons déjà expirés**. Chaque utilisateur doit se déconnecter puis se reconnecter **une fois** pour qu'un nouveau refresh token soit émis.
+- Ce qui subsiste jusqu'à la validation : l'écran « application non vérifiée » à la première connexion, et le plafond de **100 utilisateurs sur la durée de vie du projet, non réinitialisable**. C'est une raison de plus pour que la vérification aboutisse avant d'ouvrir vraiment les inscriptions.
+
+**Grief restant au 20/08, 19h** : le contrôle automatique de branding a levé « home page does not explain the purpose » mais retient encore « the app name shown on your OAuth consent screen does not match the app name on your home page ». Le `<title>` de la landing a été réduit à exactement « Brief » (commit `11bb5b1`). **Réserve** : sur un écran de consentement non vérifié, Google affiche le **domaine** et non le nom — les captures de la vidéo montrent « brief-ai.fr veut accéder à votre compte Google ». Si le contrôle compare ce `brief-ai.fr` à `Brief`, il échouera tant que l'app n'est pas vérifiée, ce qui est circulaire. **La question doit être posée à Trust and Safety dans le fil d'email** (contact développeur : `jeandereviersde@gmail.com`, aucun email reçu à 19h10, Google annonce 3-5 jours). Ne pas renommer l'app en `brief-ai.fr` sans leur réponse : ce serait modifier le branding en plein examen, pour une cause non confirmée.
 
 ### Ce qui bloque et ne dépend PAS du code
 
