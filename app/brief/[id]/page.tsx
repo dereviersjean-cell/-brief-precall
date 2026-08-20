@@ -34,8 +34,13 @@ export default async function BriefPage({
   searchParams: Promise<{ company?: string; cached?: string; contactEmail?: string }>;
 }) {
   const { id } = await params;
-  // Id malformé : 404 plutôt qu'une 22P02 Postgres remontée en erreur 500.
-  if (!isUuid(id)) notFound();
+  // PAS de garde isUuid en tête de route ici, contrairement aux autres pages
+  // [id] : celle-ci reçoit DEUX formes d'identifiant. Le tableau de bord et les
+  // emails de notification pointent vers un identifiant d'événement Google
+  // Calendar (`3cb3ps..._20260824T080000Z`), la relecture d'un brief enregistré
+  // vers un UUID Supabase. Un garde global renvoyait 404 sur tous les boutons
+  // « Préparer le brief » (régression du 19/08/2026). Le garde est descendu sur
+  // la seule requête qui interroge une colonne uuid, plus bas.
   const { company, cached, contactEmail } = await searchParams;
   const decodedContactEmail = contactEmail ? decodeURIComponent(contactEmail) : null;
 
@@ -76,8 +81,10 @@ export default async function BriefPage({
           return <BriefClient meeting={synthetic} callHistory={callHistory} />;
         }
 
-        // 2nd attempt : lookup by Supabase brief UUID
-        const byId = await getBriefById(id);
+        // 2e tentative : recherche par UUID de brief Supabase. `briefs.id` est
+        // une colonne uuid — l'interroger avec un identifiant d'agenda lève une
+        // 22P02 qui remonterait en 500. D'où le garde, ici et pas plus haut.
+        const byId = isUuid(id) ? await getBriefById(id) : null;
         if (byId?.content) {
           const synthetic: Meeting = {
             id,
