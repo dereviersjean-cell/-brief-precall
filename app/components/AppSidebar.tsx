@@ -6,6 +6,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { LayoutDashboard, FileText, Video, Bell, Users, Settings, HelpCircle, LogOut, Sparkles, Menu, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { fetchJsonOnce } from "@/lib/fetch-once";
 
 type OrgStatus = {
   organizationName: string | null;
@@ -87,14 +88,12 @@ export default function AppSidebar() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/sidebar/org-status")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: OrgStatus | null) => {
-        if (!cancelled && data) setOrgStatus(data);
-      })
-      .catch(() => {
-        // ignore — org name/trial card just stay hidden
-      });
+    // fetchJsonOnce et pas fetch : ce composant est remonté à chaque
+    // changement de section (chaque layout monte sa propre sidebar), et le nom
+    // de l'organisation ne dépend pas de la page affichée.
+    fetchJsonOnce<OrgStatus>("/api/sidebar/org-status").then((data) => {
+      if (!cancelled && data) setOrgStatus(data);
+    });
     return () => {
       cancelled = true;
     };

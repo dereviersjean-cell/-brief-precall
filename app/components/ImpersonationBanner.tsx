@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { fetchJsonOnce, forgetFetchOnce } from "@/lib/fetch-once";
 
 export default function ImpersonationBanner() {
   const router = useRouter();
@@ -10,14 +11,13 @@ export default function ImpersonationBanner() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/impersonation-status")
-      .then((res) => (res.ok ? res.json() : { active: false }))
-      .then((data: { active: boolean; targetUserName?: string }) => {
-        if (!cancelled) setTargetUserName(data.active ? data.targetUserName ?? "cet utilisateur" : null);
-      })
-      .catch(() => {
-        if (!cancelled) setTargetUserName(null);
-      });
+    // Une fois par chargement de page : remonté à chaque changement de
+    // section, alors qu'une impersonation ne démarre ni ne s'arrête au fil
+    // d'une navigation. `forgetFetchOnce` est appelé à la sortie ci-dessous.
+    fetchJsonOnce<{ active: boolean; targetUserName?: string }>("/api/impersonation-status").then((data) => {
+      if (cancelled) return;
+      setTargetUserName(data?.active ? data.targetUserName ?? "cet utilisateur" : null);
+    });
     return () => {
       cancelled = true;
     };
@@ -30,6 +30,9 @@ export default function ImpersonationBanner() {
     try {
       await fetch("/api/admin/impersonate", { method: "DELETE" });
     } finally {
+      // Sans ça, le cache continuerait d'annoncer une impersonation qui vient
+      // de se terminer, et la bannière rouge réapparaîtrait au montage suivant.
+      forgetFetchOnce("/api/impersonation-status");
       router.push("/admin/dashboard");
     }
   }
