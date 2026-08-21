@@ -250,6 +250,79 @@ export default function BriefClient({
   // sur meeting.company — c'est lui qui alimente Pappers et les actualités.
   const displayName = meeting.title?.trim() || meeting.company;
 
+  const [pdfBusy, setPdfBusy] = useState<"share" | "export" | null>(null);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+
+  // Le PDF est rendu par le serveur (@react-pdf/renderer, même chaîne que les
+  // devis) et relu depuis la base : le fichier partagé est donc exactement le
+  // brief enregistré, pas l'état de l'écran. Les deux boutons récupèrent le
+  // même fichier — l'un le télécharge, l'autre le passe au système.
+  async function fetchPdf(): Promise<File | null> {
+    const res = await fetch(`/api/briefs/${encodeURIComponent(meeting.id)}/pdf`);
+    if (!res.ok) {
+      setPdfError(
+        res.status === 404
+          ? "Ce brief n'est pas encore enregistré — générez-le d'abord."
+          : "Le PDF n'a pas pu être généré, réessayez."
+      );
+      return null;
+    }
+    const blob = await res.blob();
+    return new File([blob], `Brief - ${displayName}.pdf`, { type: "application/pdf" });
+  }
+
+  function download(file: File) {
+    const url = URL.createObjectURL(file);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = file.name;
+    a.click();
+    // Révoqué au tour suivant : révoquer immédiatement annulerait le
+    // téléchargement dans certains navigateurs.
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+
+  async function handleExportPdf() {
+    setPdfBusy("export");
+    setPdfError(null);
+    try {
+      const file = await fetchPdf();
+      if (file) download(file);
+    } catch {
+      setPdfError("Le PDF n'a pas pu être généré, réessayez.");
+    } finally {
+      setPdfBusy(null);
+    }
+  }
+
+  async function handleShare() {
+    setPdfBusy("share");
+    setPdfError(null);
+    try {
+      const file = await fetchPdf();
+      if (!file) return;
+
+      // Feuille de partage native — Mail, AirDrop, Messages. Tous les
+      // navigateurs ne savent pas partager un FICHIER (Chrome de bureau
+      // notamment) : canShare tranche, et on retombe sur le téléchargement
+      // plutôt que d'ouvrir un partage vide. Une annulation par
+      // l'utilisateur (AbortError) n'est pas une erreur.
+      if (navigator.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: displayName });
+        } catch (err) {
+          if ((err as Error)?.name !== "AbortError") download(file);
+        }
+      } else {
+        download(file);
+      }
+    } catch {
+      setPdfError("Le PDF n'a pas pu être généré, réessayez.");
+    } finally {
+      setPdfBusy(null);
+    }
+  }
+
   const [brief, setBrief] = useState<Brief | null>(meeting.brief ?? null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -326,20 +399,33 @@ export default function BriefClient({
             <span className="text-sm font-medium text-slate-900">{displayName}</span>
           </div>
           <div className="flex items-center gap-2">
-            <button className="flex items-center gap-2 text-sm text-slate-600 border border-slate-200 bg-white px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">
+            <button
+              onClick={handleShare}
+              disabled={pdfBusy !== null}
+              className="flex items-center gap-2 text-sm text-slate-600 border border-slate-200 bg-white px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
               </svg>
-              Partager
+              {pdfBusy === "share" ? "Préparation…" : "Partager"}
             </button>
-            <button className="flex items-center gap-2 text-sm text-slate-600 border border-slate-200 bg-white px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">
+            <button
+              onClick={handleExportPdf}
+              disabled={pdfBusy !== null}
+              className="flex items-center gap-2 text-sm text-slate-600 border border-slate-200 bg-white px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              Exporter PDF
+              {pdfBusy === "export" ? "Préparation…" : "Exporter PDF"}
             </button>
           </div>
         </div>
+        {pdfError && (
+          <div className="max-w-5xl mx-auto px-6 pb-2">
+            <p className="text-sm text-red-600">{pdfError}</p>
+          </div>
+        )}
       </div>
 
       <main className="max-w-5xl mx-auto w-full px-6 py-8">

@@ -340,6 +340,28 @@ export async function upsertUserProfile(
   }
 }
 
+// Même lecture que getBriefById, mais cadrée sur le propriétaire.
+//
+// getBriefById ne filtre que sur l'id : n'importe quel utilisateur
+// authentifié connaissant un uuid pouvait lire le brief d'un autre. Les uuid
+// ne se devinent pas en pratique, mais l'export PDF rend la fuite bien plus
+// concrète — un fichier téléchargeable plutôt qu'un écran. Toute lecture
+// atteignable depuis une URL passe désormais par ici.
+export async function getBriefByIdForUser(
+  briefId: string,
+  userId: string
+): Promise<{ content: unknown; company_name: string | null; meeting_title?: string | null } | null> {
+  const { data, error } = await supabaseAdmin
+    .from("briefs")
+    .select("content, company_name, meeting_title")
+    .eq("id", briefId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data as { content: unknown; company_name: string | null; meeting_title?: string | null } | null;
+}
+
 export async function getBriefById(briefId: string): Promise<{ content: unknown; company_name: string | null; meeting_title?: string | null } | null> {
   const { data, error } = await supabaseAdmin
     .from("briefs")

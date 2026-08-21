@@ -1,30 +1,11 @@
 import { notFound } from "next/navigation";
 import { isUuid } from "@/lib/uuid";
-import { getBriefByEventId, getBriefById, getRecentCallsForContact, CallHistoryItem } from "@/lib/db";
+import { getBriefByEventId, getBriefByIdForUser, getRecentCallsForContact, CallHistoryItem } from "@/lib/db";
+import { adaptCachedContent } from "@/lib/brief-content";
 import { getEffectiveUserId } from "@/lib/session-user";
-import { Meeting, Brief, NewsItem } from "@/lib/types";
+import { Meeting } from "@/lib/types";
 import BriefClient from "./BriefClient";
 
-function adaptCachedContent(content: unknown): Brief {
-  const api = content as {
-    overview?: string;
-    accroche?: string;
-    pain_points?: Array<{ title: string; detail: string }>;
-    arguments?: Array<{ title: string; detail: string }>;
-    vocabulaire?: string[];
-    actualites?: NewsItem[];
-  };
-  return {
-    companyOverview: api.overview ?? "",
-    suggestedOpeningLine: api.accroche ?? "",
-    painPoints: api.pain_points ?? [],
-    talkingPoints: api.arguments ?? [],
-    recentNews: [],
-    objectives: [],
-    keywords: api.vocabulaire ?? [],
-    actualites: api.actualites,
-  };
-}
 
 export default async function BriefPage({
   params,
@@ -88,7 +69,7 @@ export default async function BriefPage({
         // 2e tentative : recherche par UUID de brief Supabase. `briefs.id` est
         // une colonne uuid — l'interroger avec un identifiant d'agenda lève une
         // 22P02 qui remonterait en 500. D'où le garde, ici et pas plus haut.
-        const byId = isUuid(id) ? await getBriefById(id) : null;
+        const byId = isUuid(id) ? await getBriefByIdForUser(id, userId) : null;
         if (byId?.content) {
           const synthetic: Meeting = {
             id,
