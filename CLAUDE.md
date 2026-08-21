@@ -426,6 +426,14 @@ Déclarés des deux côtés (ancienne + nouvelle URL, elles cohabitent) : les 2 
 - ~~Google OAuth en mode Testing~~ — **réglé le 20/08/2026**. Projet passé *In production*, l'expiration des refresh tokens à 7 jours ne s'applique plus. Vérification soumise, en attente, mais elle ne conditionne plus le fonctionnement — voir la section dédiée.
 - ~~Jeton GitHub en clair dans `.git/config`~~ — révoqué le 19/08, remote nettoyé, helper `osxkeychain`.
 
+### Région d'exécution — Paris (cdg1)
+
+**Les fonctions doivent tourner à Paris, comme la base.** Supabase est en `eu-west-3` (Paris). Vercel exécutait les fonctions à Washington (`iad1`) — son défaut, jamais choisi. Chaque appel Supabase faisait donc un aller-retour transatlantique, et une route aussi banale que `/api/settings/billing/status` en fait **quatre** : mesurée à **883 ms** le 21/08/2026.
+
+Épinglé dans `vercel.json` (`"regions": ["cdg1"]`) plutôt que laissé au seul réglage d'interface : un réglage de tableau de bord ne se lit dans aucun fichier et se perd au premier projet recréé. **La région ne s'applique qu'aux déploiements créés après le changement** — modifier le réglage sans redéployer ne fait rien.
+
+Reste à traiter après la région, mesuré au passage : quatre appels Supabase séquentiels pour lire un statut de facturation, dont deux viennent de `getServerSession` et `requireActiveUser`. Le middleware en ajoute encore un à chaque navigation. Et le démarrage de fonction n'est pas en cause : la même route sans session répond en ~100 ms, 330 ms à froid.
+
 ### Où en est le code
 
 - **9 migrations** dans `migrations/`, toutes appliquées en prod (006 à 009 le sont depuis fin juillet).
