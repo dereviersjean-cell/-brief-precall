@@ -50,7 +50,23 @@ function formatCompanyName(name: string | null): string {
     .join(" ");
 }
 
-function getExternalAttendee(event: CalendarEvent): { email: string } | null {
+// L'interlocuteur du rendez-vous. lib/calendar.ts ne renvoie DÉJÀ que les
+// participants externes (domaine différent de celui de l'utilisateur), donc
+// le premier de la liste est le bon — sans filtrer sur le domaine.
+//
+// C'est la correction du 21/08/2026 : une seule fonction servait deux besoins
+// opposés. Elle excluait les domaines génériques, ce qui est juste pour
+// DEVINER UNE ENTREPRISE (on ne déduit rien de « gmail.com ») mais faux pour
+// IDENTIFIER UN CONTACT. Conséquence : tout prospect sur Gmail — la majorité
+// des indépendants et petites structures en France — produisait un brief sans
+// contact, et le panneau « Contacts » restait vide.
+function getContactAttendee(event: CalendarEvent): { email: string } | null {
+  return event.attendees[0] ?? null;
+}
+
+// Pour l'entreprise, en revanche, le filtre reste indispensable : « gmail.com »
+// ne donnerait « Gmail » comme nom de société.
+function getCompanyAttendee(event: CalendarEvent): { email: string } | null {
   return event.attendees.find((a) => {
     const domain = a.email.split("@")[1] ?? "";
     return !GENERIC_DOMAINS.has(domain);
@@ -58,7 +74,7 @@ function getExternalAttendee(event: CalendarEvent): { email: string } | null {
 }
 
 function getCompanyFromDomain(event: CalendarEvent): string | null {
-  const hit = getExternalAttendee(event);
+  const hit = getCompanyAttendee(event);
   if (!hit) return null;
   return domainToCompany(hit.email.split("@")[1] ?? "");
 }
@@ -406,7 +422,7 @@ export default function BriefToolClient() {
 
   function handlePrepare(event: CalendarEvent) {
     const company = getCompanyFromDomain(event);
-    const contactEmail = getExternalAttendee(event)?.email ?? null;
+    const contactEmail = getContactAttendee(event)?.email ?? null;
     const emailParam = contactEmail ? `&contactEmail=${encodeURIComponent(contactEmail)}` : "";
     if (company) {
       router.push(`/brief/${event.id}?company=${encodeURIComponent(company)}${emailParam}`);
@@ -417,7 +433,7 @@ export default function BriefToolClient() {
   }
 
   function handleModalConfirm(eventId: string, company: string) {
-    const contactEmail = modalEvent ? getExternalAttendee(modalEvent)?.email ?? null : null;
+    const contactEmail = modalEvent ? getContactAttendee(modalEvent)?.email ?? null : null;
     const emailParam = contactEmail ? `&contactEmail=${encodeURIComponent(contactEmail)}` : "";
     setModalEvent(null);
     router.push(`/brief/${eventId}?company=${encodeURIComponent(company)}${emailParam}`);
@@ -588,15 +604,24 @@ export default function BriefToolClient() {
       </FadeIn>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div className={`grid grid-cols-1 gap-4 mb-6 ${showCalendar ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
         <StatTile index={0} accent="indigo" label="RDV à venir" value={upcomingCount} icon={<Calendar className="w-3.5 h-3.5" />} />
-        <StatTile
-          index={1}
-          accent="violet"
-          label={showCalendar ? "Avec participants externes" : "Briefs enregistrés"}
-          value={showCalendar ? calendarEvents?.reduce((n, e) => n + e.attendees.length, 0) ?? 0 : recentBriefs.length}
-          icon={<Users className="w-3.5 h-3.5" />}
-        />
+        {/* « Avec participants externes » retirée le 21/08/2026 : lib/calendar.ts
+            ne remonte QUE les événements ayant au moins un participant externe,
+            donc cette tuile comptait le même ensemble que « RDV à venir ». Elle
+            additionnait en plus des PARTICIPANTS et non des rendez-vous — deux
+            unités différentes qui coïncidaient tant que chaque RDV n'avait
+            qu'un invité. En mode « briefs enregistrés » la tuile garde du sens
+            et reste affichée. */}
+        {!showCalendar && (
+          <StatTile
+            index={1}
+            accent="violet"
+            label="Briefs enregistrés"
+            value={recentBriefs.length}
+            icon={<Users className="w-3.5 h-3.5" />}
+          />
+        )}
         <StatTile
           index={2}
           accent="emerald"
