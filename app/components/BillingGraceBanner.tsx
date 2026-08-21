@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
 import { fetchJsonOnce } from "@/lib/fetch-once";
+import type { ChromeState } from "@/lib/chrome-state";
 
 function hoursUntil(iso: string): number {
   return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / (60 * 60 * 1000)));
@@ -16,9 +17,9 @@ export default function BillingGraceBanner() {
     let cancelled = false;
     // Une fois par chargement de page : ce composant est remonté à chaque
     // changement de section, et le statut de facturation n'en dépend pas.
-    fetchJsonOnce<{ status: string; graceEndsAt: string | null }>("/api/settings/billing/status").then((data) => {
+    fetchJsonOnce<ChromeState>("/api/chrome").then((data) => {
       if (cancelled) return;
-      setGraceEndsAt(data?.status === "grace_period" ? data.graceEndsAt : null);
+      setGraceEndsAt(data?.billingStatus === "grace_period" ? data.graceEndsAt : null);
     });
     return () => {
       cancelled = true;

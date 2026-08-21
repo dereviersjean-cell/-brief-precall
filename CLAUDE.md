@@ -426,6 +426,27 @@ Déclarés des deux côtés (ancienne + nouvelle URL, elles cohabitent) : les 2 
 - ~~Google OAuth en mode Testing~~ — **réglé le 20/08/2026**. Projet passé *In production*, l'expiration des refresh tokens à 7 jours ne s'applique plus. Vérification soumise, en attente, mais elle ne conditionne plus le fonctionnement — voir la section dédiée.
 - ~~Jeton GitHub en clair dans `.git/config`~~ — révoqué le 19/08, remote nettoyé, helper `osxkeychain`.
 
+### Coût de navigation : le démarrage à froid, pas le rendu (21 août 2026)
+
+Chaîne de mesures, à ne pas refaire :
+
+| Mesure | Valeur |
+|---|---|
+| Requête Supabase de `/feedback` (8 calls, 42 Ko) | 134 ms |
+| TTFB des routes dynamiques en prod | ~190 ms |
+| Réponse RSC d'une navigation | **1,4 Ko** |
+| Code utile de `/api/settings/billing/status` | **204 ms** (`session=12ms query=192ms`) |
+| `Execution Duration` facturée par Vercel pour la même invocation | **1,06 s** |
+
+**L'écart de ~850 ms est le démarrage à froid** : chargement et évaluation des modules avant la première ligne de code. `lib/db.ts` fait 7 000 lignes et 228 fonctions exportées ; toute route qui en importe une seule chose fait évaluer l'ensemble, plus `next-auth` et `supabase-js`. Avec trois utilisateurs, presque chaque invocation est froide.
+
+Conséquence structurante : **ce qui coûte, c'est le NOMBRE de fonctions distinctes touchées par navigation**, pas le poids des données. Chaque route est une fonction, donc un démarrage à froid.
+
+Corollaires appliqués :
+- Les trois routes d'habillage ont été fusionnées en `/api/chrome` — trois démarrages à froid deviennent un. Côté client, les trois composants appellent la même URL via `fetchJsonOnce`, donc **un seul appel réseau** par chargement de page, sans coordination entre eux.
+- Le motif `requireActiveUser` + `getOrganizationForUser` + `getOrganizationBillingRow` faisait **quatre requêtes séquentielles** dont deux doublons exacts, pour lire deux champs. `getChromeStateForUser` fait un select imbriqué sur la clé étrangère — la forme que le middleware utilisait déjà correctement. **Ce motif est encore présent ailleurs dans l'app** : c'est le prochain gisement.
+- Piste non explorée, la plus lourde et la plus payante : découper `lib/db.ts`. 7 000 lignes évaluées au démarrage de chaque fonction, pour en utiliser deux ou trois.
+
 ### Région d'exécution — Paris (cdg1)
 
 **Les fonctions doivent tourner à Paris, comme la base.** Supabase est en `eu-west-3` (Paris). Vercel exécutait les fonctions à Washington (`iad1`) — son défaut, jamais choisi. Chaque appel Supabase faisait donc un aller-retour transatlantique, et une route aussi banale que `/api/settings/billing/status` en fait **quatre** : mesurée à **883 ms** le 21/08/2026.

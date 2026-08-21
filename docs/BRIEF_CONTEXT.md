@@ -375,7 +375,6 @@ Routes Admin
 * app/api/admin/users/[userId]/restore/route.ts + resend-invitation/route.ts
 * app/api/admin/organizations/route.ts + [orgId]/route.ts + [orgId]/members/route.ts + [orgId]/members/[userId]/route.ts + available-users/route.ts
 * app/api/admin/impersonate/route.ts (POST/DELETE)
-* app/api/impersonation-status/route.ts
 
 
 Routes Facturation
@@ -384,7 +383,7 @@ Routes Facturation
 * app/api/webhooks/stripe/route.ts (POST) — checkout.session.completed, customer.subscription.updated/created/deleted, invoice.payment_failed/succeeded
 * app/api/settings/billing/checkout/route.ts (POST) — manager-only, démarre l'essai/Checkout pour l'org (accepte interval: 'month'|'year')
 * app/api/settings/billing/portal/route.ts (POST) — manager-only, session Billing Portal
-* app/api/settings/billing/status/route.ts (GET) — tout user actif, statut + fin de grâce (alimente BillingGraceBanner)
+* app/api/chrome/route.ts (GET) — tout l'habillage en une réponse : nom d'organisation, statut de facturation, fin de grâce, essai, sièges, impersonation. Remplace depuis le 21/08/2026 les trois routes /api/settings/billing/status, /api/sidebar/org-status et /api/impersonation-status, qui étaient trois fonctions serverless donc trois démarrages à froid pour la même page.
 * app/api/admin/organizations/[orgId]/billing/route.ts (PATCH) — admin uniquement, override support unblock|extend_grace
 
 

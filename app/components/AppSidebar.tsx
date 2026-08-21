@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { LayoutDashboard, FileText, Video, Bell, Users, Settings, HelpCircle, LogOut, Sparkles, Menu, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { fetchJsonOnce } from "@/lib/fetch-once";
+import type { ChromeState } from "@/lib/chrome-state";
 
 type OrgStatus = {
   organizationName: string | null;
@@ -91,7 +92,7 @@ export default function AppSidebar() {
     // fetchJsonOnce et pas fetch : ce composant est remonté à chaque
     // changement de section (chaque layout monte sa propre sidebar), et le nom
     // de l'organisation ne dépend pas de la page affichée.
-    fetchJsonOnce<OrgStatus>("/api/sidebar/org-status").then((data) => {
+    fetchJsonOnce<ChromeState>("/api/chrome").then((data) => {
       if (!cancelled && data) setOrgStatus(data);
     });
     return () => {
