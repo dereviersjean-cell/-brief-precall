@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Meeting, Brief, TalkingPoint, NewsItem } from "@/lib/types";
@@ -255,9 +255,18 @@ export default function BriefClient({
 
   // Le PDF est rendu par le serveur (@react-pdf/renderer, même chaîne que les
   // devis) et relu depuis la base : le fichier partagé est donc exactement le
-  // brief enregistré, pas l'état de l'écran. Les deux boutons récupèrent le
-  // même fichier — l'un le télécharge, l'autre le passe au système.
-  async function fetchPdf(): Promise<File | null> {
+  // brief enregistré, pas l'état de l'écran.
+  //
+  // Il est préparé à l'AVANCE, au survol du bouton. Ce n'est pas une
+  // optimisation de confort mais la condition pour que le partage fonctionne :
+  // navigator.share() exige une activation utilisateur récente, et attendre un
+  // aller-retour réseau à l'intérieur du gestionnaire de clic la consomme. La
+  // première version faisait exactement ça — le navigateur rejetait l'appel et
+  // il ne se passait visiblement rien.
+  const pdfPromiseRef = useRef<Promise<File | null> | null>(null);
+  const pdfFileRef = useRef<File | null>(null);
+
+  const buildPdf = useCallback(async (): Promise<File | null> => {
     const res = await fetch(`/api/briefs/${encodeURIComponent(meeting.id)}/pdf`);
     if (!res.ok) {
       setPdfError(
@@ -269,7 +278,23 @@ export default function BriefClient({
     }
     const blob = await res.blob();
     return new File([blob], `Brief - ${displayName}.pdf`, { type: "application/pdf" });
-  }
+  }, [meeting.id, displayName]);
+
+  const warmPdf = useCallback(() => {
+    if (pdfPromiseRef.current) return pdfPromiseRef.current;
+    const promise = buildPdf()
+      .then((file) => {
+        pdfFileRef.current = file;
+        return file;
+      })
+      .catch(() => {
+        // Un échec ne doit pas rester en cache : le survol suivant réessaie.
+        pdfPromiseRef.current = null;
+        return null;
+      });
+    pdfPromiseRef.current = promise;
+    return promise;
+  }, [buildPdf]);
 
   function download(file: File) {
     const url = URL.createObjectURL(file);
@@ -286,41 +311,48 @@ export default function BriefClient({
     setPdfBusy("export");
     setPdfError(null);
     try {
-      const file = await fetchPdf();
+      const file = await warmPdf();
       if (file) download(file);
-    } catch {
-      setPdfError("Le PDF n'a pas pu être généré, réessayez.");
     } finally {
       setPdfBusy(null);
     }
   }
 
-  async function handleShare() {
-    setPdfBusy("share");
+  function handleShare() {
     setPdfError(null);
-    try {
-      const file = await fetchPdf();
-      if (!file) return;
+    const ready = pdfFileRef.current;
 
-      // Feuille de partage native — Mail, AirDrop, Messages. Tous les
-      // navigateurs ne savent pas partager un FICHIER (Chrome de bureau
-      // notamment) : canShare tranche, et on retombe sur le téléchargement
-      // plutôt que d'ouvrir un partage vide. Une annulation par
-      // l'utilisateur (AbortError) n'est pas une erreur.
-      if (navigator.canShare?.({ files: [file] })) {
-        try {
-          await navigator.share({ files: [file], title: displayName });
-        } catch (err) {
-          if ((err as Error)?.name !== "AbortError") download(file);
-        }
-      } else {
-        download(file);
-      }
-    } catch {
-      setPdfError("Le PDF n'a pas pu être généré, réessayez.");
-    } finally {
-      setPdfBusy(null);
+    // Chemin nominal : le fichier est déjà là (préparé au survol), donc
+    // navigator.share est appelé sans await intermédiaire et l'activation du
+    // clic est intacte. C'est le seul cas où un rejet AbortError signifie
+    // vraiment « l'utilisateur a fermé la feuille de partage ».
+    if (ready && navigator.canShare?.({ files: [ready] })) {
+      navigator.share({ files: [ready], title: displayName }).catch((err: Error) => {
+        if (err?.name !== "AbortError") download(ready);
+      });
+      return;
     }
+
+    // Chemin dégradé : rien en cache (clic immédiat, ou appareil tactile sans
+    // survol). On attend le fichier, ce qui consomme l'activation — un rejet
+    // ne serait alors plus interprétable. On tente quand même le partage, et
+    // au moindre échec on télécharge, plutôt que de laisser l'utilisateur
+    // devant un bouton qui ne fait rien.
+    setPdfBusy("share");
+    warmPdf()
+      .then(async (file) => {
+        if (!file) return;
+        if (navigator.canShare?.({ files: [file] })) {
+          try {
+            await navigator.share({ files: [file], title: displayName });
+          } catch {
+            download(file);
+          }
+        } else {
+          download(file);
+        }
+      })
+      .finally(() => setPdfBusy(null));
   }
 
   const [brief, setBrief] = useState<Brief | null>(meeting.brief ?? null);
@@ -401,6 +433,8 @@ export default function BriefClient({
           <div className="flex items-center gap-2">
             <button
               onClick={handleShare}
+              onMouseEnter={warmPdf}
+              onFocus={warmPdf}
               disabled={pdfBusy !== null}
               className="flex items-center gap-2 text-sm text-slate-600 border border-slate-200 bg-white px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
