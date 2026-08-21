@@ -9,7 +9,7 @@ import ClientReferencesTable from "./ClientReferencesTable";
 // it or of the commercial profile form.
 export default function ClientReferencesSection() {
   // Bumped after a successful file import so ClientReferencesTable refetches.
-  // Pipedrive/HubSpot imports live on the separate /settings/crm page — no
+  // Pipedrive/HubSpot imports live in the CRM section of /settings/connexions — no
   // shared state needed there, since navigating here always fetches fresh.
   const [tableVersion, setTableVersion] = useState(0);
   const [refFile, setRefFile] = useState<File | null>(null);

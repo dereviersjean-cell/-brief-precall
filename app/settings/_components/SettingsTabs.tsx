@@ -3,31 +3,25 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Settings, Link as LinkIcon, Database, Library, CreditCard, MessagesSquare, FlaskConical, Gauge } from "lucide-react";
+import { Settings, Link as LinkIcon, Library, CreditCard, MessagesSquare } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-// Notifications moved out to its own top-level sidebar item (AppSidebar.tsx,
-// /notifications) — it's a frequent daily-use setting, not an occasional
-// one, so it doesn't belong buried under Paramètres with the others.
+// Onglets retirés le 21/08/2026, à la demande de Jean — les PAGES existent
+// toujours et restent accessibles par URL directe, seul l'onglet disparaît :
+//   - CRM : son contenu a rejoint Connexions, tout se connecte au même endroit
+//   - Tester un call (/settings/import-call) : banc d'essai, pas un réglage
+//   - Calibrage (/settings/calibrage) : chantier objections en standby
+// Remettre un onglet = remettre sa ligne ici, rien d'autre à défaire.
 // Objections a rejoint Paramètres depuis Performance (recentrage produit,
 // 24 juillet 2026) — ouverte à tous (pas managerOnly), comme avant.
 const NAV_ITEMS: { href: string; label: string; icon: LucideIcon; managerOnly?: boolean }[] = [
   { href: "/settings/general", label: "Général", icon: Settings },
   { href: "/settings/connexions", label: "Connexions", icon: LinkIcon },
-  { href: "/settings/crm", label: "CRM", icon: Database },
   // « Références clients » raccourci en « Références » : avec l'ajout de
   // « Tester un call », la barre débordait de son conteneur max-w-4xl et
   // faisait apparaître une barre de défilement sous les onglets.
   { href: "/settings/references", label: "Références", icon: Library },
   { href: "/settings/objections", label: "Objections", icon: MessagesSquare },
-  // Banc d'essai du pipeline d'analyse (29/07/2026) : outil de calibrage de
-  // la configuration d'équipe (playbook, catégories d'objections), donc
-  // managerOnly comme Facturation.
-  { href: "/settings/import-call", label: "Tester un call", icon: FlaskConical, managerOnly: true },
-  // Annotation de référence pour mesurer la détection d'objections — faite par
-  // le directeur commercial, d'où une page d'app et non des fichiers + un
-  // terminal.
-  { href: "/settings/calibrage", label: "Calibrage", icon: Gauge, managerOnly: true },
   { href: "/settings/billing", label: "Facturation", icon: CreditCard, managerOnly: true },
 ];
 

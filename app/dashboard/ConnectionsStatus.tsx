@@ -37,8 +37,8 @@ export default async function ConnectionsStatus({ userId }: { userId: string }) 
     <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
       <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-1">Connexions & distribution</h2>
       <div className="divide-y divide-slate-100">
-        <StatusRow label="HubSpot" connected={hubspot !== null} href="/settings/crm" />
-        <StatusRow label="Pipedrive" connected={pipedrive !== null} href="/settings/crm" />
+        <StatusRow label="HubSpot" connected={hubspot !== null} href="/settings/connexions" />
+        <StatusRow label="Pipedrive" connected={pipedrive !== null} href="/settings/connexions" />
         <StatusRow label="Slack" connected={slack} href="/settings/connexions" />
         <div className="flex items-center justify-between py-2">
           <span className="text-sm text-slate-600">Digest hebdomadaire</span>

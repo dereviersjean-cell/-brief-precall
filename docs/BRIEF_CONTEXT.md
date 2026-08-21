@@ -140,7 +140,7 @@ Settings (onglets horizontaux, app/settings/_components/SettingsTabs.tsx — rem
 * app/settings/page.tsx (redirect vers /general)
 * app/settings/general/page.tsx — profil commercial + références clients
 * app/settings/connexions/page.tsx — Recall Google/Microsoft + bouton "Reconnecter Google Calendar" (scope events)
-* app/settings/crm/page.tsx — HubSpot + Pipedrive
+* app/settings/connexions/CrmSection.tsx — HubSpot + Pipedrive, section de la page Connexions depuis le 21/08/2026 (l'onglet CRM et la page /settings/crm ont été supprimés : tout ce qui se connecte est au même endroit)
 * app/settings/references/page.tsx — base de références clients modifiable + explication vectorisation
 * app/settings/billing/page.tsx + BillingSettingsClient.tsx — manager-only. Statut d'abonnement, sièges actifs, coût mensuel estimé, essai/renouvellement, bannière alerte fenêtre de grâce, CTA Checkout ou Billing Portal
 * app/settings/notifications/page.tsx + NotificationSettingsClient.tsx — préférences distribution

@@ -194,7 +194,7 @@ export default function ConnexionsSettingsClient({
       </div>
 
       {/* Compte Slack — same connect/disconnect pattern as Pipedrive/HubSpot
-          in /settings/crm (CrmSettingsClient.tsx). Status fetched
+          in the CRM section just below (CrmSection.tsx). Status fetched
           server-side (page.tsx, via hasSlackConnection) so there's no
           loading flash. */}
       <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] mt-6">

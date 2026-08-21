@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, FileText, Video, Bell, Users, Settings, HelpCircle, LogOut, Sparkles, Menu, X } from "lucide-react";
+import { LayoutDashboard, FileText, Video, Users, Settings, HelpCircle, LogOut, Sparkles, Menu, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { fetchJsonOnce } from "@/lib/fetch-once";
 import type { ChromeState } from "@/lib/chrome-state";
@@ -118,7 +118,6 @@ export default function AppSidebar() {
     pathname === "/dashboard" || pathname.startsWith("/contacts") || pathname.startsWith("/training");
   const briefActive = pathname.startsWith("/brief");
   const feedbackActive = pathname.startsWith("/feedback");
-  const notificationsActive = pathname.startsWith("/notifications");
   // Équipe est un lien unique — les sous-pages (Playbook, Templates emails,
   // Insights) se naviguent via des onglets en haut de /team (TeamTabs.tsx),
   // pas depuis la sidebar.
@@ -130,9 +129,6 @@ export default function AppSidebar() {
     { href: "/brief", label: "Brief", icon: FileText, active: briefActive },
     { href: "/feedback", label: "Analyse rendez-vous", icon: Video, active: feedbackActive },
     { href: "/dashboard", label: "Performance", icon: LayoutDashboard, active: performanceActive },
-  ];
-  const compteGroup: { href: string; label: string; icon: LucideIcon; active: boolean; badge?: number }[] = [
-    { href: "/notifications", label: "Notifications", icon: Bell, active: notificationsActive },
   ];
 
   return (
@@ -208,19 +204,6 @@ export default function AppSidebar() {
           </div>
         </div>
 
-        <div>
-          <NavGroupLabel>Compte</NavGroupLabel>
-          <div className="space-y-0.5">
-            {compteGroup.map((item) => (
-              <NavLink
-                key={item.href}
-                {...item}
-                tourId={item.href === "/notifications" ? "nav-notifications" : undefined}
-              />
-            ))}
-          </div>
-        </div>
-
         {/* Équipe (manager only) — lien unique ; les sous-pages se naviguent
             via des onglets en haut de /team (TeamTabs.tsx). */}
         {isManager && (
@@ -234,7 +217,7 @@ export default function AppSidebar() {
       </nav>
 
       {/* Bottom — help, settings, sign out, user */}
-      <div className="px-3 py-3 space-y-2 shrink-0">
+      <div className="px-3 py-3 space-y-1.5 shrink-0">
         {orgStatus?.billingStatus === "trialing" && orgStatus.trialEndsAt && (
           <div className="relative overflow-hidden rounded-xl border border-border bg-gradient-to-br from-[color:var(--lavender)] to-white p-3">
             <div className="flex items-center gap-2 text-[11px] font-medium text-[color:var(--violet)]">
@@ -251,40 +234,40 @@ export default function AppSidebar() {
 
         <Link
           href="/help"
-          className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-border text-[12.5px] font-medium hover:bg-slate-50 transition-colors ${
+          className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-[11.5px] font-medium hover:bg-slate-50 transition-colors ${
             helpActive ? "text-[color:var(--violet)]" : "text-slate-600"
           }`}
         >
-          <HelpCircle className="h-3.5 w-3.5" />
+          <HelpCircle className="h-3 w-3" />
           Aide
         </Link>
 
         <Link
           href="/settings"
-          className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-border text-[12.5px] font-medium hover:bg-slate-50 transition-colors ${
+          className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-[11.5px] font-medium hover:bg-slate-50 transition-colors ${
             settingsActive ? "text-[color:var(--violet)]" : "text-slate-600"
           }`}
         >
-          <Settings className="h-3.5 w-3.5" />
+          <Settings className="h-3 w-3" />
           Paramètres
         </Link>
 
         <button
           onClick={() => signOut({ callbackUrl: "/" })}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-border text-[12.5px] font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+          className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-[11.5px] font-medium text-slate-600 hover:bg-slate-50 transition-colors"
         >
-          <LogOut className="h-3.5 w-3.5" />
+          <LogOut className="h-3 w-3" />
           Déconnexion
         </button>
 
         {/* User card */}
-        <div className="flex items-center gap-2.5 rounded-xl border border-border bg-white p-2.5 mt-1">
-          <div className="grid h-9 w-9 place-items-center rounded-lg brand-gradient text-white text-[11px] font-semibold shrink-0">
+        <div className="flex items-center gap-2 rounded-xl border border-border bg-white p-2 mt-1">
+          <div className="grid h-7 w-7 place-items-center rounded-lg brand-gradient text-white text-[10px] font-semibold shrink-0">
             {userInitials}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[12.5px] font-medium text-slate-900 leading-none truncate">{userName}</p>
-            {userEmail && <p className="text-[10.5px] text-slate-500 mt-1 truncate">{userEmail}</p>}
+            <p className="text-[11.5px] font-medium text-slate-900 leading-none truncate">{userName}</p>
+            {userEmail && <p className="text-[10px] text-slate-500 mt-0.5 truncate">{userEmail}</p>}
           </div>
         </div>
       </div>

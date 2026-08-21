@@ -7,7 +7,7 @@ import { requireActiveUser } from "@/lib/api-auth";
 import { getPipedriveAuthUrl } from "@/lib/crm/pipedrive";
 import { APP_URL } from "@/lib/app-url";
 
-const ERROR_URL = `${APP_URL}/settings/crm?crm=error`;
+const ERROR_URL = `${APP_URL}/settings/connexions?crm=error`;
 
 export async function GET() {
   const session = await getServerSession(authOptions);

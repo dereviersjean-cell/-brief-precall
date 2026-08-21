@@ -3,12 +3,17 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
+// Section CRM de la page Connexions. Vivait dans un onglet séparé
+// (/settings/crm, supprimée) jusqu'au 21/08/2026 : tout ce qui se connecte est
+// désormais au même endroit. Le composant lit toujours ?crm=… dans l'URL —
+// les callbacks OAuth HubSpot et Pipedrive redirigent maintenant vers
+// /settings/connexions?crm=…, cf. les routes de callback.
 type Props = {
   pipedriveConnected: boolean;
   hubspotConnected: boolean;
 };
 
-export default function CrmSettingsClient({
+export default function CrmSection({
   pipedriveConnected: initialPipedriveConnected,
   hubspotConnected: initialHubspotConnected,
 }: Props) {

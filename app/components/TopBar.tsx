@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { Bell, ChevronRight } from "lucide-react";
 import GlobalSearch from "./GlobalSearch";
 
@@ -54,16 +53,7 @@ function buildCrumbs(pathname: string): string[] {
 
 export default function TopBar() {
   const pathname = usePathname();
-  const { data: session } = useSession();
   const crumbs = buildCrumbs(pathname);
-
-  const userName = session?.user?.name ?? "";
-  const userInitials = userName
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
 
   return (
     <div className="brief-ui sticky top-0 z-10 border-b border-border/80 bg-white/70 backdrop-blur-xl">
@@ -84,17 +74,10 @@ export default function TopBar() {
           <Link
             href="/notifications"
             title="Notifications"
+            data-tour="nav-notifications"
             className="grid h-9 w-9 place-items-center rounded-lg border border-border bg-white/60 text-slate-600 hover:bg-white hover:text-slate-900 transition-colors"
           >
             <Bell className="h-4 w-4" />
-          </Link>
-          <div className="h-6 w-px bg-border" />
-          <Link
-            href="/settings"
-            title="Paramètres"
-            className="grid h-8 w-8 place-items-center rounded-full brand-gradient text-white text-[11px] font-semibold shrink-0"
-          >
-            {userInitials || "?"}
           </Link>
         </div>
       </div>

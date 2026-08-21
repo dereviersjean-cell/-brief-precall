@@ -7,8 +7,8 @@ import { exchangePipedriveCode } from "@/lib/crm/pipedrive";
 import { saveCrmTokens } from "@/lib/db";
 import { APP_URL } from "@/lib/app-url";
 
-const SUCCESS_URL = `${APP_URL}/settings/crm?crm=pipedrive_connected`;
-const ERROR_URL = `${APP_URL}/settings/crm?crm=error`;
+const SUCCESS_URL = `${APP_URL}/settings/connexions?crm=pipedrive_connected`;
+const ERROR_URL = `${APP_URL}/settings/connexions?crm=error`;
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
