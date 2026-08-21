@@ -172,37 +172,25 @@ export async function saveBrief(
   modelUsed: string,
   meetingTitle: string | null = null
 ): Promise<{ id: string } | null> {
-  const base = {
-    user_id: userId,
-    company_name: companyName,
-    contact_email: contactEmail,
-    calendar_event_id: calendarEventId,
-    content,
-    model_used: modelUsed,
-  };
+  const { data, error } = await supabaseAdmin
+    .from("briefs")
+    .upsert({
+      user_id: userId,
+      company_name: companyName,
+      contact_email: contactEmail,
+      calendar_event_id: calendarEventId,
+      content,
+      model_used: modelUsed,
+      // Le titre du rendez-vous, pour l'affichage. company_name reste ce qui
+      // pilote la génération (Pappers, actualités) — les confondre
+      // dégraderait les briefs. Migration 010, passée en prod le 22/08/2026.
+      meeting_title: meetingTitle,
+    }, { onConflict: "user_id,calendar_event_id" })
+    .select("id")
+    .single();
 
-  const write = (row: Record<string, unknown>) =>
-    supabaseAdmin
-      .from("briefs")
-      .upsert(row, { onConflict: "user_id,calendar_event_id" })
-      .select("id")
-      .single();
-
-  const { data, error } = await write({ ...base, meeting_title: meetingTitle });
-  if (!error) return data as { id: string } | null;
-
-  // Repli si la migration 010 n'est pas encore passée en prod : PostgREST
-  // rejette la colonne inconnue (PGRST204). On réécrit sans elle plutôt que
-  // de perdre le brief — la génération vient de coûter un appel au modèle.
-  // À supprimer une fois 010 exécutée partout.
-  if (error.code === "PGRST204" || /meeting_title/.test(error.message ?? "")) {
-    console.warn("[saveBrief] colonne meeting_title absente, repli sans titre (migration 010 non exécutée ?)");
-    const retry = await write(base);
-    if (retry.error) throw retry.error;
-    return retry.data as { id: string } | null;
-  }
-
-  throw error;
+  if (error) throw error;
+  return data as { id: string } | null;
 }
 
 export async function getBriefsByUser(userId: string) {

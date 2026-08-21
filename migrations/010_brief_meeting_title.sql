@@ -1,8 +1,7 @@
 -- 010 — Titre du rendez-vous sur les briefs.
--- À exécuter dans le SQL editor Supabase (prod). Le code fonctionne AVANT
--- comme APRÈS : l'écriture retombe sur l'ancienne forme si la colonne est
--- absente, et la lecture traite null comme « pas de titre » en affichant le
--- nom d'entreprise, comme aujourd'hui.
+-- Exécutée en prod le 22/08/2026. La lecture traite null comme « pas de
+-- titre » et affiche le nom d'entreprise : les briefs antérieurs restent
+-- lisibles tels quels, sans reprise de données.
 
 alter table briefs
   -- Le titre de l'événement d'agenda (« Luc / Jean Weekly »), tel que
