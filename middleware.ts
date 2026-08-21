@@ -55,6 +55,19 @@ async function getUserGateInfo(userId: string): Promise<{ disabled: boolean; bil
 }
 
 export async function middleware(request: NextRequest) {
+  // Les préchargements de Next ne rendent que la frontière de chargement
+  // (loading.tsx) : aucune donnée utilisateur n'y transite. Depuis l'ajout de
+  // ces frontières le 20/08/2026, un seul chargement de page en déclenche une
+  // vingtaine — mesuré dans les logs Vercel — et chacun exécutait ce
+  // middleware, donc une requête Supabase pour rien.
+  //
+  // Le garde n'est pas contourné : la navigation réelle qui suit passe par
+  // ici normalement, et c'est elle qui sert des données. Un utilisateur
+  // désactivé ou suspendu ne récupère par cette voie qu'un squelette vide.
+  if (request.headers.get("next-router-prefetch") === "1") {
+    return NextResponse.next();
+  }
+
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
   const supabaseUserId = token?.supabaseUserId as string | undefined;
 
