@@ -16,6 +16,11 @@ export type Meeting = {
   date: string; // ISO string
   duration: number; // minutes
   company: string;
+  // Titre de l'événement d'agenda. Sert UNIQUEMENT à l'affichage : la
+  // génération continue de s'appuyer sur `company`, qui alimente Pappers, les
+  // actualités et la recherche d'entreprise. Absent sur les briefs enregistrés
+  // avant la migration 010.
+  title?: string;
   companyLogo?: string;
   industry: string;
   website?: string;

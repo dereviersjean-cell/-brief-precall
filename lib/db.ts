@@ -169,23 +169,40 @@ export async function saveBrief(
   contactEmail: string | null,
   calendarEventId: string | null,
   content: unknown,
-  modelUsed: string
+  modelUsed: string,
+  meetingTitle: string | null = null
 ): Promise<{ id: string } | null> {
-  const { data, error } = await supabaseAdmin
-    .from("briefs")
-    .upsert({
-      user_id: userId,
-      company_name: companyName,
-      contact_email: contactEmail,
-      calendar_event_id: calendarEventId,
-      content,
-      model_used: modelUsed,
-    }, { onConflict: "user_id,calendar_event_id" })
-    .select("id")
-    .single();
+  const base = {
+    user_id: userId,
+    company_name: companyName,
+    contact_email: contactEmail,
+    calendar_event_id: calendarEventId,
+    content,
+    model_used: modelUsed,
+  };
 
-  if (error) throw error;
-  return data as { id: string } | null;
+  const write = (row: Record<string, unknown>) =>
+    supabaseAdmin
+      .from("briefs")
+      .upsert(row, { onConflict: "user_id,calendar_event_id" })
+      .select("id")
+      .single();
+
+  const { data, error } = await write({ ...base, meeting_title: meetingTitle });
+  if (!error) return data as { id: string } | null;
+
+  // Repli si la migration 010 n'est pas encore passée en prod : PostgREST
+  // rejette la colonne inconnue (PGRST204). On réécrit sans elle plutôt que
+  // de perdre le brief — la génération vient de coûter un appel au modèle.
+  // À supprimer une fois 010 exécutée partout.
+  if (error.code === "PGRST204" || /meeting_title/.test(error.message ?? "")) {
+    console.warn("[saveBrief] colonne meeting_title absente, repli sans titre (migration 010 non exécutée ?)");
+    const retry = await write(base);
+    if (retry.error) throw retry.error;
+    return retry.data as { id: string } | null;
+  }
+
+  throw error;
 }
 
 export async function getBriefsByUser(userId: string) {
@@ -323,15 +340,15 @@ export async function upsertUserProfile(
   }
 }
 
-export async function getBriefById(briefId: string): Promise<{ content: unknown; company_name: string | null } | null> {
+export async function getBriefById(briefId: string): Promise<{ content: unknown; company_name: string | null; meeting_title?: string | null } | null> {
   const { data, error } = await supabaseAdmin
     .from("briefs")
-    .select("content, company_name")
+    .select("content, company_name, meeting_title")
     .eq("id", briefId)
     .maybeSingle();
 
   if (error) throw error;
-  return data as { content: unknown; company_name: string | null } | null;
+  return data as { content: unknown; company_name: string | null; meeting_title?: string | null } | null;
 }
 
 export async function getAdminConfig(key: string): Promise<unknown> {

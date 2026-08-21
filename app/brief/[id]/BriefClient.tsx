@@ -245,6 +245,11 @@ export default function BriefClient({
   contactEmail?: string | null;
   callHistory?: CallHistoryItem[];
 }) {
+  // Ce qu'on affiche en titre : le nom du rendez-vous quand on l'a, sinon le
+  // nom d'entreprise comme avant. La génération, elle, continue de s'appuyer
+  // sur meeting.company — c'est lui qui alimente Pappers et les actualités.
+  const displayName = meeting.title?.trim() || meeting.company;
+
   const [brief, setBrief] = useState<Brief | null>(meeting.brief ?? null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -261,6 +266,7 @@ export default function BriefClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           company: meeting.company,
+          meetingTitle: meeting.title ?? null,
           calendarEventId: meeting.id,
           contactEmail: contactEmail ?? null,
           // Only used server-side to enrich the pre-call notification email
@@ -285,7 +291,7 @@ export default function BriefClient({
     } finally {
       setIsGenerating(false);
     }
-  }, [meeting.company, meeting.id, meeting.date, contactEmail]);
+  }, [meeting.company, meeting.title, meeting.id, meeting.date, contactEmail]);
 
   useEffect(() => {
     if (autoGenerate && !meeting.brief) {
@@ -317,7 +323,7 @@ export default function BriefClient({
               Brief
             </Link>
             <span className="text-slate-200">/</span>
-            <span className="text-sm font-medium text-slate-900">{meeting.company}</span>
+            <span className="text-sm font-medium text-slate-900">{displayName}</span>
           </div>
           <div className="flex items-center gap-2">
             <button className="flex items-center gap-2 text-sm text-slate-600 border border-slate-200 bg-white px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">
@@ -342,10 +348,10 @@ export default function BriefClient({
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-xl font-bold text-slate-400 shrink-0">
-                {meeting.company.charAt(0)}
+                {displayName.charAt(0)}
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">{meeting.company}</h1>
+                <h1 className="text-2xl font-bold text-slate-900">{displayName}</h1>
                 <p className="text-slate-500 mt-0.5">
                   {formatDateTime(meeting.date)} · {meeting.duration} min · {meeting.industry}
                 </p>

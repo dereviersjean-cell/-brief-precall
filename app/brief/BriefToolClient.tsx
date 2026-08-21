@@ -20,6 +20,9 @@ interface CalendarEvent {
 interface StoredBrief {
   id: string;
   company_name: string | null;
+  // Null tant que la migration 010 n'est pas passée, ou pour un brief
+  // enregistré avant elle : on retombe alors sur company_name à l'affichage.
+  meeting_title?: string | null;
   contact_email: string | null;
   calendar_event_id: string | null;
   model_used: string | null;
@@ -233,7 +236,7 @@ function CalendarEventCard({
       <div className="shrink-0">
         {existingBrief ? (
           <Link
-            href={`/brief/${existingBrief.calendar_event_id ?? existingBrief.id}?company=${encodeURIComponent(existingBrief.company_name ?? "")}&cached=true&contactEmail=${encodeURIComponent(existingBrief.contact_email ?? "")}`}
+            href={`/brief/${existingBrief.calendar_event_id ?? existingBrief.id}?company=${encodeURIComponent(existingBrief.company_name ?? "")}&cached=true&contactEmail=${encodeURIComponent(existingBrief.contact_email ?? "")}&title=${encodeURIComponent(existingBrief.meeting_title ?? "")}`}
             className="flex items-center gap-1.5 h-8 text-sm font-medium text-slate-700 border border-border bg-white px-3 rounded-lg hover:bg-slate-50 transition-colors duration-200"
           >
             Revoir
@@ -367,7 +370,7 @@ function RecentBriefsCard({ briefs }: { briefs: StoredBrief[] }) {
         {briefs.map((brief) => (
           <Link
             key={brief.id}
-            href={`/brief/${brief.calendar_event_id ?? brief.id}?company=${encodeURIComponent(brief.company_name ?? "")}&cached=true&contactEmail=${encodeURIComponent(brief.contact_email ?? "")}`}
+            href={`/brief/${brief.calendar_event_id ?? brief.id}?company=${encodeURIComponent(brief.company_name ?? "")}&cached=true&contactEmail=${encodeURIComponent(brief.contact_email ?? "")}&title=${encodeURIComponent(brief.meeting_title ?? "")}`}
             className="flex items-center gap-3 -mx-2 px-2 py-2 rounded-lg hover:bg-slate-50 transition-colors group"
           >
             <div className="w-8 h-8 rounded-lg brand-gradient flex items-center justify-center shrink-0">
@@ -424,8 +427,9 @@ export default function BriefToolClient() {
     const company = getCompanyFromDomain(event);
     const contactEmail = getContactAttendee(event)?.email ?? null;
     const emailParam = contactEmail ? `&contactEmail=${encodeURIComponent(contactEmail)}` : "";
+    const titleParam = event.summary ? `&title=${encodeURIComponent(event.summary)}` : "";
     if (company) {
-      router.push(`/brief/${event.id}?company=${encodeURIComponent(company)}${emailParam}`);
+      router.push(`/brief/${event.id}?company=${encodeURIComponent(company)}${emailParam}${titleParam}`);
     } else {
       setModalDefaultCompany("");
       setModalEvent(event);
@@ -435,8 +439,11 @@ export default function BriefToolClient() {
   function handleModalConfirm(eventId: string, company: string) {
     const contactEmail = modalEvent ? getContactAttendee(modalEvent)?.email ?? null : null;
     const emailParam = contactEmail ? `&contactEmail=${encodeURIComponent(contactEmail)}` : "";
+    // Le titre du RDV vient de l'événement, pas de la saisie : c'est justement
+    // parce que le nom d'entreprise était indevinable qu'on passe par ce modal.
+    const titleParam = modalEvent?.summary ? `&title=${encodeURIComponent(modalEvent.summary)}` : "";
     setModalEvent(null);
-    router.push(`/brief/${eventId}?company=${encodeURIComponent(company)}${emailParam}`);
+    router.push(`/brief/${eventId}?company=${encodeURIComponent(company)}${emailParam}${titleParam}`);
   }
 
   useEffect(() => {

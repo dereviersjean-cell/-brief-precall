@@ -31,7 +31,7 @@ export default async function BriefPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ company?: string; cached?: string; contactEmail?: string }>;
+  searchParams: Promise<{ company?: string; cached?: string; contactEmail?: string; title?: string }>;
 }) {
   const { id } = await params;
   // PAS de garde isUuid en tête de route ici, contrairement aux autres pages
@@ -41,7 +41,8 @@ export default async function BriefPage({
   // vers un UUID Supabase. Un garde global renvoyait 404 sur tous les boutons
   // « Préparer le brief » (régression du 19/08/2026). Le garde est descendu sur
   // la seule requête qui interroge une colonne uuid, plus bas.
-  const { company, cached, contactEmail } = await searchParams;
+  const { company, cached, contactEmail, title } = await searchParams;
+  const meetingTitle = title ? decodeURIComponent(title) : null;
   const decodedContactEmail = contactEmail ? decodeURIComponent(contactEmail) : null;
 
   if (!company) {
@@ -73,6 +74,9 @@ export default async function BriefPage({
             date: new Date().toISOString(),
             duration: 60,
             company: decodedCompany,
+            // Le titre stocké fait foi ; le paramètre d'URL sert de repli pour
+            // un brief enregistré avant la migration 010.
+            title: (byEvent as { meeting_title?: string | null }).meeting_title ?? meetingTitle ?? undefined,
             industry: "—",
             contacts: [],
             status: "upcoming",
@@ -91,6 +95,7 @@ export default async function BriefPage({
             date: new Date().toISOString(),
             duration: 60,
             company: decodedCompany || byId.company_name || "",
+            title: byId.meeting_title ?? meetingTitle ?? undefined,
             industry: "—",
             contacts: [],
             status: "upcoming",
@@ -110,6 +115,7 @@ export default async function BriefPage({
     date: new Date().toISOString(),
     duration: 60,
     company: decodedCompany,
+    title: meetingTitle ?? undefined,
     industry: "—",
     contacts: [],
     status: "upcoming",
