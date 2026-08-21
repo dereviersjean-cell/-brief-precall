@@ -1427,6 +1427,45 @@ export type OrganizationBilling = {
 const ORGANIZATION_BILLING_COLUMNS =
   "stripe_customer_id, stripe_subscription_id, stripe_seat_item_id, billing_status, billing_interval, trial_ends_at, grace_period_ends_at, current_period_start, current_period_end, last_usage_reported_at";
 
+// Une seule requête pour la bannière de fenêtre de grâce : état du compte ET
+// facturation de son organisation, via la jointure sur la clé étrangère.
+//
+// La bannière est montée sur chaque page, donc cette route part à chaque
+// chargement. Elle faisait QUATRE requêtes séquentielles pour lire deux
+// champs — users deux fois (disabled_at, puis organization_id : la même
+// ligne), puis organizations deux fois (l'organisation entière, puis ses
+// colonnes de facturation : la même ligne). Mesuré à 1,01 s le 21/08/2026.
+//
+// Même forme que la requête du middleware, qui avait déjà raison : un select
+// imbriqué plutôt qu'une cascade d'allers-retours.
+export async function getBillingGateForUser(userId: string): Promise<{
+  disabledAt: string | null;
+  billingStatus: string | null;
+  graceEndsAt: string | null;
+} | null> {
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("disabled_at, organizations(billing_status, grace_period_ends_at)")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+
+  // supabase-js type la relation imbriquée comme un tableau, alors que
+  // PostgREST renvoie un objet pour une clé étrangère « vers un ». On accepte
+  // les deux formes plutôt que de parier sur l'une — même précaution que
+  // normalizeCallAnalysis plus haut.
+  type OrgRow = { billing_status: string | null; grace_period_ends_at: string | null };
+  const row = data as unknown as { disabled_at: string | null; organizations: OrgRow | OrgRow[] | null };
+  const org = Array.isArray(row.organizations) ? row.organizations[0] ?? null : row.organizations;
+
+  return {
+    disabledAt: row.disabled_at,
+    billingStatus: org?.billing_status ?? null,
+    graceEndsAt: org?.grace_period_ends_at ?? null,
+  };
+}
+
 export async function getOrganizationBillingRow(orgId: string): Promise<OrganizationBilling | null> {
   const { data, error } = await supabaseAdmin
     .from("organizations")
