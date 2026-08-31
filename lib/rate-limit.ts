@@ -107,3 +107,102 @@ export function requestIp(request: Request): string {
     "unknown"
   );
 }
+
+// ---------------------------------------------------------------------------
+// Limitation partagée entre instances (migration 011)
+//
+// Le limiteur en mémoire ci-dessus ne voit qu'une instance Vercel, et elles
+// sont éphémères : deux appels consécutifs peuvent ne pas partager de
+// compteur. Suffisant contre un double-clic, inopérant contre un client qui
+// boucle — et chaque génération non bloquée est une facture Anthropic.
+//
+// Deux allers-retours (compter, insérer) sur une route qui va de toute façon
+// attendre plusieurs secondes une réponse du modèle : le coût est négligeable
+// là où il est payé.
+//
+// TOLÈRE L'ABSENCE DE LA TABLE (pattern bug #14) : tant que la migration 011
+// n'est pas passée en prod, on retombe sur le limiteur en mémoire au lieu de
+// faire échouer la génération. Une limitation dégradée vaut mieux qu'une
+// fonctionnalité cassée — mais ce n'est pas une raison de ne pas passer la
+// migration.
+import { supabaseAdmin } from "./supabase";
+
+export type SharedLimit = { max: number; windowMs: number };
+
+// Le quota partagé reprend la fenêtre par UTILISATEUR du limiteur en mémoire
+// (200 générations par jour), pas la fenêtre par IP : c'est le seul compteur
+// qui a un sens quand les instances ne se voient pas. Volontairement identique
+// et non plus strict — l'objectif est de rendre la limite existante réellement
+// opposable, pas d'en durcir la valeur au passage.
+const AI_SHARED_LIMIT: SharedLimit = { max: 200, windowMs: 24 * 60 * 60 * 1000 };
+
+export async function checkSharedRateLimit(
+  bucket: string,
+  limit: SharedLimit
+): Promise<{ allowed: boolean; retryAfterMs: number; degraded: boolean }> {
+  const since = new Date(Date.now() - limit.windowMs).toISOString();
+
+  const { count, error } = await supabaseAdmin
+    .from("rate_limit_events")
+    .select("id", { count: "exact", head: true })
+    .eq("bucket", bucket)
+    .gte("created_at", since);
+
+  if (error) {
+    // Table absente ou base injoignable : on le dit à l'appelant, qui se
+    // rabattra sur le limiteur en mémoire.
+    console.warn("[rate-limit] comptage partagé indisponible, repli en mémoire :", error.message);
+    return { allowed: true, retryAfterMs: 0, degraded: true };
+  }
+
+  if ((count ?? 0) >= limit.max) {
+    return { allowed: false, retryAfterMs: limit.windowMs, degraded: false };
+  }
+
+  const { error: insertError } = await supabaseAdmin
+    .from("rate_limit_events")
+    .insert({ bucket });
+  if (insertError) {
+    console.warn("[rate-limit] enregistrement de l'événement échoué :", insertError.message);
+  }
+
+  // Purge opportuniste : une fois sur cinquante, on efface ce qui est sorti de
+  // toutes les fenêtres. Pas de cron dédié pour une table qui se vide en une
+  // requête, et pas à chaque appel pour ne pas payer une suppression à chaque
+  // génération.
+  if (Math.random() < 0.02) {
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    void supabaseAdmin
+      .from("rate_limit_events")
+      .delete()
+      .lt("created_at", cutoff)
+      .then(({ error: purgeError }) => {
+        if (purgeError) console.warn("[rate-limit] purge échouée :", purgeError.message);
+      });
+  }
+
+  return { allowed: true, retryAfterMs: 0, degraded: false };
+}
+
+// Le garde à appeler depuis une route de génération IA : mémoire PUIS partagé.
+//
+// La mémoire d'abord parce qu'elle est gratuite et attrape le cas le plus
+// fréquent — le double-clic, la boucle de rendu — sans toucher la base. Le
+// partagé ensuite, seul capable de voir un client qui tourne réparti sur
+// plusieurs instances.
+//
+// Si le comptage partagé est indisponible (migration 011 non passée, base
+// injoignable), on laisse passer : le verdict en mémoire fait alors seul
+// autorité. Une limitation dégradée vaut mieux qu'une génération cassée.
+export async function enforceAiGenerationLimit(
+  ip: string,
+  userId: string
+): Promise<{ allowed: boolean; retryAfterMs: number }> {
+  const local = checkAiGenerationRateLimit(ip, userId);
+  if (!local.allowed) return local;
+
+  const shared = await checkSharedRateLimit(`ai:${userId}`, AI_SHARED_LIMIT);
+  if (!shared.allowed) return { allowed: false, retryAfterMs: shared.retryAfterMs };
+
+  return { allowed: true, retryAfterMs: 0 };
+}

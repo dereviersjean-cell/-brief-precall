@@ -153,7 +153,7 @@ const MAX_RESPONSE_GAP_TURNS = 8;
 // permet de renvoyer une position dans la vidéo en plus du verbatim. Sans
 // horodatage (import de texte brut), on retombe sur un découpage par ligne et
 // les timings restent nuls.
-type TranscriptLine = { text: string; startMs: number | null; endMs: number | null };
+export type TranscriptLine = { text: string; startMs: number | null; endMs: number | null };
 
 export type TimedTurn = { text: string; start_ms: number; end_ms: number; speaker_id: string };
 
@@ -192,7 +192,7 @@ function stripSpeakerPrefix(line: string): string {
 }
 
 // Résout un intervalle de lignes en texte ET en position temporelle.
-type ResolvedRange = {
+export type ResolvedRange = {
   verbatim: string | null;
   startMs: number | null;
   endMs: number | null;
@@ -200,7 +200,11 @@ type ResolvedRange = {
   endIndex: number | null;
 };
 
-function resolveRange(range: unknown, lines: TranscriptLine[]): ResolvedRange {
+// Exportée pour être testée, sur le modèle de lib/billing-rules.ts : c'est LA
+// décision à risque du classifieur. Elle est le seul rempart entre « le modèle
+// a cité le prospect » et « le modèle a inventé une phrase et Brief l'affiche
+// entre guillemets ». Une dérive ici ne casse rien, elle ment.
+export function resolveRange(range: unknown, lines: TranscriptLine[]): ResolvedRange {
   const empty: ResolvedRange = { verbatim: null, startMs: null, endMs: null, startIndex: null, endIndex: null };
   if (!Array.isArray(range) || range.length !== 2) return empty;
   const [rawStart, rawEnd] = range;

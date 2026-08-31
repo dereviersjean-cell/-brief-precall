@@ -560,7 +560,24 @@ Conséquence structurante : **ce qui coûte, c'est le NOMBRE de fonctions distin
 Corollaires appliqués :
 - Les trois routes d'habillage ont été fusionnées en `/api/chrome` — trois démarrages à froid deviennent un. Côté client, les trois composants appellent la même URL via `fetchJsonOnce`, donc **un seul appel réseau** par chargement de page, sans coordination entre eux.
 - Le motif `requireActiveUser` + `getOrganizationForUser` + `getOrganizationBillingRow` faisait **quatre requêtes séquentielles** dont deux doublons exacts, pour lire deux champs. `getChromeStateForUser` fait un select imbriqué sur la clé étrangère — la forme que le middleware utilisait déjà correctement. **Ce motif est encore présent ailleurs dans l'app** : c'est le prochain gisement.
-- Piste non explorée, la plus lourde et la plus payante : découper `lib/db.ts`. 7 000 lignes évaluées au démarrage de chaque fonction, pour en utiliser deux ou trois.
+- Piste la plus lourde et la plus payante : découper `lib/db.ts`. 7 200 lignes évaluées au démarrage de chaque fonction, pour en utiliser deux ou trois.
+
+  **Analyse de couplage faite le 31/08/2026 — le découpage n'est plus une inconnue.** Sur les **229 fonctions exportées**, **192 n'appellent aucune autre fonction du fichier** : elles sont extractibles telles quelles, sans risque de cycle. Seules 37 ont des dépendances internes, et elles convergent vers un petit noyau à garder ensemble : `getUserOrganizationId` (appelée par 11), `getUsersInOrganization` (5), `getPlaybookForOrganization` (5), `getCommercialsForManager` (4), `listObjectionCategories` (3).
+
+  | Domaine | Lignes | Fonctions |
+  |---|---|---|
+  | objections | 934 | 18 |
+  | calls / briefs | 921 | 30 |
+  | playbook | 613 | 17 |
+  | contacts | 552 | 18 |
+  | devis | 538 | 19 |
+  | tasks | 503 | 20 |
+  | training | 319 | 12 |
+  | facturation | 79 | 6 |
+
+  **Ordre à suivre** : commencer par `training` (319 lignes, le plus petit lot autonome) pour valider la méthode, puis `tasks`, `devis`, `contacts`. Garder `calls/briefs` et le noyau pour la fin — c'est là que vivent les 37 fonctions couplées. **Re-pointer les imports des routes** vers le nouveau module à chaque étape : laisser `lib/db.ts` réexporter suffit à ne rien casser, mais ne gagne rien — une route qui importe `lib/db` continue de tout évaluer.
+
+  **Ce qui n'a PAS été fait, et pourquoi** : le découpage lui-même. Les domaines ne sont pas des blocs contigus — les objections occupent à elles seules dix régions éparpillées du fichier. Un cycle d'import introduit en déplaçant du code ne se voit ni au `tsc`, ni au build, ni aux 46 tests : il casse à l'exécution, en production. Ça se fait domaine par domaine avec l'application sous les yeux, pas en une passe à l'aveugle.
 
 ### Région d'exécution — Paris (cdg1)
 

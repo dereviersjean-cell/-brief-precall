@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
 import Anthropic from "@anthropic-ai/sdk";
 import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
-import { checkAiGenerationRateLimit, requestIp, retryAfterMinutes } from "@/lib/rate-limit";
+import { enforceAiGenerationLimit, requestIp, retryAfterMinutes } from "@/lib/rate-limit";
 import { readPromptConfig, DEFAULT_TASK_EMAIL_PROMPT } from "@/lib/admin-config";
 import {
   getTaskById,
@@ -114,7 +114,7 @@ export async function POST(
   const auth = await requireActiveUser(session);
   if (!auth.ok) return auth.response;
 
-  const rl = checkAiGenerationRateLimit(requestIp(request), auth.userId);
+  const rl = await enforceAiGenerationLimit(requestIp(request), auth.userId);
   if (!rl.allowed) {
     const minutes = retryAfterMinutes(rl.retryAfterMs);
     return NextResponse.json(

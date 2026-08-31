@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
-import { checkAiGenerationRateLimit, requestIp, retryAfterMinutes } from "@/lib/rate-limit";
+import { enforceAiGenerationLimit, requestIp, retryAfterMinutes } from "@/lib/rate-limit";
 import {
   getUserRole,
   getUserOrganizationId,
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
   const auth = await requireActiveUser(session);
   if (!auth.ok) return auth.response;
 
-  const rl = checkAiGenerationRateLimit(requestIp(request), auth.userId);
+  const rl = await enforceAiGenerationLimit(requestIp(request), auth.userId);
   if (!rl.allowed) {
     const minutes = retryAfterMinutes(rl.retryAfterMs);
     return NextResponse.json(
