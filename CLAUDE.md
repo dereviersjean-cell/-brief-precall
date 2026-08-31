@@ -406,9 +406,33 @@ Déclarés des deux côtés (ancienne + nouvelle URL, elles cohabitent) : les 2 
 **Deux dettes ouvertes :**
 
 1. **Pipedrive n'est pas déclaré** — essai expiré au 19/08, personne n'est connecté, donc rien ne casse. Mais le code envoie désormais `https://brief-ai.fr/api/crm/pipedrive/callback` : **à mettre dans le Developer Hub avant toute reprise de l'intégration**, sinon la connexion échouera sans que la cause soit visible.
-2. **Le domaine émetteur des emails est encore `lartisangroupe.com`** (`RESEND_FROM_EMAIL=jean@lartisangroupe.com`) — incohérent avec Brief pour un prospect qui reçoit un devis. À basculer sur `brief-ai.fr` via Resend. Piège DNS : le domaine porte déjà `v=spf1 include:mx.ovh.com -all` (messagerie OVH, MX `mx1/2/3.mail.ovh.net`), il faut **fusionner** l'include Resend dans cet enregistrement — deux `v=spf1` sur un même domaine les invalident tous les deux. Un domaine neuf part avec une réputation d'envoi nulle : monter le volume progressivement.
+2. ~~Le domaine émetteur des emails~~ — **FAIT le 31/08/2026**, voir la section « Domaine émetteur » ci-dessous.
 
 **Si une bascule d'URL se représente** : poser `NEXT_PUBLIC_APP_URL` à l'ancienne valeur AVANT de déployer le code (le déploiement devient alors neutre), déclarer les URIs partout, puis basculer la variable + `NEXTAUTH_URL` et **redéployer** — `NEXT_PUBLIC_*` est inliné au build, changer la variable sans redéployer ne fait rien, silencieusement. Rollback = remettre les deux variables.
+
+### Domaine émetteur des emails — `contact@brief-ai.fr` depuis le 31 août 2026
+
+`RESEND_FROM_EMAIL` vaut désormais `Brief <contact@brief-ai.fr>` (nom d'affichage compris — la valeur était une adresse nue, le destinataire lisait « jean@lartisangroupe.com »). Vérifié de bout en bout : invitation reçue, signée SPF et DKIM par Resend.
+
+**Deux choses que la doc affirmait et qui étaient fausses — ne pas les réintroduire :**
+
+1. **Il n'y a AUCUN SPF à fusionner à la racine.** Resend ne touche pas au `v=spf1 include:mx.ovh.com -all` de `brief-ai.fr`, qui reste la messagerie OVH. L'ancienne note venait de la configuration de `lartisangroupe.com`, qui date de l'infrastructure Resend précédente (Amazon SES : TXT + MX sur `send.`). **Un domaine créé aujourd'hui utilise deux CNAME** vers `forge.rmta.net`. Corollaire : un CNAME ne peut pas coexister avec un TXT ou un MX sur le même nom — il faut supprimer avant d'ajouter, sinon OVH refuse.
+2. **Ce n'est pas un prospect qui voyait l'adresse.** Les 7 emails Resend (`lib/email.ts`) vont tous à des utilisateurs de Brief : invitation, brief pré-call, analyse de call, digests, devis accepté, demande de déblocage. Les emails **aux prospects** — devis et relances — partent par **Gmail depuis l'adresse du commercial** (`gmail.send`), et ça n'a pas changé. La vraie raison de basculer était l'email d'**invitation** : la première chose qu'un nouvel utilisateur reçoit de Brief.
+
+**Configuration en place sur `brief-ai.fr`** (région Resend : EU, `eu-west-1`) :
+
+| Type | Nom | Valeur |
+|---|---|---|
+| CNAME | `send` | `send.forge.rmta.net.` |
+| CNAME | `rsend` | `rsend-euw1.forge.rmta.net.` |
+| TXT | `resend._domainkey` | la clé DKIM propre au domaine |
+| TXT | `_dmarc` | `v=DMARC1; p=none; rua=mailto:contact@brief-ai.fr` |
+
+**Le piège qui a réellement coûté du temps : les clés API Resend sont restreintes à un domaine et NE SONT PAS MODIFIABLES.** L'ancienne clé était limitée à `lartisangroupe.com` et répondait `403 — "This API key is not authorized to send emails from brief-ai.fr"`, quel que soit l'état du DNS. Il faut **créer une nouvelle clé**, la poser sur Vercel, et **redéployer** (une variable d'environnement ne s'applique qu'aux déploiements créés après). Le DNS était parfait pendant toute la durée de la panne — ne pas repartir chercher de ce côté.
+
+`contact@brief-ai.fr` est une **redirection** OVH, pas une boîte : le MX Plan inclus au domaine n'autorise pas la création de compte email, mais les redirections sont gratuites. Conséquence à connaître : les réponses arrivent bien, mais on ne peut pas répondre *depuis* cette adresse. Aucune fonction de `lib/email.ts` ne pose de `reply_to` — une réponse part donc au From, d'où la nécessité de cette redirection.
+
+Reste à aligner un jour : `.env.local` porte encore l'ancienne clé et l'ancien `RESEND_FROM_EMAIL`, et la politique de confidentialité affiche `rgpd@infobrief.com`, domaine sans rapport avec Brief (à ne pas toucher pendant l'examen Google).
 
 ### Vérification Google — nouvelle vidéo envoyée le 31 août 2026, en attente de Google
 
@@ -475,9 +499,8 @@ Le mail Google du 22/08 (« [Action Needed] OAuth Verification Request Acknowled
 
 1. **Vérification Google — réponse envoyée le 31/08, la balle est chez Google.** Rien à faire, sinon surveiller le fil. **PENDANT L'EXAMEN : ne toucher ni aux scopes, ni au branding, ni aux URL, et ne jamais cliquer « Back to testing ».** Ne bloque pas le produit — le projet est *In production* — mais bloque la levée de l'écran « application non vérifiée » et du plafond de 100 utilisateurs.
 2. **Stripe en mode Live** — activation du compte (vérification entreprise). **Trancher le pricing usage AVANT la bascule.** C'est désormais le premier déblocant business : tant qu'il n'est pas fait, il n'y a pas de client payant possible. Recommandation de l'audit : quota d'heures inclus par siège (ex. 10 h/mois puis 0,50 €/h) plutôt que la refacturation sèche dès la première heure — ça évite les lignes de facture à 3 € qui font poser des questions, et ça change la facturation avant les premiers clients plutôt qu'après.
-3. **Domaine émetteur des emails** — encore `lartisangroupe.com`. Un prospect qui reçoit un devis voit une adresse sans rapport avec Brief. Détail complet et piège SPF dans la section « Domaine » ci-dessus.
-4. **Call `ecfb191e` à réimporter** : son transcript a été parsé par l'ancien parseur bogué (locuteur « 00 », cf. le piège documenté dans « Banc d'essai »). Les données en base sont inexploitables telles quelles.
-5. **Reconnexion Google de chaque utilisateur, une fois.** Le passage en production n'émet pas de nouveau jeton tout seul : les utilisateurs dont le refresh token avait expiré doivent se déconnecter/reconnecter une fois. À faire pour Jean, Hubert et l'associé, sinon leur ingestion reste à l'arrêt alors que la cause est levée.
+3. **Call `ecfb191e` à réimporter** : son transcript a été parsé par l'ancien parseur bogué (locuteur « 00 », cf. le piège documenté dans « Banc d'essai »). Les données en base sont inexploitables telles quelles.
+**Ce qui vient d'être réglé (31/08/2026)** : le domaine émetteur des emails (section dédiée ci-dessus) et la reconnexion Google de chaque utilisateur.
 
 **Ce qui ne bloque plus** :
 - ~~Google OAuth en mode Testing~~ — **réglé le 20/08/2026**. Projet passé *In production*, l'expiration des refresh tokens à 7 jours ne s'applique plus. Vérification soumise, en attente, mais elle ne conditionne plus le fonctionnement — voir la section dédiée.
