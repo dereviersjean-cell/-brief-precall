@@ -21,12 +21,24 @@ export default function InviteCommercialModal({ onClose }: { onClose: () => void
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: trimmedEmail, name: name.trim() || undefined }),
       });
+      const data = (await res.json().catch(() => ({}))) as { error?: string; invitationSent?: boolean };
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error((data as { error?: string }).error ?? "Une erreur est survenue.");
+        throw new Error(data.error ?? "Une erreur est survenue.");
       }
-      setSuccess(`Invitation envoyée à ${trimmedEmail}`);
-      setTimeout(onClose, 2000);
+      // Le compte est créé dans les deux cas. Mais annoncer « Invitation
+      // envoyée » quand l'email a échoué envoyait le manager attendre un mail
+      // qui n'arriverait jamais — et sans issue, puisqu'il ne peut plus
+      // réinviter une adresse déjà prise. On le dit, et on renvoie vers le
+      // bouton qui répare.
+      if (data.invitationSent === false) {
+        setSuccess(
+          `Compte créé pour ${trimmedEmail}, mais l'email d'invitation n'est pas parti. Utilisez « Renvoyer l'invitation » sur sa ligne dans la liste.`
+        );
+        setTimeout(onClose, 6000);
+      } else {
+        setSuccess(`Invitation envoyée à ${trimmedEmail}`);
+        setTimeout(onClose, 2000);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue.");
     } finally {
@@ -53,7 +65,13 @@ export default function InviteCommercialModal({ onClose }: { onClose: () => void
         </p>
 
         {success ? (
-          <p className="text-sm text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+          <p
+            className={
+              success.includes("n'est pas parti")
+                ? "text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2"
+                : "text-sm text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2"
+            }
+          >
             {success}
           </p>
         ) : (

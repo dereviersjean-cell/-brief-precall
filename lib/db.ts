@@ -2073,22 +2073,98 @@ export type TeamOverviewItem = {
   emails_sent_count: number;
   avg_score: number | null;
   last_activity_at: string | null;
+  // Un commercial invité qui ne s'est jamais connecté n'a ni activité ni
+  // performance : l'écran Équipe l'affichait comme un membre ordinaire avec
+  // des tirets partout, sans dire que son invitation n'avait peut-être jamais
+  // abouti. Ces deux champs distinguent « invité » de « actif ».
+  invited_at: string | null;
+  has_logged_in: boolean;
 };
+
+export type TeamMemberForManager = {
+  id: string;
+  email: string;
+  name: string | null;
+  invited_at: string | null;
+  has_logged_in: boolean;
+};
+
+// Point de contrôle unique des actions d'un manager sur un membre de SON
+// équipe : le lien manager↔commercial ET l'appartenance à la même
+// organisation. Toute route qui agit sur un membre passe par ici plutôt que
+// de refaire la vérification à sa façon.
+export async function getTeamMemberForManager(
+  managerId: string,
+  commercialId: string
+): Promise<TeamMemberForManager | null> {
+  const managerOrgId = await getUserOrganizationId(managerId);
+  if (!managerOrgId) return null;
+
+  const { data: link, error: linkError } = await supabaseAdmin
+    .from("manager_commercial_links")
+    .select("commercial_id")
+    .eq("manager_id", managerId)
+    .eq("commercial_id", commercialId)
+    .maybeSingle();
+  if (linkError) throw linkError;
+  if (!link) return null;
+
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("id, email, name, invited_at, google_id, microsoft_id")
+    .eq("id", commercialId)
+    .eq("organization_id", managerOrgId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+
+  const row = data as {
+    id: string;
+    email: string;
+    name: string | null;
+    invited_at: string | null;
+    google_id: string | null;
+    microsoft_id: string | null;
+  };
+  return {
+    id: row.id,
+    email: row.email,
+    name: row.name,
+    invited_at: row.invited_at,
+    has_logged_in: row.google_id != null || row.microsoft_id != null,
+  };
+}
 
 export async function getTeamOverview(managerId: string): Promise<TeamOverviewItem[]> {
   const commercials = await getCommercialsForManager(managerId);
   if (commercials.length === 0) return [];
   const commercialIds = commercials.map((c) => c.id);
 
-  const [briefsRes, callsRes] = await Promise.all([
+  const [briefsRes, callsRes, statesRes] = await Promise.all([
     supabaseAdmin.from("briefs").select("user_id, created_at").in("user_id", commercialIds),
     supabaseAdmin
       .from("calls")
       .select("user_id, created_at, follow_up_sent_at, call_analysis(scores)")
       .in("user_id", commercialIds),
+    // En parallèle des deux autres : l'écran Équipe démarre à froid, on ne lui
+    // ajoute pas un aller-retour séquentiel pour deux colonnes.
+    supabaseAdmin.from("users").select("id, invited_at, google_id, microsoft_id").in("id", commercialIds),
   ]);
   if (briefsRes.error) throw briefsRes.error;
   if (callsRes.error) throw callsRes.error;
+  if (statesRes.error) throw statesRes.error;
+
+  const states = new Map(
+    ((statesRes.data ?? []) as Array<{
+      id: string;
+      invited_at: string | null;
+      google_id: string | null;
+      microsoft_id: string | null;
+    }>).map((u) => [
+      u.id,
+      { invited_at: u.invited_at, has_logged_in: u.google_id != null || u.microsoft_id != null },
+    ])
+  );
 
   const briefs = (briefsRes.data ?? []) as { user_id: string; created_at: string }[];
   const calls = (callsRes.data ?? []) as Array<{
@@ -2121,6 +2197,11 @@ export async function getTeamOverview(managerId: string): Promise<TeamOverviewIt
       emails_sent_count: userCalls.filter((call) => call.follow_up_sent_at != null).length,
       avg_score: avgScore,
       last_activity_at: allDates[0] ?? null,
+      invited_at: states.get(c.id)?.invited_at ?? null,
+      // Prudence sur l'absence : un membre dont on ne retrouve pas la ligne
+      // est considéré comme actif, pour ne pas proposer de renvoyer une
+      // invitation à quelqu'un qui utilise déjà le produit.
+      has_logged_in: states.get(c.id)?.has_logged_in ?? true,
     };
   });
 }

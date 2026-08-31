@@ -69,6 +69,13 @@ export async function POST(request: NextRequest) {
     console.warn(`[team/invite] syncSeatsForOrganization(${organization.id}) failed:`, err)
   );
 
+  // L'échec d'envoi ne remet pas en cause la création du compte — mais il doit
+  // se voir. Avant, il était seulement journalisé et l'écran annonçait
+  // « Invitation envoyée » : le manager repartait convaincu que le mail était
+  // parti, sans aucun moyen de relancer puisque le compte existait désormais.
+  // C'est ce qui s'est produit le 31/08/2026 (clé Resend restreinte au mauvais
+  // domaine, 403 silencieux).
+  let invitationSent = true;
   try {
     const manager = await getUserForInvitation(userId);
     await sendInvitationEmail({
@@ -79,7 +86,8 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     console.error(`[team/invite] sendInvitationEmail failed for ${email}:`, err);
+    invitationSent = false;
   }
 
-  return NextResponse.json({ id: commercialId });
+  return NextResponse.json({ id: commercialId, invitationSent });
 }
