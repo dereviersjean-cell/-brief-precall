@@ -206,3 +206,23 @@ body {
     display: none;
   }
 }
+
+/* Champs de saisie sur mobile : 16 px minimum.
+   Safari iOS zoome automatiquement sur tout champ dont la police fait moins de
+   16 px, et ne dézoome pas ensuite — chaque saisie (recherche, destinataire,
+   invitation, email de suivi) faisait donc sauter la page, à charge pour
+   l'utilisateur de repincer. Les 142 champs de l'app sont en `text-sm`, soit
+   14 px : la règle les remonte à 16 px sous le point de rupture `lg`, celui où
+   la sidebar passe déjà en tiroir.
+   Non layerisée, donc prioritaire sur les utilitaires Tailwind (v4 les place
+   dans `@layer utilities`, et une règle hors couche l'emporte toujours) — ce
+   qui évite d'avoir à surenchérir sur la spécificité champ par champ.
+   Cases à cocher et boutons radio exclus : ils n'ont pas de texte et la règle
+   changerait leur taille. */
+@media (max-width: 1023px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}

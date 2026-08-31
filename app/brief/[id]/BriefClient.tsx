@@ -361,6 +361,28 @@ export default function BriefClient({
   const [isAiGenerated, setIsAiGenerated] = useState(!!meeting.brief);
   const [rateLimited, setRateLimited] = useState<{ message: string; retryAfterMs: number } | null>(null);
 
+  // Partage sur appareil tactile : préparer le PDF sans attendre le tap.
+  //
+  // `navigator.share()` exige une activation utilisateur non consommée (bug
+  // #30). Sur desktop le survol prépare le fichier à l'avance, donc le clic
+  // appelle share() sans attente. Sur iPhone il n'y a pas de survol : le tap
+  // tombait dans le chemin dégradé, l'await consommait l'activation, Safari
+  // rejetait, et « Partager » se comportait comme « Exporter PDF » — sur la
+  // plateforme où la feuille de partage est justement la plus utile.
+  //
+  // `pointerdown` ne suffit pas : il ne précède le clic que de ~200 ms, quand
+  // le rendu du PDF en demande une à deux secondes. On le prépare donc dès
+  // l'affichage du brief, et UNIQUEMENT là où rien d'autre ne le fera —
+  // `(hover: none)`. Sur desktop, rien ne change et rien n'est dépensé.
+  useEffect(() => {
+    if (!brief) return;
+    if (!window.matchMedia?.("(hover: none)").matches) return;
+    // Léger différé : la page a mieux à faire de sa bande passante au premier
+    // rendu que de préparer un fichier dont on n'a pas encore besoin.
+    const id = window.setTimeout(() => void warmPdf(), 1200);
+    return () => window.clearTimeout(id);
+  }, [brief, warmPdf]);
+
   const generateBrief = useCallback(async (force = false) => {
     setIsGenerating(true);
     setError(null);
@@ -435,6 +457,7 @@ export default function BriefClient({
               onClick={handleShare}
               onMouseEnter={warmPdf}
               onFocus={warmPdf}
+              onPointerDown={warmPdf}
               disabled={pdfBusy !== null}
               className="flex items-center gap-2 text-sm text-slate-600 border border-slate-200 bg-white px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
