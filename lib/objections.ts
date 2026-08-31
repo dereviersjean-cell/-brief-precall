@@ -125,40 +125,15 @@ export async function indexCallObjections(
     }
   };
 
+  // Le repli « insert sans les colonnes des migrations 006/007/009 » a été
+  // retiré le 31/08/2026. Il couvrait la fenêtre entre le déploiement du code
+  // et l'exécution des migrations (pattern bug #14) ; cette fenêtre est fermée
+  // depuis fin juillet, les dix migrations sont passées en prod. Le garder,
+  // c'était laisser du code défensif mort — et il masquait un vrai échec
+  // d'insertion derrière une deuxième tentative silencieuse. Même décision que
+  // pour le repli d'écriture de saveBrief, retiré le 22/08.
   const { error } = await supabaseAdmin.from("call_objections").insert(validRows);
-  if (!error) {
-    await purgePrevious();
-    return;
-  }
-
-  // Pattern bug #14 : si les migrations 006/007/009 ne sont pas encore passées en prod,
-  // l'insert entier échoue sur des colonnes inconnues et on perdrait
-  // l'objection. On réessaie sur les seules colonnes historiques — la
-  // bibliothèque continue de se remplir, sans classification.
-  console.error(
-    "[objections] insert avec classification échoué, retry sans les colonnes des migrations 006/007/009 :",
-    error.message
-  );
-  const legacyRows = validRows.map(
-    ({
-      category_id,
-      handling_quality,
-      handling_comment,
-      evaluated_against_playbook,
-      classified_at,
-      prospect_verbatim,
-      commercial_verbatim,
-      suggested_response,
-      prospect_bullets,
-      commercial_bullets,
-      confidence,
-      start_ms,
-      end_ms,
-      ...rest
-    }) => rest
-  );
-  const { error: legacyError } = await supabaseAdmin.from("call_objections").insert(legacyRows);
-  if (legacyError) throw legacyError;
+  if (error) throw error;
   await purgePrevious();
 }
 

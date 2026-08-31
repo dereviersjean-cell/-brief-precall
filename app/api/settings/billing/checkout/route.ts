@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { requireActiveUser } from "@/lib/api-auth";
+import { requireActiveUserContext } from "@/lib/api-auth";
 import { getUserRole, getOrganizationForUser, getUserEmail, getActiveSeatCountForOrganization, getOrganizationBillingRow } from "@/lib/db";
 import { createOrganizationCheckoutSession } from "@/lib/stripe";
 import { APP_URL } from "@/lib/app-url";
@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
   const billingInterval = (body as { interval?: string }).interval === "year" ? "year" : "month";
 
   const session = await getServerSession(authOptions);
-  const auth = await requireActiveUser(session);
+  const auth = await requireActiveUserContext(session);
   if (!auth.ok) return auth.response;
   const userId = auth.userId;
 

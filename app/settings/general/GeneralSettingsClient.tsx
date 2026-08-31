@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 type Props = {
   initialProductDescription: string;
@@ -17,11 +17,32 @@ export default function GeneralSettingsClient({
   const [icp, setIcp] = useState(initialIcp);
   const [companyName, setCompanyName] = useState(initialCompanyName);
 
-  useEffect(() => {
+  // Resynchronisation quand le serveur renvoie de nouvelles valeurs (après un
+  // router.refresh(), typiquement).
+  //
+  // Pendant le rendu et non dans un effet : c'est exactement le bug #8
+  // (« useState figé sur prop »). Dans un effet, le formulaire s'affiche un
+  // tour avec les anciennes valeurs avant d'être corrigé — et si l'utilisateur
+  // tape pendant ce tour, sa saisie est écrasée.
+  const [syncedFrom, setSyncedFrom] = useState({
+    productDescription: initialProductDescription,
+    icp: initialIcp,
+    companyName: initialCompanyName,
+  });
+  if (
+    syncedFrom.productDescription !== initialProductDescription ||
+    syncedFrom.icp !== initialIcp ||
+    syncedFrom.companyName !== initialCompanyName
+  ) {
+    setSyncedFrom({
+      productDescription: initialProductDescription,
+      icp: initialIcp,
+      companyName: initialCompanyName,
+    });
     setProductDescription(initialProductDescription);
     setIcp(initialIcp);
     setCompanyName(initialCompanyName);
-  }, [initialProductDescription, initialIcp, initialCompanyName]);
+  }
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -88,7 +109,7 @@ export default function GeneralSettingsClient({
               />
               <p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-400">
                 <svg className="w-3.5 h-3.5 text-[color:var(--violet)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 16v-4m0-4h.01"/></svg>
-                Sert de base aux arguments commerciaux et à l'accroche suggérée dans chaque brief.
+                Sert de base aux arguments commerciaux et à l&apos;accroche suggérée dans chaque brief.
               </p>
             </div>
 
@@ -105,7 +126,7 @@ export default function GeneralSettingsClient({
               />
               <p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-400">
                 <svg className="w-3.5 h-3.5 text-[color:var(--violet)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 16v-4m0-4h.01"/></svg>
-                Aide l'IA à adapter le ton et les angles d'approche au profil de vos prospects.
+                Aide l&apos;IA à adapter le ton et les angles d&apos;approche au profil de vos prospects.
               </p>
             </div>
           </div>

@@ -219,19 +219,6 @@ export async function getBriefByEventId(
   return data;
 }
 
-export async function getBriefByCalendarEventIdGlobal(calendarEventId: string): Promise<{
-  user_id: string;
-  company_name: string | null;
-  contact_email: string | null;
-} | null> {
-  const { data, error } = await supabaseAdmin
-    .from("briefs")
-    .select("user_id, company_name, contact_email")
-    .eq("calendar_event_id", calendarEventId)
-    .maybeSingle();
-  if (error) throw error;
-  return data as { user_id: string; company_name: string | null; contact_email: string | null } | null;
-}
 
 export type CallData = {
   user_id: string;
@@ -328,13 +315,15 @@ export async function upsertUserProfile(
   }
 }
 
-// Même lecture que getBriefById, mais cadrée sur le propriétaire.
+// Lecture d'un brief, cadrée sur son propriétaire.
 //
-// getBriefById ne filtre que sur l'id : n'importe quel utilisateur
-// authentifié connaissant un uuid pouvait lire le brief d'un autre. Les uuid
-// ne se devinent pas en pratique, mais l'export PDF rend la fuite bien plus
-// concrète — un fichier téléchargeable plutôt qu'un écran. Toute lecture
-// atteignable depuis une URL passe désormais par ici.
+// Il exista un `getBriefById` qui ne filtrait que sur l'id : n'importe quel
+// utilisateur authentifié connaissant un uuid pouvait lire le brief d'un
+// autre (bug #28). Les uuid ne se devinent pas en pratique, mais l'export PDF
+// rendait la fuite bien plus concrète — un fichier téléchargeable plutôt
+// qu'un écran. Il a été SUPPRIMÉ le 31/08/2026, pas seulement contourné :
+// laissé en place sans appelant, son nom évident invitait à le reprendre.
+// Toute lecture de brief atteignable depuis une URL passe par ici.
 export async function getBriefByIdForUser(
   briefId: string,
   userId: string
@@ -350,16 +339,6 @@ export async function getBriefByIdForUser(
   return data as { content: unknown; company_name: string | null; meeting_title?: string | null } | null;
 }
 
-export async function getBriefById(briefId: string): Promise<{ content: unknown; company_name: string | null; meeting_title?: string | null } | null> {
-  const { data, error } = await supabaseAdmin
-    .from("briefs")
-    .select("content, company_name, meeting_title")
-    .eq("id", briefId)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data as { content: unknown; company_name: string | null; meeting_title?: string | null } | null;
-}
 
 export async function getAdminConfig(key: string): Promise<unknown> {
   const { data, error } = await supabaseAdmin

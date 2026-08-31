@@ -81,11 +81,18 @@ export default function AppSidebar() {
   const [orgStatus, setOrgStatus] = useState<OrgStatus | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Auto-close the mobile drawer on every navigation — otherwise it stays
-  // open over the new page after tapping a link.
-  useEffect(() => {
+  // Fermeture du tiroir à chaque navigation — sinon il reste ouvert par-dessus
+  // la nouvelle page après un tap sur un lien.
+  //
+  // Ajusté PENDANT le rendu et non dans un effet : un effet peint d'abord la
+  // nouvelle page tiroir ouvert, puis le referme au tour suivant, ce qui donne
+  // un battement visible sur mobile. C'est le motif « Adjusting state during
+  // render » de la doc React, déjà retenu pour le bug #8.
+  const [pathAtRender, setPathAtRender] = useState(pathname);
+  if (pathAtRender !== pathname) {
+    setPathAtRender(pathname);
     setMobileOpen(false);
-  }, [pathname]);
+  }
 
   useEffect(() => {
     let cancelled = false;

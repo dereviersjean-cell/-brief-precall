@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { requireActiveUser } from "@/lib/api-auth";
+import { requireActiveUserContext } from "@/lib/api-auth";
 import {
-  getUserRole,
-  getUserOrganizationId,
   listObjectionCategories,
   createObjectionCategory,
   reorderObjectionCategories,
@@ -18,10 +16,10 @@ import {
 
 export async function GET() {
   const session = await getServerSession(authOptions);
-  const auth = await requireActiveUser(session);
+  const auth = await requireActiveUserContext(session);
   if (!auth.ok) return auth.response;
 
-  const orgId = await getUserOrganizationId(auth.userId);
+  const orgId = auth.organizationId;
   if (!orgId) return NextResponse.json({ categories: [] });
 
   try {
@@ -36,17 +34,17 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
-  const auth = await requireActiveUser(session);
+  const auth = await requireActiveUserContext(session);
   if (!auth.ok) return auth.response;
 
   // Relu en base, pas depuis le JWT — session.role peut avoir jusqu'à 10 min
   // de retard (bug #22).
-  const role = await getUserRole(auth.userId);
+  const role = auth.role;
   if (role !== "manager") {
     return NextResponse.json({ error: "Réservé aux managers." }, { status: 403 });
   }
 
-  const orgId = await getUserOrganizationId(auth.userId);
+  const orgId = auth.organizationId;
   if (!orgId) {
     return NextResponse.json({ error: "Vous devez être rattaché à une organisation." }, { status: 400 });
   }
@@ -86,15 +84,15 @@ export async function POST(request: NextRequest) {
 // Réordonnancement de la liste complète, en une requête.
 export async function PATCH(request: NextRequest) {
   const session = await getServerSession(authOptions);
-  const auth = await requireActiveUser(session);
+  const auth = await requireActiveUserContext(session);
   if (!auth.ok) return auth.response;
 
-  const role = await getUserRole(auth.userId);
+  const role = auth.role;
   if (role !== "manager") {
     return NextResponse.json({ error: "Réservé aux managers." }, { status: 403 });
   }
 
-  const orgId = await getUserOrganizationId(auth.userId);
+  const orgId = auth.organizationId;
   if (!orgId) {
     return NextResponse.json({ error: "Vous devez être rattaché à une organisation." }, { status: 400 });
   }

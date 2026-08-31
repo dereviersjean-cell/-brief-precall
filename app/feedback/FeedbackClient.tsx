@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from "react";
 import ConditionalLink from "@/app/components/ui/ConditionalLink";
-import Link from "next/link";
 import {
   Search,
   Mic,
