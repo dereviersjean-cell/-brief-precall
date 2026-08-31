@@ -633,6 +633,10 @@ La page Connexions lit désormais cinq choses au lieu de trois, **toutes en para
 
   La bonne façon de vérifier qu'on n'a rien cassé reste de comparer le total avant / après (`git stash push --include-untracked`, relancer, `git stash pop`) — pas de lire les messages.
 
+- **`xlsx` échappe à `npm audit`, et c'est délibéré.** La dépendance est tirée de la distribution officielle de SheetJS (`https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`) et non de npm, parce que **SheetJS a cessé de publier sur npm en 2023** : la 0.18.5 y est figée avec une faille de prototype pollution que rien ne corrigera jamais. Elle était atteignable côté serveur (`lib/inngest-functions.ts`, lecture d'un tableur téléversé dans une tâche de fond qui tourne en `service_role`). Le format `.xls/.xlsx` est annoncé à l'utilisateur dans le sélecteur de fichiers (onboarding et import de références) : on ne pouvait pas le retirer en silence. Et réécrire les trois lecteurs avec `exceljs` aurait échangé une faille corrigée contre un risque de régression sur du code dont le métier est d'avaler des fichiers clients mal formés.
+
+  **La contrepartie, à ne pas oublier : une faille FUTURE de SheetJS n'apparaîtra dans aucun rapport.** Le `package-lock.json` fige l'archive exacte avec son empreinte `integrity`, donc l'installation reste reproductible et vérifiable — mais personne ne préviendra. **À chaque revue de dépendances, aller regarder les publications de SheetJS à la main.** Seconde réserve : si `cdn.sheetjs.com` est indisponible pendant un déploiement, le build échoue.
+
 ### Arbitrages produit en attente (Jean)
 
 - **Notifications** : la cloche mène à des préférences, pas à une inbox. Construire l'inbox (les événements existent déjà en base) ou renommer l'entrée pour ne plus promettre ce qui n'existe pas ? Tant que ce n'est pas tranché, la visite guidée présente l'entrée comme « Notifications » sans détailler. Depuis le 21/08 la cloche est le **seul** accès (entrée sidebar retirée) — l'arbitrage reste entier.
