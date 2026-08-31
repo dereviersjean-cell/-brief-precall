@@ -15,7 +15,16 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-6 pb-1">
+    // Empilé sous `sm`, côte à côte au-delà.
+    //
+    // La rangée était `flex justify-between` avec des actions en `shrink-0` :
+    // sur 390 px, les boutons prenaient tout et le bloc titre était comprimé à
+    // une centaine de pixels — « Bonjour Jean » tombait à un mot par ligne, le
+    // sous-titre aussi, la pastille d'eyebrow chevauchait le premier bouton, et
+    // le dernier bouton sortait de l'écran. `min-w-0` ne suffisait pas : il
+    // autorise la colonne à rétrécir, il ne l'empêche pas de disparaître face à
+    // un voisin qui refuse de céder un pixel.
+    <div className="flex flex-col gap-4 pb-1 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
       <div className="min-w-0">
         {eyebrow && (
           <span className="inline-flex items-center rounded-full border border-[color:var(--lavender-strong)] bg-[color:var(--lavender)] px-2.5 py-0.5 text-[10.5px] font-medium uppercase tracking-[0.08em] text-[color:var(--violet)]">
@@ -27,7 +36,9 @@ export function PageHeader({
         </h1>
         {subtitle && <p className="mt-1.5 text-[13.5px] text-slate-500">{subtitle}</p>}
       </div>
-      {actions && <div className="shrink-0 flex items-center gap-2">{actions}</div>}
+      {/* `flex-wrap` sous `sm` : trois boutons ne tiennent pas sur une ligne de
+          390 px, ils passent à la ligne au lieu de déborder. */}
+      {actions && <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:shrink-0">{actions}</div>}
     </div>
   );
 }
