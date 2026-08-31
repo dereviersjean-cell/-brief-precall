@@ -1667,6 +1667,37 @@ Workflow de développement habituel
 
 59. Barre d'onglets non collante = navigation perdue : la TopBar était sticky, pas PerformanceTabs. Sur une page à peine plus haute que l'écran (Objections), quelques pixels de défilement suffisaient à faire glisser les onglets sous la TopBar sans aucun moyen de revenir. Corrigé sur PerformanceTabs et TeamTabs (sticky top-14, sous la TopBar de 56px de haut).
 
+60. Lecture par id non cadrée sur le propriétaire (21 août 2026) : getBriefById ne filtrait que sur l'id — tout utilisateur authentifié connaissant un uuid pouvait lire le brief d'un autre. Les uuid ne se devinent pas en pratique, mais l'export PDF rend la fuite bien plus concrète : un fichier téléchargeable plutôt qu'un écran. Fix : getBriefByIdForUser cadre la lecture sur son propriétaire, utilisée par la page comme par la route PDF. Règle : ajouter une voie d'export ou de partage à une ressource, c'est le moment de revérifier que sa lecture est cadrée.
+
+61. La police Helvetica intégrée aux PDF avale l'espace qui suit un « € » (22 août 2026) : « 12 M€en série B ». Reproduit avec des chaînes témoins — sans euro l'espace tient, avec euro elle saute, quel que soit l'échappement. Le problème est dans les métriques de la police, pas dans le texte : aucun nettoyage de chaîne n'y change quoi que ce soit. Fix : embarquer Inter. Défaut trouvé seulement en rendant un PDF d'exemple et en le relisant, pas au jugé. lib/pdf/QuoteDocument.tsx a la même police et le même défaut, invisible parce que ses montants finissent par le symbole — non touché, c'est un document client-facing.
+
+62. navigator.share() exige une activation utilisateur récente (22 août 2026) : la première version du bouton Partager attendait le téléchargement du PDF — une à deux secondes — à l'intérieur du gestionnaire de clic. L'activation était consommée, le navigateur rejetait, et le code prenait ce rejet pour une annulation volontaire : bouton inerte sur Chrome, sans erreur visible. Fix : le PDF est préparé au survol du bouton, navigator.share est appelé sans attente. navigator.canShare tranche d'abord (Chrome de bureau ne sait pas partager un FICHIER) et on retombe sur le téléchargement à tout échec plutôt que de laisser un bouton mort.
+
+
+________________
+
+
+Roadmap restante (au 22 août 2026)
+
+Fait les 20-22 août — chantier « fluidité, navigation et brief partageable » :
+* Coût de navigation mesuré de bout en bout : l'écart entre 204 ms de code utile et 1,06 s facturée par Vercel est un démarrage à froid. Ce qui coûte, c'est le NOMBRE de fonctions distinctes touchées par navigation, pas le poids des données.
+* Région d'exécution épinglée à Paris (cdg1) dans vercel.json — les fonctions tournaient à Washington alors que Supabase est à Paris, et /api/settings/billing/status y faisait quatre allers-retours transatlantiques (883 ms mesurées).
+* Trois routes d'habillage fusionnées en /api/chrome, statut de facturation lu en une requête au lieu de quatre, frontières loading.tsx ajoutées.
+* Middleware retiré des préchargements de <Link> : une vingtaine de requêtes Supabase par chargement de page pour des réponses qui ne contiennent qu'un squelette. Les préchargements eux-mêmes sont conservés — ils réchauffent les fonctions cibles, c'est l'effet recherché.
+* Navigation allégée à la demande de Jean, tout est réversible : CRM regroupé dans Connexions (les six callbacks OAuth mis à jour au passage, sinon toute connexion de CRM atterrissait sur un 404), entrées Notifications, Tester un call et Calibrage retirées des menus, pages conservées.
+* Le brief est devenu partageable : export PDF et bouton Partager câblés (ils n'avaient aucun onClick), PDF rendu côté serveur et relu depuis la base, typographie Inter embarquée.
+* Le brief s'affiche sous le titre du rendez-vous plutôt que sous un nom d'entreprise deviné — impossible à deviner pour un prospect sur Gmail, d'où cinq briefs enregistrés sous « Test ». company_name est conservé et reste ce qui pilote la génération. Migration 010, passée en prod le 22/08.
+* Panneau Contacts du brief réparé : une seule fonction servait deux besoins opposés (deviner une entreprise, où exclure gmail.com est juste ; identifier un contact, où c'est faux). Tout prospect sur Gmail produisait un brief sans contact.
+* Trois bugs documentés au passage (#60 à #62) : lecture de brief non cadrée sur son propriétaire, Helvetica qui avale l'espace après un €, et navigator.share qui exige une activation utilisateur non consommée.
+
+Priorité immédiate — inchangée depuis le 20 août :
+1. Stripe en mode Live — et trancher le pricing usage AVANT la bascule. Premier déblocant business.
+2. Faire reconnecter Google une fois à chaque utilisateur (Jean, Hubert, l'associé).
+3. Basculer le domaine émetteur des emails de lartisangroupe.com vers brief-ai.fr (fusionner l'include Resend dans le SPF OVH existant, jamais un second v=spf1).
+4. Répondre au fil Trust and Safety quand il arrive — un grief de branding reste ouvert sur le nom de l'application.
+
+Le chantier objections reste EN STANDBY (décision du 20 août).
+
 
 ________________
 

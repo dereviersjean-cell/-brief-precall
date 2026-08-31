@@ -320,6 +320,12 @@ Livré et testé en conditions réelles sur le compte Oliverlist le 19 juillet 2
 
 26. **Barre d'onglets non collante = navigation perdue** : la `TopBar` était `sticky`, pas `PerformanceTabs`. Sur une page à peine plus haute que l'écran, quelques pixels de défilement suffisaient à faire glisser les onglets sous la TopBar sans aucun moyen de revenir en arrière. Toute barre de navigation persistante placée sous une TopBar collante doit l'être aussi (`sticky top-14`, z-index en dessous).
 
+28. **Lecture par id non cadrée sur le propriétaire** (21 août 2026) : `getBriefById` ne filtrait que sur l'id — tout utilisateur authentifié connaissant un uuid pouvait lire le brief d'un autre. Les uuid ne se devinent pas en pratique, mais **l'export PDF rend la fuite bien plus concrète** : un fichier téléchargeable plutôt qu'un écran. `getBriefByIdForUser` cadre la lecture sur son propriétaire, et la page l'utilise aussi. Règle : ajouter une voie d'export/partage à une ressource, c'est le moment de revérifier que sa lecture est cadrée.
+
+29. **La police Helvetica intégrée aux PDF avale l'espace qui suit un « € »** (22 août 2026) : « 12 M€en série B ». Reproduit avec des chaînes témoins — sans euro l'espace tient, avec euro elle saute, quel que soit l'échappement. **Le problème est dans les métriques de la police, pas dans le texte** : aucun nettoyage de chaîne n'y change quoi que ce soit. Fix : embarquer une vraie police (Inter). Défaut trouvé seulement en **rendant un PDF d'exemple et en le relisant**, pas au jugé.
+
+30. **`navigator.share()` exige une activation utilisateur récente** (22 août 2026) : la première version attendait le téléchargement du PDF — une à deux secondes — **à l'intérieur du gestionnaire de clic**. L'activation était consommée, le navigateur rejetait, et le code prenait ce rejet pour une annulation volontaire : bouton inerte sur Chrome, sans erreur. Fix : le PDF est préparé **au survol**, `navigator.share` est appelé sans attente. Corollaires : sans fichier en cache (clic immédiat, appareil tactile sans survol) on tente quand même et on retombe sur le téléchargement au moindre échec ; `navigator.canShare` tranche d'abord, tous les navigateurs ne savent pas partager un FICHIER (Chrome de bureau) ; un `AbortError` ne vaut « annulé par l'utilisateur » que dans le cas où rien n'a été attendu avant l'appel.
+
 ## Règles — NE JAMAIS faire
 
 - ❌ Utiliser le client Supabase anon côté serveur (toujours service_role)
@@ -344,6 +350,10 @@ Livré et testé en conditions réelles sur le compte Oliverlist le 19 juillet 2
 - ❌ Modifier un prompt par défaut sans vérifier si une version éditée existe dans `admin_config` (cf. bug #24)
 - ❌ Afficher comme une citation un texte produit par le modèle sans l'avoir ancré au transcript (numéros de ligne, jamais de copie mot à mot vérifiée après coup)
 - ❌ Mettre dans un prompt partagé un contre-exemple propre à un client — ça dégrade tous les autres ; la spécificité client vit dans sa configuration
+- ❌ Lire une ressource par son seul id quand elle appartient à un utilisateur — cadrer la requête sur son propriétaire (cf. bug #28), d'autant plus si elle est exportable
+- ❌ Attendre quoi que ce soit (`await`) avant d'appeler `navigator.share()` dans un gestionnaire de clic — l'activation utilisateur est consommée (cf. bug #30)
+- ❌ Charger un fichier par un chemin construit à l'exécution sans l'ajouter au traçage de fichiers de `next.config.ts` — ça marche en local et tombe en 500 en production
+- ❌ Supprimer une page de réglages sans mettre à jour les URL de callback OAuth qui y redirigent (cf. « Navigation allégée »)
 
 ## Commandes
 
@@ -372,7 +382,7 @@ git status
 git add . && git commit -m "..." && git push
 ```
 
-## Point de reprise — 20 août 2026
+## Point de reprise — 22 août 2026
 
 Section volontairement en tête de la roadmap : elle dit **où en est le produit et ce qui l'attend**, la partie qui se perd entre deux sessions parce qu'elle ne se lit dans aucun fichier du repo.
 
@@ -453,24 +463,61 @@ Corollaires appliqués :
 
 Épinglé dans `vercel.json` (`"regions": ["cdg1"]`) plutôt que laissé au seul réglage d'interface : un réglage de tableau de bord ne se lit dans aucun fichier et se perd au premier projet recréé. **La région ne s'applique qu'aux déploiements créés après le changement** — modifier le réglage sans redéployer ne fait rien.
 
-Reste à traiter après la région, mesuré au passage : quatre appels Supabase séquentiels pour lire un statut de facturation, dont deux viennent de `getServerSession` et `requireActiveUser`. Le middleware en ajoute encore un à chaque navigation. Et le démarrage de fonction n'est pas en cause : la même route sans session répond en ~100 ms, 330 ms à froid.
+Reste à traiter après la région, mesuré au passage : quatre appels Supabase séquentiels pour lire un statut de facturation, dont deux viennent de `getServerSession` et `requireActiveUser`. Et le démarrage de fonction n'est pas en cause : la même route sans session répond en ~100 ms, 330 ms à froid.
+
+### Préchargements : les laisser réchauffer, mais pas interroger la base (21 août 2026)
+
+Un seul rechargement de `/dashboard` déclenche **une vingtaine d'invocations de fonctions** (logs Vercel, 21/08). Ce sont les préchargements de `<Link>` : Next précharge chaque lien visible, et depuis l'ajout des frontières `loading.tsx` la veille, ces préchargements **aboutissent vraiment** au lieu de ne rien faire.
+
+**C'est l'effet recherché** — chaque préchargement réchauffe la fonction cible, donc le clic suivant tombe sur une fonction chaude (~200 ms) plutôt que sur un démarrage à froid (~1 s). Ne pas chercher à les supprimer en voyant le nombre d'invocations grimper.
+
+Ce qu'il fallait retirer, c'est le **middleware sur ces requêtes** : il faisait sa requête Supabase sur chacune, soit une vingtaine d'allers-retours en base par chargement de page, pour des réponses qui ne contiennent qu'un squelette. Un préchargement ne rend que `loading.tsx`, aucune donnée utilisateur n'y transite. **Le garde n'est pas contourné** : la navigation réelle qui suit repasse par le middleware, et c'est elle qui sert des données — un utilisateur désactivé ou suspendu ne récupère par cette voie qu'un squelette vide.
+
+### Navigation allégée (21 août 2026)
+
+Cinq changements demandés par Jean, **tous réversibles** — les pages restent en place, seules les entrées de menu bougent :
+
+- **`Compte › Notifications` retirée de la sidebar** : la cloche de la TopBar en devient le seul accès, et récupère l'ancre `data-tour` de la visite guidée (une étape pointait sur l'entrée supprimée — le composant dégrade au bout de 2 s, mais une étape sans cible reste une étape ratée).
+- **Onglets « Tester un call » et « Calibrage » retirés de Paramètres** : accessibles par URL directe. L'un est un banc d'essai plutôt qu'un réglage, l'autre appartient au chantier objections en standby. Remettre un onglet = remettre sa ligne dans `NAV_ITEMS`, rien d'autre.
+- **Le CRM rejoint Connexions** (`CrmSettingsClient` → `CrmSection`), son onglet disparaît. **Piège à ne pas rejouer** : les callbacks OAuth HubSpot et Pipedrive redirigeaient vers `/settings/crm?crm=…` — supprimer la page sans les mettre à jour aurait fait atterrir toute connexion de CRM sur un 404. Les six URL de callback et les deux liens du dashboard pointent maintenant sur `/settings/connexions`.
+- Avatar « JD » en haut à droite retiré (doublonnait avec Paramètres + la carte utilisateur), boutons de bas de sidebar d'un cran plus petits.
+
+La page Connexions lit désormais cinq choses au lieu de trois, **toutes en parallèle** : ne pas ajouter d'aller-retour séquentiel à une fonction qui démarre déjà à froid.
+
+### Brief — export PDF, partage, et titre du rendez-vous (21-22 août 2026)
+
+**Les deux boutons de la barre du brief n'avaient aucun `onClick`** : des coquilles décoratives. Ils sont câblés.
+
+- Le PDF est rendu **côté serveur** avec `@react-pdf/renderer` (même chaîne que les devis) et **relu depuis la base** : le fichier partagé est exactement le brief enregistré, pas l'état de l'écran. Export = téléchargement, Partage = feuille de partage système.
+- `adaptCachedContent` vivait dans `app/brief/[id]/page.tsx` alors que la route PDF lit les mêmes lignes → extrait dans `lib/brief-content.ts`. Deux copies auraient divergé, et l'écart ne se serait vu **qu'une fois un PDF envoyé à un prospect**.
+- Le nom de fichier est assaini : un « / » dans un titre de rendez-vous suffisait à casser l'en-tête `Content-Disposition`.
+- **Typographie Inter embarquée** (sous-ensembles latins, OFL, 128 Ko), césure automatique désactivée (l'algorithme anglais produisait « exacte-ment »). `next.config.ts` inclut explicitement les polices dans le traçage de fichiers : elles sont lues par un chemin construit à l'exécution, que Next ne peut pas deviner. **Sans ça l'export marche en local et tombe en 500 en production.**
+- **Dette laissée sciemment** : `lib/pdf/QuoteDocument.tsx` utilise toujours Helvetica et affiche un montant en euros par ligne. Le défaut de police est le même (cf. bug #29) mais y est invisible, les montants finissant par le symbole. Non touché : document client-facing dont l'apparence ne se change pas sans décision.
+
+**Titre affiché = titre de l'événement d'agenda** (« Luc / Jean Weekly »), nom d'entreprise en repli. Avant, un brief s'affichait sous son `company_name` deviné depuis le domaine email : impossible pour un prospect sur Gmail, l'app demandait alors un nom à la main, d'où cinq briefs enregistrés sous « Test ». **`company_name` est CONSERVÉ et reste ce qui pilote la génération** (Pappers, actualités, recherche d'entreprise) — le titre ne sert qu'à l'affichage, les confondre aurait dégradé les briefs. Migration **010**, passée en prod le 22/08 ; le repli d'écriture de `saveBrief` a été retiré dans la foulée. Les briefs antérieurs gardent `meeting_title` à `null` et s'affichent sous leur nom d'entreprise ; ils prendront leur titre à la prochaine régénération.
+
+**Panneau « Contacts » vide** : une seule fonction, `getExternalAttendee`, servait deux besoins opposés. Elle excluait les domaines génériques — juste pour **deviner une entreprise** (on ne déduit rien de « gmail.com »), faux pour **identifier un contact**. Tout prospect sur Gmail produisait donc un brief sans contact, soit la majorité des RDV sur une cible française d'indépendants et de petites structures. Scindée en `getContactAttendee` (premier participant ; `lib/calendar.ts` ne remonte QUE des externes, refiltrer serait un doublon) et `getCompanyAttendee` (garde l'exclusion). Ne corrige pas les briefs **déjà enregistrés** sans contact : leur `contact_email` est `null` en base, ils se repeupleront à la régénération.
+
+**Tuile « Avec participants externes » retirée** en vue calendrier : elle comptait le même ensemble que « RDV à venir » (`lib/calendar.ts` ne remonte que les événements ayant au moins un externe), et additionnait des **participants** et non des rendez-vous — deux unités qui coïncidaient tant que chaque RDV n'avait qu'un invité. Conservée en vue « briefs enregistrés », où elle garde du sens.
 
 ### Où en est le code
 
-- **9 migrations** dans `migrations/`, toutes appliquées en prod (006 à 009 le sont depuis fin juillet).
+- **10 migrations** dans `migrations/`, toutes appliquées en prod (006 à 009 depuis fin juillet, **010 le 22/08/2026** — vérifiée par requête, pas sur parole : PostgREST renvoie `briefs.meeting_title` à `null` au lieu d'une erreur).
 - **23 tests** (`npm test`), tous au vert — `billing-rules`, `recall-transcript`, `transcript-import`, `uuid`. Chacun nomme le bug qu'il verrouille.
 - **Visite guidée et routes `/demo` terminées** : 10 étapes, 6 écrans réels peuplés de données d'exemple. Voir la section dédiée pour les règles de placement, durement acquises.
 - Chaîne de vérification avant tout push : `npx tsc --noEmit`, `npx eslint`, `npm run build`, `npm test`. Référence eslint au 20/08/2026 : **18 erreurs et 16 avertissements préexistants**, tous dans des composants client (`app/**/*.tsx`) plus `lib/objections.ts` — hors périmètre, à ne pas confondre avec une régression. La bonne façon de vérifier qu'on n'a rien cassé n'est pas de lire les messages mais de comparer le total avant / après (`git stash push --include-untracked`, relancer, `git stash pop`). L'ancienne mention « trois erreurs dans FeedbackDetailClient.tsx » était périmée.
 
 ### Arbitrages produit en attente (Jean)
 
-- **Notifications** : la cloche mène à des préférences, pas à une inbox. Construire l'inbox (les événements existent déjà en base) ou renommer l'entrée pour ne plus promettre ce qui n'existe pas ? Tant que ce n'est pas tranché, la visite guidée présente l'entrée comme « Notifications » sans détailler.
+- **Notifications** : la cloche mène à des préférences, pas à une inbox. Construire l'inbox (les événements existent déjà en base) ou renommer l'entrée pour ne plus promettre ce qui n'existe pas ? Tant que ce n'est pas tranché, la visite guidée présente l'entrée comme « Notifications » sans détailler. Depuis le 21/08 la cloche est le **seul** accès (entrée sidebar retirée) — l'arbitrage reste entier.
 - Bouton « restaurer le défaut » par prompt dans l'admin — reste du point 9 de la roadmap.
 - Étendre les tests au classifieur d'objections et aux analytics.
 
 ## Roadmap prioritaire
 
 Fait depuis la dernière mise à jour (20-21 juillet 2026) : **refonte visuelle complète direction Lovable** (nouveau système de tokens oklch bleu #2A5CE0, primitives partagées `ui-bits.tsx`/`PageHeader`/`TopBar`, refonte landing + liste feedback + dashboard, fix du scoping `.brief-ui` qui n'avait jamais fonctionné), **version mobile responsive** (sidebar drawer), **fix bug "William"** (prompt d'analyse admin_config périmé → champs null silencieux, voir bug #20), puis **audit complet du repo** suivi de **6 correctifs** (`after()` généralisé, `/notifications` au middleware, refresh rôle JWT 10 min, validation runtime analyse IA, auth sur google-oauth/start, rate limiting étendu aux 9 routes de génération IA) et **fin de la migration visuelle** (les 25 fichiers non-admin restants — onboarding, modales, références, page publique devis, compte-suspendu — zéro `indigo-*` hors /admin).
+
+Fait les 20-22 août 2026 : **domaine `brief-ai.fr` + vérification Google soumise** (sections dédiées ci-dessus), **chantier fluidité/coût** (frontières `loading.tsx`, région `cdg1`, `/api/chrome`, facturation en une requête, middleware retiré des préchargements), **navigation allégée** (CRM regroupé dans Connexions, entrées Notifications/Tester un call/Calibrage retirées des menus), et **le brief rendu partageable** (export PDF + partage câblés, typographie Inter, titre du rendez-vous, panneau Contacts réparé, migration 010).
 
 ### Chantier objections — EN STANDBY (décision de Jean, 20 août 2026)
 
@@ -491,7 +538,7 @@ Avec 4 calls, une objection pèse ~7 points : ne poursuivre que les écarts fran
 ### Recommandations audit du 21 juillet (par ratio effort/valeur)
 3. ~~**Sentry** sur webhooks + crons~~ — FAIT le 31/07/2026. `SENTRY_DSN` posée sur Vercel le 31/07/2026. **Vérification permanente** : `/admin/dashboard` → carte « Monitoring » — indique si la DSN est présente sur l'environnement courant et permet d'envoyer une erreur de test à la demande. À rejouer après tout changement de DSN : un monitoring qu'on croit actif alors qu'il ne l'est pas est pire que pas de monitoring, on cesse de surveiller en se croyant couvert. Les stack traces seront minifiées tant que `withSentryConfig` n'est pas ajouté à `next.config.ts` (nécessite un `SENTRY_AUTH_TOKEN`) — à faire seulement si les traces s'avèrent illisibles.
 4. ~~**Checklist d'activation** sur le dashboard~~ — FAIT le 17/08/2026, avec la présentation produit qui manquait : `/bienvenue` (les 3 piliers Préparer/Débriefer/Progresser, mêmes mots que la landing) + les 4 étapes d'activation avec leur état réel (`getActivationState`). L'onboarding existant ne collectait que le profil : on pouvait le terminer et atterrir sur un tableau de bord vide sans comprendre pourquoi. `/onboarding` y redirige maintenant au lieu d'aller au dashboard, `ActivationBanner` rappelle le reste à faire en tête du dashboard tant que ce n'est pas complet (et disparaît ensuite — un bandeau permanent devient du décor), et l'aide y renvoie (on cherche « comment ça marche déjà ? » une semaine après, pas le premier jour). Ancien libellé : **Checklist d'activation** sur le dashboard ("Démarrage : 2/4 étapes" — agenda, CRM, playbook, premier brief) — à faire avant d'ouvrir Google OAuth, sinon les invités décrochent sur un dashboard vide
-5. **Notifications inbox** : la cloche TopBar mène vers des préférences, pas une inbox — les événements existent déjà en base (devis accepté, réponse prospect, call analysé), il manque une table + un compteur
+5. **Notifications inbox** : la cloche TopBar mène vers des préférences, pas une inbox — les événements existent déjà en base (devis accepté, réponse prospect, call analysé), il manque une table + un compteur. Depuis le 21/08 la cloche est le seul accès à la page, ce qui rend l'écart plus visible : on clique sur une cloche pour voir ce qui s'est passé, on tombe sur des cases à cocher
 6. ~~**Recherche globale v1**~~ — FAIT le 31/07/2026 (`app/components/GlobalSearch.tsx`, `/api/search`, `searchEverything`). `ilike` sur contacts + calls, ⌘K, navigation clavier. **Périmètre : ses propres données + celles de ses commerciaux liés si manager** — sans cette extension la fonction ne renvoyait rien pour son premier utilisateur, un manager passant peu d'appels lui-même (constaté sur les vraies données avant déploiement). Les jokers `%`/`_` sont échappés, sans quoi une recherche sur `%` renverrait tout.
 7. ~~**Dossier `migrations/`** committé~~ — FAIT (8 migrations numérotées au 30/07/2026). Règle en vigueur : toute nouvelle migration y est committée, même appliquée à la main.
 8. ~~**Tests sur les flux irréversibles**~~ — FAIT le 31/07/2026. `npm test` (node:test + le loader strip-types déjà utilisé par les scripts, **zéro dépendance ajoutée**). 23 tests dans `tests/`, chacun nommant le bug qu'il verrouille. Les décisions à risque ont été extraites des routes vers `lib/billing-rules.ts` pour être testables sans simuler Stripe ni la base. Suite validée par mutation : réintroduire les bugs #15 et #1 fait bien échouer 3 tests.
