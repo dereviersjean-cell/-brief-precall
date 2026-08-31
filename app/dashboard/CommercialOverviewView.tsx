@@ -64,10 +64,10 @@ export default function CommercialOverviewView({
               subtitle={`${now.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })} — voici votre semaine.`}
               actions={
                 <>
-                  <Button variant="secondary" icon={<Calendar className="h-3.5 w-3.5" />} disabled title="Bientôt disponible">
+                  <Button variant="secondary" className="hidden sm:inline-flex" icon={<Calendar className="h-3.5 w-3.5" />} disabled title="Bientôt disponible">
                     Cette semaine
                   </Button>
-                  <Button variant="secondary" icon={<Download className="h-3.5 w-3.5" />} disabled title="Bientôt disponible">
+                  <Button variant="secondary" className="hidden sm:inline-flex" icon={<Download className="h-3.5 w-3.5" />} disabled title="Bientôt disponible">
                     Exporter
                   </Button>
                   <Link

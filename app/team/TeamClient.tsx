@@ -241,7 +241,7 @@ export default function TeamClient({
               )}
               <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm border-collapse min-w-[520px]">
+                  <table className="w-full text-sm border-collapse stacked-table sm:min-w-[520px]">
                     <thead>
                       <tr className="border-b border-border bg-slate-50/60">
                         <SortHeader label="Nom" sortKey="name" currentSort={sortKey} currentDirection={sortDirection} onSort={handleSort} />
@@ -277,7 +277,7 @@ export default function TeamClient({
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 py-3.5 whitespace-nowrap text-slate-500">
+                          <td data-label="Dernière activité" className="px-4 py-3.5 whitespace-nowrap text-slate-500">
                             {isPending(c) ? (
                               <span className="inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs font-medium text-amber-700">
                                 Invitation en attente

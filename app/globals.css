@@ -200,10 +200,18 @@ body {
    affichée en permanence dès qu'une souris est branchée. Le défilement reste
    possible (tactile, trackpad, molette shift). */
 @utility no-scrollbar {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  &::-webkit-scrollbar {
-    display: none;
+  /* Masquée seulement au pointeur fin. Le grief d'origine était macOS : avec
+     une souris branchée, la barre reste affichée en permanence sous les
+     onglets. Sur tactile elle est en surimpression et ne s'affiche que pendant
+     le geste — c'est justement l'indice qui manquait pour deviner que la barre
+     d'onglets défile. La masquer là-bas revenait à supprimer la seule affordance
+     de la plateforme qui n'a pas de survol pour la remplacer. */
+  @media (pointer: fine) {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 }
 
@@ -224,5 +232,61 @@ body {
   textarea,
   select {
     font-size: 16px;
+  }
+}
+
+/* Tableaux empilés en cartes sous `sm`.
+   Un tableau de 520 à 820 px de large sur un écran de 390 px oblige à défiler
+   horizontalement DANS la carte pour atteindre la dernière colonne — et c'est
+   toujours là que vivent les actions (« Renvoyer l'invitation », « Voir la
+   performance », le menu d'un devis). Ça marche, mais rien ne l'indique.
+   Sous `sm`, chaque ligne devient un bloc : l'identité en tête, les valeurs
+   intermédiaires étiquetées par `data-label`, les actions en pied de bloc sur
+   toute la largeur.
+   Le `!important` n'est pas de la paresse : chaque cellule porte ses propres
+   utilitaires Tailwind (`px-4 py-3.5 text-right whitespace-nowrap`,
+   `max-w-[280px]`…) qu'il faut neutraliser une à une sans aller réécrire
+   quatre tableaux cellule par cellule. Il est borné à la requête média, donc
+   sans effet au-delà de `sm`.
+   À utiliser AVEC `sm:min-w-[...]` sur la table plutôt que `min-w-[...]` :
+   sinon la largeur minimale continue de forcer le défilement. */
+@utility stacked-table {
+  @media (max-width: 639px) {
+    & thead {
+      display: none;
+    }
+    & tbody,
+    & tr,
+    & td {
+      display: block;
+    }
+    & tr {
+      padding: 0.875rem 1rem;
+    }
+    & td {
+      padding: 0.15rem 0 !important;
+      text-align: left !important;
+      white-space: normal !important;
+      max-width: none !important;
+      width: auto !important;
+    }
+    & td[data-label]::before {
+      content: attr(data-label);
+      display: block;
+      margin-bottom: 1px;
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #94a3b8;
+    }
+    /* Première cellule = l'identité de la ligne, elle se passe d'étiquette.
+       Dernière = les actions, qui méritent d'être détachées du reste. */
+    & td:first-child {
+      padding-top: 0 !important;
+    }
+    & td:last-child {
+      padding-top: 0.6rem !important;
+    }
   }
 }

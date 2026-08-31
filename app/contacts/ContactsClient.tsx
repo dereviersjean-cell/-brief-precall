@@ -196,7 +196,7 @@ export default function ContactsClient({ contacts }: { contacts: ContactOverview
         <FadeIn delay={0.1}>
           <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse min-w-[760px]">
+              <table className="w-full border-collapse stacked-table sm:min-w-[760px]">
                 <thead>
                   <tr className="border-b border-border bg-slate-50/60">
                     <SortHeader label="Contact / Entreprise" sortKey="name" currentSort={sortKey} currentDirection={sortDirection} onSort={handleSort} />
@@ -246,10 +246,10 @@ export default function ContactsClient({ contacts }: { contacts: ContactOverview
                           </div>
                         </Link>
                       </td>
-                      <td className="px-4 py-3.5 whitespace-nowrap text-sm text-slate-600">
+                      <td data-label="Dernier contact" className="px-4 py-3.5 whitespace-nowrap text-sm text-slate-600">
                         {formatDate(contact.last_contact_at)}
                       </td>
-                      <td className="px-4 py-3.5 whitespace-nowrap">
+                      <td data-label="Visios" className="px-4 py-3.5 whitespace-nowrap">
                         {contact.video_call_count > 0 ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[color:var(--lavender)] text-[color:var(--violet)]">
                             <VideoIcon className="w-3 h-3 shrink-0" />
@@ -259,7 +259,7 @@ export default function ContactsClient({ contacts }: { contacts: ContactOverview
                           <span className="text-slate-300 text-xs">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3.5 whitespace-nowrap">
+                      <td data-label="Emails envoyés" className="px-4 py-3.5 whitespace-nowrap">
                         {contact.emails_sent_count > 0 ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-600">
                             <EnvelopeIcon className="w-3 h-3 shrink-0" />

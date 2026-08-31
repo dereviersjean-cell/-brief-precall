@@ -312,7 +312,7 @@ export default function QuotesListClient({
             <FadeIn delay={0.1}>
               <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm border-collapse min-w-[820px]">
+                  <table className="w-full text-sm border-collapse stacked-table sm:min-w-[820px]">
                     <thead>
                       <tr className="border-b border-border bg-slate-50/60">
                         <SortHeader label="Numéro" sortKey="number" currentSort={sortKey} currentDirection={sortDirection} onSort={handleSort} />
@@ -337,15 +337,15 @@ export default function QuotesListClient({
                           }`}
                         >
                           <td className="px-4 py-3.5 whitespace-nowrap font-medium text-slate-800">{quote.quote_number}</td>
-                          <td className="px-4 py-3.5 max-w-[220px]">
+                          <td data-label="Contact" className="px-4 py-3.5 max-w-[220px]">
                             <p className="text-slate-700 truncate group-hover:text-[color:var(--violet)] transition-colors">{quote.client_name}</p>
                             {quote.client_email && <p className="text-slate-400 text-xs truncate">{quote.client_email}</p>}
                           </td>
-                          <td className="px-4 py-3.5 text-right font-mono text-slate-700 whitespace-nowrap">{formatCurrency(quote.total_ttc)}</td>
-                          <td className="px-4 py-3.5 whitespace-nowrap">
+                          <td data-label="Montant TTC" className="px-4 py-3.5 text-right font-mono text-slate-700 whitespace-nowrap">{formatCurrency(quote.total_ttc)}</td>
+                          <td data-label="Statut" className="px-4 py-3.5 whitespace-nowrap">
                             <StatusBadge status={quote.status} viewedAt={quote.viewed_at} />
                           </td>
-                          <td className="px-4 py-3.5 whitespace-nowrap text-slate-500">{formatDate(quote.issued_at ?? quote.created_at)}</td>
+                          <td data-label="Date" className="px-4 py-3.5 whitespace-nowrap text-slate-500">{formatDate(quote.issued_at ?? quote.created_at)}</td>
                           <td className="px-4 py-3.5 text-right relative">
                             <div className="flex items-center justify-end gap-2">
                               {quote.status === "draft" && (

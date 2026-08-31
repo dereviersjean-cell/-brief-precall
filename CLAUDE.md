@@ -276,6 +276,15 @@ Livré et testé en conditions réelles sur le compte Oliverlist le 19 juillet 2
 - **Zéro classe `indigo-*` hors `/admin`** (qui garde volontairement son design dédié). Toute nouvelle UI utilise les tokens, jamais indigo/violet Tailwind littéral (exception : couleurs catégorielles type badges emerald/amber/violet-50)
 - Mobile : sidebar en drawer auto-contenu (`AppSidebar.tsx`, `useState` + translate + auto-close sur pathname), layouts en `ml-0 lg:ml-60`, tables larges dans `overflow-x-auto`
 
+### Mobile — conventions acquises le 31 août 2026
+
+- **Tableaux : `stacked-table` + `sm:min-w-[…]`, jamais `min-w-[…]` seul.** Sous `sm`, chaque ligne devient un bloc — identité en tête, valeurs étiquetées par `data-label`, actions en pied sur toute la largeur. Sans ça, il faut défiler horizontalement dans la carte pour atteindre la dernière colonne, et c'est toujours là que vivent les actions. Appliqué aux quatre tableaux : équipe, contacts, devis, roster du tableau de bord. **Le `data-label` d'une cellule doit reprendre le libellé de son en-tête** : l'en-tête est masqué en mode empilé, la valeur seule ne se comprend plus. Première et dernière cellules exemptées (identité, actions).
+- **`PageHeader` s'empile sous `sm`.** Ne pas revenir à une rangée `justify-between` avec des actions en `shrink-0` : le bloc titre se fait écraser (cf. bug #33d).
+- **Champs de saisie : 16 px sous `lg`**, imposé par une règle non layerisée de `globals.css`. Ne pas la retirer en la prenant pour du style mort : sans elle, Safari iOS zoome à chaque tap dans un champ.
+- **Modales : toujours `max-h-[85vh]` + `overflow-y-auto`.**
+- **`no-scrollbar` ne masque la barre qu'au pointeur fin.** Sur tactile, la barre en surimpression est la seule affordance qui dit qu'une rangée d'onglets défile — il n'y a pas de survol pour la remplacer.
+- **Ne préparer une ressource qu'au survol ne marche pas sur tactile** : prévoir un déclencheur sous `(hover: none)` (cf. le PDF du brief, bug #33b).
+
 ### Génération IA — règles critiques
 - Modèle principal : `claude-sonnet-4-6` / léger : `claude-haiku-4-5-20251001`
 - `max_tokens` : minimum 1500 pour les sorties JSON (800 = troncature garantie)
