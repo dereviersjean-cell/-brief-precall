@@ -72,7 +72,23 @@ export async function middleware(request: NextRequest) {
   const supabaseUserId = token?.supabaseUserId as string | undefined;
 
   if (!supabaseUserId) {
-    return NextResponse.next();
+    // Sans session, on renvoie vers la connexion en gardant la destination.
+    // Avant, le middleware laissait passer et chaque page faisait son propre
+    // `redirect("/login")` — une quinzaine de fois, sans jamais transmettre où
+    // l'utilisateur allait. Résultat : un lien reçu par email et ouvert
+    // déconnecté ramenait sur la page d'accueil de l'app, jamais sur le
+    // feedback ou le devis demandé.
+    //
+    // Le matcher de ce fichier EST la liste des routes protégées : tout ce qui
+    // arrive ici doit être gardé, `/demo` compris — ses écrans ne contiennent
+    // que des données d'exemple, mais ils n'étaient liés que depuis
+    // `/bienvenue` et la visite guidée, donc depuis l'application connectée.
+    const url = request.nextUrl.clone();
+    const destination = request.nextUrl.pathname + request.nextUrl.search;
+    url.pathname = "/login";
+    url.search = "";
+    url.searchParams.set("callbackUrl", destination);
+    return NextResponse.redirect(url);
   }
 
   const gate = await getUserGateInfo(supabaseUserId);

@@ -3,12 +3,15 @@
 import { signIn } from "next-auth/react";
 import { useState } from "react";
 
-export function MicrosoftSignInButton() {
+// `callbackUrl` vient de la page, qui l'a déjà assaini (lib/safe-path.ts).
+// Valeur par défaut `/brief` : c'est la première page après une connexion
+// ordinaire, quand aucune destination n'a été demandée.
+export function MicrosoftSignInButton({ callbackUrl = "/brief" }: { callbackUrl?: string }) {
   const [loading, setLoading] = useState(false);
 
   async function handleClick() {
     setLoading(true);
-    await signIn("azure-ad", { callbackUrl: "/brief" });
+    await signIn("azure-ad", { callbackUrl });
   }
 
   return (

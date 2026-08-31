@@ -3,12 +3,15 @@
 import { signIn } from "next-auth/react";
 import { useState } from "react";
 
-export function GoogleSignInButton() {
+// `callbackUrl` vient de la page, qui l'a déjà assaini (lib/safe-path.ts).
+// Valeur par défaut `/brief` : c'est la première page après une connexion
+// ordinaire, quand aucune destination n'a été demandée.
+export function GoogleSignInButton({ callbackUrl = "/brief" }: { callbackUrl?: string }) {
   const [loading, setLoading] = useState(false);
 
   async function handleClick() {
     setLoading(true);
-    await signIn("google", { callbackUrl: "/brief" });
+    await signIn("google", { callbackUrl });
   }
 
   return (

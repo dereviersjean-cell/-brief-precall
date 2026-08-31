@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowLeft, Sparkles, CheckCircle2, ShieldCheck, TrendingUp, MessagesSquare } from "lucide-react";
 import { GoogleSignInButton } from "./GoogleSignInButton";
 import { MicrosoftSignInButton } from "./MicrosoftSignInButton";
+import { safeInternalPath } from "@/lib/safe-path";
 
 export const metadata: Metadata = {
   title: "Connexion — Brief",
@@ -18,10 +19,16 @@ const ERROR_MESSAGES: Record<string, string> = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; callbackUrl?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, callbackUrl } = await searchParams;
   const errorMessage = error ? ERROR_MESSAGES[error] ?? null : null;
+
+  // Où renvoyer après la connexion. Le middleware pose ce paramètre quand il
+  // intercepte une page demandée sans session — un lien de notification ouvert
+  // déconnecté, typiquement. Assaini avant usage : il vient de l'URL, donc de
+  // n'importe qui (cf. lib/safe-path.ts).
+  const destination = safeInternalPath(callbackUrl, "/brief");
 
   return (
     <div className="brief-ui min-h-screen bg-background text-ink grid lg:grid-cols-2">
@@ -64,8 +71,8 @@ export default async function LoginPage({
             )}
 
             <div className="mt-10 space-y-3">
-              <GoogleSignInButton />
-              <MicrosoftSignInButton />
+              <GoogleSignInButton callbackUrl={destination} />
+              <MicrosoftSignInButton callbackUrl={destination} />
             </div>
 
             <p className="mt-8 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
