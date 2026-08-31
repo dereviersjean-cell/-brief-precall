@@ -437,9 +437,19 @@ export default function BriefClient({
   return (
     <div className="min-h-screen bg-background">
       {/* Topbar */}
-      <div className="sticky top-0 z-10 bg-white border-b border-slate-200">
-        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      {/* `top-14` et non `top-0` : la TopBar du layout est elle-même
+          `sticky top-0 z-10`. Deux barres collantes au même décalage et au même
+          z-index, c'est la seconde qui recouvre la première dès le premier
+          pixel de défilement — le fil d'Ariane, la cloche et, sur mobile, le
+          bouton du menu disparaissaient dessous. C'est exactement la règle du
+          bug #26, que cette barre-ci n'avait jamais appliquée. */}
+      <div className="sticky top-14 z-[9] bg-white border-b border-slate-200">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
+          {/* `min-w-0` + `truncate` : sur 390 px les deux boutons prennent la
+              moitié de la barre, le fil d'Ariane doit pouvoir se couper plutôt
+              que les pousser hors de l'écran. Le titre reste lisible en entier
+              juste en dessous, dans le corps de la page. */}
+          <div className="flex items-center gap-3 min-w-0">
             <Link
               href="/brief"
               className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors"
@@ -450,16 +460,16 @@ export default function BriefClient({
               Brief
             </Link>
             <span className="text-slate-200">/</span>
-            <span className="text-sm font-medium text-slate-900">{displayName}</span>
+            <span className="text-sm font-medium text-slate-900 truncate">{displayName}</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handleShare}
               onMouseEnter={warmPdf}
               onFocus={warmPdf}
               onPointerDown={warmPdf}
               disabled={pdfBusy !== null}
-              className="flex items-center gap-2 text-sm text-slate-600 border border-slate-200 bg-white px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 whitespace-nowrap text-sm text-slate-600 border border-slate-200 bg-white px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -469,7 +479,7 @@ export default function BriefClient({
             <button
               onClick={handleExportPdf}
               disabled={pdfBusy !== null}
-              className="flex items-center gap-2 text-sm text-slate-600 border border-slate-200 bg-white px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 whitespace-nowrap text-sm text-slate-600 border border-slate-200 bg-white px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -655,9 +665,13 @@ export default function BriefClient({
               </div>
             )}
 
-            <div className="grid grid-cols-3 gap-6">
+            {/* Une seule colonne sous `lg`. À trois colonnes sur 390 px, la
+                principale tombait à ~195 px et la latérale à ~98 px : le texte
+                se coupait tous les trois mots et les pastilles de vocabulaire
+                s'empilaient une lettre par ligne. */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Main column */}
-              <div className="col-span-2 space-y-6">
+              <div className="lg:col-span-2 space-y-6">
                 <Section title="Vue d'ensemble">
                   <p className="text-slate-700 leading-relaxed text-sm">{brief.companyOverview}</p>
                   {(brief.revenue || brief.employees || meeting.website) && (
