@@ -280,7 +280,9 @@ Livré et testé en conditions réelles sur le compte Oliverlist le 19 juillet 2
 
 Brief s'installe sur l'écran d'accueil (icône, plein écran sans la barre Safari, écran de démarrage). **Ce n'est PAS une application hors ligne** : aucun service worker n'est enregistré, l'app installée a toujours besoin du réseau. Choix explicite — pas d'hors-ligne, pas de notifications.
 
-- `app/manifest.ts` (servi sur `/manifest.webmanifest`, Next injecte le `<link>` tout seul). `start_url` = `/dashboard` : qui installe l'app est déjà convaincu, le middleware renvoie vers `/login` sans session.
+- `app/manifest.ts` (servi sur `/manifest.webmanifest`, Next injecte le `<link>` tout seul). `start_url` = **`/brief`**, la même première page qu'après une connexion (31/08/2026) : ce qu'on vient chercher sur son téléphone, c'est son brief avant le rendez-vous, pas un tableau de bord.
+
+**La première page après connexion est `/brief`**, sur ordinateur comme sur téléphone. Elle est fixée dans les `callbackUrl` des deux boutons de `/login` (Google et Microsoft) — c'est le seul endroit à changer, il n'y a pas de redirection centrale. `/brief` porte son propre garde d'onboarding (`BriefToolClient.tsx`, appel à `/api/onboarding`), donc un compte sans profil est toujours renvoyé vers `/onboarding` : le changement ne permet pas de sauter l'onboarding. **Conséquence connue** : le `callbackUrl` étant en dur, un lien profond ouvert sans session ne survit pas à la connexion — on atterrit sur `/brief` et pas sur la page demandée. C'était déjà le cas avec `/dashboard`.
 - `theme_color` est **blanc, pas le bleu de marque** : cette couleur teinte la barre du navigateur, collée à une TopBar blanche — un bleu vif y ferait une couture. `background_color` vaut `#F8FAFC`, le fond de l'app, pour que l'écran de démarrage ne clignote pas.
 - **iOS ignore les icônes du manifeste** et ne lit que `apple-touch-icon` déclarée dans les métadonnées du layout. L'oublier donne une vignette de la page en guise d'icône.
 - `statusBarStyle: "default"` et non `black-translucent` : ce dernier fait passer le contenu SOUS la barre d'état et demanderait de gérer les zones sûres sur chaque écran.

@@ -8,7 +8,7 @@ export function GoogleSignInButton() {
 
   async function handleClick() {
     setLoading(true);
-    await signIn("google", { callbackUrl: "/dashboard" });
+    await signIn("google", { callbackUrl: "/brief" });
   }
 
   return (

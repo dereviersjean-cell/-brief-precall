@@ -8,7 +8,7 @@ export function MicrosoftSignInButton() {
 
   async function handleClick() {
     setLoading(true);
-    await signIn("azure-ad", { callbackUrl: "/dashboard" });
+    await signIn("azure-ad", { callbackUrl: "/brief" });
   }
 
   return (

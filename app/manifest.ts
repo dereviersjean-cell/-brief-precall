@@ -16,10 +16,11 @@ export default function manifest(): MetadataRoute.Manifest {
     description:
       "Préparez chaque rendez-vous commercial en deux minutes, et débriefez-le automatiquement.",
     lang: "fr",
-    // On entre par le tableau de bord, pas par la page marketing : quelqu'un
-    // qui a installé l'app est déjà convaincu. Le middleware renvoie vers
-    // /login s'il n'a pas de session.
-    start_url: "/dashboard",
+    // Même première page qu'après une connexion : /brief. Quelqu'un qui a
+    // installé l'app est déjà convaincu, il n'a rien à faire sur la page
+    // marketing — et ce qu'il vient chercher sur son téléphone, c'est son
+    // brief avant le rendez-vous.
+    start_url: "/brief",
     scope: "/",
     display: "standalone",
     orientation: "portrait",
