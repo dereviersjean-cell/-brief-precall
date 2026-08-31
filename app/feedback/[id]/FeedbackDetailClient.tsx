@@ -8,6 +8,7 @@ import { MEETING_STAGE_LABELS } from "@/lib/meeting-stage";
 import type { ConversationAnalytics } from "@/lib/transcript-analytics";
 import { getEffectiveScoresForDisplay } from "@/lib/playbook-scores";
 import { formatContactDisplayName } from "@/lib/format";
+import { isValidEmail } from "@/lib/email-address";
 import TemplatePromptSettingsModal from "@/app/components/TemplatePromptSettingsModal";
 import ConversationAnalyticsBlock from "./ConversationAnalyticsBlock";
 import KeyPointsBlock from "./KeyPointsBlock";
@@ -554,10 +555,19 @@ export default function FeedbackDetailClient({
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [showPromptSettings, setShowPromptSettings] = useState(false);
-  // Génération à la demande de l'email de suivi, quand l'ingestion l'a sauté.
+  // Destinataire de l'email de suivi. Sert aux deux chemins : la génération à
+  // la demande quand l'ingestion a sauté l'email, ET l'envoi quand le call n'a
+  // pas de contact — un rendez-vous dont l'invitation ne portait aucun
+  // participant externe n'en a pas, et c'était sans issue.
   const [followUpRecipient, setFollowUpRecipient] = useState(call.contact_email ?? "");
   const [followUpStatus, setFollowUpStatus] = useState<"idle" | "loading">("idle");
   const [followUpError, setFollowUpError] = useState<string | null>(null);
+
+  // « Envoyer » reste inerte tant qu'on ne sait pas à qui écrire : soit le
+  // call porte déjà un contact, soit l'adresse saisie est plausible. Un bouton
+  // actif qui répond « adresse introuvable » est plus coûteux qu'un bouton
+  // grisé qui dit pourquoi.
+  const recipientIsUsable = !!call.contact_email || isValidEmail(followUpRecipient);
 
   async function generateFollowUp() {
     setFollowUpStatus("loading");
@@ -899,9 +909,10 @@ export default function FeedbackDetailClient({
                           {copied ? "Copié !" : "Copier"}
                         </button>
                         <button
-                          disabled={sendStatus === "sending"}
+                          disabled={sendStatus === "sending" || !recipientIsUsable}
+                          title={recipientIsUsable ? undefined : "Indique l'adresse du destinataire"}
                           onClick={async () => {
-                            const to = call.contact_email ?? "ce contact";
+                            const to = call.contact_email ?? followUpRecipient.trim();
                             if (!window.confirm(`Envoyer cet email à ${to} ?`)) return;
                             setSendStatus("sending");
                             setSendError(null);
@@ -909,7 +920,16 @@ export default function FeedbackDetailClient({
                               const res = await fetch("/api/feedback/send-follow-up", {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ callId: call.id, subject, body }),
+                                body: JSON.stringify({
+                                  callId: call.id,
+                                  subject,
+                                  body,
+                                  // Envoyé seulement quand le call n'a pas de
+                                  // contact : le serveur fait primer l'adresse
+                                  // reçue, on ne veut pas écraser par mégarde
+                                  // celle qui vient de l'invitation.
+                                  ...(call.contact_email ? {} : { contactEmail: followUpRecipient.trim() }),
+                                }),
                               });
                               if (res.status === 401 || res.status === 403) {
                                 setSendStatus("auth-error");
@@ -962,6 +982,29 @@ export default function FeedbackDetailClient({
 
                   {call.follow_up_email ? (
                     <>
+                      {!call.contact_email && !sentAt && (
+                        // Le call n'a pas de contact : l'invitation d'agenda ne
+                        // portait aucun participant externe. L'email est bien
+                        // rédigé, mais il n'a personne à qui aller — sans ce
+                        // champ, « Envoyer » échouait sur « Adresse email du
+                        // contact introuvable » sans aucun moyen d'y remédier.
+                        <div className="mb-3">
+                          <label htmlFor="follow-up-recipient" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                            Destinataire
+                          </label>
+                          <input
+                            id="follow-up-recipient"
+                            type="email"
+                            value={followUpRecipient}
+                            onChange={(e) => setFollowUpRecipient(e.target.value)}
+                            placeholder="prenom.nom@entreprise.com"
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+                          />
+                          <p className="mt-1.5 text-xs text-slate-500">
+                            Aucun participant externe n&apos;était identifié dans l&apos;invitation : indique l&apos;adresse à laquelle envoyer.
+                          </p>
+                        </div>
+                      )}
                       <input
                         type="text"
                         value={subject}

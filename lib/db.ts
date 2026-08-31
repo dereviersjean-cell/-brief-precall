@@ -886,6 +886,21 @@ export async function updateCallFollowUp(
   if (error) throw error;
 }
 
+// Le destinataire saisi à la main est enregistré sur le call.
+//
+// Sans ça, la génération à la demande d'un email de suivi produisait un
+// cul-de-sac : l'adresse fournie servait à rédiger l'email, puis était
+// oubliée, et la route d'envoi refusait ensuite ce même email faute de
+// contact_email. L'adresse sert aussi au reste de l'app (historique du
+// contact, relances), pas seulement à l'envoi qui la fournit.
+export async function updateCallContactEmail(callId: string, contactEmail: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("calls")
+    .update({ contact_email: contactEmail })
+    .eq("id", callId);
+  if (error) throw error;
+}
+
 export async function updateFollowUpSentAt(callId: string): Promise<void> {
   const { error } = await supabaseAdmin
     .from("calls")

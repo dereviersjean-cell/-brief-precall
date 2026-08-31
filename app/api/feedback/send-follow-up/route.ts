@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
-import { getCallWithAnalysis, updateCallFollowUp, updateFollowUpSentAt, updateGmailThreadId } from "@/lib/db";
+import { getCallWithAnalysis, updateCallContactEmail, updateCallFollowUp, updateFollowUpSentAt, updateGmailThreadId } from "@/lib/db";
+import { isValidEmail } from "@/lib/email-address";
 
 function encodeMimeSubject(subject: string): string {
   if (/[^\x00-\x7F]/.test(subject)) {
@@ -39,8 +40,14 @@ export async function POST(request: NextRequest) {
   let callId: string;
   let editedSubject: string | undefined;
   let editedBody: string | undefined;
+  let providedEmail: string | undefined;
   try {
-    ({ callId, subject: editedSubject, body: editedBody } = await request.json());
+    ({
+      callId,
+      subject: editedSubject,
+      body: editedBody,
+      contactEmail: providedEmail,
+    } = await request.json());
   } catch {
     return NextResponse.json({ error: "Corps invalide." }, { status: 400 });
   }
@@ -69,8 +76,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Aucun email de suivi généré pour ce call." }, { status: 400 });
   }
 
-  if (!call.contact_email) {
-    return NextResponse.json({ error: "Adresse email du contact introuvable." }, { status: 400 });
+  // Destinataire : l'adresse saisie prime sur celle du call — c'est
+  // précisément le cas où le call n'en a pas (invitation d'agenda sans
+  // participant externe), et c'est aussi la seule façon de corriger une
+  // adresse fausse sans repasser par le CRM.
+  const typedEmail = providedEmail?.trim();
+  if (typedEmail && !isValidEmail(typedEmail)) {
+    return NextResponse.json({ error: "Adresse email invalide." }, { status: 400 });
+  }
+  const recipient = typedEmail || call.contact_email;
+
+  if (!recipient) {
+    return NextResponse.json(
+      { error: "Aucun destinataire : indiquez l'adresse à laquelle envoyer cet email." },
+      { status: 400 }
+    );
   }
 
   const accessToken = session?.accessToken;
@@ -92,7 +112,7 @@ export async function POST(request: NextRequest) {
 
   // Build and send email via Gmail API
   const raw = toBase64Url(
-    buildRfc2822(call.contact_email, finalSubject, finalBody)
+    buildRfc2822(recipient, finalSubject, finalBody)
   );
 
   let gmailRes: Response;
@@ -131,6 +151,19 @@ export async function POST(request: NextRequest) {
     threadId = gmailData.threadId ?? null;
   } catch {
     // non-blocking
+  }
+
+  // L'adresse saisie est enregistrée sur le call APRÈS un envoi réussi : elle
+  // devient le contact de ce rendez-vous pour la suite (historique, relances).
+  // Jamais avant l'envoi — une adresse refusée par Gmail ne doit pas rester
+  // collée au call. Et jamais par-dessus une adresse déjà connue.
+  if (typedEmail && !call.contact_email) {
+    try {
+      await updateCallContactEmail(callId, typedEmail);
+    } catch (err) {
+      console.error("[send-follow-up] updateCallContactEmail failed:", err);
+      // Non bloquant — l'email est parti, seul l'enregistrement a échoué.
+    }
   }
 
   // Mark as sent

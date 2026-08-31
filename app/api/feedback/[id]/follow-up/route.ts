@@ -5,6 +5,7 @@ import { requireActiveUser } from "@/lib/api-auth";
 import { checkAiGenerationRateLimit, requestIp, retryAfterMinutes } from "@/lib/rate-limit";
 import { getCallWithAnalysis, getCallWithAnalysisForManager, getUserRole, updateCallFollowUp } from "@/lib/db";
 import { generateFollowUpEmail } from "@/lib/email-followup";
+import { isValidEmail } from "@/lib/email-address";
 
 // Génération à la demande de l'email de suivi.
 //
@@ -58,6 +59,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!contactEmail) {
     return NextResponse.json({ error: "Indiquez l'email du destinataire." }, { status: 400 });
   }
+  if (!isValidEmail(contactEmail)) {
+    return NextResponse.json({ error: "Adresse email invalide." }, { status: 400 });
+  }
+
+  // L'adresse n'est PAS enregistrée ici, seulement à l'envoi (cf.
+  // send-follow-up) : une adresse qui n'a jamais servi à envoyer quoi que ce
+  // soit ne doit pas devenir le contact du rendez-vous. La page laisse la
+  // saisir à nouveau au moment d'envoyer, y compris après un rechargement.
 
   const nextSteps = call.analysis?.next_steps ?? [];
   const followUp = await generateFollowUpEmail(call.transcript, nextSteps, contactEmail);

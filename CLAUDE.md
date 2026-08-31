@@ -326,6 +326,8 @@ Livré et testé en conditions réelles sur le compte Oliverlist le 19 juillet 2
 
 30. **`navigator.share()` exige une activation utilisateur récente** (22 août 2026) : la première version attendait le téléchargement du PDF — une à deux secondes — **à l'intérieur du gestionnaire de clic**. L'activation était consommée, le navigateur rejetait, et le code prenait ce rejet pour une annulation volontaire : bouton inerte sur Chrome, sans erreur. Fix : le PDF est préparé **au survol**, `navigator.share` est appelé sans attente. Corollaires : sans fichier en cache (clic immédiat, appareil tactile sans survol) on tente quand même et on retombe sur le téléchargement au moindre échec ; `navigator.canShare` tranche d'abord, tous les navigateurs ne savent pas partager un FICHIER (Chrome de bureau) ; un `AbortError` ne vaut « annulé par l'utilisateur » que dans le cas où rien n'a été attendu avant l'appel.
 
+31. **Un correctif à moitié : l'adresse saisie servait à rédiger, jamais à envoyer** (31 août 2026) : la génération à la demande de l'email de suivi acceptait un destinataire quand le call n'en avait pas — c'était tout l'objet du correctif — mais ne l'enregistrait nulle part. L'email était donc rédigé, affiché, puis **refusé à l'envoi** par « Adresse email du contact introuvable », sans le moindre champ pour redonner l'adresse. Le correctif initial avait traité l'écran bloqué (« en cours de génération… » alors que rien ne tournait) et s'était arrêté là. Vérifié sur le vrai call `5beb44e3` : `contact_email` à `null`, `follow_up_email` présent, jamais envoyé. **Généralisation : quand on ajoute une saisie utilisateur pour débloquer une étape, parcourir TOUTE la suite du flux et vérifier que chaque étape dispose de cette donnée** — ici la route d'envoi lisait toujours `calls.contact_email`, resté vide. Règle adoptée au passage : l'adresse n'est enregistrée sur le call **qu'après un envoi réussi**, jamais à la génération — une adresse qui n'a jamais rien envoyé ne doit pas devenir le contact du rendez-vous.
+
 ## Règles — NE JAMAIS faire
 
 - ❌ Utiliser le client Supabase anon côté serveur (toujours service_role)
@@ -350,6 +352,7 @@ Livré et testé en conditions réelles sur le compte Oliverlist le 19 juillet 2
 - ❌ Modifier un prompt par défaut sans vérifier si une version éditée existe dans `admin_config` (cf. bug #24)
 - ❌ Afficher comme une citation un texte produit par le modèle sans l'avoir ancré au transcript (numéros de ligne, jamais de copie mot à mot vérifiée après coup)
 - ❌ Mettre dans un prompt partagé un contre-exemple propre à un client — ça dégrade tous les autres ; la spécificité client vit dans sa configuration
+- ❌ Faire saisir une donnée pour débloquer une étape sans vérifier que les étapes SUIVANTES du même flux y ont accès (cf. bug #31)
 - ❌ Lire une ressource par son seul id quand elle appartient à un utilisateur — cadrer la requête sur son propriétaire (cf. bug #28), d'autant plus si elle est exportable
 - ❌ Attendre quoi que ce soit (`await`) avant d'appeler `navigator.share()` dans un gestionnaire de clic — l'activation utilisateur est consommée (cf. bug #30)
 - ❌ Charger un fichier par un chemin construit à l'exécution sans l'ajouter au traçage de fichiers de `next.config.ts` — ça marche en local et tombe en 500 en production
