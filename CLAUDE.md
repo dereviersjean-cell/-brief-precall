@@ -276,6 +276,18 @@ Livré et testé en conditions réelles sur le compte Oliverlist le 19 juillet 2
 - **Zéro classe `indigo-*` hors `/admin`** (qui garde volontairement son design dédié). Toute nouvelle UI utilise les tokens, jamais indigo/violet Tailwind littéral (exception : couleurs catégorielles type badges emerald/amber/violet-50)
 - Mobile : sidebar en drawer auto-contenu (`AppSidebar.tsx`, `useState` + translate + auto-close sur pathname), layouts en `ml-0 lg:ml-60`, tables larges dans `overflow-x-auto`
 
+### PWA — installable depuis le 31 août 2026
+
+Brief s'installe sur l'écran d'accueil (icône, plein écran sans la barre Safari, écran de démarrage). **Ce n'est PAS une application hors ligne** : aucun service worker n'est enregistré, l'app installée a toujours besoin du réseau. Choix explicite — pas d'hors-ligne, pas de notifications.
+
+- `app/manifest.ts` (servi sur `/manifest.webmanifest`, Next injecte le `<link>` tout seul). `start_url` = `/dashboard` : qui installe l'app est déjà convaincu, le middleware renvoie vers `/login` sans session.
+- `theme_color` est **blanc, pas le bleu de marque** : cette couleur teinte la barre du navigateur, collée à une TopBar blanche — un bleu vif y ferait une couture. `background_color` vaut `#F8FAFC`, le fond de l'app, pour que l'écran de démarrage ne clignote pas.
+- **iOS ignore les icônes du manifeste** et ne lit que `apple-touch-icon` déclarée dans les métadonnées du layout. L'oublier donne une vignette de la page en guise d'icône.
+- `statusBarStyle: "default"` et non `black-translucent` : ce dernier fait passer le contenu SOUS la barre d'état et demanderait de gérer les zones sûres sur chaque écran.
+- Les icônes sont générées par un script Swift (Core Graphics) à partir du « B » sur le dégradé `#2A5CE0 → #5B3FD6`, en Helvetica Neue Bold — Inter Tight n'est pas installée localement, et l'Avenir Next Heavy referme ses contreformes à 60 px. **Le fichier source est un carré plein, sans transparence ni coins arrondis** : iOS applique son propre masque, un PNG déjà arrondi se fait rogner deux fois.
+- Les chemins d'icônes et le manifeste **ne sont pas dans le matcher de `middleware.ts`** (une liste explicite de routes applicatives). Y ajouter un motif large les casserait pour les visiteurs non connectés.
+- **Reste à faire** : rien dans l'app n'explique comment l'installer. iOS n'a pas de bouton « Installer » — il faut passer par Partager → « Sur l'écran d'accueil ». Sans cette indication quelque part, personne ne l'installera.
+
 ### Mobile — conventions acquises le 31 août 2026
 
 - **Tableaux : `stacked-table` + `sm:min-w-[…]`, jamais `min-w-[…]` seul.** Sous `sm`, chaque ligne devient un bloc — identité en tête, valeurs étiquetées par `data-label`, actions en pied sur toute la largeur. Sans ça, il faut défiler horizontalement dans la carte pour atteindre la dernière colonne, et c'est toujours là que vivent les actions. Appliqué aux quatre tableaux : équipe, contacts, devis, roster du tableau de bord. **Le `data-label` d'une cellule doit reprendre le libellé de son en-tête** : l'en-tête est masqué en mode empilé, la valeur seule ne se comprend plus. Première et dernière cellules exemptées (identité, actions).
