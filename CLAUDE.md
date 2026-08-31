@@ -406,11 +406,32 @@ Déclarés des deux côtés (ancienne + nouvelle URL, elles cohabitent) : les 2 
 
 **Si une bascule d'URL se représente** : poser `NEXT_PUBLIC_APP_URL` à l'ancienne valeur AVANT de déployer le code (le déploiement devient alors neutre), déclarer les URIs partout, puis basculer la variable + `NEXTAUTH_URL` et **redéployer** — `NEXT_PUBLIC_*` est inliné au build, changer la variable sans redéployer ne fait rien, silencieusement. Rollback = remettre les deux variables.
 
-### Vérification Google — RÉPONSE DE GOOGLE le 22 août, vidéo à refaire
+### Vérification Google — nouvelle vidéo envoyée le 31 août 2026, en attente de Google
 
-**Ce n'est pas un refus : c'est une demande d'action, et le dossier attend NOTRE réponse.** Mail de la Third-Party Data Safety Team reçu le 22/08 (« [Action Needed] OAuth Verification Request Acknowledgement »), resté sans réponse jusqu'au 31/08. Il faut **répondre dans le fil** (`api-oauth-dev-verification-reply+2ui4jcqoh52ip1d@google.com`) pour que la revue reparte — une nouvelle soumission ne remplace pas la réponse.
+**Réponse partie le 31/08 dans le fil du 22 août.** Nouvelle vidéo : **https://youtu.be/lynTB6sOC8s** (6 min 41, muette, sous-titres anglais importés), lien mis à jour dans Data Access. L'ancienne (`YQEbVl19VN0`) est conservée en ligne tant que la nouvelle n'est pas acceptée — c'est ce qui avait été soumis le 20/08.
 
-Trois critères exigés pour la vidéo. **Deux étaient déjà satisfaits** par celle du 20/08 :
+**Ce que la nouvelle vidéo montre**, horodatages relevés image par image (utiles si un troisième tour arrive) :
+
+| Moment | Ce qui est à l'écran |
+|---|---|
+| 01:06 | Permissions de connexion détaillées : nom, photo, adresse email (`userinfo.profile`, `userinfo.email`) |
+| 01:40 | Écran de consentement du client 1, bandeau « application non validée », les deux scopes sensibles listés en clair |
+| 02:05 | `client_id` du client 1 lisible dans la barre d'URL |
+| 02:14 | **Cases cochées, consentement accordé** — le flux va jusqu'au bout, ce qui manquait |
+| 02:55 | **Google Calendar : le brief dans la description de l'événement** (impact de `calendar.events` en écriture) |
+| 03:52 | **Gmail, recherche `in:sent`, le message dans les Messages envoyés** (impact de `gmail.send`) |
+| 04:55 | Écran « application non validée » du client 2, paramètres avancés dépliés |
+| 05:08 | Modale des détails d'accès du client 2, dépliée |
+| 05:35 | `calendar.events.readonly` visible + `client_id` du client 2 lisible |
+| 06:06 | Politique de confidentialité, dont Limited Use |
+
+Sources sur le bureau de Jean : `brief-verification-video-CONDUITE-v2.md` (conduite), `brief-verification-video-v2-cale.srt` (**sous-titres calés sur le montage réel** — pas `brief-verification-video-v2.srt`, qui suivait le plan et non le tournage), `brief-verification-youtube.md` (titre, description, chapitres), `brief-verification-reponse-google.md` (le mail envoyé).
+
+**Réserves connues sur cette vidéo, jugées non bloquantes** : le sélecteur de comptes (0:45) liste les collègues d'Oliverlist, la semaine d'agenda (2:55) expose l'opérationnel interne, et la barre de favoris est visible à 3:45. Google s'en moque ; c'est un sujet de confidentialité sur une URL YouTube devinable, pas un motif de refus. Arbitré le 31/08 : on n'a pas retourné pour ça, le dossier attendait depuis neuf jours.
+
+**Historique — pourquoi il a fallu retourner.** Mail de la Third-Party Data Safety Team reçu le 22/08 (« [Action Needed] OAuth Verification Request Acknowledgement »), resté sans réponse jusqu'au 31/08. Il faut **répondre dans le fil** (`api-oauth-dev-verification-reply+2ui4jcqoh52ip1d@google.com`) pour que la revue reparte — une nouvelle soumission ne remplace pas la réponse.
+
+Le mail Google du 22/08 (« [Action Needed] OAuth Verification Request Acknowledgement », Third-Party Data Safety Team) n'était **pas un refus** : une demande d'action, qui attendait notre réponse dans le fil — restée sans réponse neuf jours. Trois critères exigés, dont **deux étaient déjà satisfaits** par la vidéo du 20/08 :
 
 | Critère | v1 (soumise le 20/08) |
 |---|---|
@@ -420,9 +441,7 @@ Trois critères exigés pour la vidéo. **Deux étaient déjà satisfaits** par 
 
 **Console vérifiée le 31/08/2026 — rien à y changer** : `userinfo.profile` et `userinfo.email` (non sensibles), `calendar.events.readonly`, `calendar.events` et `gmail.send` (sensibles), **Restricted : aucune ligne**. Aucun résidu de `gmail.readonly` / `gmail.metadata` : l'audit CASA payant reste écarté. Publishing status **In production**, 3/100 utilisateurs. Côté code, `lib/auth.ts` demande `openid email profile calendar.events gmail.send` et `app/api/recall/google-oauth/start/route.ts` demande `calendar.events.readonly userinfo.email` — la correspondance est exacte.
 
-**Ce qui reste à faire** : retourner les scènes 2 et 6 en dépliant l'écran de consentement et en tenant le plan 8 à 10 secondes, renforcer la scène 4 d'un plan « avant » (description vide), nommer le dossier « Messages envoyés » à l'image. Conduite de tournage v2, sous-titres recalés et réponse rédigée sur le bureau de Jean : `brief-verification-video-CONDUITE-v2.md`, `brief-verification-video-v2.srt`, `brief-verification-reponse-google.md`. La v1 est conservée à côté — c'est ce qui a été soumis, il faut pouvoir s'y référer.
-
-**Deux pièges du retournage** : YouTube ne permet pas de remplacer le fichier d'une vidéo existante (nouvel upload → nouvelle URL → mettre à jour le champ *YouTube link* de Data Access, et ne toucher à rien d'autre sur cette page) ; et il faut **révoquer l'accès de Brief sur `myaccount.google.com/permissions` avant de filmer**, sinon Google saute l'écran de consentement. Tourner avec un compte **déjà compté** dans les 3 utilisateurs : le plafond de 100 se compte sur la durée de vie du projet et ne se réinitialise pas.
+**Deux pièges du retournage, à ne pas réapprendre** : YouTube ne permet pas de remplacer le fichier d'une vidéo existante (nouvel upload → nouvelle URL → mettre à jour le champ *YouTube link* de Data Access, et ne toucher à rien d'autre sur cette page) ; et il faut **révoquer l'accès de Brief sur `myaccount.google.com/permissions` avant de filmer**, sinon Google saute l'écran de consentement. Tourner avec un compte **déjà compté** dans les 3 utilisateurs : le plafond de 100 se compte sur la durée de vie du projet et ne se réinitialise pas.
 
 ### Vérification Google — le dossier soumis le 20 août 2026, 18h15
 
@@ -450,7 +469,7 @@ Trois critères exigés pour la vidéo. **Deux étaient déjà satisfaits** par 
 
 ### Ce qui bloque et ne dépend PAS du code
 
-1. **Répondre au mail Google du 22 août** — le dossier de vérification est à l'arrêt tant que la réponse n'est pas partie, et neuf jours ont déjà passé. Vidéo à retourner d'abord (deux scènes), tout est prêt sur le bureau. Ne bloque pas le fonctionnement du produit — le projet est *In production* — mais bloque la levée de l'écran « application non vérifiée » et du plafond de 100 utilisateurs.
+1. **Vérification Google — réponse envoyée le 31/08, la balle est chez Google.** Rien à faire, sinon surveiller le fil. **PENDANT L'EXAMEN : ne toucher ni aux scopes, ni au branding, ni aux URL, et ne jamais cliquer « Back to testing ».** Ne bloque pas le produit — le projet est *In production* — mais bloque la levée de l'écran « application non vérifiée » et du plafond de 100 utilisateurs.
 2. **Stripe en mode Live** — activation du compte (vérification entreprise). **Trancher le pricing usage AVANT la bascule.** C'est désormais le premier déblocant business : tant qu'il n'est pas fait, il n'y a pas de client payant possible. Recommandation de l'audit : quota d'heures inclus par siège (ex. 10 h/mois puis 0,50 €/h) plutôt que la refacturation sèche dès la première heure — ça évite les lignes de facture à 3 € qui font poser des questions, et ça change la facturation avant les premiers clients plutôt qu'après.
 3. **Domaine émetteur des emails** — encore `lartisangroupe.com`. Un prospect qui reçoit un devis voit une adresse sans rapport avec Brief. Détail complet et piège SPF dans la section « Domaine » ci-dessus.
 4. **Call `ecfb191e` à réimporter** : son transcript a été parsé par l'ancien parseur bogué (locuteur « 00 », cf. le piège documenté dans « Banc d'essai »). Les données en base sont inexploitables telles quelles.
