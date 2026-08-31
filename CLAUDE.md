@@ -403,7 +403,25 @@ Déclarés des deux côtés (ancienne + nouvelle URL, elles cohabitent) : les 2 
 
 **Si une bascule d'URL se représente** : poser `NEXT_PUBLIC_APP_URL` à l'ancienne valeur AVANT de déployer le code (le déploiement devient alors neutre), déclarer les URIs partout, puis basculer la variable + `NEXTAUTH_URL` et **redéployer** — `NEXT_PUBLIC_*` est inliné au build, changer la variable sans redéployer ne fait rien, silencieusement. Rollback = remettre les deux variables.
 
-### Vérification Google — SOUMISE le 20 août 2026, 18h15
+### Vérification Google — RÉPONSE DE GOOGLE le 22 août, vidéo à refaire
+
+**Ce n'est pas un refus : c'est une demande d'action, et le dossier attend NOTRE réponse.** Mail de la Third-Party Data Safety Team reçu le 22/08 (« [Action Needed] OAuth Verification Request Acknowledgement »), resté sans réponse jusqu'au 31/08. Il faut **répondre dans le fil** (`api-oauth-dev-verification-reply+2ui4jcqoh52ip1d@google.com`) pour que la revue reparte — une nouvelle soumission ne remplace pas la réponse.
+
+Trois critères exigés pour la vidéo. **Deux étaient déjà satisfaits** par celle du 20/08 :
+
+| Critère | v1 (soumise le 20/08) |
+|---|---|
+| **Source Account Impact** — l'effet des scopes en écriture visible dans le compte Google | ✅ le brief dans la description de l'événement (Google Calendar), l'email dans les Messages envoyés (Gmail) |
+| **Consent Screen** — tous les scopes **dépliés et lisibles**, cliquer « Show all services » | ❌ **le seul trou** : la v1 résume à l'oral (« two permissions »), la liste n'est jamais dépliée à l'image |
+| **Scope Matching** — Console ≡ manifeste | ✅ vérifié le 31/08, voir ci-dessous |
+
+**Console vérifiée le 31/08/2026 — rien à y changer** : `userinfo.profile` et `userinfo.email` (non sensibles), `calendar.events.readonly`, `calendar.events` et `gmail.send` (sensibles), **Restricted : aucune ligne**. Aucun résidu de `gmail.readonly` / `gmail.metadata` : l'audit CASA payant reste écarté. Publishing status **In production**, 3/100 utilisateurs. Côté code, `lib/auth.ts` demande `openid email profile calendar.events gmail.send` et `app/api/recall/google-oauth/start/route.ts` demande `calendar.events.readonly userinfo.email` — la correspondance est exacte.
+
+**Ce qui reste à faire** : retourner les scènes 2 et 6 en dépliant l'écran de consentement et en tenant le plan 8 à 10 secondes, renforcer la scène 4 d'un plan « avant » (description vide), nommer le dossier « Messages envoyés » à l'image. Conduite de tournage v2, sous-titres recalés et réponse rédigée sur le bureau de Jean : `brief-verification-video-CONDUITE-v2.md`, `brief-verification-video-v2.srt`, `brief-verification-reponse-google.md`. La v1 est conservée à côté — c'est ce qui a été soumis, il faut pouvoir s'y référer.
+
+**Deux pièges du retournage** : YouTube ne permet pas de remplacer le fichier d'une vidéo existante (nouvel upload → nouvelle URL → mettre à jour le champ *YouTube link* de Data Access, et ne toucher à rien d'autre sur cette page) ; et il faut **révoquer l'accès de Brief sur `myaccount.google.com/permissions` avant de filmer**, sinon Google saute l'écran de consentement. Tourner avec un compte **déjà compté** dans les 3 utilisateurs : le plafond de 100 se compte sur la durée de vie du projet et ne se réinitialise pas.
+
+### Vérification Google — le dossier soumis le 20 août 2026, 18h15
 
 **Le dossier est chez Trust and Safety.** Premier email annoncé sous 3-5 jours, examen jusqu'à 4-6 semaines, en sept étapes : homepage, privacy policy, app functionality, branding guidelines, appropriate data access, request minimum scopes, additional requirements.
 
@@ -423,14 +441,17 @@ Déclarés des deux côtés (ancienne + nouvelle URL, elles cohabitent) : les 2 
 - Le changement de mode **ne ressuscite pas les jetons déjà expirés**. Chaque utilisateur doit se déconnecter puis se reconnecter **une fois** pour qu'un nouveau refresh token soit émis.
 - Ce qui subsiste jusqu'à la validation : l'écran « application non vérifiée » à la première connexion, et le plafond de **100 utilisateurs sur la durée de vie du projet, non réinitialisable**. C'est une raison de plus pour que la vérification aboutisse avant d'ouvrir vraiment les inscriptions.
 
-**Grief restant au 20/08, 19h** : le contrôle automatique de branding a levé « home page does not explain the purpose » mais retient encore « the app name shown on your OAuth consent screen does not match the app name on your home page ». Le `<title>` de la landing a été réduit à exactement « Brief » (commit `11bb5b1`). **Réserve** : sur un écran de consentement non vérifié, Google affiche le **domaine** et non le nom — les captures de la vidéo montrent « brief-ai.fr veut accéder à votre compte Google ». Si le contrôle compare ce `brief-ai.fr` à `Brief`, il échouera tant que l'app n'est pas vérifiée, ce qui est circulaire. **La question doit être posée à Trust and Safety dans le fil d'email** (contact développeur : `jeandereviersde@gmail.com`, aucun email reçu à 19h10, Google annonce 3-5 jours). Ne pas renommer l'app en `brief-ai.fr` sans leur réponse : ce serait modifier le branding en plein examen, pour une cause non confirmée.
+**Le grief de branding n'est plus d'actualité (31/08).** Le mail du 22/08 ne le mentionne pas — il ne porte que sur la vidéo et les scopes. Et il est arrivé le jour même où Search Console a commencé à collecter des impressions pour `brief-ai.fr` (mail Search Console du 22/08), ce qui enterre la cause des deux refus automatiques du 19/08 : `URL is unknown to Google`, `Last crawl: N/A`. **Ne pas renommer l'app**, la réserve ci-dessous est caduque — elle est conservée pour mémoire, pas pour action.
+
+**Grief au 20/08, 19h (RÉSOLU, conservé pour mémoire)** : le contrôle automatique de branding a levé « home page does not explain the purpose » mais retient encore « the app name shown on your OAuth consent screen does not match the app name on your home page ». Le `<title>` de la landing a été réduit à exactement « Brief » (commit `11bb5b1`). **Réserve** : sur un écran de consentement non vérifié, Google affiche le **domaine** et non le nom — les captures de la vidéo montrent « brief-ai.fr veut accéder à votre compte Google ». Si le contrôle compare ce `brief-ai.fr` à `Brief`, il échouera tant que l'app n'est pas vérifiée, ce qui est circulaire. **La question doit être posée à Trust and Safety dans le fil d'email** (contact développeur : `jeandereviersde@gmail.com`, aucun email reçu à 19h10, Google annonce 3-5 jours). Ne pas renommer l'app en `brief-ai.fr` sans leur réponse : ce serait modifier le branding en plein examen, pour une cause non confirmée.
 
 ### Ce qui bloque et ne dépend PAS du code
 
-1. **Stripe en mode Live** — activation du compte (vérification entreprise). **Trancher le pricing usage AVANT la bascule.** C'est désormais le premier déblocant business : tant qu'il n'est pas fait, il n'y a pas de client payant possible. Recommandation de l'audit : quota d'heures inclus par siège (ex. 10 h/mois puis 0,50 €/h) plutôt que la refacturation sèche dès la première heure — ça évite les lignes de facture à 3 € qui font poser des questions, et ça change la facturation avant les premiers clients plutôt qu'après.
-2. **Domaine émetteur des emails** — encore `lartisangroupe.com`. Un prospect qui reçoit un devis voit une adresse sans rapport avec Brief. Détail complet et piège SPF dans la section « Domaine » ci-dessus.
-3. **Call `ecfb191e` à réimporter** : son transcript a été parsé par l'ancien parseur bogué (locuteur « 00 », cf. le piège documenté dans « Banc d'essai »). Les données en base sont inexploitables telles quelles.
-4. **Reconnexion Google de chaque utilisateur, une fois.** Le passage en production n'émet pas de nouveau jeton tout seul : les utilisateurs dont le refresh token avait expiré doivent se déconnecter/reconnecter une fois. À faire pour Jean, Hubert et l'associé, sinon leur ingestion reste à l'arrêt alors que la cause est levée.
+1. **Répondre au mail Google du 22 août** — le dossier de vérification est à l'arrêt tant que la réponse n'est pas partie, et neuf jours ont déjà passé. Vidéo à retourner d'abord (deux scènes), tout est prêt sur le bureau. Ne bloque pas le fonctionnement du produit — le projet est *In production* — mais bloque la levée de l'écran « application non vérifiée » et du plafond de 100 utilisateurs.
+2. **Stripe en mode Live** — activation du compte (vérification entreprise). **Trancher le pricing usage AVANT la bascule.** C'est désormais le premier déblocant business : tant qu'il n'est pas fait, il n'y a pas de client payant possible. Recommandation de l'audit : quota d'heures inclus par siège (ex. 10 h/mois puis 0,50 €/h) plutôt que la refacturation sèche dès la première heure — ça évite les lignes de facture à 3 € qui font poser des questions, et ça change la facturation avant les premiers clients plutôt qu'après.
+3. **Domaine émetteur des emails** — encore `lartisangroupe.com`. Un prospect qui reçoit un devis voit une adresse sans rapport avec Brief. Détail complet et piège SPF dans la section « Domaine » ci-dessus.
+4. **Call `ecfb191e` à réimporter** : son transcript a été parsé par l'ancien parseur bogué (locuteur « 00 », cf. le piège documenté dans « Banc d'essai »). Les données en base sont inexploitables telles quelles.
+5. **Reconnexion Google de chaque utilisateur, une fois.** Le passage en production n'émet pas de nouveau jeton tout seul : les utilisateurs dont le refresh token avait expiré doivent se déconnecter/reconnecter une fois. À faire pour Jean, Hubert et l'associé, sinon leur ingestion reste à l'arrêt alors que la cause est levée.
 
 **Ce qui ne bloque plus** :
 - ~~Google OAuth en mode Testing~~ — **réglé le 20/08/2026**. Projet passé *In production*, l'expiration des refresh tokens à 7 jours ne s'applique plus. Vérification soumise, en attente, mais elle ne conditionne plus le fonctionnement — voir la section dédiée.
