@@ -62,25 +62,28 @@ export const authOptions: AuthOptions = {
             "https://www.googleapis.com/auth/gmail.send",
           ].join(" "),
           access_type: "offline",
-          // prompt=consent n'est pas cosmétique : Google ne renvoie un
-          // refresh_token qu'au tout premier consentement d'un compte, ou
-          // quand on reforce explicitement l'écran. Sans lui, un utilisateur
-          // qui se déconnecte puis se reconnecte reçoit un access_token frais
-          // mais aucun refresh_token — et saveGoogleTokens (lib/db.ts) garde
-          // alors l'ancien en base (`if (refreshToken)`), donc la reconnexion
-          // a l'air de marcher sans rien corriger. Or c'est exactement par là
-          // que doivent repasser les comptes créés en mode Testing (refresh
-          // token expiré à 7 jours) et ceux restés scopés calendar.readonly
-          // avant le passage à calendar.events.
+          // PAS de prompt=consent ici, volontairement : il forcerait l'écran
+          // d'autorisation Google à CHAQUE connexion, pas seulement à la
+          // première. Essayé le 01/09/2026 au lendemain de l'approbation de
+          // la vérification, retiré le jour même — le login quotidien doit
+          // rester direct.
           //
-          // Ajouté le 01/09/2026, le jour de l'approbation de la vérification
-          // Google et du passage de l'app en « In production ». Gardé en
-          // permanence et pas seulement le temps de la migration : les jobs
-          // Inngest (envoi d'e-mails, écriture des briefs dans les events)
-          // tournent hors session et n'ont que le refresh_token en base, donc
-          // mieux vaut un clic de consentement en plus à chaque login qu'un
-          // compte silencieusement sans refresh_token.
-          prompt: "consent",
+          // Conséquence à connaître : Google ne renvoie un refresh_token
+          // qu'au tout premier consentement d'un compte, ou quand on reforce
+          // explicitement l'écran. Une simple déconnexion/reconnexion rend
+          // donc un access_token frais mais AUCUN refresh_token, et
+          // saveGoogleTokens (lib/db.ts) conserve alors l'ancien
+          // (`if (refreshToken)`) : un compte dont le refresh_token est mort
+          // ne peut pas se réparer en se reconnectant normalement, et rien
+          // ne le signale.
+          //
+          // Le chemin de réparation est donc explicite et vit ailleurs : le
+          // bouton « Se reconnecter avec Google » de
+          // app/settings/connexions/ConnexionsSettingsClient.tsx passe
+          // prompt=consent en authorizationParams de signIn(). Il s'affiche
+          // tout seul, via hasCalendarWriteAccess (lib/google-calendar.ts),
+          // aux comptes dont le jeton est mort ou resté en calendar.readonly
+          // — c'est-à-dire exactement ceux qui en ont besoin.
         },
       },
     }),

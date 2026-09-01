@@ -152,7 +152,18 @@ export default function ConnexionsSettingsClient({
               disabled={reconnecting}
               onClick={async () => {
                 setReconnecting(true);
-                await signIn("google", { callbackUrl: "/settings/connexions" });
+                // 3e argument = authorizationParams. prompt=consent est ce
+                // qui rend ce bouton réparateur : sans lui Google renvoie un
+                // access_token sans refresh_token, saveGoogleTokens garde
+                // l'ancien jeton (mort ou scopé calendar.readonly), et le
+                // bandeau réapparaît indéfiniment sans que rien ne change.
+                // Il est ici et pas dans le GoogleProvider (lib/auth.ts) pour
+                // que la connexion quotidienne reste directe.
+                await signIn(
+                  "google",
+                  { callbackUrl: "/settings/connexions" },
+                  { prompt: "consent" }
+                );
               }}
               className="inline-block mt-2 text-xs font-semibold text-amber-900 bg-amber-100/70 hover:bg-amber-100 transition-colors px-2.5 py-1 rounded-md disabled:opacity-50"
             >
