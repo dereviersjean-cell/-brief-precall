@@ -290,7 +290,19 @@ Effet de bord assumé : **le matcher de `middleware.ts` devient le vrai garde d'
 - `statusBarStyle: "default"` et non `black-translucent` : ce dernier fait passer le contenu SOUS la barre d'état et demanderait de gérer les zones sûres sur chaque écran.
 - Les icônes sont générées par un script Swift (Core Graphics) à partir du « B » sur le dégradé `#2A5CE0 → #5B3FD6`, en Helvetica Neue Bold — Inter Tight n'est pas installée localement, et l'Avenir Next Heavy referme ses contreformes à 60 px. **Le fichier source est un carré plein, sans transparence ni coins arrondis** : iOS applique son propre masque, un PNG déjà arrondi se fait rogner deux fois.
 - Les chemins d'icônes et le manifeste **ne sont pas dans le matcher de `middleware.ts`** (une liste explicite de routes applicatives). Y ajouter un motif large les casserait pour les visiteurs non connectés.
-- **Reste à faire** : rien dans l'app n'explique comment l'installer. iOS n'a pas de bouton « Installer » — il faut passer par Partager → « Sur l'écran d'accueil ». Sans cette indication quelque part, personne ne l'installera.
+- **`InstallHint` (`app/components/InstallHint.tsx`), monté sur `/brief` uniquement**, explique comment installer : iOS n'a pas de bouton « Installer », il faut Partager → « Sur l'écran d'accueil ». Affiché seulement si l'appareil est tactile, l'app pas déjà installée et l'invitation pas déjà écartée. **Détection par capacités et non par agent utilisateur**, avec le cas Safari iOS qui n'implémente pas `display-mode` et expose `navigator.standalone` à la place — sans ce cas, l'invitation s'affiche DANS l'app installée.
+- **Une icône déjà installée fige le `start_url` du jour de son installation.** Changer le manifeste ensuite ne la met pas à jour : il faut supprimer l'icône et la rajouter. Piège rencontré le 31/08, quand `start_url` est passé de `/dashboard` à `/brief`.
+
+### Sécurité et plomberie — audit du 31 août 2026
+
+Ce que l'audit a refermé, pour ne pas rouvrir les mêmes portes :
+
+- **`/api/calendar/events` passe par `requireActiveUser`.** Elle ne vérifiait que la présence d'une session. Or c'est `requireActiveUser` qui applique `disabled_at` et le blocage de facturation, et **le middleware ne couvre que des pages, jamais `/api`** : un compte désactivé gardait cet endpoint en état de marche. À vérifier sur toute nouvelle route API.
+- **`requireActiveUserContext` (`lib/api-auth.ts`) rend le garde ET le contexte en une requête** — `disabled_at`, `role`, `organization_id` d'un seul select. Le motif `requireActiveUser` + `getUserRole` + `getUserOrganizationId` était trois allers-retours séquentiels sur la même ligne. Migré sur les quatre routes les plus lourdes ; **le reste suit le même remède quand on y touche**. Le type `UserRole` y est importé en `import type` pour que ce module ne tire pas `lib/db.ts` dans le bundle de chaque route.
+- **`enforceAiGenerationLimit`** (mémoire puis partagé) sur les 16 routes de génération. Le limiteur en mémoire ne voit qu'une instance Vercel, éphémère : il attrape le double-clic, pas un client qui boucle. Dépend de la **migration 011, non exécutée**.
+- **Next 16.3.4 et next-auth 4.24.15** (31/08). La montée de Next corrige un contournement de middleware en App Router — pas théorique ici, le middleware est devenu le garde d'authentification le même jour. `next` est **épinglé à une version exacte** dans `package.json` : npm remet un caret à chaque installation, le remettre à l'exact.
+- **En-têtes de sécurité dans `next.config.ts`** : `frame-ancestors 'none'` + `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS deux ans. **Pas de CSP complète** : l'app charge des polices Google, des images de CRM et des enregistrements Recall — ça se construit en `report-only` d'abord, c'est un chantier.
+- **Deux lectures non cadrées supprimées** : `getBriefById` et `getBriefByCalendarEventIdGlobal`. Sans appelant depuis le bug #28, leur nom invitait à rejouer la faille.
 
 ### Mobile — conventions acquises le 31 août 2026
 
@@ -624,8 +636,8 @@ La page Connexions lit désormais cinq choses au lieu de trois, **toutes en para
 
 ### Où en est le code
 
-- **10 migrations** dans `migrations/`, toutes appliquées en prod (006 à 009 depuis fin juillet, **010 le 22/08/2026** — vérifiée par requête, pas sur parole : PostgREST renvoie `briefs.meeting_title` à `null` au lieu d'une erreur).
-- **23 tests** (`npm test`), tous au vert — `billing-rules`, `recall-transcript`, `transcript-import`, `uuid`. Chacun nomme le bug qu'il verrouille.
+- **11 migrations** dans `migrations/`. Toutes appliquées en prod SAUF la **011 (`rate_limit_events`), écrite le 31/08/2026 et EN ATTENTE D'EXÉCUTION** — tant qu'elle n'est pas passée, la limitation de débit partagée retombe silencieusement sur le limiteur en mémoire. (006 à 009 depuis fin juillet, **010 le 22/08/2026** — vérifiée par requête, pas sur parole : PostgREST renvoie `briefs.meeting_title` à `null` au lieu d'une erreur).
+- **46 tests** (`npm test`), tous au vert — `billing-rules`, `recall-transcript`, `transcript-import`, `uuid`, `email-address`, `team-invitation`, `safe-path`, `transcript-analytics`, `objection-verbatim`. Chacun nomme le bug qu'il verrouille. Les deux derniers, ajoutés le 31/08, couvrent enfin l'IA : le ratio de temps de parole qui doit rester `null` sans commercial identifié, et l'ancrage des verbatims d'objection au transcript réel.
 - **Visite guidée et routes `/demo` terminées** : 10 étapes, 6 écrans réels peuplés de données d'exemple. Voir la section dédiée pour les règles de placement, durement acquises.
 - Chaîne de vérification avant tout push : `npx tsc --noEmit`, `npx eslint`, `npm run build`, `npm test`. **Référence eslint au 31/08/2026 : 15 problèmes** (34 auparavant — le nettoyage de l'audit du 31/08 a supprimé tout ce qui était réellement corrigeable). Ce qui reste n'est pas de la dette mais des faux positifs assumés, et il faut savoir lesquels pour que le nombre reste un repère utile :
   - **11 `react-hooks/set-state-in-effect`** — des chargements de données au montage, et des lectures de `localStorage` / `matchMedia` / `searchParams` impossibles pendant un rendu serveur. Cette règle récente pousse vers `use()`/Suspense ou une bibliothèque de data-fetching ; s'y plier voudrait dire réécrire le chargement de dix écrans. Les deux occurrences qui étaient de VRAIS défauts (état recopié depuis des props, reset d'état sur navigation) ont été corrigées le 31/08 avec le motif « Adjusting state during render » du bug #8.
@@ -642,6 +654,14 @@ La page Connexions lit désormais cinq choses au lieu de trois, **toutes en para
 - **Notifications** : la cloche mène à des préférences, pas à une inbox. Construire l'inbox (les événements existent déjà en base) ou renommer l'entrée pour ne plus promettre ce qui n'existe pas ? Tant que ce n'est pas tranché, la visite guidée présente l'entrée comme « Notifications » sans détailler. Depuis le 21/08 la cloche est le **seul** accès (entrée sidebar retirée) — l'arbitrage reste entier.
 - Bouton « restaurer le défaut » par prompt dans l'admin — reste du point 9 de la roadmap.
 - Étendre les tests au classifieur d'objections et aux analytics.
+
+## Devis — fonctionnalité abandonnée (décision de Jean, 31 août 2026)
+
+**Brief ne fait plus de devis.** L'entrée a disparu de la navigation et plus rien dans l'application n'y renvoie — un utilisateur ne peut plus y arriver autrement qu'en tapant l'URL.
+
+**Le code est toujours là** : `app/quotes/*` (éditeur, liste, réglages), la page publique `app/q/[token]`, les routes `/api/quotes/*` et `/api/public/quotes/*`, `sendQuoteAcceptedEmail`, `lib/pdf/QuoteDocument.tsx`, et l'entrée `/quotes/:path*` dans le matcher du middleware. Environ 540 lignes rien que dans `lib/db.ts`.
+
+**À retenir avant de rouvrir quoi que ce soit** : les mentions de devis qui subsistent ailleurs dans ce document décrivent un état passé. Ne pas les prendre pour une feuille de route. Si le chantier de suppression est lancé un jour, `/q/[token]` est la seule route publique concernée — elle est hors du matcher du middleware, donc à traiter séparément.
 
 ## Roadmap prioritaire
 

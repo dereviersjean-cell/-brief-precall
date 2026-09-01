@@ -1677,6 +1677,32 @@ Workflow de développement habituel
 ________________
 
 
+Roadmap restante (au 1er septembre 2026)
+
+Fait le 31 août — journée « email, mobile et audit » :
+* Domaine émetteur basculé sur contact@brief-ai.fr. Le piège n'était pas le SPF (Resend pose deux CNAME vers forge.rmta.net, il n'y a rien à fusionner à la racine) mais la clé API Resend, restreinte à un domaine ET non modifiable : elle répondait 403 quel que soit l'état du DNS. Nouvelle clé, Vercel, redéploiement.
+* Nouvelle vidéo de vérification Google envoyée (https://youtu.be/lynTB6sOC8s), réponse partie dans le fil du 22 août. Le seul reproche de Google portait sur l'écran de consentement, à montrer déplié — le reste était déjà conforme.
+* Email de suivi : on peut enfin indiquer un destinataire quand le call n'a pas de contact. Le correctif de juillet acceptait une adresse pour rédiger mais ne l'enregistrait pas : l'email était écrit puis refusé à l'envoi, sans issue.
+* Équipe : un manager peut relancer ou annuler une invitation. Avant, un email d'invitation qui échouait laissait le manager sans recours — le compte existait donc il ne pouvait pas réinviter, et rien ne permettait de relancer.
+* Mobile : bandeau de page qui s'écrasait sous 390 px, en-tête du brief qui se collait par-dessus la TopBar (récidive du bug #26), grille à trois colonnes non responsive, zoom iOS sur les champs de saisie, tableaux dont les actions étaient hors écran. Les captures d'un vrai iPhone ont trouvé ce que l'audit de code avait manqué.
+* Brief est installable sur l'écran d'accueil (PWA) : icône, plein écran, écran de démarrage. Pas d'hors-ligne, pas de notifications — choix explicite.
+* Première page après connexion : /brief et non plus le tableau de bord. Et un lien profond survit désormais à la connexion.
+* Audit technique : deux gardes refermés, trois requêtes fusionnées en une, lint de 34 à 15 problèmes, tests de 23 à 46, Next et next-auth montés (contournement de middleware, faille critique next-auth), en-têtes de sécurité posés, xlsx passé sur la distribution officielle de SheetJS. Critiques 1 → 0, hautes 9 → 4.
+* Décision produit : Brief ne fait plus de devis. Retiré de la navigation, code encore en place.
+
+À faire, dans l'ordre :
+1. Exécuter la migration 011 sur Supabase prod — sans elle la limitation de débit partagée est inerte.
+2. Stripe en mode Live, et trancher le pricing usage avant la bascule. Le prix décide aussi du mode de vente : sous ~50 €/utilisateur/mois un commercial peut décider seul, au-dessus il faut une signature.
+3. Attendre la réponse de Google, relancer dans le fil si rien d'ici la mi-septembre. Ne toucher ni aux scopes, ni au branding, ni aux URL pendant l'examen.
+4. Réimporter le call ecfb191e (transcript parsé par l'ancien parseur bogué).
+5. Déclarer Pipedrive sur le nouveau domaine avant toute reprise de l'intégration.
+
+Chantiers identifiés, non lancés : découpage de lib/db.ts (analyse de couplage faite — 192 des 229 fonctions exportées sont extractibles sans risque de cycle, ordre et volumes dans CLAUDE.md), et suppression du code des devis.
+
+
+________________
+
+
 Roadmap restante (au 22 août 2026)
 
 Fait les 20-22 août — chantier « fluidité, navigation et brief partageable » :
