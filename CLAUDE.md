@@ -436,7 +436,7 @@ git status
 git add . && git commit -m "..." && git push
 ```
 
-## Point de reprise — 22 août 2026
+## Point de reprise — 1er septembre 2026
 
 Section volontairement en tête de la roadmap : elle dit **où en est le produit et ce qui l'attend**, la partie qui se perd entre deux sessions parce qu'elle ne se lit dans aucun fichier du repo.
 
@@ -665,7 +665,7 @@ La page Connexions lit désormais cinq choses au lieu de trois, **toutes en para
 
 ## Roadmap prioritaire
 
-Fait depuis la dernière mise à jour (20-21 juillet 2026) : **refonte visuelle complète direction Lovable** (nouveau système de tokens oklch bleu #2A5CE0, primitives partagées `ui-bits.tsx`/`PageHeader`/`TopBar`, refonte landing + liste feedback + dashboard, fix du scoping `.brief-ui` qui n'avait jamais fonctionné), **version mobile responsive** (sidebar drawer), **fix bug "William"** (prompt d'analyse admin_config périmé → champs null silencieux, voir bug #20), puis **audit complet du repo** suivi de **6 correctifs** (`after()` généralisé, `/notifications` au middleware, refresh rôle JWT 10 min, validation runtime analyse IA, auth sur google-oauth/start, rate limiting étendu aux 9 routes de génération IA) et **fin de la migration visuelle** (les 25 fichiers non-admin restants — onboarding, modales, références, page publique devis, compte-suspendu — zéro `indigo-*` hors /admin).
+Fait les 20-21 juillet 2026 : **refonte visuelle complète direction Lovable** (nouveau système de tokens oklch bleu #2A5CE0, primitives partagées `ui-bits.tsx`/`PageHeader`/`TopBar`, refonte landing + liste feedback + dashboard, fix du scoping `.brief-ui` qui n'avait jamais fonctionné), **version mobile responsive** (sidebar drawer), **fix bug "William"** (prompt d'analyse admin_config périmé → champs null silencieux, voir bug #20), puis **audit complet du repo** suivi de **6 correctifs** (`after()` généralisé, `/notifications` au middleware, refresh rôle JWT 10 min, validation runtime analyse IA, auth sur google-oauth/start, rate limiting étendu aux 9 routes de génération IA) et **fin de la migration visuelle** (les 25 fichiers non-admin restants — onboarding, modales, références, page publique devis, compte-suspendu — zéro `indigo-*` hors /admin).
 
 Fait les 20-22 août 2026 : **domaine `brief-ai.fr` + vérification Google soumise** (sections dédiées ci-dessus), **chantier fluidité/coût** (frontières `loading.tsx`, région `cdg1`, `/api/chrome`, facturation en une requête, middleware retiré des préchargements), **navigation allégée** (CRM regroupé dans Connexions, entrées Notifications/Tester un call/Calibrage retirées des menus), et **le brief rendu partageable** (export PDF + partage câblés, typographie Inter, titre du rendez-vous, panneau Contacts réparé, migration 010).
 
@@ -683,7 +683,8 @@ Avec 4 calls, une objection pèse ~7 points : ne poursuivre que les écarts fran
 
 ### Déblocants business (priorité immédiate)
 1. ~~Google OAuth — sortir du mode Testing~~ — **FAIT le 20/08/2026**. Projet *In production*, vérification soumise et en cours d'examen. Reste l'écran « application non vérifiée » à la première connexion et le plafond de 100 utilisateurs sur la durée de vie du projet (3 utilisés), non réinitialisable — raison de plus pour que la vérification aboutisse avant d'ouvrir vraiment les inscriptions.
-2. Stripe en mode Live — activation compte (vérification entreprise). **Avant la bascule, trancher le pricing usage** : recommandation audit = quota d'heures inclus par siège (ex. 10h/mois puis 0,50€/h) plutôt que la refacturation sèche dès la 1ère heure — évite les lignes de facture à 3€ qui font poser des questions, et change la facturation AVANT les premiers clients payants plutôt qu'après
+2. **Exécuter la migration 011** (`rate_limit_events`) sur Supabase prod. Écrite le 31/08, jamais passée : tant qu'elle ne l'est pas, la limitation de débit partagée retombe en silence sur le limiteur en mémoire, qui ne voit qu'une instance Vercel. C'est le genre de chose qui a l'air de marcher.
+3. Stripe en mode Live — activation compte (vérification entreprise). **Avant la bascule, trancher le pricing usage** : recommandation audit = quota d'heures inclus par siège (ex. 10h/mois puis 0,50€/h) plutôt que la refacturation sèche dès la 1ère heure — évite les lignes de facture à 3€ qui font poser des questions, et change la facturation AVANT les premiers clients payants plutôt qu'après
 
 ### Recommandations audit du 21 juillet (par ratio effort/valeur)
 3. ~~**Sentry** sur webhooks + crons~~ — FAIT le 31/07/2026. `SENTRY_DSN` posée sur Vercel le 31/07/2026. **Vérification permanente** : `/admin/dashboard` → carte « Monitoring » — indique si la DSN est présente sur l'environnement courant et permet d'envoyer une erreur de test à la demande. À rejouer après tout changement de DSN : un monitoring qu'on croit actif alors qu'il ne l'est pas est pire que pas de monitoring, on cesse de surveiller en se croyant couvert. Les stack traces seront minifiées tant que `withSentryConfig` n'est pas ajouté à `next.config.ts` (nécessite un `SENTRY_AUTH_TOKEN`) — à faire seulement si les traces s'avèrent illisibles.
