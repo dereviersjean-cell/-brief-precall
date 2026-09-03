@@ -7186,3 +7186,91 @@ export async function getActivationState(userId: string): Promise<ActivationStat
 
   return { steps, completed: steps.filter((s) => s.done).length, total: steps.length };
 }
+
+// ─── Rendez-vous ajoutés manuellement (migration 012) ───────────────────────
+// Un RDV que l'utilisateur saisit à la main parce qu'il n'existe pas dans son
+// agenda synchronisé. Sert uniquement à préparer/consulter un brief — voir le
+// commentaire de la migration pour ce que ça n'implique PAS (pas de bot
+// Recall, pas d'écriture dans le vrai agenda Google/Microsoft).
+
+export type ManualMeeting = {
+  id: string;
+  userId: string;
+  title: string;
+  companyName: string;
+  contactEmail: string | null;
+  meetingTime: string;
+  createdAt: string;
+};
+
+type ManualMeetingRow = {
+  id: string;
+  user_id: string;
+  title: string;
+  company_name: string;
+  contact_email: string | null;
+  meeting_time: string;
+  created_at: string;
+};
+
+function mapManualMeeting(row: ManualMeetingRow): ManualMeeting {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    title: row.title,
+    companyName: row.company_name,
+    contactEmail: row.contact_email,
+    meetingTime: row.meeting_time,
+    createdAt: row.created_at,
+  };
+}
+
+export type ManualMeetingInput = {
+  title: string;
+  companyName: string;
+  contactEmail?: string | null;
+  meetingTime: string; // ISO
+};
+
+export async function createManualMeeting(userId: string, input: ManualMeetingInput): Promise<ManualMeeting> {
+  const { data, error } = await supabaseAdmin
+    .from("manual_meetings")
+    .insert({
+      user_id: userId,
+      title: input.title.trim(),
+      company_name: input.companyName.trim(),
+      contact_email: input.contactEmail?.trim() || null,
+      meeting_time: input.meetingTime,
+    })
+    .select("id, user_id, title, company_name, contact_email, meeting_time, created_at")
+    .single();
+  if (error) throw error;
+  return mapManualMeeting(data as ManualMeetingRow);
+}
+
+// Même horizon de 7 jours que getUpcomingMeetings (lib/calendar.ts), pour que
+// la liste fusionnée des deux sources ait un sens.
+export async function listUpcomingManualMeetingsForUser(userId: string): Promise<ManualMeeting[]> {
+  const now = new Date();
+  const in7days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const { data, error } = await supabaseAdmin
+    .from("manual_meetings")
+    .select("id, user_id, title, company_name, contact_email, meeting_time, created_at")
+    .eq("user_id", userId)
+    .gte("meeting_time", now.toISOString())
+    .lte("meeting_time", in7days.toISOString())
+    .order("meeting_time", { ascending: true });
+  if (error) throw error;
+  return ((data ?? []) as ManualMeetingRow[]).map(mapManualMeeting);
+}
+
+// user_id dans le WHERE et pas seulement l'id : cadrer sur le propriétaire
+// (cf. bug #28) — un id deviné par quelqu'un d'autre ne doit rien supprimer.
+export async function deleteManualMeeting(userId: string, id: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("manual_meetings")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
