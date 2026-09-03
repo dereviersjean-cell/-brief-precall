@@ -49,17 +49,34 @@ function Spinner() {
   );
 }
 
-function GeneratingProgress({ company }: { company: string }) {
-  const [currentStep, setCurrentStep] = useState(0);
+// Calé sur une mesure réelle (~54s pour un brief avec recherche web sur une
+// entreprise déjà bien documentée, 03/09/2026 — voir le commentaire de
+// maxDuration dans /api/generate-brief) plutôt que sur un minutage arbitraire.
+// La recherche web est de loin la phase la plus longue, et sa fin n'est pas
+// observable depuis l'API (un seul appel serveur qui résout tools + réponse
+// d'un coup) : plutôt que de prétendre à une granularité qu'on n'a pas, cette
+// étape reste active jusqu'à la fin réelle, et la barre progresse en continu
+// sur une courbe qui ralentit sans jamais se figer — un délai de 90s sur une
+// entreprise peu documentée reste visiblement "en cours", pas "bloqué".
+const STEP_2_AT_S = 3;
+const STEP_3_AT_S = 12;
+// Choisi pour que la barre atteigne ~80% vers 30s (la durée typique
+// observée) tout en continuant, très lentement, au-delà — jamais un plateau
+// figé même largement passé cette durée.
+const PROGRESS_TAU_S = 18;
+const PROGRESS_CAP = 96;
+const LONG_WAIT_HINT_AT_S = 20;
+
+function GeneratingProgress({ company, isRegenerating = false }: { company: string; isRegenerating?: boolean }) {
+  const [elapsedS, setElapsedS] = useState(0);
 
   useEffect(() => {
-    const timeouts = [
-      setTimeout(() => setCurrentStep(1), 2000),
-      setTimeout(() => setCurrentStep(2), 4000),
-      setTimeout(() => setCurrentStep(3), 6000),
-    ];
-    return () => timeouts.forEach(clearTimeout);
+    const start = Date.now();
+    const id = setInterval(() => setElapsedS((Date.now() - start) / 1000), 200);
+    return () => clearInterval(id);
   }, []);
+
+  const currentStep = elapsedS < STEP_2_AT_S ? 0 : elapsedS < STEP_3_AT_S ? 1 : 2;
 
   const steps = [
     {
@@ -71,18 +88,13 @@ function GeneratingProgress({ company }: { company: string }) {
       ),
     },
     {
-      label: "Analyse des actualités récentes...",
+      // La phase la plus longue de loin (recherche web réelle) — le libellé
+      // le dit explicitement plutôt que de laisser croire à une progression
+      // linéaire par étapes égales.
+      label: "Recherche web et analyse approfondie...",
       icon: (
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z" />
-        </svg>
-      ),
-    },
-    {
-      label: "Identification des pain points...",
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 15.803a7.5 7.5 0 0010.607 10.607zM12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5" />
         </svg>
       ),
     },
@@ -96,7 +108,10 @@ function GeneratingProgress({ company }: { company: string }) {
     },
   ];
 
-  const progressWidth = currentStep >= 3 ? 90 : Math.round((currentStep / 4) * 100);
+  // Courbe asymptotique (1 - e^-t/τ) : progresse vite au début, ralentit
+  // ensuite, ne s'arrête jamais tout à fait — contrairement à des paliers
+  // fixes qui restent bloqués à 90% pendant 40s+ sur une génération lente.
+  const progressWidth = Math.min(PROGRESS_CAP, 100 * (1 - Math.exp(-elapsedS / PROGRESS_TAU_S)));
 
   return (
     <div className="flex flex-col items-center justify-center py-20">
@@ -107,13 +122,25 @@ function GeneratingProgress({ company }: { company: string }) {
               <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
             </svg>
           </div>
-          <h2 className="text-xl font-semibold text-slate-900">Génération de votre brief</h2>
+          <h2 className="text-xl font-semibold text-slate-900">
+            {isRegenerating ? "Régénération de votre brief" : "Génération de votre brief"}
+          </h2>
           <p className="text-slate-500 text-sm mt-1">Analyse de {company} en cours...</p>
+          {/* Honnête plutôt que rassurant à tort : au-delà d'un délai
+              raisonnable, dire que ça peut prendre du temps évite de laisser
+              croire à un blocage — voir le commentaire au-dessus sur pourquoi
+              la durée varie autant (recherche web réelle, pas un minutage
+              fixe). */}
+          {elapsedS > LONG_WAIT_HINT_AT_S && (
+            <p className="text-slate-400 text-xs mt-2">
+              Peut prendre jusqu&apos;à une minute pour une entreprise peu documentée en ligne.
+            </p>
+          )}
         </div>
 
         <div className="h-1 bg-slate-100 rounded-full mb-8 overflow-hidden">
           <div
-            className="h-full brand-gradient rounded-full transition-all duration-700 ease-out"
+            className="h-full brand-gradient rounded-full transition-all duration-300 ease-out"
             style={{ width: `${progressWidth}%` }}
           />
         </div>
@@ -549,8 +576,9 @@ export default function BriefClient({
           </div>
         )}
 
-        {/* Mock data banner */}
-        {!isAiGenerated && !error && brief && (
+        {/* Mock data banner — masqué pendant la génération, sinon il
+            s'affiche en double avec l'animation plein écran ci-dessous. */}
+        {!isAiGenerated && !error && brief && !isGenerating && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <svg className="w-5 h-5 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -577,12 +605,14 @@ export default function BriefClient({
           </div>
         )}
 
-        {/* Loading skeleton (no brief yet) */}
-        {isGenerating && !brief && <GeneratingProgress company={meeting.company} />}
+        {/* Génération ou régénération en cours : même animation dans les
+            deux cas — remplace le brief existant plutôt que de le griser en
+            fond, puisqu'il est de toute façon sur le point d'être remplacé. */}
+        {isGenerating && <GeneratingProgress company={meeting.company} isRegenerating={!!brief} />}
 
         {/* Brief content */}
-        {brief && (
-          <div className={`transition-opacity duration-200 ${isGenerating ? "opacity-40 pointer-events-none" : "opacity-100"}`}>
+        {brief && !isGenerating && (
+          <div>
             {/* Suggested opening line */}
             {brief.suggestedOpeningLine && (
               <div className="bg-[color:var(--lavender)] border border-[color:var(--lavender-strong)] rounded-2xl p-5 mb-6">

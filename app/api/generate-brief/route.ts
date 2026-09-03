@@ -12,6 +12,14 @@ import { checkRateLimit, retryAfterMinutes } from "@/lib/rate-limit";
 import { dispatchBriefPreCall } from "@/lib/notifications-dispatcher";
 import { formatContactDisplayName } from "@/lib/format";
 
+// Un brief avec recherche web réelle (max_uses: 3, cf. lib/brief-generator.ts)
+// mesure ~54s en conditions réelles (Doctolib, 03/09/2026) — sans ce réglage
+// Vercel coupe la fonction à son délai par défaut, bien en dessous. Même
+// famille que import-transcript/objections-eval-run (chaîne IA longue),
+// mais ceux-là enchaînent plusieurs appels Claude quand celui-ci n'en fait
+// qu'un seul — 120s laisse une marge sans s'aligner sur leurs 300s.
+export const maxDuration = 120;
+
 const DOMAIN_TLDS = /\.(com|fr|ai|io|co|net|org|eu|be|app|tech|dev|uk|de|es|it|nl|ch|ca|au|me|biz|info|saas)$/i;
 
 function cleanCompanyName(name: string): string {

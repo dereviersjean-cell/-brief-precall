@@ -5,6 +5,9 @@ import { AdminConfig } from "@/lib/admin-config";
 import { fetchRecentNews } from "@/lib/news";
 import Anthropic from "@anthropic-ai/sdk";
 
+// Voir /api/generate-brief : un brief avec recherche web réelle mesure ~54s.
+export const maxDuration = 120;
+
 export async function POST(request: NextRequest) {
   if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Non autorisé." }, { status: 401 });

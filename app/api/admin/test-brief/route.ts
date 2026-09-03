@@ -7,6 +7,9 @@ import { enrichWithPappers } from "@/lib/pappers";
 import { fetchRecentNews, type NewsArticle } from "@/lib/news";
 import { findSimilarReferences, type SimilarReference } from "@/lib/embeddings";
 
+// Voir /api/generate-brief : un brief avec recherche web réelle mesure ~54s.
+export const maxDuration = 120;
+
 export async function POST(request: NextRequest) {
   if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
