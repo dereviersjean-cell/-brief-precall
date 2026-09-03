@@ -7,6 +7,7 @@ import { getContact } from "./db";
 import { enrichFromCRM } from "./crm/enrichment";
 import type { CrmEnrichment } from "./crm/enrichment";
 import { extractJsonObject } from "./ai-json";
+import { seniorityLabel, type ApolloContact } from "./apollo";
 
 const client = new Anthropic();
 
@@ -43,6 +44,24 @@ function buildCrmBlock(crm: CrmEnrichment | null): string {
   return `\nDONNÉES CRM\n\n${lines.join("\n")}\n\nUtilise ces informations CRM pour personnaliser l'accroche et les arguments — mentionne la relation existante ou l'historique commercial si pertinent.\n`;
 }
 
+// Contexte pour PERSONNALISER l'accroche et les arguments au rôle de la
+// personne réellement en face (un CTO et un VP Sales n'ont pas les mêmes
+// préoccupations) — les champs factuels du contact (poste, ancienneté,
+// LinkedIn) ne sont PAS demandés dans le JSON en retour : ils sont
+// attachés à la réponse côté serveur après coup (route generate-brief),
+// directement depuis les données Apollo, pour ne jamais dépendre de la
+// fidélité d'une recopie par le modèle.
+function buildContactBlock(contact: ApolloContact | null): string {
+  if (!contact || (!contact.title && !contact.headline)) return "";
+  const lines: string[] = [];
+  if (contact.name) lines.push(`- Nom : ${contact.name}`);
+  if (contact.title) lines.push(`- Poste : ${contact.title}`);
+  const label = seniorityLabel(contact.seniority);
+  if (label) lines.push(`- Niveau de séniorité : ${label}`);
+  if (contact.headline) lines.push(`- Résumé LinkedIn : ${contact.headline}`);
+  return `\nCONTACT QUI SERA EN FACE DU COMMERCIAL\n\n${lines.join("\n")}\n\nPersonnalise l'accroche et les arguments en fonction du rôle de cette personne (ses préoccupations probables selon son poste), sans jamais inventer de détail sur elle qui ne figure pas ci-dessus.\n`;
+}
+
 function buildUserPrompt(
   company: string,
   legalContext: string,
@@ -51,7 +70,8 @@ function buildUserPrompt(
   userContext: UserContext,
   similarRefs: SimilarReference[] = [],
   relationalHistoryBlock = "",
-  crmData: CrmEnrichment | null = null
+  crmData: CrmEnrichment | null = null,
+  apolloContact: ApolloContact | null = null
 ): string {
   const overviewDesc = OVERVIEW_LENGTH[config.overviewLength];
   const toneDesc = TONE_INSTRUCTION[config.tone];
@@ -107,9 +127,10 @@ function buildUserPrompt(
     : "";
 
   const crmBlock = buildCrmBlock(crmData);
+  const contactBlock = buildContactBlock(apolloContact);
 
   return `Génère un brief pré-call complet pour un commercial B2B qui s'apprête à appeler ${company}.
-${legalContext}${newsContext}${crmBlock}${contextBlock}${referencesBlock}${relationalHistoryBlock}
+${legalContext}${newsContext}${crmBlock}${contactBlock}${contextBlock}${referencesBlock}${relationalHistoryBlock}
 ${toneDesc}
 Retourne ce JSON (structure stricte, aucun texte autour). Même si tu as utilisé la recherche web, ta réponse finale doit être UNIQUEMENT le JSON ci-dessous, sans phrase d'introduction, citation, ni texte additionnel :
 
@@ -145,7 +166,8 @@ export async function generateBrief(
   pappersData?: unknown,
   newsArticles?: NewsArticle[],
   userId?: string,
-  contactEmail?: string | null
+  contactEmail?: string | null,
+  apolloContact?: ApolloContact | null
 ): Promise<unknown> {
   const legalContext = pappersData
     ? `\nVoici les données légales officielles de l'entreprise (source : registre français officiel) :\n${JSON.stringify(pappersData, null, 2)}\n\nBase-toi sur ces faits réels pour le brief. Ne les contredis pas.\n`
@@ -216,7 +238,8 @@ export async function generateBrief(
           userContext,
           similarRefs,
           relationalHistoryBlock,
-          crmData
+          crmData,
+          apolloContact ?? null
         ),
       },
     ],

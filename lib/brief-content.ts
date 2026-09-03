@@ -1,4 +1,4 @@
-import type { Brief, NewsItem } from "@/lib/types";
+import type { Brief, Contact, NewsItem } from "@/lib/types";
 
 // Le contenu stocké dans `briefs.content` suit la forme renvoyée par le
 // modèle (clés françaises), pas le type Brief de l'interface. Cette
@@ -15,6 +15,7 @@ export function adaptCachedContent(content: unknown): Brief {
     arguments?: Array<{ title: string; detail: string }>;
     vocabulaire?: string[];
     actualites?: NewsItem[];
+    contact?: Contact;
   };
   return {
     companyOverview: api.overview ?? "",
@@ -25,5 +26,6 @@ export function adaptCachedContent(content: unknown): Brief {
     objectives: [],
     keywords: api.vocabulaire ?? [],
     actualites: api.actualites,
+    contact: api.contact,
   };
 }

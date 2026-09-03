@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Meeting, Brief, TalkingPoint, NewsItem } from "@/lib/types";
+import { Meeting, Brief, Contact, TalkingPoint, NewsItem } from "@/lib/types";
 import type { CallHistoryItem } from "@/lib/db";
 
 function formatDateTime(iso: string) {
@@ -215,6 +215,7 @@ interface ApiResponse {
   actualites?: NewsItem[];
   references?: Array<{ client_name: string; relevance: string; pitch: string }>;
   historique_relationnel?: string;
+  contact?: Contact;
 }
 
 function adaptApiBrief(api: ApiResponse): Brief {
@@ -227,6 +228,7 @@ function adaptApiBrief(api: ApiResponse): Brief {
     objectives: [],
     keywords: api.vocabulaire,
     actualites: api.actualites,
+    contact: api.contact,
     references: api.references,
     historiqueRelationnel: api.historique_relationnel,
   };
@@ -823,27 +825,44 @@ export default function BriefClient({
               {/* Sidebar */}
               <div className="space-y-6">
                 <Section title="Contacts">
-                  <div className="space-y-4">
-                    {meeting.contacts.map((c, i) => (
-                      <div key={i} className={i > 0 ? "pt-4 border-t border-slate-100" : ""}>
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="w-9 h-9 rounded-full bg-[color:var(--lavender)] flex items-center justify-center text-[color:var(--violet)] text-xs font-bold shrink-0">
-                            {c.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-slate-900 text-sm leading-none">{c.name}</p>
-                            <p className="text-slate-500 text-xs mt-0.5">{c.title}</p>
-                          </div>
+                  {/* brief.contact plutôt que meeting.contacts (toujours vide
+                      — jamais alimenté) : construit côté serveur à partir
+                      d'Apollo quand un contactEmail est connu, avec repli sur
+                      le seul email si l'enrichissement échoue ou n'est pas
+                      configuré (cf. lib/apollo.ts). */}
+                  {brief.contact ? (
+                    <div>
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-9 h-9 rounded-full bg-[color:var(--lavender)] flex items-center justify-center text-[color:var(--violet)] text-xs font-bold shrink-0">
+                          {brief.contact.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
                         </div>
-                        {c.email && <p className="text-xs text-slate-500 mb-1.5">✉ {c.email}</p>}
-                        {c.notes && (
-                          <p className="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2 leading-relaxed">
-                            {c.notes}
-                          </p>
-                        )}
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-900 text-sm leading-none truncate">{brief.contact.name}</p>
+                          {brief.contact.title && (
+                            <p className="text-slate-500 text-xs mt-0.5 truncate">{brief.contact.title}</p>
+                          )}
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                      {brief.contact.email && <p className="text-xs text-slate-500 mb-1">✉ {brief.contact.email}</p>}
+                      {brief.contact.linkedin && (
+                        <a
+                          href={brief.contact.linkedin}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-[color:var(--violet)] hover:underline mb-1.5 inline-block"
+                        >
+                          Voir sur LinkedIn →
+                        </a>
+                      )}
+                      {brief.contact.notes && (
+                        <p className="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2 leading-relaxed mt-1.5">
+                          {brief.contact.notes}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-400">Aucun contact identifié pour ce rendez-vous.</p>
+                  )}
                 </Section>
 
                 {brief.objectives.length > 0 && (

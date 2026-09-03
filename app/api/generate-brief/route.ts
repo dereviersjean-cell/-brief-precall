@@ -7,10 +7,11 @@ import { readConfig } from "@/lib/admin-config";
 import { generateBrief, type GeneratedBriefJson } from "@/lib/brief-generator";
 import { enrichWithPappers } from "@/lib/pappers";
 import { fetchRecentNews } from "@/lib/news";
+import { enrichContact, formatContactSummary } from "@/lib/apollo";
 import { getBriefByEventId, saveBrief, getUserProfile, withRetry } from "@/lib/db";
 import { checkRateLimit, retryAfterMinutes } from "@/lib/rate-limit";
 import { dispatchBriefPreCall } from "@/lib/notifications-dispatcher";
-import { formatContactDisplayName } from "@/lib/format";
+import { formatContactDisplayName, deriveNameFromEmail } from "@/lib/format";
 
 // Un brief avec recherche web réelle (max_uses: 3, cf. lib/brief-generator.ts)
 // mesure ~54s en conditions réelles (Doctolib, 03/09/2026) — sans ce réglage
@@ -122,13 +123,42 @@ export async function POST(request: NextRequest) {
   try {
     const contactDomain = contactEmail ? (contactEmail.split("@")[1] ?? null) : null;
 
-    const [pappersData, newsArticles] = await Promise.all([
+    const [pappersData, newsArticles, apolloContact] = await Promise.all([
       enrichWithPappers(trimmed),
       fetchRecentNews(trimmed, contactDomain),
+      contactEmail ? enrichContact(contactEmail) : Promise.resolve(null),
     ]);
 
     console.log('[generate-brief] contactEmail:', contactEmail, '| userId:', userId);
-    const brief = await generateBrief(trimmed, config, userContext, pappersData, newsArticles, userId ?? undefined, contactEmail);
+    const brief = await generateBrief(
+      trimmed,
+      config,
+      userContext,
+      pappersData,
+      newsArticles,
+      userId ?? undefined,
+      contactEmail,
+      apolloContact
+    );
+
+    // Fiche contact affichée dans la barre latérale du brief (panneau
+    // "Contacts") — construite ici, pas par le modèle : les champs viennent
+    // directement d'Apollo (factuels) ou, à défaut, du seul email connu (le
+    // fallback existant avant toute enrichissement). Fusionnée dans `brief`
+    // avant sauvegarde pour qu'une relecture en cache n'ait pas besoin de
+    // rappeler Apollo (10 crédits/mois sur le plan gratuit — cf. lib/apollo.ts).
+    const contactCard = contactEmail
+      ? {
+          name: apolloContact?.name ?? deriveNameFromEmail(contactEmail) ?? contactEmail,
+          title: apolloContact?.title ?? "",
+          linkedin: apolloContact?.linkedinUrl ?? undefined,
+          email: contactEmail,
+          notes: apolloContact ? formatContactSummary(apolloContact) : undefined,
+        }
+      : null;
+    const briefWithContact = contactCard
+      ? { ...(brief as Record<string, unknown>), contact: contactCard }
+      : brief;
 
     if (userId) {
       // Wrapped in after() instead of plain fire-and-forget: Vercel can
@@ -141,7 +171,7 @@ export async function POST(request: NextRequest) {
       // callback settles without delaying the response itself.
       after(async () => {
         const savePromise = withRetry(() =>
-          saveBrief(userId, trimmed, contactEmail, calendarEventId, brief, config.model, meetingTitle)
+          saveBrief(userId, trimmed, contactEmail, calendarEventId, briefWithContact, config.model, meetingTitle)
         ).catch((err) => console.error("[generate-brief] saveBrief failed after retries:", err));
 
         // A dispatch failure must never surface as a brief-generation error
@@ -161,7 +191,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json(brief);
+    return NextResponse.json(briefWithContact);
   } catch (err) {
     if (err instanceof Anthropic.AuthenticationError) {
       return NextResponse.json(

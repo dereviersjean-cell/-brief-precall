@@ -51,4 +51,10 @@ export type Brief = {
   actualites?: NewsItem[];
   references?: Array<{ client_name: string; relevance: string; pitch: string }>;
   historiqueRelationnel?: string;
+  // Contact enrichi via Apollo (lib/apollo.ts) — absent si pas de contactEmail,
+  // pas de clé APOLLO_API_KEY configurée, ou contact introuvable dans leur
+  // base. `notes` porte l'évaluation "décisionnaire probable" (déterministe,
+  // dérivée du seniority Apollo — jamais devinée par l'IA) et un résumé de
+  // carrière court.
+  contact?: Contact;
 };
