@@ -130,6 +130,7 @@ Contraintes :
 - Exactement ${config.argumentsCount} arguments
 - Exactement ${config.keywordsCount} mots-clés métier dans vocabulaire
 - Tout en français
+- Utilise la recherche web pour ancrer "overview" et "accroche" dans un fait vérifiable et récent sur ${company} (produit, actualité, levée de fonds, clients...). Si la recherche ne remonte rien de spécifique et fiable sur cette entreprise précise, dis-le dans "overview" au lieu de généraliser sur son secteur — une généralité sectorielle non vérifiée est pire qu'une absence d'information
 - Accroche basée sur un fait récent ou une réalité spécifique de ${company}${
     userContext?.product_description
       ? `\n- Les arguments doivent montrer comment "${userContext.product_description}" répond aux besoins de ${company}`
@@ -198,7 +199,12 @@ export async function generateBrief(
     model: config.model,
     max_tokens: 6000,
     system: config.systemPrompt,
-    tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }],
+    // _20260209 (filtrage dynamique) plutôt que la variante _20250305 : le
+    // modèle configuré (claude-sonnet-4-6) la supporte, et de meilleurs
+    // résultats de recherche sont le levier le plus direct contre un brief
+    // générique — voir la consigne d'ancrage ajoutée ci-dessus et dans le
+    // system prompt par défaut (lib/admin-config.ts).
+    tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 }],
     messages: [
       {
         role: "user",

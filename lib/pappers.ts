@@ -1,3 +1,5 @@
+import { reportWarning } from "./monitoring";
+
 export type PappersDirecteur = {
   nom?: string;
   prenom?: string;
@@ -40,7 +42,21 @@ export async function enrichWithPappers(companyName: string): Promise<PappersDat
     const searchRes = await fetchWithTimeout(
       `${BASE_URL}/recherche?q=${encodeURIComponent(companyName)}&nombre=1&api_token=${token}`
     );
-    if (!searchRes.ok) return null;
+    if (!searchRes.ok) {
+      // Un échec HTTP ici (401 crédits épuisés, 429, panne Pappers...) est un
+      // problème de compte/quota, pas un "entreprise introuvable" — ce
+      // dernier cas reste silencieux plus bas (0 résultat, 200 OK, normal
+      // pour une petite structure). Sans cette remontée, chaque brief
+      // dégradait silencieusement en overview générique sans que personne ne
+      // le sache : découvert le 03/09/2026 en diagnostiquant un brief jugé
+      // "extrêmement vague" — Pappers répondait 401 "plus assez de crédits"
+      // depuis un temps indéterminé (cf. bug pattern #14/#19/#20/#25).
+      reportWarning("pappers.enrich", new Error(`Pappers recherche HTTP ${searchRes.status}`), {
+        companyName,
+        status: searchRes.status,
+      });
+      return null;
+    }
 
     const searchJson = await searchRes.json();
     const results = searchJson.resultats as Array<{ siren?: string }> | undefined;
@@ -52,7 +68,14 @@ export async function enrichWithPappers(companyName: string): Promise<PappersDat
     const companyRes = await fetchWithTimeout(
       `${BASE_URL}/entreprise?siren=${siren}&api_token=${token}`
     );
-    if (!companyRes.ok) return null;
+    if (!companyRes.ok) {
+      reportWarning("pappers.enrich", new Error(`Pappers entreprise HTTP ${companyRes.status}`), {
+        companyName,
+        siren,
+        status: companyRes.status,
+      });
+      return null;
+    }
 
     const company = await companyRes.json();
 
