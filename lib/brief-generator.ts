@@ -130,7 +130,7 @@ Contraintes :
 - Exactement ${config.argumentsCount} arguments
 - Exactement ${config.keywordsCount} mots-clés métier dans vocabulaire
 - Tout en français
-- Utilise la recherche web pour ancrer "overview" et "accroche" dans un fait vérifiable et récent sur ${company} (produit, actualité, levée de fonds, clients...). Si la recherche ne remonte rien de spécifique et fiable sur cette entreprise précise, dis-le dans "overview" au lieu de généraliser sur son secteur — une généralité sectorielle non vérifiée est pire qu'une absence d'information
+- Utilise la recherche web pour ancrer "overview" et "accroche" dans un fait vérifiable et récent sur ${company} (produit, actualité, levée de fonds, clients...). Si un résultat de recherche correspond clairement à ${company} (à l'orthographe/l'espacement/la casse près), utilise-le avec confiance même si son secteur surprend — ne présuppose jamais le secteur du prospect à partir du profil du commercial. Réserve "peu d'information disponible" au cas où la recherche ne remonte VRAIMENT rien de pertinent, jamais quand elle trouve un résultat clair mais inattendu
 - Accroche basée sur un fait récent ou une réalité spécifique de ${company}${
     userContext?.product_description
       ? `\n- Les arguments doivent montrer comment "${userContext.product_description}" répond aux besoins de ${company}`
