@@ -3,7 +3,16 @@ export type Contact = {
   title: string;
   linkedin?: string;
   email?: string;
+  // Le résumé en une phrase. CONSERVÉ alors que les champs ci-dessous le
+  // décomposent : les fiches déjà enregistrées ne portent que lui, et
+  // l'affichage doit rester lisible pour elles sans reprise de données.
   notes?: string;
+  // Décomposition du résumé, pour un affichage hiérarchisé plutôt qu'une
+  // phrase dense à déchiffrer.
+  badge?: { label: string; tone: "success" | "info" | "neutral" };
+  city?: string;
+  tenure?: string;
+  previousRole?: string;
   // Souvent une URL LinkedIn signée qui ne charge pas hors de leur site :
   // l'affichage doit toujours prévoir un repli sur les initiales.
   photoUrl?: string;

@@ -5,6 +5,8 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { Meeting, Brief, Contact, TalkingPoint, NewsItem } from "@/lib/types";
 import type { CallHistoryItem } from "@/lib/db";
+import { Target, MapPin, Clock, History, Building2, Mail, ExternalLink } from "lucide-react";
+import { StatusChip } from "@/app/components/ui/ui-bits";
 
 function formatDateTime(iso: string) {
   const d = new Date(iso);
@@ -94,6 +96,132 @@ function ContactAvatar({ name, photoUrl }: { name: string; photoUrl?: string }) 
   return (
     <div className="w-9 h-9 rounded-full bg-[color:var(--lavender)] flex items-center justify-center text-[color:var(--violet)] text-xs font-bold shrink-0">
       {initials}
+    </div>
+  );
+}
+
+// Fiche contact. La hiérarchie suit ce qu'un commercial cherche dans les
+// deux minutes avant son appel : à qui il parle, si cette personne peut
+// décider, puis le contexte, puis les moyens de la joindre. La pastille de
+// séniorité est isolée parce que c'est l'information la plus actionnable —
+// elle était auparavant noyée en milieu de phrase, invisible.
+function ContactCard({ contact, notFound }: { contact: Contact; notFound: boolean }) {
+  const company = contact.company;
+  const companySubtitle = [
+    company?.industry,
+    company?.employees ? `${company.employees} personnes` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  // Les fiches enregistrées AVANT la décomposition ne portent que `notes` :
+  // on les affiche telles quelles plutôt que d'exiger une reprise de données.
+  const hasStructuredFacts = !!(contact.badge || contact.city || contact.tenure || contact.previousRole);
+
+  return (
+    <div>
+      <div className="flex items-start gap-3">
+        <ContactAvatar name={contact.name} photoUrl={contact.photoUrl} />
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-slate-900 text-sm leading-snug">{contact.name}</p>
+          {contact.title && <p className="text-slate-500 text-xs mt-0.5 leading-snug">{contact.title}</p>}
+        </div>
+      </div>
+
+      {contact.badge && (
+        <div className="mt-2.5">
+          <StatusChip tone={contact.badge.tone}>
+            <Target className="w-3 h-3" />
+            {contact.badge.label}
+          </StatusChip>
+        </div>
+      )}
+
+      {hasStructuredFacts ? (
+        <div className="mt-3 space-y-1.5">
+          {contact.city && (
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <MapPin className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+              <span className="truncate">{contact.city}</span>
+            </div>
+          )}
+          {contact.tenure && (
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <Clock className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+              <span className="truncate">{contact.tenure}</span>
+            </div>
+          )}
+          {contact.previousRole && (
+            <div className="flex items-start gap-2 text-xs text-slate-500">
+              <History className="w-3.5 h-3.5 text-slate-300 shrink-0 mt-0.5" />
+              <span className="leading-snug">Auparavant {contact.previousRole}</span>
+            </div>
+          )}
+        </div>
+      ) : (
+        contact.notes && (
+          <p className="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2 leading-relaxed mt-3">
+            {contact.notes}
+          </p>
+        )
+      )}
+
+      {/* L'employeur tel que l'annuaire le connaît : sa graphie fait autorité
+          sur celle saisie au moment du rendez-vous (« BE WTR » vs « Bewtr »),
+          et son logo est hébergé chez le fournisseur donc réellement
+          affichable — contrairement aux photos de profil. */}
+      {company?.name && (
+        <div className="flex items-center gap-2.5 mt-3 pt-3 border-t border-slate-100">
+          {company.logoUrl ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={company.logoUrl}
+              alt={company.name}
+              className="w-8 h-8 rounded-lg object-contain shrink-0 bg-white border border-slate-100 p-0.5"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+              <Building2 className="w-4 h-4 text-slate-400" />
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-slate-800 truncate">{company.name}</p>
+            {companySubtitle && <p className="text-xs text-slate-400 truncate">{companySubtitle}</p>}
+          </div>
+        </div>
+      )}
+
+      {(contact.email || contact.linkedin) && (
+        <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5">
+          {contact.email && (
+            <a
+              href={`mailto:${contact.email}`}
+              className="flex items-center gap-2 text-xs text-slate-500 hover:text-[color:var(--violet)] transition-colors group"
+            >
+              <Mail className="w-3.5 h-3.5 text-slate-300 group-hover:text-[color:var(--violet)] shrink-0 transition-colors" />
+              <span className="truncate">{contact.email}</span>
+            </a>
+          )}
+          {contact.linkedin && (
+            <a
+              href={contact.linkedin}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-xs text-[color:var(--violet)] hover:underline"
+            >
+              <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+              <span>Voir le profil LinkedIn</span>
+            </a>
+          )}
+        </div>
+      )}
+
+      {notFound && (
+        <p className="text-xs text-slate-400 mt-3 leading-relaxed">
+          Contact enregistré, mais aucune information publique trouvée. Vérifiez surtout le nom complet — un
+          prénom seul ne suffit pas à identifier la personne.
+        </p>
+      )}
     </div>
   );
 }
@@ -926,71 +1054,7 @@ export default function BriefClient({
                       le seul email si l'enrichissement échoue ou n'est pas
                       configuré (cf. lib/apollo.ts). */}
                   {brief.contact ? (
-                    <div>
-                      <div className="flex items-center gap-3 mb-2">
-                        <ContactAvatar name={brief.contact.name} photoUrl={brief.contact.photoUrl} />
-                        <div className="min-w-0">
-                          <p className="font-semibold text-slate-900 text-sm leading-none truncate">{brief.contact.name}</p>
-                          {brief.contact.title && (
-                            <p className="text-slate-500 text-xs mt-0.5 truncate">{brief.contact.title}</p>
-                          )}
-                        </div>
-                      </div>
-                      {brief.contact.email && <p className="text-xs text-slate-500 mb-1">✉ {brief.contact.email}</p>}
-                      {brief.contact.linkedin && (
-                        <a
-                          href={brief.contact.linkedin}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-[color:var(--violet)] hover:underline mb-1.5 inline-block"
-                        >
-                          Voir sur LinkedIn →
-                        </a>
-                      )}
-                      {brief.contact.notes && (
-                        <p className="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2 leading-relaxed mt-1.5">
-                          {brief.contact.notes}
-                        </p>
-                      )}
-                      {/* L'employeur tel que l'annuaire le connaît : sa
-                          graphie fait autorité sur celle saisie au moment du
-                          rendez-vous (« BE WTR » vs « Bewtr »), et le logo est
-                          hébergé chez le fournisseur donc réellement
-                          affichable — contrairement aux photos de profil. */}
-                      {brief.contact.company?.name && (
-                        <div className="flex items-center gap-2.5 mt-2.5 pt-2.5 border-t border-slate-100">
-                          {brief.contact.company.logoUrl && (
-                            // eslint-disable-next-line @next/next/no-img-element -- même raison que ContactAvatar
-                            <img
-                              src={brief.contact.company.logoUrl}
-                              alt={brief.contact.company.name}
-                              className="w-7 h-7 rounded object-contain shrink-0 bg-white"
-                            />
-                          )}
-                          <div className="min-w-0">
-                            <p className="text-xs font-medium text-slate-700 truncate">
-                              {brief.contact.company.name}
-                            </p>
-                            <p className="text-xs text-slate-400 truncate">
-                              {[
-                                brief.contact.company.industry,
-                                brief.contact.company.employees
-                                  ? `${brief.contact.company.employees} personnes`
-                                  : null,
-                              ]
-                                .filter(Boolean)
-                                .join(" · ")}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                      {contactEnriched === false && (
-                        <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-                          Contact enregistré, mais aucune information publique trouvée. Vérifiez surtout le nom
-                          complet — un prénom seul ne suffit pas à identifier la personne.
-                        </p>
-                      )}
-                    </div>
+                    <ContactCard contact={brief.contact} notFound={contactEnriched === false} />
                   ) : (
                     !editingContact && (
                       <p className="text-sm text-slate-400">Aucun contact identifié pour ce rendez-vous.</p>

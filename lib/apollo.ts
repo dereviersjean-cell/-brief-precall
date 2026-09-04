@@ -73,6 +73,32 @@ async function fetchWithTimeout(url: string, apiKey: string, timeoutMs = 8000): 
 // ici plutôt que délégué au prompt : le mapping ne change jamais, une
 // fonction déterministe ne peut pas "halluciner" un niveau différent d'un
 // appel à l'autre comme pourrait le faire un LLM.
+// Version courte + ton, pour la pastille de la fiche contact. C'est
+// l'information la plus actionnable avant un appel — elle mérite d'être vue
+// en un coup d'œil plutôt que noyée dans la phrase de résumé.
+export function seniorityBadge(
+  seniority: string | null
+): { label: string; tone: "success" | "info" | "neutral" } | null {
+  switch (seniority) {
+    case "c_suite":
+    case "owner":
+    case "founder":
+    case "partner":
+      return { label: "Décisionnaire", tone: "success" };
+    case "vp":
+    case "director":
+      return { label: "Décisionnaire ou forte influence", tone: "success" };
+    case "manager":
+    case "senior":
+      return { label: "Influence sur la décision", tone: "info" };
+    case "entry":
+    case "intern":
+      return { label: "Rôle opérationnel", tone: "neutral" };
+    default:
+      return null;
+  }
+}
+
 export function seniorityLabel(seniority: string | null): string | null {
   switch (seniority) {
     case "c_suite":
@@ -117,17 +143,15 @@ function yearsSince(startDate: string | null): string | null {
 // rédigé par l'IA : ce sont des faits qu'Apollo fournit déjà structurés, les
 // reformuler via un LLM n'ajouterait qu'un risque de déformation sans rien
 // apporter.
-export function formatContactSummary(contact: ApolloContact): string {
-  const parts: string[] = [];
-
-  const label = seniorityLabel(contact.seniority);
-  if (label) parts.push(label);
-
-  if (contact.city) parts.push(`Basé à ${contact.city}`);
-
+// Les faits du résumé, chacun de son côté — la phrase ci-dessous et
+// l'affichage hiérarchisé de la fiche s'appuient tous les deux dessus, pour
+// ne pas dériver l'un de l'autre.
+export function extractContactFacts(contact: ApolloContact): {
+  tenure: string | null;
+  previousRole: string | null;
+} {
   const current = contact.employmentHistory.find((e) => e.current) ?? contact.employmentHistory[0];
-  const tenure = current ? yearsSince(current.startDate) : null;
-  if (tenure) parts.push(`En poste depuis ${tenure}`);
+  const years = current ? yearsSince(current.startDate) : null;
 
   // Le poste précédent doit être dans une AUTRE entreprise : un changement de
   // titre en interne (« Co-Founder & CEO » → « Co-Founder & Chairman » chez
@@ -138,9 +162,28 @@ export function formatContactSummary(contact: ApolloContact): string {
   const previous = contact.employmentHistory.find(
     (e) => !e.current && e.organizationName && e.organizationName !== currentOrg
   );
-  if (previous?.organizationName) {
-    parts.push(`Auparavant ${previous.title ?? "en poste"} chez ${previous.organizationName}`);
-  }
+
+  return {
+    tenure: years ? `En poste depuis ${years}` : null,
+    previousRole: previous?.organizationName
+      ? `${previous.title ?? "En poste"} chez ${previous.organizationName}`
+      : null,
+  };
+}
+
+export function formatContactSummary(contact: ApolloContact): string {
+  const parts: string[] = [];
+
+  const label = seniorityLabel(contact.seniority);
+  if (label) parts.push(label);
+
+  if (contact.city) parts.push(`Basé à ${contact.city}`);
+
+  const tenure = extractContactFacts(contact).tenure;
+  if (tenure) parts.push(tenure);
+
+  const previousRole = extractContactFacts(contact).previousRole;
+  if (previousRole) parts.push(`Auparavant ${previousRole}`);
 
   return parts.join(" · ");
 }
@@ -172,12 +215,17 @@ export function buildContactCard(
     "Contact";
 
   const org = apollo?.organization;
+  const facts = apollo ? extractContactFacts(apollo) : { tenure: null, previousRole: null };
   return {
     name,
     title: apollo?.title ?? "",
     linkedin: apollo?.linkedinUrl ?? undefined,
     email: email ?? undefined,
     notes: apollo ? formatContactSummary(apollo) || undefined : undefined,
+    badge: (apollo && seniorityBadge(apollo.seniority)) || undefined,
+    city: apollo?.city ?? undefined,
+    tenure: facts.tenure ?? undefined,
+    previousRole: facts.previousRole ?? undefined,
     photoUrl: apollo?.photoUrl ?? undefined,
     company:
       org && (org.name || org.logoUrl || org.industry || org.employees)
