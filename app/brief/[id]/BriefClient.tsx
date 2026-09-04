@@ -772,9 +772,14 @@ export default function BriefClient({
               />
               <div>
                 <h1 className="text-2xl font-bold text-slate-900">{displayName}</h1>
-                <p className="text-slate-500 mt-0.5">
-                  {formatDateTime(meeting.date)} · {meeting.duration} min · {meeting.industry}
-                </p>
+                {/* La date et l'heure du rendez-vous, et rien d'autre : la
+                    durée était toujours 60 min par défaut et le secteur un
+                    tiret. Vide si la date est inconnue (brief enregistré
+                    avant la migration 013) — mieux que la fausse date que
+                    cette ligne affichait, celle du chargement de la page. */}
+                {meeting.date && (
+                  <p className="text-slate-500 mt-0.5">{formatDateTime(meeting.date)}</p>
+                )}
               </div>
             </div>
             <div className={`flex items-center gap-2 ${badge.bg} ${badge.fg} text-sm font-medium px-3 py-1.5 rounded-full`}>

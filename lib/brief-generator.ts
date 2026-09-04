@@ -143,13 +143,13 @@ Retourne ce JSON (structure stricte, aucun texte autour). Même si tu as utilis�
   "arguments": [
     { "title": "Titre de l'argument commercial", "detail": "Bénéfice concret chiffré si possible" }
   ],
-  "vocabulaire": ["mot-clé-1", "mot-clé-2"],
+  "vocabulaire": ["terme du secteur du prospect", "..."],
 ${referencesSchema}${actualitesSchema}${relationalSchema}}
 
 Contraintes :
 - Exactement ${config.painPointsCount} pain_points
 - Exactement ${config.argumentsCount} arguments
-- Exactement ${config.keywordsCount} mots-clés métier dans vocabulaire
+- Exactement ${config.keywordsCount} termes dans "vocabulaire". Ce sont les mots du MÉTIER DU PROSPECT, ceux que ses pairs emploient entre eux : procédés, normes et réglementations de son secteur, indicateurs qu'il pilote, acteurs et fournisseurs de sa filière, contraintes propres à son activité. Objectif : que le commercial ait l'air de connaître le métier de son interlocuteur dès les premières minutes. N'y mets JAMAIS de vocabulaire de la VENTE (pipeline, taux de conversion, prospection, ROI commercial, cycle de vente...) : le commercial le maîtrise déjà, ça ne lui apprend rien et ça ne l'aide pas à paraître expert du secteur d'en face
 - Tout en français
 - Utilise la recherche web pour ancrer "overview" et "accroche" dans un fait vérifiable et récent sur ${company} (produit, actualité, levée de fonds, clients...). Si un résultat de recherche correspond clairement à ${company} (à l'orthographe/l'espacement/la casse près), utilise-le avec confiance même si son secteur surprend — ne présuppose jamais le secteur du prospect à partir du profil du commercial. Réserve "peu d'information disponible" au cas où la recherche ne remonte VRAIMENT rien de pertinent, jamais quand elle trouve un résultat clair mais inattendu
 - Accroche basée sur un fait récent ou une réalité spécifique de ${company}${

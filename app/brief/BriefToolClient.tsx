@@ -620,12 +620,17 @@ export default function BriefToolClient() {
     const contactEmail = getContactAttendee(event)?.email ?? null;
     const emailParam = contactEmail ? `&contactEmail=${encodeURIComponent(contactEmail)}` : "";
     const titleParam = event.summary ? `&title=${encodeURIComponent(event.summary)}` : "";
+    // La date du rendez-vous n'est connue QUE d'ici : les événements d'agenda
+    // vivent chez Google/Microsoft et le brief ne les relit jamais. Sans ce
+    // paramètre, la page affichait l'heure de son propre chargement.
+    const startsAt = eventStartDate(event);
+    const startsAtParam = startsAt ? `&startsAt=${encodeURIComponent(startsAt)}` : "";
     // Un RDV manuel porte déjà son nom d'entreprise, saisi explicitement à la
     // création — jamais deviné depuis un domaine email comme pour un vrai
     // événement de calendrier (cf. le commentaire de getCompanyAttendee).
     const company = event.manual && event.company ? event.company : getCompanyFromDomain(event);
     if (company) {
-      router.push(`/brief/${event.id}?company=${encodeURIComponent(company)}${emailParam}${titleParam}`);
+      router.push(`/brief/${event.id}?company=${encodeURIComponent(company)}${emailParam}${titleParam}${startsAtParam}`);
     } else {
       setModalDefaultCompany("");
       setModalEvent(event);
@@ -638,8 +643,10 @@ export default function BriefToolClient() {
     // Le titre du RDV vient de l'événement, pas de la saisie : c'est justement
     // parce que le nom d'entreprise était indevinable qu'on passe par ce modal.
     const titleParam = modalEvent?.summary ? `&title=${encodeURIComponent(modalEvent.summary)}` : "";
+    const startsAt = modalEvent ? eventStartDate(modalEvent) : "";
+    const startsAtParam = startsAt ? `&startsAt=${encodeURIComponent(startsAt)}` : "";
     setModalEvent(null);
-    router.push(`/brief/${eventId}?company=${encodeURIComponent(company)}${emailParam}${titleParam}`);
+    router.push(`/brief/${eventId}?company=${encodeURIComponent(company)}${emailParam}${titleParam}${startsAtParam}`);
   }
 
   useEffect(() => {

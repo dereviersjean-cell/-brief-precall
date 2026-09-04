@@ -102,14 +102,19 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     // elle n'est enregistrée que si on en a réellement une — un contact
     // identifié par son seul nom reste valable.
     const resolvedEmail = contactCard.email ?? null;
-    await updateBriefContact(auth.userId, briefId, resolvedEmail, contactCard);
+    // Le nom d'entreprise de l'annuaire fait autorité sur celui saisi au
+    // moment du rendez-vous, et il remplace ce dernier PARTOUT — sinon
+    // l'application montre « Bewtr » dans la liste et « BE WTR » sur la
+    // fiche, pour la même société. Demandé par Jean le 04/09/2026.
+    const canonicalCompany = contactCard.company?.name ?? null;
+    await updateBriefContact(auth.userId, briefId, resolvedEmail, contactCard, canonicalCompany);
 
     // Best-effort : si l'identifiant correspond à un RDV manuel de cet
     // utilisateur, on aligne son contact pour que les deux ne divergent pas.
     // Un échec ici ne doit pas faire échouer la mise à jour du brief, qui est
     // ce que l'utilisateur voit.
-    if (isManualMeeting && resolvedEmail) {
-      await updateManualMeetingContact(auth.userId, id, resolvedEmail).catch((err) =>
+    if (isManualMeeting && (resolvedEmail || canonicalCompany)) {
+      await updateManualMeetingContact(auth.userId, id, resolvedEmail, canonicalCompany).catch((err) =>
         console.error("[briefs/contact] updateManualMeetingContact failed:", err)
       );
     }

@@ -12,7 +12,13 @@ export default async function BriefPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ company?: string; cached?: string; contactEmail?: string; title?: string }>;
+  searchParams: Promise<{
+    company?: string;
+    cached?: string;
+    contactEmail?: string;
+    title?: string;
+    startsAt?: string;
+  }>;
 }) {
   const { id } = await params;
   // PAS de garde isUuid en tête de route ici, contrairement aux autres pages
@@ -22,9 +28,14 @@ export default async function BriefPage({
   // vers un UUID Supabase. Un garde global renvoyait 404 sur tous les boutons
   // « Préparer le brief » (régression du 19/08/2026). Le garde est descendu sur
   // la seule requête qui interroge une colonne uuid, plus bas.
-  const { company, cached, contactEmail, title } = await searchParams;
+  const { company, cached, contactEmail, title, startsAt } = await searchParams;
   const meetingTitle = title ? decodeURIComponent(title) : null;
   const decodedContactEmail = contactEmail ? decodeURIComponent(contactEmail) : null;
+  // Date réelle du rendez-vous. La page affichait auparavant `new Date()`,
+  // c'est-à-dire l'heure de son propre chargement : un RDV de 9h00 consulté
+  // à 16h56 s'annonçait à 16h56. Elle vient de la liste (seule à connaître
+  // l'événement d'agenda) ou de la colonne enregistrée (migration 013).
+  const startsAtParam = startsAt ? decodeURIComponent(startsAt) : null;
 
   if (!company) {
     notFound();
@@ -52,9 +63,13 @@ export default async function BriefPage({
         if (byEvent?.content) {
           const synthetic: Meeting = {
             id,
-            date: new Date().toISOString(),
+            date: (byEvent as { meeting_starts_at?: string | null }).meeting_starts_at ?? startsAtParam ?? "",
             duration: 60,
-            company: decodedCompany,
+            // Le nom enregistré prime sur celui de l'URL : quand l'annuaire a
+            // résolu la graphie exacte (« BE WTR » pour « Bewtr » saisi), il
+            // a été réécrit en base, et c'est lui qui doit s'afficher — sinon
+            // un vieux lien continue de nommer la société autrement.
+            company: (byEvent as { company_name?: string | null }).company_name ?? decodedCompany,
             // Le titre stocké fait foi ; le paramètre d'URL sert de repli pour
             // un brief enregistré avant la migration 010.
             title: (byEvent as { meeting_title?: string | null }).meeting_title ?? meetingTitle ?? undefined,
@@ -87,9 +102,9 @@ export default async function BriefPage({
         if (byId?.content) {
           const synthetic: Meeting = {
             id,
-            date: new Date().toISOString(),
+            date: byId.meeting_starts_at ?? startsAtParam ?? "",
             duration: 60,
-            company: decodedCompany || byId.company_name || "",
+            company: byId.company_name || decodedCompany || "",
             title: byId.meeting_title ?? meetingTitle ?? undefined,
             industry: "—",
             contacts: [],
@@ -113,7 +128,7 @@ export default async function BriefPage({
 
   const synthetic: Meeting = {
     id,
-    date: new Date().toISOString(),
+    date: startsAtParam ?? "",
     duration: 60,
     company: decodedCompany,
     title: meetingTitle ?? undefined,

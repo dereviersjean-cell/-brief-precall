@@ -170,11 +170,10 @@ export async function saveBrief(
   calendarEventId: string | null,
   content: unknown,
   modelUsed: string,
-  meetingTitle: string | null = null
+  meetingTitle: string | null = null,
+  meetingStartsAt: string | null = null
 ): Promise<{ id: string } | null> {
-  const { data, error } = await supabaseAdmin
-    .from("briefs")
-    .upsert({
+  const row = {
       user_id: userId,
       company_name: companyName,
       // La colonne est OMISE quand on n'a pas d'adresse, au lieu d'écrire
@@ -192,9 +191,29 @@ export async function saveBrief(
       // pilote la génération (Pappers, actualités) — les confondre
       // dégraderait les briefs. Migration 010, passée en prod le 22/08/2026.
       meeting_title: meetingTitle,
-    }, { onConflict: "user_id,calendar_event_id" })
-    .select("id")
-    .single();
+  };
+
+  const upsert = (payload: Record<string, unknown>) =>
+    supabaseAdmin
+      .from("briefs")
+      .upsert(payload, { onConflict: "user_id,calendar_event_id" })
+      .select("id")
+      .single();
+
+  // Date réelle du rendez-vous (migration 013). Même règle d'omission que
+  // pour contact_email : on n'écrase pas une date connue par un null.
+  const withStart = meetingStartsAt ? { ...row, meeting_starts_at: meetingStartsAt } : row;
+
+  let { data, error } = await upsert(withStart);
+
+  // 42703 = colonne inconnue : la migration 013 n'est pas encore passée en
+  // prod. On réenregistre SANS la date plutôt que de perdre le brief entier
+  // — pattern bug #14, à ceci près qu'ici l'échec porterait sur une écriture
+  // et pas seulement sur un affichage.
+  if (error && (error as { code?: string }).code === "42703" && meetingStartsAt) {
+    console.warn("[saveBrief] colonne meeting_starts_at absente (migration 013 non passée) — brief enregistré sans la date du RDV");
+    ({ data, error } = await upsert(row));
+  }
 
   if (error) throw error;
   return data as { id: string } | null;
@@ -331,22 +350,31 @@ export async function upsertUserProfile(
 // qu'un écran. Il a été SUPPRIMÉ le 31/08/2026, pas seulement contourné :
 // laissé en place sans appelant, son nom évident invitait à le reprendre.
 // Toute lecture de brief atteignable depuis une URL passe par ici.
+type BriefForUser = {
+  content: unknown;
+  company_name: string | null;
+  meeting_title?: string | null;
+  contact_email: string | null;
+  meeting_starts_at?: string | null;
+};
+
 export async function getBriefByIdForUser(
   briefId: string,
   userId: string
-): Promise<{ content: unknown; company_name: string | null; meeting_title?: string | null; contact_email: string | null } | null> {
+): Promise<BriefForUser | null> {
+  // `*` plutôt qu'une liste de colonnes : `meeting_starts_at` n'existe pas
+  // tant que la migration 013 n'est pas passée, et un select explicite
+  // échouerait alors sur toute la lecture — la page du brief tomberait
+  // entièrement pour une colonne d'affichage (pattern bug #14).
   const { data, error } = await supabaseAdmin
     .from("briefs")
-    // contact_email fait partie de la lecture : la page du brief doit pouvoir
-    // le retransmettre au client, faute de quoi une régénération repartait
-    // sans contact (voir le commentaire dans app/brief/[id]/page.tsx).
-    .select("content, company_name, meeting_title, contact_email")
+    .select("*")
     .eq("id", briefId)
     .eq("user_id", userId)
     .maybeSingle();
 
   if (error) throw error;
-  return data as { content: unknown; company_name: string | null; meeting_title?: string | null; contact_email: string | null } | null;
+  return data as BriefForUser | null;
 }
 
 // Renseigne ou corrige le contact d'un brief déjà généré, sans repasser par
@@ -365,7 +393,11 @@ export async function updateBriefContact(
   // valable sans adresse, et on ne veut pas écraser celle déjà enregistrée
   // (la colonne est alors laissée telle quelle, cf. plus bas).
   contactEmail: string | null,
-  contactCard: unknown
+  contactCard: unknown,
+  // Le nom d'entreprise tel que l'annuaire le connaît. Il remplace la graphie
+  // saisie au rendez-vous pour que toute l'application parle de la même
+  // société de la même façon.
+  canonicalCompanyName: string | null = null
 ): Promise<void> {
   const { data, error: readError } = await supabaseAdmin
     .from("briefs")
@@ -388,6 +420,7 @@ export async function updateBriefContact(
       // Même règle que saveBrief : sans adresse, la colonne n'est pas touchée
       // plutôt que remise à null.
       ...(contactEmail ? { contact_email: contactEmail } : {}),
+      ...(canonicalCompanyName ? { company_name: canonicalCompanyName } : {}),
       content: merged,
     })
     .eq("id", briefId)
@@ -7327,11 +7360,17 @@ export async function listUpcomingManualMeetingsForUser(userId: string): Promise
 export async function updateManualMeetingContact(
   userId: string,
   id: string,
-  contactEmail: string
+  contactEmail: string | null,
+  canonicalCompanyName: string | null = null
 ): Promise<void> {
   const { error } = await supabaseAdmin
     .from("manual_meetings")
-    .update({ contact_email: contactEmail })
+    .update({
+      ...(contactEmail ? { contact_email: contactEmail } : {}),
+      // Le RDV garde la graphie de l'annuaire, comme le brief : les deux
+      // écrans doivent nommer la société pareil.
+      ...(canonicalCompanyName ? { company_name: canonicalCompanyName } : {}),
+    })
     .eq("id", id)
     .eq("user_id", userId);
   if (error) throw error;

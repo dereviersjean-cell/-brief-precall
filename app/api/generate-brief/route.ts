@@ -187,7 +187,16 @@ export async function POST(request: NextRequest) {
       // callback settles without delaying the response itself.
       after(async () => {
         const savePromise = withRetry(() =>
-          saveBrief(userId, trimmed, contactEmail, calendarEventId, briefWithContact, config.model, meetingTitle)
+          saveBrief(
+            userId,
+            trimmed,
+            contactEmail,
+            calendarEventId,
+            briefWithContact,
+            config.model,
+            meetingTitle,
+            meetingStartsAt
+          )
         ).catch((err) => console.error("[generate-brief] saveBrief failed after retries:", err));
 
         // A dispatch failure must never surface as a brief-generation error
