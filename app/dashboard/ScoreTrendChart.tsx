@@ -33,44 +33,10 @@ export default function ScoreTrendChart({ weeks, title }: { weeks: ScoreTrendWee
       </div>
       {!hasAnyData ? (
         <p className="text-sm text-slate-400 italic py-8 text-center">Pas encore assez de calls analysés.</p>
-      ) : filledWeeks(weeks).length < 2 ? (
-        <SinglePointState weeks={weeks} />
       ) : (
         <ScoreChart weeks={weeks} />
       )}
     </motion.div>
-  );
-}
-
-function filledWeeks(weeks: ScoreTrendWeek[]) {
-  return weeks.filter((w) => w.avgScore !== null) as (ScoreTrendWeek & { avgScore: number })[];
-}
-
-// Une seule semaine avec des calls ne fait pas une tendance : tracer une
-// courbe reviendrait à afficher un point perdu au milieu d'une zone vide, une
-// ligne de moyenne qui n'est que ce point, et une légende décrivant trois
-// séries dont deux sont absentes. Ce qu'on a vraiment à dire tient en une
-// valeur et une phrase.
-function SinglePointState({ weeks }: { weeks: ScoreTrendWeek[] }) {
-  const filled = filledWeeks(weeks);
-  const only = filled[0];
-  const missing = weeks.length - filled.length;
-
-  return (
-    <div className="py-6 flex items-center gap-5">
-      <div className="shrink-0">
-        <p className="text-3xl font-bold text-slate-900 tabular-nums leading-none">
-          {only.avgScore.toFixed(1)}
-          <span className="text-lg text-slate-300 font-normal"> / 5</span>
-        </p>
-        <p className="text-xs text-slate-400 mt-1.5">semaine du {only.weekLabel}</p>
-      </div>
-      <div className="h-10 w-px bg-slate-100" />
-      <p className="text-sm text-slate-500 leading-relaxed">
-        Une seule semaine avec des calls analysés sur les {weeks.length} dernières
-        {missing > 0 && ` (${missing} sans call)`}. La courbe d&apos;évolution apparaîtra dès la deuxième.
-      </p>
-    </div>
   );
 }
 
