@@ -8,6 +8,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { Calendar, Plus, ArrowRight, Sparkles, Users, X } from "lucide-react";
 import StatTile from "@/app/dashboard/StatTile";
 import FadeIn from "@/app/dashboard/FadeIn";
+import CompanyLogo from "@/app/components/CompanyLogo";
+import { GENERIC_EMAIL_DOMAINS, companyDomainFromEmail } from "@/lib/company-domain";
 
 interface CalendarEvent {
   id: string;
@@ -34,13 +36,6 @@ interface StoredBrief {
   model_used: string | null;
   created_at: string;
 }
-
-const GENERIC_DOMAINS = new Set([
-  "gmail.com", "yahoo.com", "yahoo.fr", "hotmail.com", "hotmail.fr",
-  "outlook.com", "outlook.fr", "live.com", "live.fr",
-  "icloud.com", "me.com", "msn.com",
-  "orange.fr", "wanadoo.fr", "free.fr", "sfr.fr", "laposte.net",
-]);
 
 function domainToCompany(domain: string): string {
   const name = domain.split(".")[0];
@@ -78,7 +73,7 @@ function getContactAttendee(event: CalendarEvent): { email: string } | null {
 function getCompanyAttendee(event: CalendarEvent): { email: string } | null {
   return event.attendees.find((a) => {
     const domain = a.email.split("@")[1] ?? "";
-    return !GENERIC_DOMAINS.has(domain);
+    return !GENERIC_EMAIL_DOMAINS.has(domain);
   }) ?? null;
 }
 
@@ -222,11 +217,21 @@ function CalendarEventCard({
       <div className="w-px h-10 bg-slate-200 shrink-0" />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1 flex-wrap">
-          <div className="w-7 h-7 rounded-lg brand-gradient flex items-center justify-center shrink-0 shadow-[var(--shadow-glow)]">
-            <span className="text-xs font-bold text-white">
-              {event.summary.charAt(0).toUpperCase()}
-            </span>
-          </div>
+          {/* Le logo de l'entreprise du participant externe. Déduit de son
+              domaine (favicon), et non résolu via l'annuaire : sur une liste,
+              ce serait un appel et un crédit par ligne à chaque affichage. */}
+          <CompanyLogo
+            domain={companyDomainFromEmail(getCompanyAttendee(event)?.email)}
+            alt={event.summary}
+            className="w-7 h-7 rounded-lg object-contain shrink-0 bg-white border border-border p-0.5"
+            fallback={
+              <div className="w-7 h-7 rounded-lg brand-gradient flex items-center justify-center shrink-0 shadow-[var(--shadow-glow)]">
+                <span className="text-xs font-bold text-white">
+                  {event.summary.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            }
+          />
           <h3 className="font-semibold text-slate-900 truncate">{event.summary}</h3>
           {event.manual && (
             <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-medium shrink-0">
@@ -553,11 +558,18 @@ function RecentBriefsCard({ briefs }: { briefs: StoredBrief[] }) {
             href={`/brief/${brief.calendar_event_id ?? brief.id}?company=${encodeURIComponent(brief.company_name ?? "")}&cached=true&contactEmail=${encodeURIComponent(brief.contact_email ?? "")}&title=${encodeURIComponent(brief.meeting_title ?? "")}`}
             className="flex items-center gap-3 -mx-2 px-2 py-2 rounded-lg hover:bg-slate-50 transition-colors group"
           >
-            <div className="w-8 h-8 rounded-lg brand-gradient flex items-center justify-center shrink-0">
-              <span className="text-xs font-bold text-white">
-                {formatCompanyName(brief.company_name).charAt(0).toUpperCase()}
-              </span>
-            </div>
+            <CompanyLogo
+              domain={companyDomainFromEmail(brief.contact_email)}
+              alt={formatCompanyName(brief.company_name)}
+              className="w-8 h-8 rounded-lg object-contain shrink-0 bg-white border border-border p-0.5"
+              fallback={
+                <div className="w-8 h-8 rounded-lg brand-gradient flex items-center justify-center shrink-0">
+                  <span className="text-xs font-bold text-white">
+                    {formatCompanyName(brief.company_name).charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              }
+            />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-slate-900 truncate group-hover:text-[color:var(--violet)] transition-colors">
                 {formatCompanyName(brief.company_name)}

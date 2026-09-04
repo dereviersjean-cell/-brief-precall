@@ -7,6 +7,8 @@ import { Meeting, Brief, Contact, TalkingPoint, NewsItem } from "@/lib/types";
 import type { CallHistoryItem } from "@/lib/db";
 import { Target, MapPin, Clock, History, Building2, Mail, ExternalLink } from "lucide-react";
 import { StatusChip } from "@/app/components/ui/ui-bits";
+import CompanyLogo from "@/app/components/CompanyLogo";
+import { companyDomainFromEmail } from "@/lib/company-domain";
 
 function formatDateTime(iso: string) {
   const d = new Date(iso);
@@ -752,9 +754,22 @@ export default function BriefClient({
         <div className="mb-8">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-xl font-bold text-slate-400 shrink-0">
-                {displayName.charAt(0)}
-              </div>
+              {/* Le logo de l'entreprise plutôt que l'initiale du titre du
+                  rendez-vous — qui donnait un « R » pour « Rendez vous
+                  bewtr », c'est-à-dire rien. Source privilégiée : le logo de
+                  l'annuaire déjà enregistré avec le contact ; à défaut, le
+                  domaine de son adresse. */}
+              <CompanyLogo
+                src={brief?.contact?.company?.logoUrl}
+                domain={companyDomainFromEmail(contactEmail)}
+                alt={brief?.contact?.company?.name ?? displayName}
+                className="w-14 h-14 rounded-2xl object-contain shrink-0 bg-white border border-slate-200 p-1.5"
+                fallback={
+                  <div className="w-14 h-14 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-xl font-bold text-slate-400 shrink-0">
+                    {displayName.charAt(0)}
+                  </div>
+                }
+              />
               <div>
                 <h1 className="text-2xl font-bold text-slate-900">{displayName}</h1>
                 <p className="text-slate-500 mt-0.5">
