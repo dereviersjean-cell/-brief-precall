@@ -1,4 +1,6 @@
 import { reportWarning } from "./monitoring";
+import { deriveNameFromEmail } from "./format";
+import type { Contact } from "./types";
 
 export type ApolloEmploymentEntry = {
   organizationName: string | null;
@@ -101,6 +103,24 @@ export function formatContactSummary(contact: ApolloContact): string {
   }
 
   return parts.join(" · ");
+}
+
+// La fiche telle qu'elle s'affiche dans le brief. Partagée entre la
+// génération (/api/generate-brief) et la modification du contact
+// (/api/briefs/[id]/contact) : deux copies auraient divergé, et l'écart ne se
+// serait vu que sur un brief déjà envoyé à un commercial.
+//
+// `apollo` à null (pas de clé configurée, contact introuvable, quota épuisé)
+// n'empêche pas d'afficher la fiche : on retombe sur l'adresse email seule,
+// qui reste ce qu'on sait de mieux sur cette personne.
+export function buildContactCard(apollo: ApolloContact | null, email: string): Contact {
+  return {
+    name: apollo?.name ?? deriveNameFromEmail(email) ?? email,
+    title: apollo?.title ?? "",
+    linkedin: apollo?.linkedinUrl ?? undefined,
+    email,
+    notes: apollo ? formatContactSummary(apollo) || undefined : undefined,
+  };
 }
 
 export async function enrichContact(email: string): Promise<ApolloContact | null> {

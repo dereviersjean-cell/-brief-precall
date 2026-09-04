@@ -177,7 +177,14 @@ export async function saveBrief(
     .upsert({
       user_id: userId,
       company_name: companyName,
-      contact_email: contactEmail,
+      // La colonne est OMISE quand on n'a pas d'adresse, au lieu d'écrire
+      // null : sur un upsert, PostgREST ne met à jour que les colonnes
+      // fournies, donc une régénération sans contact ne peut plus effacer
+      // l'adresse déjà enregistrée. Ceinture et bretelles avec le fix de
+      // app/brief/[id]/page.tsx (qui transmet désormais l'adresse depuis la
+      // base) : une adresse de contact est une donnée saisie, elle ne doit
+      // pas disparaître par effet de bord d'une régénération.
+      ...(contactEmail ? { contact_email: contactEmail } : {}),
       calendar_event_id: calendarEventId,
       content,
       model_used: modelUsed,
@@ -327,16 +334,57 @@ export async function upsertUserProfile(
 export async function getBriefByIdForUser(
   briefId: string,
   userId: string
-): Promise<{ content: unknown; company_name: string | null; meeting_title?: string | null } | null> {
+): Promise<{ content: unknown; company_name: string | null; meeting_title?: string | null; contact_email: string | null } | null> {
   const { data, error } = await supabaseAdmin
     .from("briefs")
-    .select("content, company_name, meeting_title")
+    // contact_email fait partie de la lecture : la page du brief doit pouvoir
+    // le retransmettre au client, faute de quoi une régénération repartait
+    // sans contact (voir le commentaire dans app/brief/[id]/page.tsx).
+    .select("content, company_name, meeting_title, contact_email")
     .eq("id", briefId)
     .eq("user_id", userId)
     .maybeSingle();
 
   if (error) throw error;
-  return data as { content: unknown; company_name: string | null; meeting_title?: string | null } | null;
+  return data as { content: unknown; company_name: string | null; meeting_title?: string | null; contact_email: string | null } | null;
+}
+
+// Renseigne ou corrige le contact d'un brief déjà généré, sans repasser par
+// le modèle : l'adresse était optionnelle à la création d'un RDV manuel et
+// rien ne permettait de la rattraper ensuite (constaté par Jean le
+// 04/09/2026). Régénérer tout le brief pour ça coûterait ~54s et un appel
+// Claude, pour une donnée qui ne dépend pas de lui.
+//
+// La fiche est fusionnée dans `content` (jsonb) plutôt que stockée à part :
+// c'est déjà là que vit le brief rendu à l'écran, et ça évite une colonne
+// supplémentaire pour une donnée qui n'a de sens qu'avec lui.
+export async function updateBriefContact(
+  userId: string,
+  briefId: string,
+  contactEmail: string,
+  contactCard: unknown
+): Promise<void> {
+  const { data, error: readError } = await supabaseAdmin
+    .from("briefs")
+    .select("content")
+    .eq("id", briefId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (readError) throw readError;
+  if (!data) throw new Error("Brief introuvable");
+
+  const content = (data as { content: unknown }).content;
+  const merged =
+    content && typeof content === "object"
+      ? { ...(content as Record<string, unknown>), contact: contactCard }
+      : { contact: contactCard };
+
+  const { error } = await supabaseAdmin
+    .from("briefs")
+    .update({ contact_email: contactEmail, content: merged })
+    .eq("id", briefId)
+    .eq("user_id", userId);
+  if (error) throw error;
 }
 
 
@@ -7262,6 +7310,23 @@ export async function listUpcomingManualMeetingsForUser(userId: string): Promise
     .order("meeting_time", { ascending: true });
   if (error) throw error;
   return ((data ?? []) as ManualMeetingRow[]).map(mapManualMeeting);
+}
+
+// Le contact d'un RDV manuel, corrigeable après coup — il était saisissable
+// une seule fois, à la création, et l'oublier condamnait le rendez-vous à
+// n'avoir jamais de fiche contact. Appelée quand on renseigne le contact
+// depuis le brief, pour que les deux ne divergent pas.
+export async function updateManualMeetingContact(
+  userId: string,
+  id: string,
+  contactEmail: string
+): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("manual_meetings")
+    .update({ contact_email: contactEmail })
+    .eq("id", id)
+    .eq("user_id", userId);
+  if (error) throw error;
 }
 
 // user_id dans le WHERE et pas seulement l'id : cadrer sur le propriétaire

@@ -63,7 +63,21 @@ export default async function BriefPage({
             status: "upcoming",
             brief: adaptCachedContent(byEvent.content),
           };
-          return <BriefClient meeting={synthetic} callHistory={callHistory} />;
+          // `contactEmail` DOIT être transmis ici aussi, et la valeur stockée
+          // prime sur le paramètre d'URL. Sans ça, ouvrir un brief par
+          // « Revoir » puis le régénérer renvoyait `contactEmail: null` à
+          // l'API, qui l'écrasait en base : le rendez-vous perdait son contact
+          // à la première régénération (constaté le 04/09/2026 sur un brief
+          // dont le RDV manuel portait pourtant bien l'adresse). Même famille
+          // que le bug #31 — une donnée saisie doit rester disponible à
+          // TOUTES les étapes suivantes du flux.
+          return (
+            <BriefClient
+              meeting={synthetic}
+              contactEmail={byEvent.contact_email ?? decodedContactEmail}
+              callHistory={callHistory}
+            />
+          );
         }
 
         // 2e tentative : recherche par UUID de brief Supabase. `briefs.id` est
@@ -82,7 +96,13 @@ export default async function BriefPage({
             status: "upcoming",
             brief: adaptCachedContent(byId.content),
           };
-          return <BriefClient meeting={synthetic} callHistory={callHistory} />;
+          return (
+            <BriefClient
+              meeting={synthetic}
+              contactEmail={byId.contact_email ?? decodedContactEmail}
+              callHistory={callHistory}
+            />
+          );
         }
       }
     } catch (err) {

@@ -390,6 +390,45 @@ export default function BriefClient({
   const [isAiGenerated, setIsAiGenerated] = useState(!!meeting.brief);
   const [rateLimited, setRateLimited] = useState<{ message: string; retryAfterMs: number } | null>(null);
 
+  // Renseigner / corriger le contact d'un brief déjà généré. L'adresse était
+  // optionnelle à la création d'un RDV manuel et rien ne permettait de la
+  // rattraper ensuite.
+  const [editingContact, setEditingContact] = useState(false);
+  const [contactInput, setContactInput] = useState("");
+  const [contactSaving, setContactSaving] = useState(false);
+  const [contactError, setContactError] = useState<string | null>(null);
+  // false = l'adresse a été enregistrée mais Apollo n'a rien trouvé (ou n'est
+  // pas configuré) : on le dit, plutôt que de laisser croire à un bug quand
+  // la fiche n'affiche que l'email.
+  const [contactEnriched, setContactEnriched] = useState<boolean | null>(null);
+
+  async function saveContact() {
+    const email = contactInput.trim();
+    if (!email || contactSaving) return;
+    setContactSaving(true);
+    setContactError(null);
+    try {
+      const res = await fetch(`/api/briefs/${encodeURIComponent(meeting.id)}/contact`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contactEmail: email }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setContactError((data as { error?: string }).error ?? "Erreur lors de l'enregistrement.");
+        return;
+      }
+      const { contact, enriched } = data as { contact: Contact; enriched: boolean };
+      setBrief((prev) => (prev ? { ...prev, contact } : prev));
+      setContactEnriched(enriched);
+      setEditingContact(false);
+    } catch {
+      setContactError("Impossible de contacter le serveur.");
+    } finally {
+      setContactSaving(false);
+    }
+  }
+
   // Partage sur appareil tactile : préparer le PDF sans attendre le tap.
   //
   // `navigator.share()` exige une activation utilisateur non consommée (bug
@@ -859,9 +898,66 @@ export default function BriefClient({
                           {brief.contact.notes}
                         </p>
                       )}
+                      {contactEnriched === false && (
+                        <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+                          Adresse enregistrée, mais aucune information publique trouvée sur cette personne.
+                        </p>
+                      )}
                     </div>
                   ) : (
-                    <p className="text-sm text-slate-400">Aucun contact identifié pour ce rendez-vous.</p>
+                    !editingContact && (
+                      <p className="text-sm text-slate-400">Aucun contact identifié pour ce rendez-vous.</p>
+                    )
+                  )}
+
+                  {/* Saisie du contact — l'adresse est optionnelle à la
+                      création d'un RDV manuel, il faut donc pouvoir la
+                      renseigner ou la corriger ensuite. Met à jour la seule
+                      fiche contact, sans relancer la génération du brief
+                      (~54s et un appel Claude pour une donnée qui n'en dépend
+                      pas). */}
+                  {editingContact ? (
+                    <div className="mt-3">
+                      <input
+                        type="email"
+                        value={contactInput}
+                        onChange={(e) => setContactInput(e.target.value)}
+                        autoFocus
+                        placeholder="prenom.nom@entreprise.com"
+                        className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") saveContact();
+                          if (e.key === "Escape") setEditingContact(false);
+                        }}
+                      />
+                      {contactError && <p className="text-xs text-red-600 mt-1.5">{contactError}</p>}
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={() => setEditingContact(false)}
+                          className="flex-1 text-xs text-slate-600 border border-border px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors"
+                        >
+                          Annuler
+                        </button>
+                        <button
+                          onClick={saveContact}
+                          disabled={!contactInput.trim() || contactSaving}
+                          className="flex-1 text-xs font-semibold brand-gradient text-white px-3 py-1.5 rounded-lg hover:brightness-110 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {contactSaving ? "Recherche…" : "Enregistrer"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setContactInput(brief.contact?.email ?? "");
+                        setContactError(null);
+                        setEditingContact(true);
+                      }}
+                      className="mt-3 w-full text-xs text-slate-500 border border-dashed border-slate-300 rounded-lg py-2 hover:border-[color:var(--lavender-strong)] hover:text-[color:var(--violet)] transition-colors"
+                    >
+                      {brief.contact ? "Modifier le contact" : "Ajouter un contact"}
+                    </button>
                   )}
                 </Section>
 

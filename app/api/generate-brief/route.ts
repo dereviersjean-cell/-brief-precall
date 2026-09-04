@@ -7,11 +7,11 @@ import { readConfig } from "@/lib/admin-config";
 import { generateBrief, type GeneratedBriefJson } from "@/lib/brief-generator";
 import { enrichWithPappers } from "@/lib/pappers";
 import { fetchRecentNews } from "@/lib/news";
-import { enrichContact, formatContactSummary } from "@/lib/apollo";
+import { enrichContact, buildContactCard } from "@/lib/apollo";
 import { getBriefByEventId, saveBrief, getUserProfile, withRetry } from "@/lib/db";
 import { checkRateLimit, retryAfterMinutes } from "@/lib/rate-limit";
 import { dispatchBriefPreCall } from "@/lib/notifications-dispatcher";
-import { formatContactDisplayName, deriveNameFromEmail } from "@/lib/format";
+import { formatContactDisplayName } from "@/lib/format";
 
 // Un brief avec recherche web réelle (max_uses: 3, cf. lib/brief-generator.ts)
 // mesure ~54s en conditions réelles (Doctolib, 03/09/2026) — sans ce réglage
@@ -147,15 +147,7 @@ export async function POST(request: NextRequest) {
     // fallback existant avant toute enrichissement). Fusionnée dans `brief`
     // avant sauvegarde pour qu'une relecture en cache n'ait pas besoin de
     // rappeler Apollo (10 crédits/mois sur le plan gratuit — cf. lib/apollo.ts).
-    const contactCard = contactEmail
-      ? {
-          name: apolloContact?.name ?? deriveNameFromEmail(contactEmail) ?? contactEmail,
-          title: apolloContact?.title ?? "",
-          linkedin: apolloContact?.linkedinUrl ?? undefined,
-          email: contactEmail,
-          notes: apolloContact ? formatContactSummary(apolloContact) : undefined,
-        }
-      : null;
+    const contactCard = contactEmail ? buildContactCard(apolloContact, contactEmail) : null;
     const briefWithContact = contactCard
       ? { ...(brief as Record<string, unknown>), contact: contactCard }
       : brief;
