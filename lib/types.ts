@@ -9,6 +9,10 @@ export type Contact = {
   notes?: string;
   // Décomposition du résumé, pour un affichage hiérarchisé plutôt qu'une
   // phrase dense à déchiffrer.
+  // Adresse connue de l'annuaire quand elle DIFFÈRE de celle saisie. On ne
+  // remplace jamais la seconde : elle vient de première main, alors que
+  // l'annuaire peut avoir rattaché un homonyme ou une autre entité du groupe.
+  alternateEmail?: string;
   badge?: { label: string; tone: "success" | "info" | "neutral" };
   city?: string;
   tenure?: string;

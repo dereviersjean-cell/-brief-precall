@@ -193,7 +193,7 @@ function ContactCard({ contact, notFound }: { contact: Contact; notFound: boolea
         </div>
       )}
 
-      {(contact.email || contact.linkedin) && (
+      {(contact.email || contact.linkedin || contact.alternateEmail) && (
         <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5">
           {contact.email && (
             <a
@@ -202,6 +202,19 @@ function ContactCard({ contact, notFound }: { contact: Contact; notFound: boolea
             >
               <Mail className="w-3.5 h-3.5 text-slate-300 group-hover:text-[color:var(--violet)] shrink-0 transition-colors" />
               <span className="truncate">{contact.email}</span>
+            </a>
+          )}
+          {/* L'annuaire connaît parfois une AUTRE adresse (homonyme, ou
+              autre entité du groupe : « scutum.fr » saisi, « scutum-na.com »
+              rendu). On la montre sans remplacer celle saisie — au commercial
+              de trancher, lui seul sait d'où vient la sienne. */}
+          {contact.alternateEmail && (
+            <a
+              href={`mailto:${contact.alternateEmail}`}
+              className="flex items-center gap-2 text-xs text-slate-400 hover:text-[color:var(--violet)] transition-colors group"
+            >
+              <Mail className="w-3.5 h-3.5 text-slate-300 group-hover:text-[color:var(--violet)] shrink-0 transition-colors" />
+              <span className="truncate">{contact.alternateEmail} (autre adresse connue)</span>
             </a>
           )}
           {contact.linkedin && (

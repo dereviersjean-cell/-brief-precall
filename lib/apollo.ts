@@ -206,7 +206,16 @@ export function buildContactCard(
   fallback: { email?: string | null; name?: string | null }
 ): Contact {
   const fallbackEmail = emptyToNull(fallback.email);
-  const email = apollo?.email ?? fallbackEmail;
+  // L'adresse SAISIE prime sur celle de l'annuaire. Première version :
+  // l'inverse, au motif qu'elle corrigeait une saisie erronée — vrai sur une
+  // adresse introuvable, dangereux dès que l'annuaire rattache un homonyme ou
+  // une autre entité du groupe. Mesuré le 04/09/2026 : « martin.namy@scutum.fr »
+  // saisi, « martin.namy@scutum-na.com » (Amérique du Nord) rendu. Écraser
+  // aurait fait écrire au mauvais destinataire.
+  const email = fallbackEmail ?? apollo?.email;
+  // Signalée sans être imposée : au commercial de trancher.
+  const alternateEmail =
+    apollo?.email && apollo.email !== email ? apollo.email : null;
   const name =
     apollo?.name ??
     emptyToNull(fallback.name) ??
@@ -221,6 +230,7 @@ export function buildContactCard(
     title: apollo?.title ?? "",
     linkedin: apollo?.linkedinUrl ?? undefined,
     email: email ?? undefined,
+    alternateEmail: alternateEmail ?? undefined,
     notes: apollo ? formatContactSummary(apollo) || undefined : undefined,
     badge: (apollo && seniorityBadge(apollo.seniority)) || undefined,
     city: apollo?.city ?? undefined,
