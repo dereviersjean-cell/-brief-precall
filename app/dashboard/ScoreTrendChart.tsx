@@ -33,10 +33,44 @@ export default function ScoreTrendChart({ weeks, title }: { weeks: ScoreTrendWee
       </div>
       {!hasAnyData ? (
         <p className="text-sm text-slate-400 italic py-8 text-center">Pas encore assez de calls analysés.</p>
+      ) : filledWeeks(weeks).length < 2 ? (
+        <SinglePointState weeks={weeks} />
       ) : (
         <ScoreChart weeks={weeks} />
       )}
     </motion.div>
+  );
+}
+
+function filledWeeks(weeks: ScoreTrendWeek[]) {
+  return weeks.filter((w) => w.avgScore !== null) as (ScoreTrendWeek & { avgScore: number })[];
+}
+
+// Une seule semaine avec des calls ne fait pas une tendance : tracer une
+// courbe reviendrait à afficher un point perdu au milieu d'une zone vide, une
+// ligne de moyenne qui n'est que ce point, et une légende décrivant trois
+// séries dont deux sont absentes. Ce qu'on a vraiment à dire tient en une
+// valeur et une phrase.
+function SinglePointState({ weeks }: { weeks: ScoreTrendWeek[] }) {
+  const filled = filledWeeks(weeks);
+  const only = filled[0];
+  const missing = weeks.length - filled.length;
+
+  return (
+    <div className="py-6 flex items-center gap-5">
+      <div className="shrink-0">
+        <p className="text-3xl font-bold text-slate-900 tabular-nums leading-none">
+          {only.avgScore.toFixed(1)}
+          <span className="text-lg text-slate-300 font-normal"> / 5</span>
+        </p>
+        <p className="text-xs text-slate-400 mt-1.5">semaine du {only.weekLabel}</p>
+      </div>
+      <div className="h-10 w-px bg-slate-100" />
+      <p className="text-sm text-slate-500 leading-relaxed">
+        Une seule semaine avec des calls analysés sur les {weeks.length} dernières
+        {missing > 0 && ` (${missing} sans call)`}. La courbe d&apos;évolution apparaîtra dès la deuxième.
+      </p>
+    </div>
   );
 }
 
@@ -82,6 +116,9 @@ function ScoreChart({ weeks }: { weeks: ScoreTrendWeek[] }) {
     .filter(Boolean) as { i: number; x: number; y: number; value: number; week: ScoreTrendWeek }[];
 
   const avg = points.reduce((s, p) => s + p.value, 0) / points.length;
+  // Sous trois points, la moyenne passe à mi-chemin des valeurs déjà tracées :
+  // elle occupe l'écran sans rien ajouter.
+  const showAverage = points.length >= 3;
 
   // Les semaines sans call coupent la courbe au lieu d'être reliées : tracer
   // un segment par-dessus un trou inventerait une progression qui n'a pas eu
@@ -126,8 +163,10 @@ function ScoreChart({ weeks }: { weeks: ScoreTrendWeek[] }) {
           </g>
         ))}
 
-        {/* Moyenne : trait plein ambré, lisible sur la grille grise, avec sa
-            valeur dans une pastille plutôt qu'un texte flottant. */}
+        {/* Moyenne : trait ambré, lisible sur la grille grise, avec sa valeur
+            dans une pastille plutôt qu'un texte flottant. */}
+        {showAverage && (
+          <>
         <line
           x1={pad.l}
           x2={w - pad.r}
@@ -143,6 +182,8 @@ function ScoreChart({ weeks }: { weeks: ScoreTrendWeek[] }) {
             moy. {avg.toFixed(1)}
           </text>
         </g>
+          </>
+        )}
 
         {segments.map((seg, si) => {
           const line = seg.map((p) => `${p.x},${p.y}`).join(" ");
@@ -168,16 +209,30 @@ function ScoreChart({ weeks }: { weeks: ScoreTrendWeek[] }) {
             <g key={`p-${p.i}`}>
               <circle cx={p.x} cy={p.y} r={isLast ? 5 : 3.5} fill="white" stroke="var(--violet)" strokeWidth={2.25} />
               {(showAllValues || isLast) && (
-                <text
-                  x={p.x}
-                  y={p.y - 11}
-                  textAnchor="middle"
-                  fontSize="11"
-                  fontWeight={isLast ? 700 : 600}
-                  fill="oklch(0.3 0.1 258)"
-                >
-                  {p.value.toFixed(1)}
-                </text>
+                <>
+                  {/* Fond derrière la valeur : sans lui, elle se colle à
+                      l'étiquette de l'axe sur les points proches du bord
+                      gauche — « 3 » et « 2.6 » se lisaient « 32.6 ». */}
+                  <rect
+                    x={p.x - 13}
+                    y={p.y - 21}
+                    width={26}
+                    height={14}
+                    rx={4}
+                    fill="white"
+                    opacity={0.92}
+                  />
+                  <text
+                    x={p.x}
+                    y={p.y - 11}
+                    textAnchor="middle"
+                    fontSize="11"
+                    fontWeight={isLast ? 700 : 600}
+                    fill="oklch(0.3 0.1 258)"
+                  >
+                    {p.value.toFixed(1)}
+                  </text>
+                </>
               )}
             </g>
           );
@@ -211,16 +266,23 @@ function ScoreChart({ weeks }: { weeks: ScoreTrendWeek[] }) {
         ))}
       </svg>
 
+      {/* La légende ne décrit que ce qui est effectivement tracé : annoncer
+          « Moyenne » ou « Aucun call » quand ni l'une ni l'autre n'apparaît
+          oblige à chercher à l'écran quelque chose qui n'y est pas. */}
       <div className="mt-1 flex items-center justify-center gap-4 text-[11.5px] text-slate-400">
         <span className="inline-flex items-center gap-1.5">
           <span className="h-[2px] w-4 rounded bg-[color:var(--violet)]" /> Score hebdomadaire
         </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-[2px] w-4 rounded bg-amber-300" /> Moyenne
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-slate-300" /> Aucun call
-        </span>
+        {showAverage && (
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-[2px] w-4 rounded bg-amber-300" /> Moyenne
+          </span>
+        )}
+        {points.length < weeks.length && (
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-slate-300" /> Aucun call
+          </span>
+        )}
       </div>
     </div>
   );
