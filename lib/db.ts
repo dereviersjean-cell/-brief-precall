@@ -361,7 +361,10 @@ export async function getBriefByIdForUser(
 export async function updateBriefContact(
   userId: string,
   briefId: string,
-  contactEmail: string,
+  // Null quand la personne a été identifiée par son seul nom : la fiche est
+  // valable sans adresse, et on ne veut pas écraser celle déjà enregistrée
+  // (la colonne est alors laissée telle quelle, cf. plus bas).
+  contactEmail: string | null,
   contactCard: unknown
 ): Promise<void> {
   const { data, error: readError } = await supabaseAdmin
@@ -381,7 +384,12 @@ export async function updateBriefContact(
 
   const { error } = await supabaseAdmin
     .from("briefs")
-    .update({ contact_email: contactEmail, content: merged })
+    .update({
+      // Même règle que saveBrief : sans adresse, la colonne n'est pas touchée
+      // plutôt que remise à null.
+      ...(contactEmail ? { contact_email: contactEmail } : {}),
+      content: merged,
+    })
     .eq("id", briefId)
     .eq("user_id", userId);
   if (error) throw error;

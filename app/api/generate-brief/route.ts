@@ -148,7 +148,9 @@ export async function POST(request: NextRequest) {
     const [pappersData, newsArticles, apolloContact] = await Promise.all([
       enrichWithPappers(trimmed),
       fetchRecentNews(trimmed, contactDomain),
-      contactEmail ? enrichContact(contactEmail) : Promise.resolve(null),
+      contactEmail
+        ? enrichContact({ email: contactEmail, companyName: trimmed, domain: contactDomain })
+        : Promise.resolve(null),
     ]);
 
     console.log('[generate-brief] contactEmail:', contactEmail, '| userId:', userId);
@@ -169,7 +171,7 @@ export async function POST(request: NextRequest) {
     // fallback existant avant toute enrichissement). Fusionnée dans `brief`
     // avant sauvegarde pour qu'une relecture en cache n'ait pas besoin de
     // rappeler Apollo (10 crédits/mois sur le plan gratuit — cf. lib/apollo.ts).
-    const contactCard = contactEmail ? buildContactCard(apolloContact, contactEmail) : null;
+    const contactCard = contactEmail ? buildContactCard(apolloContact, { email: contactEmail }) : null;
     const briefWithContact = contactCard
       ? { ...(brief as Record<string, unknown>), contact: contactCard }
       : brief;

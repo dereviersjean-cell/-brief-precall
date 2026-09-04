@@ -6,17 +6,23 @@ import { isUuid } from "@/lib/uuid";
 import { enrichContact, buildContactCard } from "@/lib/apollo";
 import {
   getBriefByEventId,
+  getBriefByIdForUser,
   updateBriefContact,
   updateManualMeetingContact,
 } from "@/lib/db";
 
 // Renseigner ou corriger le contact d'un brief déjà généré.
 //
+// Accepte un email, un nom, ou les deux : le nom accompagné de l'entreprise
+// du brief suffit à retrouver la personne, et c'est souvent tout ce que le
+// commercial connaît avant un rendez-vous — une adresse se devine mal (cf.
+// le commentaire de enrichContact).
+//
 // Ne relance PAS la génération : le brief lui-même ne change pas, seule la
 // fiche contact est (re)calculée. Régénérer coûterait ~54s et un appel Claude
-// pour une donnée qui n'en dépend pas. L'utilisateur garde le bouton
-// « Régénérer le brief » s'il veut en plus personnaliser l'accroche et les
-// arguments au rôle de la personne.
+// pour une donnée qui n'en dépend pas. Le bouton « Régénérer le brief » reste
+// disponible pour qui veut en plus personnaliser l'accroche au rôle du
+// contact.
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   const auth = await requireActiveUser(session);
@@ -24,15 +30,23 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const { id } = await params;
 
-  let body: { contactEmail?: string };
+  let body: { contactEmail?: string; contactName?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Corps invalide." }, { status: 400 });
   }
 
-  const contactEmail = body.contactEmail?.trim();
-  if (!contactEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+  const contactEmail = body.contactEmail?.trim() || null;
+  const contactName = body.contactName?.trim() || null;
+
+  if (!contactEmail && !contactName) {
+    return NextResponse.json(
+      { error: "Renseignez au moins un nom ou une adresse email." },
+      { status: 400 }
+    );
+  }
+  if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
     return NextResponse.json({ error: "Adresse email invalide." }, { status: 400 });
   }
 
@@ -40,15 +54,22 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   // d'agenda (ou d'un RDV manuel) d'abord, l'uuid du brief en repli. Le garde
   // isUuid ne protège que la requête qui touche une colonne uuid.
   let briefId: string | null = null;
+  let companyName: string | null = null;
   let isManualMeeting = false;
   try {
     const byEvent = await getBriefByEventId(auth.userId, id);
     if (byEvent) {
-      briefId = (byEvent as { id: string }).id;
+      const row = byEvent as { id: string; company_name: string | null };
+      briefId = row.id;
+      companyName = row.company_name;
       // Un RDV manuel porte le même identifiant que l'événement du brief.
       isManualMeeting = isUuid(id);
     } else if (isUuid(id)) {
-      briefId = id;
+      const byId = await getBriefByIdForUser(id, auth.userId);
+      if (byId) {
+        briefId = id;
+        companyName = byId.company_name;
+      }
     }
   } catch (err) {
     console.error("[briefs/contact] lookup failed:", err);
@@ -60,17 +81,29 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 
   try {
-    const apolloContact = await enrichContact(contactEmail);
-    const contactCard = buildContactCard(apolloContact, contactEmail);
+    const apolloContact = await enrichContact({
+      email: contactEmail,
+      name: contactName,
+      companyName,
+      // Le domaine de l'adresse saisie est un meilleur critère que le nom
+      // d'entreprise quand on l'a — sauf s'il est justement faux, d'où le
+      // repli sur companyName dans enrichContact.
+      domain: contactEmail ? contactEmail.split("@")[1] ?? null : null,
+    });
+    const contactCard = buildContactCard(apolloContact, { email: contactEmail, name: contactName });
 
-    await updateBriefContact(auth.userId, briefId, contactEmail, contactCard);
+    // L'adresse retenue peut venir d'Apollo (corrige une saisie erronée) ;
+    // elle n'est enregistrée que si on en a réellement une — un contact
+    // identifié par son seul nom reste valable.
+    const resolvedEmail = contactCard.email ?? null;
+    await updateBriefContact(auth.userId, briefId, resolvedEmail, contactCard);
 
     // Best-effort : si l'identifiant correspond à un RDV manuel de cet
     // utilisateur, on aligne son contact pour que les deux ne divergent pas.
     // Un échec ici ne doit pas faire échouer la mise à jour du brief, qui est
     // ce que l'utilisateur voit.
-    if (isManualMeeting) {
-      await updateManualMeetingContact(auth.userId, id, contactEmail).catch((err) =>
+    if (isManualMeeting && resolvedEmail) {
+      await updateManualMeetingContact(auth.userId, id, resolvedEmail).catch((err) =>
         console.error("[briefs/contact] updateManualMeetingContact failed:", err)
       );
     }

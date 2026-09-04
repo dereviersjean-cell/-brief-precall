@@ -400,6 +400,10 @@ export default function BriefClient({
   // rattraper ensuite.
   const [editingContact, setEditingContact] = useState(false);
   const [contactInput, setContactInput] = useState("");
+  // Le nom suffit à retrouver la personne quand on connaît l'entreprise —
+  // c'est souvent tout ce dont dispose le commercial, et une adresse mal
+  // devinée ne renvoie rien (cf. enrichContact dans lib/apollo.ts).
+  const [contactNameInput, setContactNameInput] = useState("");
   const [contactSaving, setContactSaving] = useState(false);
   const [contactError, setContactError] = useState<string | null>(null);
   // false = l'adresse a été enregistrée mais Apollo n'a rien trouvé (ou n'est
@@ -409,14 +413,15 @@ export default function BriefClient({
 
   async function saveContact() {
     const email = contactInput.trim();
-    if (!email || contactSaving) return;
+    const name = contactNameInput.trim();
+    if ((!email && !name) || contactSaving) return;
     setContactSaving(true);
     setContactError(null);
     try {
       const res = await fetch(`/api/briefs/${encodeURIComponent(meeting.id)}/contact`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contactEmail: email }),
+        body: JSON.stringify({ contactEmail: email || undefined, contactName: name || undefined }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -427,7 +432,9 @@ export default function BriefClient({
       setBrief((prev) => (prev ? { ...prev, contact } : prev));
       // Indispensable : sans ça, une régénération lancée juste après
       // repartirait sans contact et effacerait la fiche qu'on vient d'ajouter.
-      setContactEmail(email);
+      // On retient l'adresse RENVOYÉE (Apollo corrige parfois celle saisie),
+      // pas celle tapée.
+      setContactEmail(contact.email ?? email ?? null);
       setContactEnriched(enriched);
       setEditingContact(false);
     } catch {
@@ -925,21 +932,47 @@ export default function BriefClient({
                       (~54s et un appel Claude pour une donnée qui n'en dépend
                       pas). */}
                   {editingContact ? (
-                    <div className="mt-3">
-                      <input
-                        type="email"
-                        value={contactInput}
-                        onChange={(e) => setContactInput(e.target.value)}
-                        autoFocus
-                        placeholder="prenom.nom@entreprise.com"
-                        className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") saveContact();
-                          if (e.key === "Escape") setEditingContact(false);
-                        }}
-                      />
-                      {contactError && <p className="text-xs text-red-600 mt-1.5">{contactError}</p>}
-                      <div className="flex gap-2 mt-2">
+                    <div className="mt-3 space-y-2">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">
+                          Nom et prénom
+                        </label>
+                        <input
+                          type="text"
+                          value={contactNameInput}
+                          onChange={(e) => setContactNameInput(e.target.value)}
+                          autoFocus
+                          placeholder="ex. Gautier Richard"
+                          className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") saveContact();
+                            if (e.key === "Escape") setEditingContact(false);
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">
+                          Email (optionnel)
+                        </label>
+                        <input
+                          type="email"
+                          value={contactInput}
+                          onChange={(e) => setContactInput(e.target.value)}
+                          placeholder="prenom@entreprise.com"
+                          className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") saveContact();
+                            if (e.key === "Escape") setEditingContact(false);
+                          }}
+                        />
+                      </div>
+                      {/* Le nom seul suffit : c'est l'entreprise du brief qui
+                          sert de second critère de recherche. */}
+                      <p className="text-xs text-slate-400 leading-relaxed">
+                        Le nom seul suffit — la recherche s&apos;appuie sur {meeting.company}.
+                      </p>
+                      {contactError && <p className="text-xs text-red-600">{contactError}</p>}
+                      <div className="flex gap-2 pt-0.5">
                         <button
                           onClick={() => setEditingContact(false)}
                           className="flex-1 text-xs text-slate-600 border border-border px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors"
@@ -948,7 +981,7 @@ export default function BriefClient({
                         </button>
                         <button
                           onClick={saveContact}
-                          disabled={!contactInput.trim() || contactSaving}
+                          disabled={(!contactInput.trim() && !contactNameInput.trim()) || contactSaving}
                           className="flex-1 text-xs font-semibold brand-gradient text-white px-3 py-1.5 rounded-lg hover:brightness-110 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {contactSaving ? "Recherche…" : "Enregistrer"}
@@ -959,6 +992,7 @@ export default function BriefClient({
                     <button
                       onClick={() => {
                         setContactInput(brief.contact?.email ?? "");
+                        setContactNameInput(brief.contact?.name ?? "");
                         setContactError(null);
                         setEditingContact(true);
                       }}
