@@ -239,15 +239,74 @@ async function matchOnce(query: URLSearchParams, apiKey: string): Promise<Apollo
 // Le nom+entreprise n'est donc pas un repli de second ordre : c'est souvent
 // ce que le commercial connaît réellement avant un rendez-vous, quand
 // l'adresse exacte, elle, se devine mal.
-// Un profil réduit à un nom n'apprend RIEN : le nom, on l'avait déjà (saisi,
-// ou déduit de l'adresse). Sur une adresse erronée, Apollo renvoie justement
-// ça — un nom reconstitué depuis l'adresse, sans poste ni parcours. Si on
-// s'en contentait, la cascade s'arrêterait sur cette coquille vide et
-// n'essaierait jamais la recherche par nom, qui elle rend le profil complet.
-// Mesuré le 04/09/2026 : par adresse fausse → nom seul ; par nom+entreprise →
-// « Directeur Général France », LinkedIn, parcours et bonne adresse.
-function isSubstantial(contact: ApolloContact): boolean {
-  return !!(contact.title || contact.linkedinUrl || contact.employmentHistory.length > 0);
+function extractDomain(websiteUrl: string | null | undefined): string | null {
+  const raw = emptyToNull(websiteUrl);
+  if (!raw) return null;
+  try {
+    const url = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
+    return url.hostname.replace(/^www\./, "") || null;
+  } catch {
+    return null;
+  }
+}
+
+// Résout un nom d'entreprise APPROXIMATIF vers l'entité réelle et son
+// domaine. C'est la pièce qui rend la recherche tolérante à l'erreur
+// humaine : l'utilisateur tape « Bewtr » en créant son rendez-vous, l'annuaire
+// connaît « BE WTR », et sans cette étape la recherche de contact échouait en
+// silence sur ce seul écart d'orthographe (constaté le 04/09/2026).
+//
+// Le domaine récupéré est un bien meilleur critère que n'importe quelle
+// graphie du nom : « Gautier Richard » + `bewtr.com` rend le profil complet.
+async function resolveOrganization(
+  query: string,
+  apiKey: string
+): Promise<{ name: string | null; domain: string | null } | null> {
+  const res = await fetchWithTimeout(
+    `${BASE_URL}/mixed_companies/search?q_organization_name=${encodeURIComponent(query)}&per_page=1`,
+    apiKey
+  );
+  if (!res.ok) {
+    reportWarning("apollo.resolveOrg", new Error(`Apollo mixed_companies/search HTTP ${res.status}`), {
+      status: res.status,
+    });
+    return null;
+  }
+
+  const data = (await res.json()) as {
+    organizations?: Array<{ name?: string; website_url?: string }>;
+    accounts?: Array<{ name?: string; website_url?: string }>;
+  };
+  const org = data.organizations?.[0] ?? data.accounts?.[0];
+  if (!org) return null;
+
+  const resolved = { name: emptyToNull(org.name), domain: extractDomain(org.website_url) };
+  return resolved.name || resolved.domain ? resolved : null;
+}
+
+// Le POSTE est ce qui fait l'intérêt de la fiche pour un commercial : c'est
+// lui qui dit à qui il parle. Tant qu'on ne l'a pas, ça vaut la peine de
+// continuer à chercher.
+//
+// Première version : on s'arrêtait dès qu'un résultat portait un nom, un
+// LinkedIn OU une ligne d'historique. Trop laxiste — sur une graphie
+// d'entreprise approximative, Apollo renvoie un profil avec le nom et une
+// ligne d'historique mais SANS poste, ce qui suffisait à interrompre la
+// cascade juste avant l'étape qui, elle, rendait le profil complet. Mesuré le
+// 04/09/2026 sur « Gautier Richard » + « Bewtr ».
+function isGoodEnough(contact: ApolloContact): boolean {
+  return !!contact.title;
+}
+
+// À défaut de profil complet, on retient le plus riche des candidats plutôt
+// que le premier venu.
+function contactScore(contact: ApolloContact): number {
+  return (
+    (contact.title ? 3 : 0) +
+    (contact.linkedinUrl ? 2 : 0) +
+    (contact.employmentHistory.length > 0 ? 1 : 0) +
+    (contact.email ? 1 : 0)
+  );
 }
 
 export async function enrichContact(lookup: ContactLookup): Promise<ApolloContact | null> {
@@ -261,39 +320,58 @@ export async function enrichContact(lookup: ContactLookup): Promise<ApolloContac
 
   try {
     let best: ApolloContact | null = null;
+    // Retient le meilleur candidat croisé jusqu'ici, et dit s'il est assez
+    // complet pour arrêter la recherche.
+    const consider = (candidate: ApolloContact | null): boolean => {
+      if (!candidate) return false;
+      if (!best || contactScore(candidate) > contactScore(best)) best = candidate;
+      return isGoodEnough(candidate);
+    };
 
-    if (email) {
-      const byEmail = await matchOnce(new URLSearchParams({ email }), apiKey);
-      if (byEmail && isSubstantial(byEmail)) return byEmail;
-      best = byEmail;
+    if (email && consider(await matchOnce(new URLSearchParams({ email }), apiKey))) return best;
+
+    if (!name) return best;
+
+    // 1) Le domaine de l'adresse saisie, quand il y en a une. Sans ambiguïté
+    //    — sauf si l'adresse est justement fausse, d'où les reprises suivantes.
+    if (domain && consider(await matchOnce(new URLSearchParams({ name, domain }), apiKey))) {
+      return best;
     }
 
-    // `domain` avant `organization_name` : un domaine est sans ambiguïté là
-    // où un nom d'entreprise peut correspondre à plusieurs sociétés. Mais si
-    // l'adresse saisie est fausse, son domaine l'est aussi — d'où le repli
-    // sur le nom d'entreprise du brief, qui lui est fiable.
-    if (name && (domain || companyName)) {
-      const query = new URLSearchParams({ name });
-      if (domain) query.set("domain", domain);
-      else query.set("organization_name", companyName!);
-      const byName = await matchOnce(query, apiKey);
-      if (byName && isSubstantial(byName)) return byName;
+    if (!companyName) return best;
 
-      // Domaine issu d'une adresse erronée : on retente avec le nom de
-      // l'entreprise, seul critère qui reste fiable.
-      if (domain && companyName) {
-        const byCompany = await matchOnce(
-          new URLSearchParams({ name, organization_name: companyName }),
-          apiKey
-        );
-        if (byCompany && isSubstantial(byCompany)) return byCompany;
-        best = best ?? byCompany;
+    // 2) Le nom d'entreprise tel qu'il a été saisi. Marche quand la graphie
+    //    correspond à celle de l'annuaire.
+    if (
+      consider(await matchOnce(new URLSearchParams({ name, organization_name: companyName }), apiKey))
+    ) {
+      return best;
+    }
+
+    // 3) La reprise qui rattrape l'erreur humaine sans que personne n'ait à
+    //    s'en apercevoir : on résout la graphie approximative vers l'entité
+    //    réelle (« Bewtr » → « BE WTR » / bewtr.com) et on retente avec son
+    //    domaine, puis avec son nom canonique.
+    const org = await resolveOrganization(companyName, apiKey);
+    if (org) {
+      if (
+        org.domain &&
+        org.domain !== domain &&
+        consider(await matchOnce(new URLSearchParams({ name, domain: org.domain }), apiKey))
+      ) {
+        return best;
       }
-
-      best = best ?? byName;
+      if (
+        org.name &&
+        org.name !== companyName &&
+        consider(await matchOnce(new URLSearchParams({ name, organization_name: org.name }), apiKey))
+      ) {
+        return best;
+      }
     }
 
-    // Rien de substantiel : on rend le peu qu'on a plutôt que rien.
+    // Aucun profil complet : on rend le plus riche des candidats plutôt que
+    // rien.
     return best;
   } catch (err) {
     reportWarning("apollo.enrich", err, { hasEmail: !!email, hasName: !!name });

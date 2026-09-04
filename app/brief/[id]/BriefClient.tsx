@@ -925,8 +925,8 @@ export default function BriefClient({
                       )}
                       {contactEnriched === false && (
                         <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-                          Contact enregistré, mais aucune information publique trouvée. Vérifiez le nom complet
-                          (prénom + nom) et l&apos;orthographe exacte de l&apos;entreprise.
+                          Contact enregistré, mais aucune information publique trouvée. Vérifiez surtout le nom
+                          complet — un prénom seul ne suffit pas à identifier la personne.
                         </p>
                       )}
                     </div>
@@ -998,8 +998,8 @@ export default function BriefClient({
                           prénom seul, ou une raison sociale approximative, ne
                           remontent rien. */}
                       <p className="text-xs text-slate-400 leading-relaxed">
-                        Nom complet + entreprise suffisent, même sans email. Si rien n&apos;est trouvé, essayez
-                        l&apos;orthographe exacte de l&apos;entreprise.
+                        Le nom complet (prénom + nom) suffit, même sans email. L&apos;orthographe de
+                        l&apos;entreprise n&apos;a pas besoin d&apos;être exacte.
                       </p>
                       {contactError && <p className="text-xs text-red-600">{contactError}</p>}
                       <div className="flex gap-2 pt-0.5">
@@ -1022,7 +1022,13 @@ export default function BriefClient({
                     <button
                       onClick={() => {
                         setContactInput(brief.contact?.email ?? "");
-                        setContactNameInput(brief.contact?.name ?? "");
+                        // Uniquement si le nom vient d'un enrichissement
+                        // réussi (un poste l'accompagne). Sinon il a été
+                        // DÉDUIT de l'adresse — « gautier@… » donne
+                        // « Gautier », un prénom seul, avec lequel la
+                        // recherche ne peut pas aboutir. Le pré-remplir
+                        // revenait à faire revalider une saisie condamnée.
+                        setContactNameInput(brief.contact?.title ? brief.contact.name : "");
                         setContactCompanyInput(meeting.company);
                         setContactError(null);
                         setEditingContact(true);
