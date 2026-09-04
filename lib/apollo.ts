@@ -87,7 +87,15 @@ export function formatContactSummary(contact: ApolloContact): string {
   const tenure = current ? yearsSince(current.startDate) : null;
   if (tenure) parts.push(`En poste depuis ${tenure}`);
 
-  const previous = contact.employmentHistory.find((e) => !e.current && e.organizationName);
+  // Le poste précédent doit être dans une AUTRE entreprise : un changement de
+  // titre en interne (« Co-Founder & CEO » → « Co-Founder & Chairman » chez
+  // Apollo.io) ne dit rien à un commercial et occupe la seule ligne de
+  // contexte disponible. Constaté sur la vraie réponse de l'API le
+  // 04/09/2026, pas au jugé.
+  const currentOrg = current?.organizationName ?? null;
+  const previous = contact.employmentHistory.find(
+    (e) => !e.current && e.organizationName && e.organizationName !== currentOrg
+  );
   if (previous?.organizationName) {
     parts.push(`Auparavant ${previous.title ?? "en poste"} chez ${previous.organizationName}`);
   }
