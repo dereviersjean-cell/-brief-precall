@@ -4,6 +4,17 @@ export type Contact = {
   linkedin?: string;
   email?: string;
   notes?: string;
+  // Souvent une URL LinkedIn signée qui ne charge pas hors de leur site :
+  // l'affichage doit toujours prévoir un repli sur les initiales.
+  photoUrl?: string;
+  // L'employeur tel que l'annuaire le connaît — sa graphie fait autorité sur
+  // celle saisie à la création du rendez-vous (« BE WTR » vs « Bewtr »).
+  company?: {
+    name?: string;
+    logoUrl?: string;
+    industry?: string;
+    employees?: number;
+  };
 };
 
 export type TalkingPoint = {

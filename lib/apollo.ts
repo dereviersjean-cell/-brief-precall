@@ -26,6 +26,20 @@ export type ApolloContact = {
   // saisi, « gautier@bewtr.com » retrouvé). C'est elle qu'on retient
   // ensuite, y compris pour l'email de suivi.
   email: string | null;
+  // Photo de profil. Souvent une URL LinkedIn SIGNÉE, qui répond 400 hors de
+  // leur contexte (vérifié le 04/09/2026, y compris avec des en-têtes de
+  // navigateur) : l'affichage doit donc toujours prévoir un repli, jamais
+  // supposer qu'elle charge.
+  photoUrl: string | null;
+  city: string | null;
+  organization: {
+    name: string | null;
+    // Hébergé chez Apollo (S3), accessible directement — contrairement aux
+    // photos de profil.
+    logoUrl: string | null;
+    industry: string | null;
+    employees: number | null;
+  } | null;
 };
 
 // Ce dont on dispose pour retrouver la personne. Aucun champ n'est
@@ -109,6 +123,8 @@ export function formatContactSummary(contact: ApolloContact): string {
   const label = seniorityLabel(contact.seniority);
   if (label) parts.push(label);
 
+  if (contact.city) parts.push(`Basé à ${contact.city}`);
+
   const current = contact.employmentHistory.find((e) => e.current) ?? contact.employmentHistory[0];
   const tenure = current ? yearsSince(current.startDate) : null;
   if (tenure) parts.push(`En poste depuis ${tenure}`);
@@ -155,12 +171,23 @@ export function buildContactCard(
     email ??
     "Contact";
 
+  const org = apollo?.organization;
   return {
     name,
     title: apollo?.title ?? "",
     linkedin: apollo?.linkedinUrl ?? undefined,
     email: email ?? undefined,
     notes: apollo ? formatContactSummary(apollo) || undefined : undefined,
+    photoUrl: apollo?.photoUrl ?? undefined,
+    company:
+      org && (org.name || org.logoUrl || org.industry || org.employees)
+        ? {
+            name: org.name ?? undefined,
+            logoUrl: org.logoUrl ?? undefined,
+            industry: org.industry ?? undefined,
+            employees: org.employees ?? undefined,
+          }
+        : undefined,
   };
 }
 
@@ -188,6 +215,14 @@ async function matchOnce(query: URLSearchParams, apiKey: string): Promise<Apollo
       linkedin_url?: string;
       headline?: string;
       email?: string;
+      photo_url?: string;
+      city?: string;
+      organization?: {
+        name?: string;
+        logo_url?: string;
+        industry?: string;
+        estimated_num_employees?: number;
+      };
       employment_history?: Array<{
         organization_name?: string;
         title?: string;
@@ -200,6 +235,7 @@ async function matchOnce(query: URLSearchParams, apiKey: string): Promise<Apollo
   if (!data.person) return null;
 
   const p = data.person;
+  const org = p.organization;
   const contact: ApolloContact = {
     name: emptyToNull(p.name),
     title: emptyToNull(p.title),
@@ -207,6 +243,16 @@ async function matchOnce(query: URLSearchParams, apiKey: string): Promise<Apollo
     linkedinUrl: emptyToNull(p.linkedin_url),
     headline: emptyToNull(p.headline),
     email: emptyToNull(p.email),
+    photoUrl: emptyToNull(p.photo_url),
+    city: emptyToNull(p.city),
+    organization: org
+      ? {
+          name: emptyToNull(org.name),
+          logoUrl: emptyToNull(org.logo_url),
+          industry: emptyToNull(org.industry),
+          employees: typeof org.estimated_num_employees === "number" ? org.estimated_num_employees : null,
+        }
+      : null,
     employmentHistory: (p.employment_history ?? []).map((e) => ({
       organizationName: emptyToNull(e.organization_name),
       title: emptyToNull(e.title),

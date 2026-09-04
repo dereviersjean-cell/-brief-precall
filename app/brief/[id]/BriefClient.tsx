@@ -67,6 +67,37 @@ const PROGRESS_TAU_S = 18;
 const PROGRESS_CAP = 96;
 const LONG_WAIT_HINT_AT_S = 20;
 
+// Beaucoup d'URL de photo renvoyées par l'annuaire sont des liens LinkedIn
+// SIGNÉS, qui répondent 400 hors de leur site (vérifié le 04/09/2026, y
+// compris avec des en-têtes de navigateur). On tente donc l'affichage, et on
+// retombe sur les initiales dès que le chargement échoue — jamais d'image
+// cassée, et rien à maintenir quand un lien expire.
+function ContactAvatar({ name, photoUrl }: { name: string; photoUrl?: string }) {
+  const [failed, setFailed] = useState(false);
+  const initials = name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+
+  if (photoUrl && !failed) {
+    // Avatar externe de taille fixe, sur des hôtes variables (LinkedIn, S3) :
+    // next/image imposerait de déclarer chaque domaine sans rien apporter ici,
+    // et son optimisation n'a pas de sens sur une vignette de 36 px.
+    return (
+      /* eslint-disable-next-line @next/next/no-img-element */
+      <img
+        src={photoUrl}
+        alt={name}
+        onError={() => setFailed(true)}
+        className="w-9 h-9 rounded-full object-cover shrink-0 bg-slate-100"
+      />
+    );
+  }
+
+  return (
+    <div className="w-9 h-9 rounded-full bg-[color:var(--lavender)] flex items-center justify-center text-[color:var(--violet)] text-xs font-bold shrink-0">
+      {initials}
+    </div>
+  );
+}
+
 function GeneratingProgress({ company, isRegenerating = false }: { company: string; isRegenerating?: boolean }) {
   const [elapsedS, setElapsedS] = useState(0);
 
@@ -897,9 +928,7 @@ export default function BriefClient({
                   {brief.contact ? (
                     <div>
                       <div className="flex items-center gap-3 mb-2">
-                        <div className="w-9 h-9 rounded-full bg-[color:var(--lavender)] flex items-center justify-center text-[color:var(--violet)] text-xs font-bold shrink-0">
-                          {brief.contact.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
-                        </div>
+                        <ContactAvatar name={brief.contact.name} photoUrl={brief.contact.photoUrl} />
                         <div className="min-w-0">
                           <p className="font-semibold text-slate-900 text-sm leading-none truncate">{brief.contact.name}</p>
                           {brief.contact.title && (
@@ -922,6 +951,38 @@ export default function BriefClient({
                         <p className="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2 leading-relaxed mt-1.5">
                           {brief.contact.notes}
                         </p>
+                      )}
+                      {/* L'employeur tel que l'annuaire le connaît : sa
+                          graphie fait autorité sur celle saisie au moment du
+                          rendez-vous (« BE WTR » vs « Bewtr »), et le logo est
+                          hébergé chez le fournisseur donc réellement
+                          affichable — contrairement aux photos de profil. */}
+                      {brief.contact.company?.name && (
+                        <div className="flex items-center gap-2.5 mt-2.5 pt-2.5 border-t border-slate-100">
+                          {brief.contact.company.logoUrl && (
+                            // eslint-disable-next-line @next/next/no-img-element -- même raison que ContactAvatar
+                            <img
+                              src={brief.contact.company.logoUrl}
+                              alt={brief.contact.company.name}
+                              className="w-7 h-7 rounded object-contain shrink-0 bg-white"
+                            />
+                          )}
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-slate-700 truncate">
+                              {brief.contact.company.name}
+                            </p>
+                            <p className="text-xs text-slate-400 truncate">
+                              {[
+                                brief.contact.company.industry,
+                                brief.contact.company.employees
+                                  ? `${brief.contact.company.employees} personnes`
+                                  : null,
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </p>
+                          </div>
+                        </div>
                       )}
                       {contactEnriched === false && (
                         <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
