@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Settings, Link as LinkIcon, Library, CreditCard, MessagesSquare } from "lucide-react";
+import { Settings, Link as LinkIcon, Library, CreditCard, MessagesSquare, Mail } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 // Onglets retirés le 21/08/2026, à la demande de Jean — les PAGES existent
@@ -22,6 +22,10 @@ const NAV_ITEMS: { href: string; label: string; icon: LucideIcon; managerOnly?: 
   // faisait apparaître une barre de défilement sous les onglets.
   { href: "/settings/references", label: "Références", icon: Library },
   { href: "/settings/objections", label: "Objections", icon: MessagesSquare },
+  // Réglage d'organisation, arrivé de /team le 04/09/2026. managerOnly : la
+  // page elle-même redirige déjà un commercial, l'onglet ne doit pas lui
+  // promettre un écran qu'il ne peut pas ouvrir.
+  { href: "/settings/email-templates", label: "Templates emails", icon: Mail, managerOnly: true },
   { href: "/settings/billing", label: "Facturation", icon: CreditCard, managerOnly: true },
 ];
 

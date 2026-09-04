@@ -1,22 +1,9 @@
 import { redirect } from "next/navigation";
-import { getUserRole, getUserOrganizationId, ensureDefaultEmailTemplates } from "@/lib/db";
-import { getEffectiveUserId } from "@/lib/session-user";
-import EmailTemplatesClient from "./EmailTemplatesClient";
 
-export default async function EmailTemplatesPage() {
-  const userId = await getEffectiveUserId();
-
-  const role = userId ? await getUserRole(userId) : null;
-  if (role !== "manager") {
-    redirect("/team");
-  }
-
-  const orgId = await getUserOrganizationId(userId!);
-  if (!orgId) {
-    redirect("/team");
-  }
-
-  const templates = await ensureDefaultEmailTemplates(orgId, userId!);
-
-  return <EmailTemplatesClient templates={templates} />;
+// Les templates d'email ont rejoint les Paramètres le 04/09/2026. La route
+// survit en redirection — des managers l'ont en favori, et elle a pu être
+// citée dans des emails d'onboarding. Même traitement que /team/playbook lors
+// de son passage dans Performance.
+export default function MovedEmailTemplatesPage() {
+  redirect("/settings/email-templates");
 }
