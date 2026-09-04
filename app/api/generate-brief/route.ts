@@ -88,6 +88,28 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Une régénération lancée sans contact ne doit pas effacer celui qui est
+  // déjà enregistré. Le client peut légitimement ne pas l'avoir sous la main
+  // (page ouverte via un lien sans le paramètre, contact ajouté après le
+  // chargement...), mais la base, elle, le sait : on le reprend de là.
+  //
+  // Sans ça, régénérer un brief dont on venait de renseigner le contact
+  // vidait `content.contact` — la fiche disparaissait de l'écran alors que
+  // l'adresse restait bien en base (constaté le 04/09/2026). C'est le filet
+  // qui protège TOUS les chemins, indépendamment de ce que le client envoie.
+  if (!contactEmail && userId && calendarEventId) {
+    try {
+      const existing = await getBriefByEventId(userId, calendarEventId);
+      const known = (existing as { contact_email?: string | null } | null)?.contact_email;
+      if (known) {
+        contactEmail = known;
+        console.log("[generate-brief] contactEmail repris depuis le brief enregistré");
+      }
+    } catch (err) {
+      console.error("[generate-brief] lookup contact_email failed:", err);
+    }
+  }
+
   // Cache : retourner le brief existant sans rappeler le modèle (ignoré si force=true)
   if (!force && userId && calendarEventId) {
     try {

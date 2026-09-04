@@ -64,6 +64,14 @@ export function seniorityLabel(seniority: string | null): string | null {
   }
 }
 
+// Apollo renvoie des chaînes vides plutôt que null sur les champs qu'il ne
+// connaît pas — or `??` ne réagit qu'à null/undefined, donc un `""` traversait
+// tous les replis et s'affichait tel quel.
+function emptyToNull(value: string | null | undefined): string | null {
+  const trimmed = (value ?? "").trim();
+  return trimmed === "" ? null : trimmed;
+}
+
 function yearsSince(startDate: string | null): string | null {
   if (!startDate) return null;
   const start = new Date(startDate);
@@ -164,19 +172,32 @@ export async function enrichContact(email: string): Promise<ApolloContact | null
     if (!data.person) return null;
 
     const p = data.person;
-    return {
-      name: p.name ?? null,
-      title: p.title ?? null,
-      seniority: p.seniority ?? null,
-      linkedinUrl: p.linkedin_url ?? null,
-      headline: p.headline ?? null,
+    const contact: ApolloContact = {
+      name: emptyToNull(p.name),
+      title: emptyToNull(p.title),
+      seniority: emptyToNull(p.seniority),
+      linkedinUrl: emptyToNull(p.linkedin_url),
+      headline: emptyToNull(p.headline),
       employmentHistory: (p.employment_history ?? []).map((e) => ({
-        organizationName: e.organization_name ?? null,
-        title: e.title ?? null,
+        organizationName: emptyToNull(e.organization_name),
+        title: emptyToNull(e.title),
         current: e.current ?? false,
-        startDate: e.start_date ?? null,
+        startDate: emptyToNull(e.start_date),
       })),
     };
+
+    // Apollo renvoie parfois un objet `person` PRÉSENT mais entièrement vide
+    // (nom `""`, poste `null`, aucun historique) quand l'adresse ne
+    // correspond à personne dans sa base. Sans ce garde, la fiche affichait
+    // un nom vide en prétendant que l'enrichissement avait réussi — et le
+    // message « aucune information trouvée » ne s'affichait pas, puisque
+    // l'objet n'était pas null. Constaté le 04/09/2026 sur une adresse
+    // inconnue d'Apollo, invisible en lisant la doc.
+    const hasAnything =
+      contact.name || contact.title || contact.linkedinUrl || contact.employmentHistory.length > 0;
+    if (!hasAnything) return null;
+
+    return contact;
   } catch (err) {
     reportWarning("apollo.enrich", err, { email });
     return null;

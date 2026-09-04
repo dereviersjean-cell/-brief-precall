@@ -266,7 +266,7 @@ function formatCallDate(iso: string) {
 export default function BriefClient({
   meeting,
   autoGenerate = false,
-  contactEmail = null,
+  contactEmail: initialContactEmail = null,
   callHistory = [],
 }: {
   meeting: Meeting;
@@ -274,6 +274,11 @@ export default function BriefClient({
   contactEmail?: string | null;
   callHistory?: CallHistoryItem[];
 }) {
+  // État et non prop figée : renseigner un contact depuis le panneau
+  // Contacts doit être pris en compte par une régénération lancée juste
+  // après, sans recharger la page. Sinon le client renvoie `null` et la
+  // fiche disparaît du brief régénéré (constaté le 04/09/2026).
+  const [contactEmail, setContactEmail] = useState<string | null>(initialContactEmail);
   // Ce qu'on affiche en titre : le nom du rendez-vous quand on l'a, sinon le
   // nom d'entreprise comme avant. La génération, elle, continue de s'appuyer
   // sur meeting.company — c'est lui qui alimente Pappers et les actualités.
@@ -420,6 +425,9 @@ export default function BriefClient({
       }
       const { contact, enriched } = data as { contact: Contact; enriched: boolean };
       setBrief((prev) => (prev ? { ...prev, contact } : prev));
+      // Indispensable : sans ça, une régénération lancée juste après
+      // repartirait sans contact et effacerait la fiche qu'on vient d'ajouter.
+      setContactEmail(email);
       setContactEnriched(enriched);
       setEditingContact(false);
     } catch {
