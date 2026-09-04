@@ -30,7 +30,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const { id } = await params;
 
-  let body: { contactEmail?: string; contactName?: string };
+  let body: { contactEmail?: string; contactName?: string; companyName?: string };
   try {
     body = await request.json();
   } catch {
@@ -39,6 +39,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const contactEmail = body.contactEmail?.trim() || null;
   const contactName = body.contactName?.trim() || null;
+  // L'entreprise peut être corrigée par l'utilisateur : le nom stocké dans le
+  // brief est celui qu'il a tapé (« Bewtr »), pas forcément celui sous lequel
+  // l'annuaire connaît la société (« BE WTR ») — et la recherche échoue
+  // silencieusement sur cet écart. Mesuré le 04/09/2026 : même personne,
+  // même nom, seul le nom d'entreprise changeait entre l'échec et le succès.
+  const companyOverride = body.companyName?.trim() || null;
 
   if (!contactEmail && !contactName) {
     return NextResponse.json(
@@ -84,7 +90,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const apolloContact = await enrichContact({
       email: contactEmail,
       name: contactName,
-      companyName,
+      companyName: companyOverride ?? companyName,
       // Le domaine de l'adresse saisie est un meilleur critère que le nom
       // d'entreprise quand on l'a — sauf s'il est justement faux, d'où le
       // repli sur companyName dans enrichContact.

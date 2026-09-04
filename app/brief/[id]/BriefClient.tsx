@@ -404,6 +404,12 @@ export default function BriefClient({
   // c'est souvent tout ce dont dispose le commercial, et une adresse mal
   // devinée ne renvoie rien (cf. enrichContact dans lib/apollo.ts).
   const [contactNameInput, setContactNameInput] = useState("");
+  // Modifiable : le nom d'entreprise du brief est celui saisi à la création
+  // (« Bewtr »), pas forcément celui sous lequel l'annuaire connaît la
+  // société (« BE WTR ») — et cet écart fait échouer la recherche sans rien
+  // dire. Le rendre visible et corrigeable évite de laisser l'utilisateur
+  // deviner.
+  const [contactCompanyInput, setContactCompanyInput] = useState(meeting.company);
   const [contactSaving, setContactSaving] = useState(false);
   const [contactError, setContactError] = useState<string | null>(null);
   // false = l'adresse a été enregistrée mais Apollo n'a rien trouvé (ou n'est
@@ -421,7 +427,11 @@ export default function BriefClient({
       const res = await fetch(`/api/briefs/${encodeURIComponent(meeting.id)}/contact`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contactEmail: email || undefined, contactName: name || undefined }),
+        body: JSON.stringify({
+          contactEmail: email || undefined,
+          contactName: name || undefined,
+          companyName: contactCompanyInput.trim() || undefined,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -915,7 +925,8 @@ export default function BriefClient({
                       )}
                       {contactEnriched === false && (
                         <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-                          Adresse enregistrée, mais aucune information publique trouvée sur cette personne.
+                          Contact enregistré, mais aucune information publique trouvée. Vérifiez le nom complet
+                          (prénom + nom) et l&apos;orthographe exacte de l&apos;entreprise.
                         </p>
                       )}
                     </div>
@@ -966,10 +977,29 @@ export default function BriefClient({
                           }}
                         />
                       </div>
-                      {/* Le nom seul suffit : c'est l'entreprise du brief qui
-                          sert de second critère de recherche. */}
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">
+                          Entreprise
+                        </label>
+                        <input
+                          type="text"
+                          value={contactCompanyInput}
+                          onChange={(e) => setContactCompanyInput(e.target.value)}
+                          placeholder="ex. BE WTR"
+                          className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") saveContact();
+                            if (e.key === "Escape") setEditingContact(false);
+                          }}
+                        />
+                      </div>
+                      {/* Nom complet + entreprise exacte : c'est la
+                          combinaison qui permet de retrouver la personne. Un
+                          prénom seul, ou une raison sociale approximative, ne
+                          remontent rien. */}
                       <p className="text-xs text-slate-400 leading-relaxed">
-                        Le nom seul suffit — la recherche s&apos;appuie sur {meeting.company}.
+                        Nom complet + entreprise suffisent, même sans email. Si rien n&apos;est trouvé, essayez
+                        l&apos;orthographe exacte de l&apos;entreprise.
                       </p>
                       {contactError && <p className="text-xs text-red-600">{contactError}</p>}
                       <div className="flex gap-2 pt-0.5">
@@ -993,6 +1023,7 @@ export default function BriefClient({
                       onClick={() => {
                         setContactInput(brief.contact?.email ?? "");
                         setContactNameInput(brief.contact?.name ?? "");
+                        setContactCompanyInput(meeting.company);
                         setContactError(null);
                         setEditingContact(true);
                       }}
