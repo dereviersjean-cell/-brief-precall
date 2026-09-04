@@ -18,6 +18,7 @@ export default async function BriefPage({
     contactEmail?: string;
     title?: string;
     startsAt?: string;
+    contactName?: string;
   }>;
 }) {
   const { id } = await params;
@@ -28,7 +29,11 @@ export default async function BriefPage({
   // vers un UUID Supabase. Un garde global renvoyait 404 sur tous les boutons
   // « Préparer le brief » (régression du 19/08/2026). Le garde est descendu sur
   // la seule requête qui interroge une colonne uuid, plus bas.
-  const { company, cached, contactEmail, title, startsAt } = await searchParams;
+  const { company, cached, contactEmail, title, startsAt, contactName } = await searchParams;
+  // Le nom de l'interlocuteur, quand la liste a pu le fournir (invité d'agenda
+  // ou RDV manuel) : c'est lui qui permet de retrouver son poste quand son
+  // adresse est inconnue de l'annuaire.
+  const decodedContactName = contactName ? decodeURIComponent(contactName) : null;
   const meetingTitle = title ? decodeURIComponent(title) : null;
   const decodedContactEmail = contactEmail ? decodeURIComponent(contactEmail) : null;
   // Date réelle du rendez-vous. La page affichait auparavant `new Date()`,
@@ -90,6 +95,7 @@ export default async function BriefPage({
             <BriefClient
               meeting={synthetic}
               contactEmail={byEvent.contact_email ?? decodedContactEmail}
+              contactName={decodedContactName}
               callHistory={callHistory}
             />
           );
@@ -115,6 +121,7 @@ export default async function BriefPage({
             <BriefClient
               meeting={synthetic}
               contactEmail={byId.contact_email ?? decodedContactEmail}
+              contactName={decodedContactName}
               callHistory={callHistory}
             />
           );
@@ -136,5 +143,13 @@ export default async function BriefPage({
     contacts: [],
     status: "upcoming",
   };
-  return <BriefClient meeting={synthetic} autoGenerate contactEmail={decodedContactEmail} callHistory={callHistory} />;
+  return (
+    <BriefClient
+      meeting={synthetic}
+      autoGenerate
+      contactEmail={decodedContactEmail}
+      contactName={decodedContactName}
+      callHistory={callHistory}
+    />
+  );
 }

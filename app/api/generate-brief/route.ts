@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
   let contactEmail: string | null = null;
   let meetingTitle: string | null = null;
   let meetingStartsAt: string | null = null;
+  let contactName: string | null = null;
   let force = false;
 
   try {
@@ -48,6 +49,7 @@ export async function POST(request: NextRequest) {
     contactEmail = body?.contactEmail ?? null;
     meetingTitle = body?.meetingTitle ?? null;
     meetingStartsAt = body?.meetingStartsAt ?? null;
+    contactName = body?.contactName ?? null;
     force = body?.force === true;
   } catch {
     return NextResponse.json({ error: "Corps de la requête invalide." }, { status: 400 });
@@ -148,8 +150,13 @@ export async function POST(request: NextRequest) {
     const [pappersData, newsArticles, apolloContact] = await Promise.all([
       enrichWithPappers(trimmed),
       fetchRecentNews(trimmed, contactDomain),
-      contactEmail
-        ? enrichContact({ email: contactEmail, companyName: trimmed, domain: contactDomain })
+      contactEmail || contactName
+        ? enrichContact({
+            email: contactEmail,
+            name: contactName,
+            companyName: trimmed,
+            domain: contactDomain,
+          })
         : Promise.resolve(null),
     ]);
 
@@ -171,7 +178,10 @@ export async function POST(request: NextRequest) {
     // fallback existant avant toute enrichissement). Fusionnée dans `brief`
     // avant sauvegarde pour qu'une relecture en cache n'ait pas besoin de
     // rappeler Apollo (10 crédits/mois sur le plan gratuit — cf. lib/apollo.ts).
-    const contactCard = contactEmail ? buildContactCard(apolloContact, { email: contactEmail }) : null;
+    const contactCard =
+      contactEmail || contactName
+        ? buildContactCard(apolloContact, { email: contactEmail, name: contactName })
+        : null;
     const briefWithContact = contactCard
       ? { ...(brief as Record<string, unknown>), contact: contactCard }
       : brief;

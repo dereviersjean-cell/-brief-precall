@@ -7288,6 +7288,9 @@ export type ManualMeeting = {
   title: string;
   companyName: string;
   contactEmail: string | null;
+  // Le nom permet de retrouver la personne quand l'adresse ne suffit pas —
+  // c'est même le critère le plus fiable (migration 014).
+  contactName: string | null;
   meetingTime: string;
   createdAt: string;
 };
@@ -7298,6 +7301,7 @@ type ManualMeetingRow = {
   title: string;
   company_name: string;
   contact_email: string | null;
+  contact_name: string | null;
   meeting_time: string;
   created_at: string;
 };
@@ -7309,6 +7313,7 @@ function mapManualMeeting(row: ManualMeetingRow): ManualMeeting {
     title: row.title,
     companyName: row.company_name,
     contactEmail: row.contact_email,
+    contactName: row.contact_name,
     meetingTime: row.meeting_time,
     createdAt: row.created_at,
   };
@@ -7318,6 +7323,7 @@ export type ManualMeetingInput = {
   title: string;
   companyName: string;
   contactEmail?: string | null;
+  contactName?: string | null;
   meetingTime: string; // ISO
 };
 
@@ -7329,9 +7335,10 @@ export async function createManualMeeting(userId: string, input: ManualMeetingIn
       title: input.title.trim(),
       company_name: input.companyName.trim(),
       contact_email: input.contactEmail?.trim() || null,
+      contact_name: input.contactName?.trim() || null,
       meeting_time: input.meetingTime,
     })
-    .select("id, user_id, title, company_name, contact_email, meeting_time, created_at")
+    .select("*")
     .single();
   if (error) throw error;
   return mapManualMeeting(data as ManualMeetingRow);
@@ -7344,7 +7351,10 @@ export async function listUpcomingManualMeetingsForUser(userId: string): Promise
   const in7days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const { data, error } = await supabaseAdmin
     .from("manual_meetings")
-    .select("id, user_id, title, company_name, contact_email, meeting_time, created_at")
+    // `*` : contact_name n'existe pas tant que la migration 014 n'est pas
+    // passée, et un select explicite ferait tomber toute la liste des RDV
+    // pour une colonne d'appoint (pattern bug #14).
+    .select("*")
     .eq("user_id", userId)
     .gte("meeting_time", now.toISOString())
     .lte("meeting_time", in7days.toISOString())

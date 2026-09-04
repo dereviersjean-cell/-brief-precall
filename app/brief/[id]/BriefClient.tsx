@@ -428,11 +428,13 @@ export default function BriefClient({
   meeting,
   autoGenerate = false,
   contactEmail: initialContactEmail = null,
+  contactName: initialContactName = null,
   callHistory = [],
 }: {
   meeting: Meeting;
   autoGenerate?: boolean;
   contactEmail?: string | null;
+  contactName?: string | null;
   callHistory?: CallHistoryItem[];
 }) {
   // État et non prop figée : renseigner un contact depuis le panneau
@@ -650,6 +652,9 @@ export default function BriefClient({
           meetingTitle: meeting.title ?? null,
           calendarEventId: meeting.id,
           contactEmail: contactEmail ?? null,
+          // Sans le nom, une adresse absente de l'annuaire ne donne aucune
+          // fiche : c'est le critère qui rattrape ce cas.
+          contactName: initialContactName ?? null,
           // Only used server-side to enrich the pre-call notification email
           // (sous-étape B) — not used by generateBrief itself.
           meetingStartsAt: meeting.date,
@@ -672,7 +677,7 @@ export default function BriefClient({
     } finally {
       setIsGenerating(false);
     }
-  }, [meeting.company, meeting.title, meeting.id, meeting.date, contactEmail]);
+  }, [meeting.company, meeting.title, meeting.id, meeting.date, contactEmail, initialContactName]);
 
   useEffect(() => {
     if (autoGenerate && !meeting.brief) {
@@ -1098,7 +1103,7 @@ export default function BriefClient({
                           value={contactNameInput}
                           onChange={(e) => setContactNameInput(e.target.value)}
                           autoFocus
-                          placeholder="ex. Gautier Richard"
+                          placeholder="ex. Edmond Dantès"
                           className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
                           onKeyDown={(e) => {
                             if (e.key === "Enter") saveContact();

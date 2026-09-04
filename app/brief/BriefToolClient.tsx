@@ -64,7 +64,12 @@ function formatCompanyName(name: string | null): string {
 // IDENTIFIER UN CONTACT. Conséquence : tout prospect sur Gmail — la majorité
 // des indépendants et petites structures en France — produisait un brief sans
 // contact, et le panneau « Contacts » restait vide.
-function getContactAttendee(event: CalendarEvent): { email: string } | null {
+// Le NOM est rendu avec l'adresse : Google le fournit (displayName de
+// l'invité) et un RDV manuel le porte désormais aussi, mais le type de retour
+// ne rendait que l'email — l'information était disponible et jetée. C'est
+// pourtant elle qui permet de retrouver la personne dans l'annuaire quand son
+// adresse n'y figure pas.
+function getContactAttendee(event: CalendarEvent): { email: string; name?: string } | null {
   return event.attendees[0] ?? null;
 }
 
@@ -369,6 +374,11 @@ function AddMeetingModal({
   const [title, setTitle] = useState("");
   const [company, setCompany] = useState("");
   const [contactEmail, setContactEmail] = useState("");
+  // Le nom du contact conditionne toute la fiche : l'annuaire retrouve
+  // rarement quelqu'un sur sa seule adresse, alors qu'un nom accompagné de
+  // l'entreprise suffit. Sans ce champ, un RDV créé ici n'avait aucune chance
+  // d'obtenir un poste ni un parcours.
+  const [contactName, setContactName] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [time, setTime] = useState("09:00");
   const [submitting, setSubmitting] = useState(false);
@@ -457,6 +467,21 @@ function AddMeetingModal({
               placeholder="ex. Salesforce, HubSpot…"
               className="w-full px-3.5 py-2.5 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
             />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">
+              Nom du contact (optionnel)
+            </label>
+            <input
+              type="text"
+              value={contactName}
+              onChange={(e) => setContactName(e.target.value)}
+              placeholder="ex. Edmond Dantès"
+              className="w-full px-3.5 py-2.5 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
+            />
+            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+              Prénom + nom : c&apos;est ce qui permet de retrouver son poste et son parcours.
+            </p>
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1">Email du contact (optionnel)</label>
@@ -617,8 +642,15 @@ export default function BriefToolClient() {
   }, [status, router]);
 
   function handlePrepare(event: CalendarEvent) {
-    const contactEmail = getContactAttendee(event)?.email ?? null;
+    const attendee = getContactAttendee(event);
+    const contactEmail = attendee?.email ?? null;
     const emailParam = contactEmail ? `&contactEmail=${encodeURIComponent(contactEmail)}` : "";
+    // Le nom de l'invité, quand on l'a : sans lui, une adresse inconnue de
+    // l'annuaire ne donne aucune fiche contact.
+    const contactNameParam =
+      attendee?.name && attendee.name !== attendee.email
+        ? `&contactName=${encodeURIComponent(attendee.name)}`
+        : "";
     const titleParam = event.summary ? `&title=${encodeURIComponent(event.summary)}` : "";
     // La date du rendez-vous n'est connue QUE d'ici : les événements d'agenda
     // vivent chez Google/Microsoft et le brief ne les relit jamais. Sans ce
@@ -630,7 +662,9 @@ export default function BriefToolClient() {
     // événement de calendrier (cf. le commentaire de getCompanyAttendee).
     const company = event.manual && event.company ? event.company : getCompanyFromDomain(event);
     if (company) {
-      router.push(`/brief/${event.id}?company=${encodeURIComponent(company)}${emailParam}${titleParam}${startsAtParam}`);
+      router.push(
+        `/brief/${event.id}?company=${encodeURIComponent(company)}${emailParam}${contactNameParam}${titleParam}${startsAtParam}`
+      );
     } else {
       setModalDefaultCompany("");
       setModalEvent(event);
@@ -638,15 +672,22 @@ export default function BriefToolClient() {
   }
 
   function handleModalConfirm(eventId: string, company: string) {
-    const contactEmail = modalEvent ? getContactAttendee(modalEvent)?.email ?? null : null;
+    const attendee = modalEvent ? getContactAttendee(modalEvent) : null;
+    const contactEmail = attendee?.email ?? null;
     const emailParam = contactEmail ? `&contactEmail=${encodeURIComponent(contactEmail)}` : "";
+    const contactNameParam =
+      attendee?.name && attendee.name !== attendee.email
+        ? `&contactName=${encodeURIComponent(attendee.name)}`
+        : "";
     // Le titre du RDV vient de l'événement, pas de la saisie : c'est justement
     // parce que le nom d'entreprise était indevinable qu'on passe par ce modal.
     const titleParam = modalEvent?.summary ? `&title=${encodeURIComponent(modalEvent.summary)}` : "";
     const startsAt = modalEvent ? eventStartDate(modalEvent) : "";
     const startsAtParam = startsAt ? `&startsAt=${encodeURIComponent(startsAt)}` : "";
     setModalEvent(null);
-    router.push(`/brief/${eventId}?company=${encodeURIComponent(company)}${emailParam}${titleParam}${startsAtParam}`);
+    router.push(
+      `/brief/${eventId}?company=${encodeURIComponent(company)}${emailParam}${contactNameParam}${titleParam}${startsAtParam}`
+    );
   }
 
   useEffect(() => {

@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
     title?: string;
     companyName?: string;
     contactEmail?: string;
+    contactName?: string;
     meetingTime?: string;
   };
   try {
@@ -40,6 +41,7 @@ export async function POST(request: NextRequest) {
       title: body.title,
       companyName: body.companyName,
       contactEmail: body.contactEmail,
+      contactName: body.contactName,
       meetingTime: meetingTime.toISOString(),
     });
 
@@ -54,7 +56,11 @@ export async function POST(request: NextRequest) {
       manual: true,
       start: { dateTime: meeting.meetingTime },
       end: { dateTime: new Date(new Date(meeting.meetingTime).getTime() + 60 * 60000).toISOString() },
-      attendees: meeting.contactEmail ? [{ email: meeting.contactEmail }] : [],
+      // Le nom voyage avec l'adresse : c'est lui qui permettra de retrouver
+      // la personne dans l'annuaire au moment de préparer le brief.
+      attendees: meeting.contactEmail
+        ? [{ email: meeting.contactEmail, name: meeting.contactName ?? undefined }]
+        : [],
     };
     return NextResponse.json({ event });
   } catch (err) {

@@ -41,7 +41,9 @@ export async function GET() {
     manual: true,
     start: { dateTime: m.meetingTime },
     end: { dateTime: new Date(new Date(m.meetingTime).getTime() + 60 * 60000).toISOString() },
-    attendees: m.contactEmail ? [{ email: m.contactEmail }] : [],
+    attendees: m.contactEmail
+      ? [{ email: m.contactEmail, name: m.contactName ?? undefined }]
+      : [],
   }));
 
   try {
