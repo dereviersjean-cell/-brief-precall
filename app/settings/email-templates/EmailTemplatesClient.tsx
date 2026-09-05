@@ -1,9 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowUp, ArrowDown, Plus, Trash2, Mail } from "lucide-react";
+import { ArrowUp, ArrowDown, Plus, Trash2, Mail, Sparkles, UserPen } from "lucide-react";
 import type { EmailTemplate } from "@/lib/db";
 import FadeIn from "@/app/dashboard/FadeIn";
+import HowItWorksCard, { type PipelineStep } from "@/app/settings/_components/HowItWorksCard";
+
+const PIPELINE_STEPS: PipelineStep[] = [
+  {
+    icon: Mail,
+    title: "Vos modèles d'équipe",
+    description: "Un template = une intention d'email et la consigne de rédaction qui va avec.",
+  },
+  {
+    icon: Sparkles,
+    title: "Rédigé depuis le call",
+    description: "Le transcript et l'analyse du rendez-vous alimentent l'email, jamais un texte générique.",
+  },
+  {
+    icon: UserPen,
+    title: "Ajustable par commercial",
+    description: "Chacun peut réécrire la consigne pour son usage, sans modifier le modèle de l'équipe.",
+  },
+];
 
 function InlineText({
   value,
@@ -328,31 +347,17 @@ export default function EmailTemplatesClient({ templates: initialTemplates }: { 
   }
 
   return (
-    <div className="max-w-4xl mx-auto w-full px-6 py-10">
-      {/* Hero header */}
-      <FadeIn>
-        <div className="relative overflow-hidden rounded-3xl border border-border shadow-[var(--shadow-sm)] bg-white p-8 mb-6">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-[color:var(--lavender-strong)]/60 via-[color:var(--lavender)]/40 to-transparent blur-3xl"
-          />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-gradient-to-tr from-emerald-100/40 to-transparent blur-3xl"
-          />
-          <div className="relative">
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[color:var(--violet)] bg-[color:var(--lavender)] px-2.5 py-1 rounded-full mb-3">
-              <Mail className="w-3 h-3" />
-              Templates emails
-            </span>
-            <h1 className="text-2xl font-bold text-slate-900">Templates d&apos;emails post-call</h1>
-            <p className="text-slate-500 text-sm mt-1">
-              {templates.length} {templates.length === 1 ? "template disponible" : "templates disponibles"} pour vos
-              commerciaux — utilisés pour rédiger leurs emails de suivi.
-            </p>
-          </div>
-        </div>
-      </FadeIn>
+    <div>
+      <HowItWorksCard title="Templates d'emails post-call" steps={PIPELINE_STEPS}>
+        Un template n&apos;est pas un texte à trous : c&apos;est une{" "}
+        <span className="font-medium text-slate-900">consigne de rédaction</span> donnée au modèle, qui écrit ensuite
+        l&apos;email à partir du transcript et de l&apos;analyse du rendez-vous — ce qui a été dit, ce qui a été
+        promis, ce qui reste en suspens. Vous en définissez un par intention (relance, compte-rendu, envoi de
+        documentation) ; le commercial choisit celui qui correspond après son appel. Ces{" "}
+        {templates.length} {templates.length === 1 ? "template est commun" : "templates sont communs"} à toute
+        l&apos;organisation, mais chaque commercial peut réécrire la consigne pour son propre usage sans toucher à
+        votre version.
+      </HowItWorksCard>
 
       <FadeIn delay={0.1}>
         <div className="space-y-4">

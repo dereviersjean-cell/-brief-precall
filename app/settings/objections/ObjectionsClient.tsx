@@ -15,11 +15,30 @@ import {
   HelpCircle,
   ExternalLink,
   Loader2,
+  ScanSearch,
 } from "lucide-react";
 import StatTile from "@/app/dashboard/StatTile";
-import { PageHeader } from "@/app/components/ui/PageHeader";
+import HowItWorksCard, { type PipelineStep } from "@/app/settings/_components/HowItWorksCard";
 import { formatContactDisplayName } from "@/lib/format";
 import type { OrganizationObjectionRow, ObjectionCoverage } from "@/lib/db";
+
+const PIPELINE_STEPS: PipelineStep[] = [
+  {
+    icon: MessagesSquare,
+    title: "Relevées à l'analyse",
+    description: "Chaque objection du prospect et la réponse apportée sont extraites du transcript du rendez-vous.",
+  },
+  {
+    icon: ScanSearch,
+    title: "Recherche par le sens",
+    description: "Les empreintes vectorielles retrouvent un cas proche même formulé avec d'autres mots.",
+  },
+  {
+    icon: Users,
+    title: "Partagée par l'équipe",
+    description: "La bibliothèque est commune à l'organisation : les réponses des uns servent aux autres.",
+  },
+];
 
 type SimilarResult = {
   id: string;
@@ -195,11 +214,16 @@ export default function ObjectionsClient({
 
   return (
     <div>
-      <PageHeader
-        eyebrow="Bibliothèque d'équipe"
-        title="Objections & réponses"
-        subtitle="Chaque objection rencontrée en rendez-vous par l'équipe, avec la réponse réellement apportée — et l'issue du deal quand elle est connue."
-      />
+      <HowItWorksCard title="Objections & réponses" steps={PIPELINE_STEPS}>
+        Cette bibliothèque se remplit toute seule : à l&apos;analyse de chaque rendez-vous, les objections soulevées
+        par le prospect et la réponse réellement apportée sont relevées, puis converties en{" "}
+        <span className="font-medium text-slate-900">empreinte vectorielle</span> (Voyage AI), le même mécanisme que
+        vos références clients. Chercher « c&apos;est trop cher » remonte donc aussi « votre budget dépasse ce
+        qu&apos;on avait prévu » : c&apos;est le sens qui est comparé, pas les mots. Elle est{" "}
+        <span className="font-medium text-slate-900">commune à toute l&apos;organisation</span>, et c&apos;est
+        délibéré — un commercial qui débute dispose immédiatement des réponses que l&apos;équipe a déjà éprouvées,
+        avec l&apos;issue du deal quand elle est connue.
+      </HowItWorksCard>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
         <StatTile index={0} accent="indigo" label="Objections" value={objections.length} icon={<Database className="w-3.5 h-3.5" />} />

@@ -3,7 +3,26 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession, signIn } from "next-auth/react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, CalendarCheck, Video, Share2 } from "lucide-react";
+import HowItWorksCard, { type PipelineStep } from "@/app/settings/_components/HowItWorksCard";
+
+const PIPELINE_STEPS: PipelineStep[] = [
+  {
+    icon: CalendarCheck,
+    title: "Votre agenda est relu",
+    description: "Toutes les 5 minutes, Brief repère vos rendez-vous à venir avec un participant externe.",
+  },
+  {
+    icon: Video,
+    title: "Un bot rejoint la visio",
+    description: "Il enregistre l'échange, le transcrit, et l'analyse repart dans votre compte-rendu.",
+  },
+  {
+    icon: Share2,
+    title: "Restitué dans vos outils",
+    description: "Notes poussées dans HubSpot ou Pipedrive, alertes dans Slack — sans repasser par Brief.",
+  },
+];
 
 export default function ConnexionsSettingsClient({
   recallConnected,
@@ -71,6 +90,16 @@ export default function ConnexionsSettingsClient({
           </button>
         </div>
       )}
+
+      <HowItWorksCard title="Connexions" steps={PIPELINE_STEPS}>
+        C&apos;est ici que Brief cesse d&apos;être une application à ouvrir pour devenir automatique. Une fois votre
+        agenda connecté, vous n&apos;avez plus rien à déclencher :{" "}
+        <span className="font-medium text-slate-900">le brief est prêt avant le rendez-vous</span> et le compte-rendu
+        arrive après, sans action de votre part. Le CRM et Slack décident ensuite d&apos;
+        <span className="font-medium text-slate-900">où</span> ce travail vous est livré — dans HubSpot ou Pipedrive,
+        là où vous suivez déjà vos deals. Sans agenda connecté, tout reste possible mais devient manuel : chaque brief
+        est à demander, et aucun appel n&apos;est enregistré ni analysé.
+      </HowItWorksCard>
 
       <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)]">
         <div className="px-6 py-5">

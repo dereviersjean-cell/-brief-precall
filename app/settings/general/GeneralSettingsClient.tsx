@@ -1,6 +1,26 @@
 "use client";
 
 import { useState } from "react";
+import { Store, FileText, Target } from "lucide-react";
+import HowItWorksCard, { type PipelineStep } from "@/app/settings/_components/HowItWorksCard";
+
+const PIPELINE_STEPS: PipelineStep[] = [
+  {
+    icon: Store,
+    title: "Votre offre et votre cible",
+    description: "Ce que vous vendez, à qui vous le vendez, et sous quel nom commercial vous signez.",
+  },
+  {
+    icon: FileText,
+    title: "Ajouté au prompt du brief",
+    description: "Le contexte accompagne les données publiques du prospect à chaque génération.",
+  },
+  {
+    icon: Target,
+    title: "Accroche et arguments ciblés",
+    description: "Les arguments relient votre offre aux besoins du prospect au lieu d'un discours passe-partout.",
+  },
+];
 
 type Props = {
   initialProductDescription: string;
@@ -74,6 +94,17 @@ export default function GeneralSettingsClient({
 
   return (
     <div>
+      <HowItWorksCard title="Profil commercial" steps={PIPELINE_STEPS}>
+        Ces trois champs sont les seules choses que Brief ne peut pas deviner tout seul : il trouve l&apos;entreprise
+        du prospect, son actualité et vos échanges passés, mais pas ce que{" "}
+        <span className="font-medium text-slate-900">vous</span> vendez. Ils sont injectés tels quels dans le prompt
+        de génération, sous forme de{" "}
+        <span className="font-medium text-slate-900">contexte du commercial</span> : ce que vous vendez sert à
+        formuler des arguments qui relient votre offre aux besoins réels du prospect, votre cible oriente l&apos;angle
+        de qualification, et votre nom commercial signe les accroches et les emails de suivi générés. Laissés vides,
+        les briefs restent corrects mais génériques — ils décrivent le prospect sans jamais le rapprocher de vous.
+      </HowItWorksCard>
+
       <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] divide-y divide-slate-100">
         {/* Section profil commercial */}
         <div className="px-6 py-5">

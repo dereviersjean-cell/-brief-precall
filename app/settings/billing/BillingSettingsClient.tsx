@@ -1,10 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import { CreditCard, Users, Sparkles, AlertTriangle, Loader2, Check } from "lucide-react";
+import { CreditCard, Users, Sparkles, AlertTriangle, Loader2, Check, Clock } from "lucide-react";
 import FadeIn from "@/app/dashboard/FadeIn";
 import StatTile from "@/app/dashboard/StatTile";
+import HowItWorksCard, { type PipelineStep } from "@/app/settings/_components/HowItWorksCard";
 import type { OrganizationBilling } from "@/lib/db";
+
+const PIPELINE_STEPS: PipelineStep[] = [
+  {
+    icon: Users,
+    title: "Un siège par utilisateur",
+    description: "Les sièges se synchronisent sur les comptes actifs de votre équipe, sans démarche de votre part.",
+  },
+  {
+    icon: Clock,
+    title: "L'usage à l'heure enregistrée",
+    description: "0,50 € par heure de call enregistré, compté à la seconde et ajouté à la facture du mois.",
+  },
+  {
+    icon: CreditCard,
+    title: "Essai puis prélèvement",
+    description: "7 jours d'essai, puis prélèvement automatique. Un paiement en échec laisse 48h avant suspension.",
+  },
+];
 
 type SeatPrice = { amountCents: number; currency: string };
 type SeatPrices = { monthly: SeatPrice; annual: SeatPrice };
@@ -223,6 +242,16 @@ export default function BillingSettingsClient({
           </div>
         </FadeIn>
       )}
+
+      <HowItWorksCard title="Ce qui vous est facturé" steps={PIPELINE_STEPS}>
+        Votre facture ne comporte que deux lignes. L&apos;
+        <span className="font-medium text-slate-900">abonnement par siège</span> suit automatiquement la composition
+        de votre équipe : un commercial ajouté ou désactivé met l&apos;abonnement à jour, vous n&apos;avez rien à
+        déclarer. L&apos;<span className="font-medium text-slate-900">usage</span>, lui, correspond aux appels
+        réellement enregistrés — 0,50 € par heure, compté à la seconde près, et facturé une fois par mois. C&apos;est
+        la refacturation directe de ce que coûte l&apos;enregistrement, sans marge ajoutée : un mois sans visio ne
+        vous coûte que vos sièges.
+      </HowItWorksCard>
 
       {hasSubscription && (
         <div className="grid grid-cols-3 gap-4 mb-6">
