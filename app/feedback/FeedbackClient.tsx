@@ -2,6 +2,8 @@
 
 import { useState, useMemo } from "react";
 import ConditionalLink from "@/app/components/ui/ConditionalLink";
+import CompanyLogo from "@/app/components/CompanyLogo";
+import { companyDomainFromEmail } from "@/lib/company-domain";
 import {
   Search,
   Mic,
@@ -11,9 +13,6 @@ import {
   TrendingUp,
   Radio,
   ChevronRight,
-  Smile,
-  Meh,
-  Frown,
   Clock,
   CheckCircle2,
   FileEdit,
@@ -65,13 +64,12 @@ type Row = {
   call: CallWithAnalysis;
   contactName: string;
   score: number | null;
-  sentiment: string | null;
   followUp: FollowUpState;
   dateIso: string;
   dateGroup: string;
 };
 
-type FilterKey = "all" | "todo" | "sent" | "negative";
+type FilterKey = "all" | "todo" | "sent";
 
 export default function FeedbackClient({
   calls,
@@ -92,7 +90,6 @@ export default function FeedbackClient({
           call,
           contactName: (call.contact_email ? deriveNameFromEmail(call.contact_email) : null) ?? call.contact_email ?? "Contact inconnu",
           score: call.analysis?.scores?.global_score ?? null,
-          sentiment: call.analysis?.sentiment ?? null,
           followUp: call.follow_up_sent_at ? "envoye" : call.follow_up_email ? "brouillon" : "aucun",
           dateIso,
           dateGroup: dateGroupLabel(dateIso),
@@ -104,7 +101,6 @@ export default function FeedbackClient({
   const todoCount = rows.filter((r) => r.followUp === "aucun").length;
   const sentCount = rows.filter((r) => r.followUp === "envoye").length;
   const draftCount = rows.filter((r) => r.followUp === "brouillon").length;
-  const negCount = rows.filter((r) => r.sentiment === "négatif").length;
   const scored = rows.filter((r) => r.score !== null);
   const avgScore = scored.length ? scored.reduce((s, r) => s + (r.score as number), 0) / scored.length : null;
 
@@ -112,7 +108,6 @@ export default function FeedbackClient({
     return rows.filter((r) => {
       if (filter === "todo" && r.followUp !== "aucun") return false;
       if (filter === "sent" && r.followUp !== "envoye") return false;
-      if (filter === "negative" && r.sentiment !== "négatif") return false;
       if (query) {
         const q = query.trim().toLowerCase();
         const inName = r.contactName.toLowerCase().includes(q);
@@ -166,7 +161,9 @@ export default function FeedbackClient({
         ) : (
           <>
             {/* KPI strip */}
-            <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Trois indicateurs depuis le retrait du sentiment : en deux
+                colonnes le troisième resterait seul sur sa ligne. */}
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
               <KpiPill label="Calls analysés" value={calls.length.toString()} hint="au total" icon={<Mic className="h-4 w-4" />} />
               <KpiPill
                 label="Score moyen"
@@ -175,14 +172,6 @@ export default function FeedbackClient({
                 hint={`${scored.length} call${scored.length !== 1 ? "s" : ""} noté${scored.length !== 1 ? "s" : ""}`}
                 tone={avgScore === null ? "neutral" : avgScore >= 3.5 ? "success" : avgScore >= 2 ? "warning" : "danger"}
                 icon={<TrendingUp className="h-4 w-4" />}
-              />
-              <KpiPill
-                label="Sentiment"
-                value={negCount.toString()}
-                suffix=" négatifs"
-                hint={negCount > 0 ? "Vigilance recommandée" : "Rien à signaler"}
-                tone={negCount > 0 ? "danger" : "success"}
-                icon={<Frown className="h-4 w-4" />}
               />
               <KpiPill
                 label="Suivi"
@@ -200,7 +189,6 @@ export default function FeedbackClient({
                 <FilterTab active={filter === "all"} onClick={() => setFilter("all")} count={rows.length}>Tous</FilterTab>
                 <FilterTab active={filter === "todo"} onClick={() => setFilter("todo")} count={todoCount}>À traiter</FilterTab>
                 <FilterTab active={filter === "sent"} onClick={() => setFilter("sent")} count={sentCount}>Suivi envoyé</FilterTab>
-                <FilterTab active={filter === "negative"} onClick={() => setFilter("negative")} count={negCount}>Sentiment négatif</FilterTab>
               </div>
               <div className="flex items-center gap-2">
                 <div className="relative w-[260px]">
@@ -339,10 +327,8 @@ function CallRow({
   linksEnabled: boolean;
   tourAnchor?: boolean;
 }) {
-  const { call, contactName, score, sentiment, followUp, dateIso } = row;
+  const { call, contactName, score, followUp, dateIso } = row;
   const t = scoreTone(score);
-  const sentimentIcon = sentiment === "positif" ? <Smile className="h-3.5 w-3.5" /> : sentiment === "neutre" ? <Meh className="h-3.5 w-3.5" /> : sentiment === "négatif" ? <Frown className="h-3.5 w-3.5" /> : null;
-  const sentimentColor = sentiment === "positif" ? "text-emerald-600" : sentiment === "neutre" ? "text-slate-500" : sentiment === "négatif" ? "text-rose-600" : "text-slate-300";
   const pct = score == null ? 0 : Math.max(4, (score / 5) * 100);
 
   return (
@@ -356,9 +342,21 @@ function CallRow({
     >
       <div className="flex min-w-0 items-center gap-3.5">
         <div className="relative shrink-0">
-          <div className="grid h-10 w-10 place-items-center rounded-xl brand-gradient text-white text-[13px] font-semibold shadow-[var(--shadow-sm)]">
-            {contactName.charAt(0).toUpperCase()}
-          </div>
+          {/* Logo de l'entreprise du contact, déduit de son domaine (favicon),
+              et non résolu via l'annuaire : sur une liste ce serait un appel
+              et un crédit par ligne à chaque affichage. Repli sur l'initiale,
+              qui reste le cas d'une adresse personnelle (gmail, orange…) ou
+              d'un domaine sans favicon. */}
+          <CompanyLogo
+            domain={companyDomainFromEmail(call.contact_email)}
+            alt={call.company_name ?? contactName}
+            className="h-10 w-10 rounded-xl object-contain bg-white border border-border p-1 shadow-[var(--shadow-sm)]"
+            fallback={
+              <div className="grid h-10 w-10 place-items-center rounded-xl brand-gradient text-white text-[13px] font-semibold shadow-[var(--shadow-sm)]">
+                {contactName.charAt(0).toUpperCase()}
+              </div>
+            }
+          />
           {call.recall_bot_id && (
             <div className="absolute -bottom-1 -right-1 grid h-4 w-4 place-items-center rounded-full bg-white ring-1 ring-slate-200">
               <Play className="h-2 w-2 text-[color:var(--violet)] fill-current" />
@@ -410,11 +408,6 @@ function CallRow({
           <div className="mt-1 h-1.5 w-[100px] overflow-hidden rounded-full bg-slate-100">
             <div className={`h-full rounded-full ${t.bar}`} style={{ width: `${pct}%` }} />
           </div>
-        </div>
-
-        <div className={`hidden sm:flex items-center gap-1 w-[80px] justify-end ${sentimentColor} text-[12px] font-medium capitalize`}>
-          {sentimentIcon}
-          <span>{sentiment ?? "—"}</span>
         </div>
 
         <div className="w-[110px] flex justify-end">
