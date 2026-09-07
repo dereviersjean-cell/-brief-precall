@@ -39,6 +39,7 @@ const SYSTEM_PROMPT = `Tu identifies, dans le compte rendu d'un rendez-vous comm
 
 Règles :
 - L'entreprise recherchée est celle du PROSPECT (celle qui pourrait acheter), jamais celle du commercial qui mène le rendez-vous.
+- Tu rends son NOM, jamais une description. « Vasco/Gamma » est un nom ; « startup SaaS spécialisée dans la numérisation du secrétariat juridique » n'en est pas un. Si le compte rendu se contente de décrire l'entreprise sans la nommer, rends null.
 - Les personnes recherchées sont celles du CÔTÉ PROSPECT uniquement, jamais le commercial ni ses collègues.
 - Tu choisis les noms de personnes EXCLUSIVEMENT dans la liste fournie, recopiés à l'identique. Tu n'en inventes aucun et tu n'en reformules aucun.
 - Si le compte rendu ne permet pas de trancher, rends null pour l'entreprise et une liste vide pour les personnes. Ne devine pas.
@@ -83,10 +84,13 @@ export async function extractCallIdentity(input: CallIdentityInput): Promise<Cal
       prospect_contacts?: unknown;
     };
 
-    const company =
-      typeof parsed.prospect_company === "string" && parsed.prospect_company.trim()
-        ? parsed.prospect_company.trim()
-        : null;
+    // Un nom d'entreprise est court. Au-delà, c'est une description — le
+    // modèle en rend une dès que le compte rendu ne nomme pas la société, et
+    // elle déborderait la ligne de liste sans rien apprendre. La consigne le
+    // dit déjà ; ce garde-fou est ce qui le garantit.
+    const rawCompany =
+      typeof parsed.prospect_company === "string" ? parsed.prospect_company.trim() : "";
+    const company = rawCompany && rawCompany.length <= 40 ? rawCompany : null;
 
     // Le filtre est la vraie garantie, pas la consigne : un nom qui n'a pas
     // été prononcé en visio ne peut pas être affiché comme l'interlocuteur.
