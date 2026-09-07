@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import ConditionalLink from "@/app/components/ui/ConditionalLink";
 import CompanyLogo from "@/app/components/CompanyLogo";
-import { companyDomainFromEmail } from "@/lib/company-domain";
+import { companyDomainFromEmail, companyNameFromDomain } from "@/lib/company-domain";
 import {
   Search,
   Mic,
@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import type { CallWithAnalysis } from "@/lib/db";
 import { MEETING_STAGE_SHORT_LABELS, MEETING_STAGE_LABELS } from "@/lib/meeting-stage";
-import { deriveNameFromEmail } from "@/lib/format";
+import { deriveNameFromEmail, externalSpeakerNames } from "@/lib/format";
 import { PageHeader } from "@/app/components/ui/PageHeader";
 import { Button } from "@/app/components/ui/ui-bits";
 
@@ -59,6 +59,12 @@ type FollowUpState = "envoye" | "brouillon" | "aucun";
 type Row = {
   call: CallWithAnalysis;
   contactName: string;
+  // Déduite du domaine de l'adresse quand le call n'en porte aucune.
+  company: string | null;
+  // Toutes les personnes d'en face relevées en visio. La première est
+  // affichée, les autres comptées — on ne sait pas désigner l'interlocuteur
+  // principal, donc on ne prétend pas le faire.
+  externals: string[];
   score: number | null;
   followUp: FollowUpState;
   dateIso: string;
@@ -69,10 +75,13 @@ type FilterKey = "all" | "todo" | "sent";
 
 export default function FeedbackClient({
   calls,
+  // Null en démonstration : ces calls n'ont pas de propriétaire réel.
+  commercialName = null,
   // false sur /demo/feedback : ces calls n'existent pas en base.
   linksEnabled = true,
 }: {
   calls: CallWithAnalysis[];
+  commercialName?: string | null;
   linksEnabled?: boolean;
 }) {
   const [filter, setFilter] = useState<FilterKey>("all");
@@ -82,16 +91,28 @@ export default function FeedbackClient({
     () =>
       calls.map((call) => {
         const dateIso = call.started_at ?? call.created_at;
+        // Le vrai nom relevé en visio d'abord : « Théa Getrey-Deom » plutôt
+        // que le « Dereviersjean » que rend une adresse personnelle. Repli sur
+        // l'adresse pour les calls sans transcript exploitable.
+        const externals = externalSpeakerNames(call.speaker_names_override, commercialName);
         return {
           call,
-          contactName: (call.contact_email ? deriveNameFromEmail(call.contact_email) : null) ?? call.contact_email ?? "Contact inconnu",
+          contactName:
+            externals[0] ??
+            (call.contact_email ? deriveNameFromEmail(call.contact_email) : null) ??
+            call.contact_email ??
+            "Contact inconnu",
+          externals,
+          company:
+            call.company_name?.trim() ||
+            companyNameFromDomain(companyDomainFromEmail(call.contact_email)),
           score: call.analysis?.scores?.global_score ?? null,
           followUp: call.follow_up_sent_at ? "envoye" : call.follow_up_email ? "brouillon" : "aucun",
           dateIso,
           dateGroup: dateGroupLabel(dateIso),
         };
       }),
-    [calls]
+    [calls, commercialName]
   );
 
   const todoCount = rows.filter((r) => r.followUp === "aucun").length;
@@ -108,7 +129,7 @@ export default function FeedbackClient({
         const q = query.trim().toLowerCase();
         const inName = r.contactName.toLowerCase().includes(q);
         const inEmail = (r.call.contact_email ?? "").toLowerCase().includes(q);
-        const inCompany = (r.call.company_name ?? "").toLowerCase().includes(q);
+        const inCompany = (r.company ?? "").toLowerCase().includes(q);
         if (!inName && !inEmail && !inCompany) return false;
       }
       return true;
@@ -323,7 +344,7 @@ function CallRow({
   linksEnabled: boolean;
   tourAnchor?: boolean;
 }) {
-  const { call, contactName, score, followUp } = row;
+  const { call, contactName, company, externals, score, followUp } = row;
   const t = scoreTone(score);
   const pct = score == null ? 0 : Math.max(4, (score / 5) * 100);
 
@@ -362,10 +383,20 @@ function CallRow({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <div className="truncate text-[13.5px] font-medium text-slate-900 group-hover:text-[color:var(--violet)]">{contactName}</div>
-            {call.company_name && (
+            {externals.length > 1 && (
+              <span
+                // Le survol nomme les autres : un « +2 » muet obligerait à
+                // ouvrir le call pour savoir qui était là.
+                title={`${externals.length} personnes en face : ${externals.join(", ")}`}
+                className="shrink-0 text-[11px] font-medium text-slate-400 tabular-nums"
+              >
+                +{externals.length - 1}
+              </span>
+            )}
+            {company && (
               <>
                 <span className="text-slate-300">·</span>
-                <div className="truncate text-[12.5px] text-slate-500">{call.company_name}</div>
+                <div className="truncate text-[12.5px] text-slate-500">{company}</div>
               </>
             )}
             {call.meeting_stage && (
@@ -377,11 +408,21 @@ function CallRow({
               </span>
             )}
           </div>
-          {call.duration_seconds !== null && (
-            <div className="mt-0.5 flex items-center gap-2.5 text-[11.5px] text-slate-500">
-              <span className="inline-flex items-center gap-1 tabular-nums"><Clock className="h-3 w-3" />{formatDuration(call.duration_seconds)}</span>
-            </div>
-          )}
+          <div className="mt-0.5 flex items-center gap-2.5 text-[11.5px] text-slate-500">
+            {call.duration_seconds !== null ? (
+              <span className="inline-flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                Durée du meeting&nbsp;: <span className="tabular-nums">{formatDuration(call.duration_seconds)}</span>
+              </span>
+            ) : (
+              // Dit pourquoi la ligne est vide plutôt que de la laisser vide :
+              // une durée absente veut dire que l'enregistrement n'a rien duré.
+              <span className="inline-flex items-center gap-1 text-slate-400">
+                <Clock className="h-3 w-3" />
+                Durée du meeting non enregistrée
+              </span>
+            )}
+          </div>
         </div>
       </div>
 

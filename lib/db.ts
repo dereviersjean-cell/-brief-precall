@@ -771,7 +771,11 @@ export async function getCallsWithAnalysis(userId: string): Promise<CallWithAnal
   const { data, error } = await supabaseAdmin
     .from("calls")
     .select(
-      "id, contact_email, company_name, meeting_title, meeting_stage, created_at, started_at, status, duration_seconds, participant_count, follow_up_email, follow_up_sent_at, recall_bot_id, recording_id, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment, playbook_snapshot, key_points, key_points_generated_at)"
+      // speaker_names_override est le SEUL champ lourd-en-apparence retenu
+      // ici : c'est un petit objet {speaker_id: nom}, pas un transcript, et
+      // c'est la seule source d'un vrai nom de personne pour la liste (le nom
+      // déduit de l'adresse donne « Dereviersjean »).
+      "id, contact_email, company_name, meeting_title, meeting_stage, created_at, started_at, status, duration_seconds, participant_count, follow_up_email, follow_up_sent_at, recall_bot_id, recording_id, speaker_names_override, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment, playbook_snapshot, key_points, key_points_generated_at)"
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
@@ -798,7 +802,7 @@ export async function getCallsWithAnalysis(userId: string): Promise<CallWithAnal
       analysis,
       transcript: null,
       transcript_json: null,
-      speaker_names_override: {},
+      speaker_names_override: (row.speaker_names_override as Record<string, string> | null) ?? {},
     };
   });
 }

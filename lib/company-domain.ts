@@ -15,6 +15,17 @@ export function companyDomainFromEmail(email: string | null | undefined): string
   return domain;
 }
 
+// Nom d'entreprise déduit du domaine, quand la fiche n'en porte aucun.
+// « lartisangroupe.com » → « Lartisangroupe ». La graphie exacte (« L'Artisan
+// Groupe ») demanderait l'annuaire, soit un crédit par ligne à chaque
+// affichage : hors de question sur une liste. Un domaine générique ne rend
+// rien — « Gmail » ne serait pas une entreprise.
+export function companyNameFromDomain(domain: string | null | undefined): string | null {
+  const root = domain?.split(".")[0]?.trim();
+  if (!root) return null;
+  return root.charAt(0).toUpperCase() + root.slice(1);
+}
+
 // Logo d'entreprise déduit du domaine, via le service de favicons de Google.
 //
 // Pourquoi celui-ci : gratuit, sans clé, sans quota — donc utilisable sur une
