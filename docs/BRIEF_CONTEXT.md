@@ -46,7 +46,9 @@ Stack technique complète
 * Claude API — modèle claude-sonnet-4-6 pour génération, claude-haiku-4-5-20251001 pour tâches légères
 * Voyage AI — voyage-3, embeddings 1024 dimensions
 * Recall.AI — région EU exclusivement : https://eu-central-1.recall.ai. Dashboard : eu-central-1.recall.ai/dashboard. Pricing : $0.50/heure de call enregistré.
-* Resend — emails transactionnels. Domaine émetteur : lartisangroupe.com, expéditeur : jean@lartisangroupe.com. Envs : RESEND_API_KEY, RESEND_FROM_EMAIL.
+* Resend — emails transactionnels. Domaine émetteur : **brief-ai.fr**, expéditeur : **Brief <contact@brief-ai.fr>** depuis le 31/08/2026 (le nom d'affichage fait partie de la valeur de RESEND_FROM_EMAIL — sans lui le destinataire lisait « jean@lartisangroupe.com »). Région Resend : EU. Envs : RESEND_API_KEY, RESEND_FROM_EMAIL.
+* Apollo.io — enrichissement de la fiche contact du brief (poste, séniorité, parcours, employeur, logo, ville, effectif). API `x-api-key`, endpoints `people/match` et `mixed_companies/search`. **Gratuit jusqu'à 10 lookups/mois** — jamais rappelé à la relecture d'un brief en cache, et une recherche difficile peut consommer jusqu'à 5 appels. Clé posée le 04/09/2026. Env : APOLLO_API_KEY. Voir lib/apollo.ts.
+* Favicons Google (`https://www.google.com/s2/favicons?domain=...`) — logos d'entreprise sur les LISTES de RDV, sans clé ni quota. Clearbit ne répond plus depuis son rachat (vérifié le 04/09/2026). Contrepartie assumée : le domaine du prospect transite par Google depuis le navigateur. Voir lib/company-domain.ts.
 * HubSpot CLI (@hubspot/cli) — installé globalement, l'app OAuth HubSpot est dans le sous-dossier Brief/ du projet
 * react-pdf/renderer — génération PDF devis
 * react-markdown + remark-gfm — rendu markdown côté client (points clés, key_points)
@@ -226,7 +228,9 @@ Génération et IA
 Intégrations externes
 
 
-* lib/pappers.ts — enrichissement légal FR (sans crédits actuellement, fallback mémoire Claude). Bon champ : libelle_code_naf
+* lib/pappers.ts — enrichissement légal FR (sans crédits actuellement — 401 « plus assez de crédits » confirmé le 03/09/2026, désormais remonté par reportWarning au lieu d'être avalé en silence ; fallback mémoire Claude + recherche web). Bon champ : libelle_code_naf
+* lib/apollo.ts — enrichContact({ email, name, companyName, domain }) : recherche EN CASCADE (email → nom+domaine → nom+entreprise → résolution d'entreprise via mixed_companies/search puis reprise sur le domaine résolu). seniorityLabel / seniorityBadge (mapping déterministe en code, jamais deviné par l'IA), formatContactSummary, extractContactFacts, buildContactCard (partagé entre la génération et PATCH /api/briefs/[id]/contact). Dégrade proprement sans APOLLO_API_KEY (même pattern que lib/pappers.ts)
+* lib/company-domain.ts — GENERIC_EMAIL_DOMAINS (extrait de BriefToolClient.tsx), companyDomainFromEmail, companyLogoUrlFromDomain (favicon Google)
 * lib/news.ts — Serper API avec fallback NewsAPI
 * lib/embeddings.ts — generateEmbedding, findSimilarReferences via Voyage AI + RPC Supabase match_client_references
 * lib/objections.ts — indexCallObjections, findSimilarObjections (même provider/pattern que lib/embeddings.ts, mais scope organization_id et supabaseAdmin — voir bugs)
@@ -274,6 +278,15 @@ Routes Recall
 * app/api/recall/video-url/route.ts — URL vidéo fraîche (S3 signée ~5h, ne jamais stocker en base). Autorise aussi les managers via getCallWithAnalysisForManager.
 * app/api/recall/webhook/route.ts — webhook calendar (Svix)
 * app/api/recall/bot-webhook/route.ts — webhook bot (Svix, headers webhook-* avec fallback svix-*). Génère aussi les key_points et déclenche les tasks post-call + notifications dispatch.
+
+
+Routes Brief et agenda
+
+
+* app/api/generate-brief/route.ts (POST) — génération + enrichissements parallèles (Pappers, actualités, CRM, références, Apollo). maxDuration = 120 (mesuré ~54s avec recherche web). Reprend le contact_email du brief enregistré quand la requête n'en fournit pas (bug #63)
+* app/api/briefs/[id]/contact/route.ts (PATCH) — ajouter/modifier le contact d'un brief DÉJÀ généré : enrichit via Apollo, écrit briefs.contact_email + content.contact, aligne manual_meetings.contact_email (best-effort). Ne relance PAS la génération. Accepte un override d'entreprise
+* app/api/calendar/events/route.ts (GET) — fusionne les vrais événements Google/Microsoft et les RDV manuels des 7 prochains jours, les deux sources échouant indépendamment. Transmet aussi le NOM de l'invité, pas seulement son email
+* app/api/calendar/manual-events/route.ts (POST) + [id]/route.ts (DELETE, cadré sur user_id) — RDV ajoutés à la main. Pas de route de modification : suppression + recréation
 
 
 Routes feedback
@@ -343,6 +356,7 @@ Routes Playbook
 
 
 Routes Email templates
+(la PAGE est passée de /team/email-templates à /settings/email-templates le 04/09/2026, l'ancienne route survit en redirection ; les routes d'API ci-dessous n'ont pas bougé)
 
 
 * app/api/email-templates/route.ts + [templateId]/route.ts + reorder/route.ts
@@ -1035,6 +1049,49 @@ CREATE TABLE playbook_notion_connections (
 );
 
 
+CREATE TABLE manual_meetings (
+
+
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+
+
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+
+
+  title text NOT NULL,  -- titre affiché (« Point Salesforce »), distinct du nom d'entreprise
+
+
+  company_name text NOT NULL,  -- SAISI explicitement, jamais deviné depuis un domaine email
+
+
+  contact_email text,
+
+
+  contact_name text,  -- migration 014 : l'annuaire retrouve rarement quelqu'un sur sa seule adresse
+
+
+  meeting_time timestamptz NOT NULL,
+
+
+  created_at timestamptz NOT NULL DEFAULT now()
+
+
+);
+
+
+-- migration 012 (03/09/2026) + 014 (04/09/2026). Un RDV manuel sert UNIQUEMENT à
+-- préparer/consulter un brief : Recall n'en a jamais connaissance, pas de bot
+-- d'enregistrement, rien n'est écrit dans l'agenda Google/Microsoft réel.
+
+
+-- briefs : colonne ajoutée le 04/09/2026
+
+
+meeting_starts_at timestamptz  -- migration 013. La page affichait new Date(), soit
+-- l'heure de son propre chargement. Null sur tous les briefs antérieurs :
+-- l'affichage n'écrit alors aucune date plutôt que d'en inventer une.
+
+
 -- Slack : pas de table dédiée. Réutilise crm_connections avec provider='slack'
 -- (même forme access_token + un champ texte en plus) : api_domain est détourné
 -- pour stocker le slackUserId (cible du DM chat.postMessage), pas un domaine
@@ -1061,7 +1118,10 @@ NEXTAUTH_SECRET, NEXTAUTH_URL, NEXT_PUBLIC_APP_URL
 NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
 
 
-PAPPERS_API_KEY (sans crédits actuellement)
+PAPPERS_API_KEY (sans crédits actuellement — 401 confirmé le 03/09/2026)
+
+
+APOLLO_API_KEY (fiche contact enrichie ; posée le 04/09/2026, 10 lookups/mois en gratuit)
 
 
 SERPER_API_KEY, NEWS_API_KEY
@@ -1626,7 +1686,7 @@ ________________
 
 
 Décisions produit explicites
-* Web search natif Claude API (web_search_20250305, max_uses: 3) — activé pour tous les briefs
+* Web search natif Claude API — **web_search_20260209** (filtrage dynamique) depuis le 03/09/2026, en remplacement de web_search_20250305. Activé pour tous les briefs, avec consigne d'ancrage forcée côté serveur : ancrer overview et accroche dans un fait vérifiable, et dire « peu d'information disponible » plutôt qu'inventer un profil générique
 * Cron Recall : toutes les 5 minutes
 * Cache brief : UPSERT (pas INSERT)
 * Réponses prospects : stockées en base pour éviter appels Gmail répétés
@@ -1671,7 +1731,60 @@ Workflow de développement habituel
 
 61. La police Helvetica intégrée aux PDF avale l'espace qui suit un « € » (22 août 2026) : « 12 M€en série B ». Reproduit avec des chaînes témoins — sans euro l'espace tient, avec euro elle saute, quel que soit l'échappement. Le problème est dans les métriques de la police, pas dans le texte : aucun nettoyage de chaîne n'y change quoi que ce soit. Fix : embarquer Inter. Défaut trouvé seulement en rendant un PDF d'exemple et en le relisant, pas au jugé. lib/pdf/QuoteDocument.tsx a la même police et le même défaut, invisible parce que ses montants finissent par le symbole — non touché, c'est un document client-facing.
 
+
+63. Un upsert qui écrit null efface une donnée saisie ailleurs (4 septembre 2026) : le RDV manuel portait bien l'adresse du contact, mais app/brief/[id]/page.tsx ne transmettait pas contactEmail au composant client dans la branche « brief en cache ». Ouvrir un brief via « Revoir » puis le régénérer renvoyait contactEmail: null à l'API, qui l'écrasait en base — le rendez-vous perdait son contact à la première régénération. Trois verrous, du plus large au plus local : saveBrief OMET la colonne contact_email quand il n'y a pas d'adresse au lieu d'écrire null (sur un upsert, PostgREST ne met à jour que les colonnes fournies) ; /api/generate-brief reprend le contact_email du brief enregistré quand la requête n'en fournit pas ; la page transmet l'adresse en préférant la valeur en base au paramètre d'URL. Piège jumeau côté client, même famille que le bug #8 : une prop figée au chargement — renseigner le contact mettait à jour la fiche affichée mais pas la variable envoyée à « Régénérer ».
+
+
+64. Un profil d'annuaire peut être PRÉSENT et VIDE (4 septembre 2026) : Apollo renvoie parfois un objet person bien présent mais entièrement vide (name: "", title: null, aucun historique). Le code ne testait que l'ABSENCE de person : il construisait une fiche au nom vide en annonçant un enrichissement réussi, et le message « aucune information trouvée » ne s'affichait jamais. ?? ne réagit qu'à null/undefined — une chaîne vide traverse tous les replis. Fix : normaliser les chaînes vides en null à l'entrée, et traiter un profil sans information exploitable comme « non trouvé ». Invisible en lisant la doc de l'API, seul un appel réel le montre.
+
+
+65. Critère d'arrêt trop laxiste dans une recherche en cascade (4 septembre 2026) : la cascade s'arrêtait dès qu'un résultat portait un nom, un LinkedIn ou une ligne d'historique. Or sur une adresse erronée Apollo renvoie exactement ça — un nom reconstitué depuis l'adresse, sans poste — donc la recherche s'interrompait sur cette coquille vide juste avant l'étape qui aurait rendu le profil complet. Le critère d'arrêt doit être le champ qui fait l'intérêt du résultat (ici le poste), pas sa simple non-vacuité ; à défaut, continuer et retenir le candidat le mieux rempli plutôt que le premier venu.
+
+
+66. Une date calculée au rendu, affichée comme celle d'un événement (4 septembre 2026) : la page du brief affichait new Date(), soit l'heure de son propre chargement — un RDV de 9h00 consulté à 16h56 s'annonçait à 16h56. La date n'était stockée nulle part : les événements vivent chez Google/Microsoft et meetingStartsAt ne servait qu'à l'email de notification. Migration 013 (briefs.meeting_starts_at), date transmise depuis la liste — seule à connaître l'événement — puis enregistrée. Ne rien afficher vaut mieux qu'une date fausse : la ligne reste muette quand la date est inconnue, et la durée « 60 min par défaut » comme le secteur en tiret ont été retirés pour la même raison.
+
+
+67. L'adresse de l'annuaire écrasait celle saisie par l'utilisateur (4 septembre 2026) : sur un contact Scutum, Apollo rend martin.namy@scutum-na.com (entité Amérique du Nord) là où Jean avait saisi martin.namy@scutum.fr. Le remplacement se défendait sur le cas précédent — adresse saisie introuvable, celle de l'annuaire était le seul recours — mais devient dangereux dès qu'un homonyme ou une autre entité d'un groupe est rattaché : on aurait fait écrire au mauvais destinataire, en silence. Règle : une donnée de première main prime sur une déduction ; la déduction s'affiche à côté (« autre adresse connue ») et l'utilisateur tranche. Elle ne sert d'office que là où elle n'écrase rien.
+
+
+68. Un écran bâti sur une table vide (4 septembre 2026) : la page Insights affichait « scores gagné vs perdu » et « taux de succès par objection » à partir de deal_outcomes — 0 ligne en base, et durablement (devis abandonnés depuis le 31/08, cron CRM qui n'a jamais rien remonté malgré HubSpot connecté depuis juillet). Personne ne l'avait vu parce qu'une page sans données ressemble à une page en attente de données. Règle : compter les lignes en base avant de bâtir un écran dessus, et le dire quand la source est tarie plutôt que d'attendre qu'elle se remplisse.
+
+
+69. Le « poste précédent » pris dans la MÊME entreprise (4 septembre 2026) : le résumé de carrière prenait la première entrée non-current de employment_history, souvent un simple changement de titre interne — « Auparavant Co-Founder & CEO chez Apollo.io » quand le poste actuel est « Co-Founder & Chairman chez Apollo.io ». La seule ligne de contexte disponible pour le commercial était gaspillée à ne rien dire. Le poste précédent se cherche désormais dans une entreprise DIFFÉRENTE de l'actuelle. Défaut invisible en lecture de code : il n'apparaît qu'en regardant une vraie réponse de l'API.
+
 62. navigator.share() exige une activation utilisateur récente (22 août 2026) : la première version du bouton Partager attendait le téléchargement du PDF — une à deux secondes — à l'intérieur du gestionnaire de clic. L'activation était consommée, le navigateur rejetait, et le code prenait ce rejet pour une annulation volontaire : bouton inerte sur Chrome, sans erreur visible. Fix : le PDF est préparé au survol du bouton, navigator.share est appelé sans attente. navigator.canShare tranche d'abord (Chrome de bureau ne sait pas partager un FICHIER) et on retombe sur le téléchargement à tout échec plutôt que de laisser un bouton mort.
+
+
+________________
+
+
+Roadmap restante (au 7 septembre 2026)
+
+Fait les 3, 4 et 5 septembre — journées « brief ancré, fiche contact et lecture des chiffres » :
+* Qualité du brief : la cause des briefs vagues n'était pas le prompt mais Pappers, qui répond 401 « plus assez de crédits » depuis un temps indéterminé, avalé en silence. Tous les briefs se généraient donc sans données légales. L'échec est désormais remonté. Recherche web passée en web_search_20260209 et consigne d'ancrage forcée côté serveur : ancrer dans un fait vérifiable, dire honnêtement « peu d'information disponible » plutôt qu'inventer.
+* Bug critique trouvé au passage : aucune des 3 routes appelant generateBrief n'avait de maxDuration, alors qu'un brief avec recherche web prend ~54s mesurées. Vercel coupait donc bien avant. maxDuration = 120 posé sur les trois.
+* Ajout manuel d'un rendez-vous (migration 012) : le bouton existait sans onClick. Périmètre tranché avec Jean — un RDV manuel sert uniquement à préparer un brief, Recall n'en a jamais connaissance.
+* Fiche contact enrichie via Apollo.io, après un vrai détour fournisseur : Proxycurl a fermé le 4 juillet (procès LinkedIn), Bright Data est le plus solide juridiquement mais ses champs LinkedIn sont tombés à ~2 % de remplissage. L'âge n'est fourni par aucun fournisseur B2B — dit à Jean plutôt que laissé de côté en silence.
+* La fiche corrige l'erreur humaine au lieu de la lui faire corriger : recherche en cascade email → nom+domaine → nom+entreprise → résolution de la graphie d'entreprise (« Bewtr » → « BE WTR » + bewtr.com). Mesuré : adresse fausse + entreprise approximative → profil complet en 2,0s. Le nom du contact est désormais demandé à la création d'un RDV manuel (migration 014) et, pour les événements d'agenda, récupéré chez Google où il était déjà fourni et jeté.
+* Trois bugs de données trouvés uniquement en testant contre la vraie API et sur de vrais contacts : un contact perdu à la première régénération (upsert qui écrivait null), un profil « présent mais vide » compté comme une réussite, et une cascade qui s'arrêtait sur un résultat sans poste. Plus une décision produit : l'adresse SAISIE prime sur celle de l'annuaire, qui s'affiche à côté — sinon on aurait fait écrire au mauvais destinataire, en silence.
+* Logos d'entreprise : ceux d'Apollo sur le brief, un favicon déduit du domaine sur les listes — y appeler l'annuaire coûterait un crédit par ligne à chaque affichage.
+* Vocabulaire du brief : la consigne disait « mots-clés métier » sans dire de quel métier, le modèle rendait du jargon de la vente. Elle nomme désormais le secteur du PROSPECT. Sur BE WTR : « pipeline CHR, meetings qualifiés » devient « PFAS, bouteille consignée, filtration membranaire, décret tertiaire ».
+* Date du RDV : la page affichait l'heure de son propre chargement (migration 013). Nom d'entreprise unifié entre la liste et la fiche, la graphie de l'annuaire faisant autorité.
+* Graphiques de Performance refaits : courbe au lieu de barres, axe entièrement étiqueté, moyenne lisible, écart début/fin en toutes lettres, et les semaines sans call coupent la courbe au lieu d'inventer une progression. Correction d'un excès de zèle au passage : j'avais remplacé le graphe par un résumé chiffré quand une seule semaine était renseignée — Jean veut voir le graphique, pas un état de repli.
+* Insights refait sur ce qui existe réellement : deal_outcomes est vide et ses deux sources sont taries, l'ancienne page était bâtie sur une donnée inexistante. La page dit maintenant où l'équipe tient et où elle lâche, classé par occasions ratées, et signale les objections sans réponse écrite dans le playbook.
+* Templates emails déplacés de /team vers Paramètres (redirection conservée), et encadré « Comment ça marche » posé sur les six onglets de Paramètres via un composant partagé.
+
+À faire, dans l'ordre :
+1. Stripe en mode Live, et trancher le pricing usage avant la bascule. C'est le seul vrai déblocant business restant.
+2. Finir la reconnexion des comptes existants côté Google (la vérification est approuvée depuis fin août, plus rien ne retient l'ouverture des inscriptions).
+3. Trancher les crédits Pappers : payer, ou retirer « données légales FR » du positionnement. En l'état la promesse tourne à vide.
+4. Trancher le win/loss : faire marcher la remontée CRM des affaires gagnées/perdues, ou renoncer et retirer deal_outcomes. Une table vide et durablement tarie ne doit pas rester une promesse produit.
+5. Réimporter le call ecfb191e (transcript parsé par l'ancien parseur bogué).
+6. Déclarer Pipedrive sur le nouveau domaine avant toute reprise de l'intégration.
+
+État des migrations au 7 septembre : les 14 sont passées en prod. 011 et 012 le 03/09, 013 et 014 le 04/09 — ces deux dernières vérifiées le 07/09 par requête PostgREST (les colonnes répondent null au lieu d'une erreur de schéma), jamais sur parole.
+
+Chantiers identifiés, non lancés : découpage de lib/db.ts (192 des 229 fonctions exportées sont extractibles sans risque de cycle), suppression du code des devis, et le chantier objections toujours EN STANDBY par décision de Jean depuis le 20 août — ne pas le remettre en tête de roadmap de soi-même.
 
 
 ________________
