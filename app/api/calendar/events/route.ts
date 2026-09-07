@@ -34,7 +34,9 @@ export async function GET() {
     console.error("[calendar/events] listUpcomingManualMeetingsForUser failed:", err);
     return [];
   });
-  const manualEvents: Array<CalendarEvent & { manual: true; company: string }> = manualMeetings.map((m) => ({
+  const manualEvents: Array<
+    CalendarEvent & { manual: true; company: string; contactName?: string }
+  > = manualMeetings.map((m) => ({
     id: m.id,
     summary: m.title,
     company: m.companyName,
@@ -44,6 +46,9 @@ export async function GET() {
     attendees: m.contactEmail
       ? [{ email: m.contactEmail, name: m.contactName ?? undefined }]
       : [],
+    // `attendees` exige une adresse : le nom seul, qui suffit pourtant à
+    // l'annuaire (nom + entreprise), n'y tiendrait pas. Il voyage donc à part.
+    contactName: m.contactName ?? undefined,
   }));
 
   try {

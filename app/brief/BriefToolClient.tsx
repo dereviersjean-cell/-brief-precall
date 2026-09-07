@@ -23,6 +23,10 @@ interface CalendarEvent {
   // calendrier réel, on ne le devine jamais depuis un domaine email.
   manual?: boolean;
   company?: string;
+  // Le nom saisi à la création. Il ne peut pas voyager dans `attendees` :
+  // un invité au sens agenda a forcément une adresse, or ici le nom seul
+  // suffit à retrouver la personne dans l'annuaire (nom + entreprise).
+  contactName?: string;
 }
 
 interface StoredBrief {
@@ -75,6 +79,23 @@ function getContactAttendee(event: CalendarEvent): { email: string; name?: strin
 
 // Pour l'entreprise, en revanche, le filtre reste indispensable : « gmail.com »
 // ne donnerait « Gmail » comme nom de société.
+// Les paramètres d'identité du contact pour l'URL du brief. Le NOM part même
+// sans adresse : c'est lui qui rend un poste et un parcours quand l'annuaire
+// ne connaît pas l'adresse — ou quand il n'y en a pas. Pour un RDV manuel il
+// vient de la saisie (`contactName`), pas d'`attendees`, qui exige un email.
+function contactParams(event: CalendarEvent): string {
+  const attendee = getContactAttendee(event);
+  const email = attendee?.email ?? null;
+  const name =
+    attendee?.name && attendee.name !== attendee.email
+      ? attendee.name
+      : event.contactName ?? null;
+  return (
+    (email ? `&contactEmail=${encodeURIComponent(email)}` : "") +
+    (name ? `&contactName=${encodeURIComponent(name)}` : "")
+  );
+}
+
 function getCompanyAttendee(event: CalendarEvent): { email: string } | null {
   return event.attendees.find((a) => {
     const domain = a.email.split("@")[1] ?? "";
@@ -403,6 +424,7 @@ function AddMeetingModal({
           title: title.trim(),
           companyName: company.trim(),
           contactEmail: contactEmail.trim() || undefined,
+          contactName: contactName.trim() || undefined,
           meetingTime: meetingTime.toISOString(),
         }),
       });
@@ -642,15 +664,7 @@ export default function BriefToolClient() {
   }, [status, router]);
 
   function handlePrepare(event: CalendarEvent) {
-    const attendee = getContactAttendee(event);
-    const contactEmail = attendee?.email ?? null;
-    const emailParam = contactEmail ? `&contactEmail=${encodeURIComponent(contactEmail)}` : "";
-    // Le nom de l'invité, quand on l'a : sans lui, une adresse inconnue de
-    // l'annuaire ne donne aucune fiche contact.
-    const contactNameParam =
-      attendee?.name && attendee.name !== attendee.email
-        ? `&contactName=${encodeURIComponent(attendee.name)}`
-        : "";
+    const contactQuery = contactParams(event);
     const titleParam = event.summary ? `&title=${encodeURIComponent(event.summary)}` : "";
     // La date du rendez-vous n'est connue QUE d'ici : les événements d'agenda
     // vivent chez Google/Microsoft et le brief ne les relit jamais. Sans ce
@@ -663,7 +677,7 @@ export default function BriefToolClient() {
     const company = event.manual && event.company ? event.company : getCompanyFromDomain(event);
     if (company) {
       router.push(
-        `/brief/${event.id}?company=${encodeURIComponent(company)}${emailParam}${contactNameParam}${titleParam}${startsAtParam}`
+        `/brief/${event.id}?company=${encodeURIComponent(company)}${contactQuery}${titleParam}${startsAtParam}`
       );
     } else {
       setModalDefaultCompany("");
@@ -672,13 +686,7 @@ export default function BriefToolClient() {
   }
 
   function handleModalConfirm(eventId: string, company: string) {
-    const attendee = modalEvent ? getContactAttendee(modalEvent) : null;
-    const contactEmail = attendee?.email ?? null;
-    const emailParam = contactEmail ? `&contactEmail=${encodeURIComponent(contactEmail)}` : "";
-    const contactNameParam =
-      attendee?.name && attendee.name !== attendee.email
-        ? `&contactName=${encodeURIComponent(attendee.name)}`
-        : "";
+    const contactQuery = modalEvent ? contactParams(modalEvent) : "";
     // Le titre du RDV vient de l'événement, pas de la saisie : c'est justement
     // parce que le nom d'entreprise était indevinable qu'on passe par ce modal.
     const titleParam = modalEvent?.summary ? `&title=${encodeURIComponent(modalEvent.summary)}` : "";
@@ -686,7 +694,7 @@ export default function BriefToolClient() {
     const startsAtParam = startsAt ? `&startsAt=${encodeURIComponent(startsAt)}` : "";
     setModalEvent(null);
     router.push(
-      `/brief/${eventId}?company=${encodeURIComponent(company)}${emailParam}${contactNameParam}${titleParam}${startsAtParam}`
+      `/brief/${eventId}?company=${encodeURIComponent(company)}${contactQuery}${titleParam}${startsAtParam}`
     );
   }
 

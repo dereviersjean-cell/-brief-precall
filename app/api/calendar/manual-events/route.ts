@@ -61,6 +61,10 @@ export async function POST(request: NextRequest) {
       attendees: meeting.contactEmail
         ? [{ email: meeting.contactEmail, name: meeting.contactName ?? undefined }]
         : [],
+      // ...et il voyage AUSSI sans elle : `attendees` exige une adresse, alors
+      // qu'un nom accompagné de l'entreprise suffit à l'annuaire. Sans ce
+      // champ, un RDV renseigné avec le seul nom rendait un brief sans fiche.
+      contactName: meeting.contactName ?? undefined,
     };
     return NextResponse.json({ event });
   } catch (err) {
