@@ -25,10 +25,6 @@ import { deriveNameFromEmail } from "@/lib/format";
 import { PageHeader } from "@/app/components/ui/PageHeader";
 import { Button } from "@/app/components/ui/ui-bits";
 
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-}
-
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -327,7 +323,7 @@ function CallRow({
   linksEnabled: boolean;
   tourAnchor?: boolean;
 }) {
-  const { call, contactName, score, followUp, dateIso } = row;
+  const { call, contactName, score, followUp } = row;
   const t = scoreTone(score);
   const pct = score == null ? 0 : Math.max(4, (score / 5) * 100);
 
@@ -381,21 +377,11 @@ function CallRow({
               </span>
             )}
           </div>
-          <div className="mt-0.5 flex items-center gap-2.5 text-[11.5px] text-slate-500">
-            <span className="tabular-nums">{formatTime(dateIso)}</span>
-            {call.duration_seconds !== null && (
-              <>
-                <span className="text-slate-300">·</span>
-                <span className="inline-flex items-center gap-1 tabular-nums"><Clock className="h-3 w-3" />{formatDuration(call.duration_seconds)}</span>
-              </>
-            )}
-            {call.contact_email && (
-              <>
-                <span className="text-slate-300">·</span>
-                <span className="truncate">{call.contact_email}</span>
-              </>
-            )}
-          </div>
+          {call.duration_seconds !== null && (
+            <div className="mt-0.5 flex items-center gap-2.5 text-[11.5px] text-slate-500">
+              <span className="inline-flex items-center gap-1 tabular-nums"><Clock className="h-3 w-3" />{formatDuration(call.duration_seconds)}</span>
+            </div>
+          )}
         </div>
       </div>
 
