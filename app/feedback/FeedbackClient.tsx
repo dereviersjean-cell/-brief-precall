@@ -91,10 +91,21 @@ export default function FeedbackClient({
     () =>
       calls.map((call) => {
         const dateIso = call.started_at ?? call.created_at;
-        // Le vrai nom relevé en visio d'abord : « Théa Getrey-Deom » plutôt
-        // que le « Dereviersjean » que rend une adresse personnelle. Repli sur
-        // l'adresse pour les calls sans transcript exploitable.
-        const externals = externalSpeakerNames(call.speaker_names_override, commercialName);
+        // Trois sources, de la mieux informée à la plus pauvre.
+        //
+        // 1. L'identité tirée de l'ANALYSE (migration 015) : elle seule sait
+        //    qui, parmi les personnes présentes, est du côté prospect — sur un
+        //    call mené par un autre commercial que le titulaire du compte, le
+        //    filtre par nom du propriétaire ne suffit pas. Elle donne aussi
+        //    l'entreprise réellement rencontrée (« Vasco/Gamma ») là où le call
+        //    porte celle du rendez-vous (« Théa »).
+        // 2. Les noms relevés en visio, moins le commercial connu.
+        // 3. Le nom déduit de l'adresse — « Dereviersjean », faute de mieux.
+        const identified = call.prospect_contacts ?? [];
+        const externals =
+          identified.length > 0
+            ? identified
+            : externalSpeakerNames(call.speaker_names_override, commercialName);
         return {
           call,
           contactName:
@@ -103,7 +114,12 @@ export default function FeedbackClient({
             call.contact_email ??
             "Contact inconnu",
           externals,
+          // prospect_company passe DEVANT company_name : contrairement à
+          // l'adresse saisie du bug #38, company_name n'est pas une donnée de
+          // première main — c'est le nom deviné au rendez-vous, quand
+          // l'analyse, elle, a lu la conversation.
           company:
+            call.prospect_company?.trim() ||
             call.company_name?.trim() ||
             companyNameFromDomain(companyDomainFromEmail(call.contact_email)),
           score: call.analysis?.scores?.global_score ?? null,

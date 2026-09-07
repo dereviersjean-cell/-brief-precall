@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { createAsyncTranscript, getBotInfo, getTranscriptContent, transcriptToText, buildTranscriptJson, resolveSpeakerNames } from "@/lib/recall";
-import { createCall, getUserProfile, getUserName, getUserEmail, saveCallAnalysis, updateCallAnalysisKeyPoints, updateCallFollowUp, getContact, createContact, updateContact, generateTasksFromTemplates, getPlaybookSnapshotForUser, getUserOrganizationId, getMeetingStageConfigForOrganization, saveCallAnalytics, type CallData } from "@/lib/db";
+import { createCall, getUserProfile, getUserName, getUserEmail, saveCallAnalysis, updateCallProspectIdentity, updateCallAnalysisKeyPoints, updateCallFollowUp, getContact, createContact, updateContact, generateTasksFromTemplates, getPlaybookSnapshotForUser, getUserOrganizationId, getMeetingStageConfigForOrganization, saveCallAnalytics, type CallData } from "@/lib/db";
 import { computeCallInteractionMetrics } from "@/lib/call-analytics";
 import { reportError, reportWarning } from "@/lib/monitoring";
 import { pushNewTasksToHubSpot } from "@/lib/tasks-hubspot-sync";
 import { analyzeCall } from "@/lib/call-analysis";
+import { extractCallIdentity } from "@/lib/call-identity";
 import { detectMeetingStage, MEETING_STAGE_LABELS } from "@/lib/meeting-stage";
 import { indexCallObjections } from "@/lib/objections";
 import { generateFollowUpEmail } from "@/lib/email-followup";
@@ -282,6 +283,26 @@ export async function POST(request: NextRequest) {
             );
             const { id: analysisId } = await saveCallAnalysis(call.id, savedAnalysis, playbookSnapshot);
             console.log("[bot-webhook] call analysis saved, global_score:", savedAnalysis.scores.global_score);
+
+            // Qui était en face (migration 015). Le résumé le dit en toutes
+            // lettres, mais en prose : un petit appel Haiku le met sous une
+            // forme qu'une liste peut afficher. Après l'enregistrement de
+            // l'analyse et sans await bloquant sa suite : c'est un confort
+            // d'affichage, son échec ne doit rien emporter.
+            try {
+              const identity = await extractCallIdentity({
+                summary: savedAnalysis.summary,
+                keyPoints: null,
+                speakerNames: Object.values(speakerNamesOverride ?? {}),
+                commercialCompany: profile?.company_name ?? null,
+              });
+              if (identity) {
+                await updateCallProspectIdentity(call.id, identity);
+                console.log("[bot-webhook] prospect identity:", identity.prospectCompany, identity.prospectContacts);
+              }
+            } catch (identityErr) {
+              reportError("bot-webhook.extractCallIdentity", identityErr, { callId: call.id });
+            }
 
             if (savedAnalysis.objections.length > 0) {
               if (organizationId) {

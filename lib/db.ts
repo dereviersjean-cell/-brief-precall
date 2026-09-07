@@ -765,22 +765,51 @@ export type CallWithAnalysis = {
   // resolveSpeakerNames and editable afterwards via updateCallSpeakerNames.
   // {} (not null) for historical calls — nothing to override yet.
   speaker_names_override: Record<string, string>;
+  // Qui était en face, extrait UNE FOIS de l'analyse (migration 015,
+  // lib/call-identity.ts). Null / [] tant que le backfill n'a pas tourné sur
+  // un call ancien, ou quand le compte rendu ne permettait pas de trancher :
+  // l'affichage retombe alors sur le nom déduit de l'adresse.
+  prospect_company: string | null;
+  prospect_contacts: string[];
 };
 
+// Les colonnes de la migration 015 sont lues de façon tolérante : tant qu'elle
+// n'est pas passée, PostgREST répond 42703 (« column does not exist ») et fait
+// tomber TOUTE la requête — donc la page, pas seulement l'identité du
+// prospect. Même pattern de repli que saveBrief pour la migration 013 (bug
+// #14) : une fonctionnalité de confort ne doit jamais emporter l'écran.
+const PROSPECT_IDENTITY_COLUMNS = "prospect_company, prospect_contacts, ";
+
+function isMissingColumnError(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return error.code === "42703" || /prospect_company|prospect_contacts/.test(error.message ?? "");
+}
+
 export async function getCallsWithAnalysis(userId: string): Promise<CallWithAnalysis[]> {
-  const { data, error } = await supabaseAdmin
-    .from("calls")
-    .select(
-      // speaker_names_override est le SEUL champ lourd-en-apparence retenu
-      // ici : c'est un petit objet {speaker_id: nom}, pas un transcript, et
-      // c'est la seule source d'un vrai nom de personne pour la liste (le nom
-      // déduit de l'adresse donne « Dereviersjean »).
-      "id, contact_email, company_name, meeting_title, meeting_stage, created_at, started_at, status, duration_seconds, participant_count, follow_up_email, follow_up_sent_at, recall_bot_id, recording_id, speaker_names_override, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment, playbook_snapshot, key_points, key_points_generated_at)"
-    )
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+  const select = (withIdentity: boolean) =>
+    supabaseAdmin
+      .from("calls")
+      .select(
+        (withIdentity ? PROSPECT_IDENTITY_COLUMNS : "") + LIST_COLUMNS
+      )
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+  let { data, error } = await select(true);
+  if (isMissingColumnError(error)) ({ data, error } = await select(false));
   if (error) throw error;
 
+  return mapCallRows(data, userId);
+}
+
+// speaker_names_override est le SEUL champ lourd-en-apparence retenu pour une
+// vue liste : c'est un petit objet {speaker_id: nom}, pas un transcript, et
+// c'est une source de vrai nom de personne quand l'identité extraite de
+// l'analyse manque (le nom déduit de l'adresse donne « Dereviersjean »).
+const LIST_COLUMNS =
+  "id, contact_email, company_name, meeting_title, meeting_stage, created_at, started_at, status, duration_seconds, participant_count, follow_up_email, follow_up_sent_at, recall_bot_id, recording_id, speaker_names_override, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment, playbook_snapshot, key_points, key_points_generated_at)";
+
+function mapCallRows(data: unknown, userId: string): CallWithAnalysis[] {
   return ((data ?? []) as Record<string, unknown>[]).map((row) => {
     const analysis = normalizeCallAnalysis(row.call_analysis as CallAnalysisRow | CallAnalysisRow[] | null);
     return {
@@ -803,26 +832,37 @@ export async function getCallsWithAnalysis(userId: string): Promise<CallWithAnal
       transcript: null,
       transcript_json: null,
       speaker_names_override: (row.speaker_names_override as Record<string, string> | null) ?? {},
+      prospect_company: (row.prospect_company as string | null) ?? null,
+      prospect_contacts: (row.prospect_contacts as string[] | null) ?? [],
     };
   });
 }
+
+const DETAIL_COLUMNS =
+  "id, contact_email, company_name, meeting_title, meeting_stage, created_at, started_at, status, duration_seconds, participant_count, follow_up_email, follow_up_sent_at, recall_bot_id, recording_id, transcript, transcript_json, speaker_names_override, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment, playbook_snapshot, key_points, key_points_generated_at)";
 
 export async function getCallWithAnalysis(
   callId: string,
   userId: string
 ): Promise<CallWithAnalysis | null> {
-  const { data, error } = await supabaseAdmin
-    .from("calls")
-    .select(
-      "id, contact_email, company_name, meeting_title, meeting_stage, created_at, started_at, status, duration_seconds, participant_count, follow_up_email, follow_up_sent_at, recall_bot_id, recording_id, transcript, transcript_json, speaker_names_override, call_analysis(id, scores, strengths, weaknesses, objections, next_steps, summary, sentiment, playbook_snapshot, key_points, key_points_generated_at)"
-    )
-    .eq("id", callId)
-    .eq("user_id", userId)
-    .maybeSingle();
+  // Même repli que la liste tant que la migration 015 n'est pas passée.
+  const select = (withIdentity: boolean) =>
+    supabaseAdmin
+      .from("calls")
+      .select((withIdentity ? PROSPECT_IDENTITY_COLUMNS : "") + DETAIL_COLUMNS)
+      .eq("id", callId)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+  let { data, error } = await select(true);
+  if (isMissingColumnError(error)) ({ data, error } = await select(false));
   if (error) throw error;
   if (!data) return null;
 
-  const row = data as Record<string, unknown>;
+  // Le select est construit à l'exécution (avec ou sans les colonnes de la
+  // migration 015) : supabase-js ne peut plus en déduire la forme de la ligne,
+  // d'où le passage par `unknown`.
+  const row = data as unknown as Record<string, unknown>;
   const analysis = normalizeCallAnalysis(row.call_analysis as CallAnalysisRow | CallAnalysisRow[] | null);
   return {
     id: row.id as string,
@@ -844,6 +884,8 @@ export async function getCallWithAnalysis(
     transcript: row.transcript as string | null,
     transcript_json: row.transcript_json as TranscriptJson | null,
     speaker_names_override: (row.speaker_names_override as Record<string, string> | null) ?? {},
+    prospect_company: (row.prospect_company as string | null) ?? null,
+    prospect_contacts: (row.prospect_contacts as string[] | null) ?? [],
   };
 }
 
@@ -2682,6 +2724,24 @@ export async function getCommercialDetailForManager(
 // Returns the row's id — used by the bot-webhook to immediately generate
 // key_points for the same analysis (module Distribution Flexible, sous-étape
 // B) without a separate lookup query.
+// Identité du prospect (migration 015). Écrite après l'analyse, et rejouable
+// par scripts/backfill-call-identity.ts sur les calls antérieurs. Volontairement
+// séparée de saveCallAnalysis : l'extraction est un second appel, plus petit,
+// dont l'échec ne doit pas emporter l'analyse déjà enregistrée.
+export async function updateCallProspectIdentity(
+  callId: string,
+  identity: { prospectCompany: string | null; prospectContacts: string[] }
+): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("calls")
+    .update({
+      prospect_company: identity.prospectCompany,
+      prospect_contacts: identity.prospectContacts,
+    })
+    .eq("id", callId);
+  if (error) throw error;
+}
+
 export async function saveCallAnalysis(
   callId: string,
   analysis: import("./call-analysis").CallAnalysis,

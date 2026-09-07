@@ -298,6 +298,8 @@ function demoCall(
     transcript: null,
     transcript_json: null,
     speaker_names_override: {},
+    prospect_company: company,
+    prospect_contacts: [],
     analysis: {
       id: `${id}-analysis`,
       scores: { global_score: score },
