@@ -97,7 +97,7 @@ function buildUserPrompt(
           )
           .join(
             "\n"
-          )}\n\nVoici les références clients les plus pertinentes pour ce prospect. Pour chacune génère un bloc avec : pourquoi cette référence est pertinente pour ce prospect spécifiquement, et une formulation exacte prête à dire à l'oral avec contexte et chiffres.`
+          )}\n\nCes références sont des CANDIDATES, présélectionnées par proximité sémantique : certaines peuvent n'avoir aucun rapport avec ce prospect. Ne retiens que celles réellement proches de ${company} (même secteur, même cible de clientèle ou même problématique commerciale) et ignore les autres. Pour chaque référence retenue, génère un bloc avec : pourquoi cette référence est pertinente pour ce prospect spécifiquement, et une formulation exacte prête à dire à l'oral avec contexte et chiffres.`
       : "";
 
   const referencesSchema =
@@ -107,7 +107,7 @@ function buildUserPrompt(
 
   const referencesConstraint =
     similarRefs.length > 0
-      ? `\n- Pour chaque référence dans "references" : explique en 1 phrase pourquoi c'est pertinent pour ${company}, puis rédige une formulation exacte prête à l'oral avec le nom du client, le contexte et les chiffres clés`
+      ? `\n- "references" contient au maximum 3 références, uniquement celles réellement proches de ${company}. Si aucune candidate ne l'est, renvoie "references": [] — une référence hors sujet citée à l'oral dessert le commercial, mieux vaut n'en proposer aucune\n- Pour chaque référence dans "references" : explique en 1 phrase pourquoi c'est pertinent pour ${company}, puis rédige une formulation exacte prête à l'oral avec le nom du client, le contexte et les chiffres clés`
       : "";
 
   const actualitesSchema = newsContext
@@ -187,13 +187,18 @@ export async function generateBrief(
     (pappersData as Record<string, unknown>)?.libelle_code_naf ??
     (pappersData as Record<string, unknown>)?.code_naf ??
     "";
-  const prospectContext = [company, sectorFromPappers, userContext?.sector]
+  // Le secteur Apollo du prospect est souvent le seul indice de son métier
+  // (Pappers peut ne rien renvoyer) : sans lui, la requête se résume au nom
+  // + au secteur du COMMERCIAL, identique pour tous les prospects, et les
+  // références remontées sont quasi aléatoires (constaté le 15/09/2026 sur
+  // Medicalib).
+  const prospectContext = [company, sectorFromPappers, apolloContact?.organization?.industry, userContext?.sector]
     .filter(Boolean)
     .join(" ");
 
   const [similarRefs, crmData, contactResult] = await Promise.all([
     userId
-      ? findSimilarReferences(userId, prospectContext).catch((err) => {
+      ? findSimilarReferences(userId, prospectContext, 8).catch((err) => {
           console.warn("[brief-generator] findSimilarReferences failed:", err);
           return [] as SimilarReference[];
         })

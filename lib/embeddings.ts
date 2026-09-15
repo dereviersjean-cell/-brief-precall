@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { supabaseAdmin } from "./supabase";
 
 export type SimilarReference = {
   id: string;
@@ -45,7 +45,10 @@ export async function generateEmbeddingsBatch(texts: string[]): Promise<(number[
   return results;
 }
 
-export async function generateEmbedding(text: string): Promise<number[]> {
+// inputType "query" pour un texte court comparé à des documents plus longs
+// (recherche de références) : Voyage optimise alors l'embedding pour ce cas
+// asymétrique. Compatible avec les embeddings déjà stockés sans inputType.
+export async function generateEmbedding(text: string, inputType?: "query" | "document"): Promise<number[]> {
   const apiKey = process.env.VOYAGE_API_KEY;
   if (!apiKey) throw new Error("VOYAGE_API_KEY is not set");
 
@@ -55,7 +58,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ model: "voyage-3", input: [text] }),
+    body: JSON.stringify({ model: "voyage-3", input: [text], ...(inputType ? { input_type: inputType } : {}) }),
   });
 
   if (!response.ok) {
@@ -74,9 +77,13 @@ export async function findSimilarReferences(
   prospectContext: string,
   limit = 5
 ): Promise<SimilarReference[]> {
-  const embedding = await generateEmbedding(prospectContext);
+  const embedding = await generateEmbedding(prospectContext, "query");
 
-  const { data, error } = await supabase.rpc("match_client_references", {
+  // supabaseAdmin, pas le client anon : la RLS de client_references fait
+  // renvoyer au client anon une liste vide, sans erreur — aucun brief n'a
+  // reçu de référence entre le 01/07 et le 15/09/2026 sans que rien ne le
+  // signale. Le filtrage par utilisateur est assuré par match_user_id.
+  const { data, error } = await supabaseAdmin.rpc("match_client_references", {
     query_embedding: embedding,
     match_user_id: userId,
     match_count: limit,
