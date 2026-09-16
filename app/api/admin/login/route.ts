@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateAdminToken } from "@/lib/admin-auth";
+import { enforceAdminLoginLimit, requestIp, retryAfterMinutes } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
+  const rl = await enforceAdminLoginLimit(requestIp(request));
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: `Trop de tentatives. Réessayez dans ${retryAfterMinutes(rl.retryAfterMs)} minutes.` },
+      { status: 429 }
+    );
+  }
+
   let password: string;
   try {
     ({ password } = await request.json());

@@ -184,6 +184,22 @@ export async function checkSharedRateLimit(
   return { allowed: true, retryAfterMs: 0, degraded: false };
 }
 
+// Connexion admin : 10 essais par IP et par quart d'heure. Le mot de passe
+// d'administration est partagé, il ouvre l'impersonation de n'importe quel
+// compte client, et rien ne ralentissait les essais — une attaque par
+// dictionnaire n'y rencontrait aucune résistance. Comptage PARTAGÉ
+// uniquement (pas de repli en mémoire) : une tentative par instance Vercel
+// ne doit pas repartir de zéro.
+const ADMIN_LOGIN_LIMIT: SharedLimit = { max: 10, windowMs: 15 * 60 * 1000 };
+
+export async function enforceAdminLoginLimit(
+  ip: string
+): Promise<{ allowed: boolean; retryAfterMs: number }> {
+  const shared = await checkSharedRateLimit(`admin-login:${ip}`, ADMIN_LOGIN_LIMIT);
+  if (!shared.allowed) return { allowed: false, retryAfterMs: shared.retryAfterMs };
+  return { allowed: true, retryAfterMs: 0 };
+}
+
 // Le garde à appeler depuis une route de génération IA : mémoire PUIS partagé.
 //
 // La mémoire d'abord parce qu'elle est gratuite et attrape le cas le plus

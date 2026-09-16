@@ -13,7 +13,8 @@ export const metadata: Metadata = {
 
 const ERROR_MESSAGES: Record<string, string> = {
   AccountDisabled: "Votre compte a été désactivé.",
-  AccessDenied: "Connexion refusée. Contactez votre administrateur si vous pensez qu'il s'agit d'une erreur.",
+  AccessDenied:
+    "Connexion refusée : l'accès à Brief se fait sur invitation. Demandez à votre administrateur de créer votre accès, puis reconnectez-vous.",
 };
 
 export default async function LoginPage({

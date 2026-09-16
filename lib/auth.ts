@@ -120,6 +120,10 @@ export const authOptions: AuthOptions = {
           console.error(`[auth] signIn refused — account disabled for ${user.email}`);
           return false;
         }
+        if (resolution.status === "not_invited") {
+          console.error(`[auth] signIn refused — no account for ${user.email} (inscription sur invitation uniquement)`);
+          return false;
+        }
         if (resolution.status === "conflict") {
           console.error(`[auth] signIn refused — ${user.email} is already linked to a different ${provider} account`);
           return false;

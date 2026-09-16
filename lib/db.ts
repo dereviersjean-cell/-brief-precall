@@ -26,7 +26,8 @@ export type AuthProvider = "google" | "microsoft";
 export type LoginResolution =
   | { status: "ok"; userId: string; role: UserRole | null }
   | { status: "disabled" }
-  | { status: "conflict" };
+  | { status: "conflict" }
+  | { status: "not_invited" };
 
 type AuthUserRow = {
   id: string;
@@ -91,14 +92,13 @@ export async function resolveUserForLogin(params: {
     return { status: "ok", userId: byEmail.id, role: byEmail.role };
   }
 
-  const { data: created, error: createError } = await supabaseAdmin
-    .from("users")
-    .insert({ email, name, avatar_url: avatarUrl, [column]: providerId })
-    .select("id, role")
-    .single();
-  if (createError) throw createError;
-  const createdRow = created as { id: string; role: UserRole | null };
-  return { status: "ok", userId: createdRow.id, role: createdRow.role };
+  // Aucune ligne pour cet email : l'inscription n'est PAS libre. Un compte
+  // n'existe que créé par un administrateur (/admin/users) ou invité par un
+  // manager (inviteCommercial) — les deux insèrent la ligne avant la
+  // première connexion, qui la retrouve par email juste au-dessus.
+  // Auparavant, toute personne possédant un compte Google pouvait se
+  // connecter et consommer briefs et appels IA aux frais de Brief.
+  return { status: "not_invited" };
 }
 
 export async function saveGoogleTokens(

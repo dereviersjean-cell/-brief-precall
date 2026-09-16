@@ -198,6 +198,18 @@ export async function syncAndScheduleForUser(
           deduplication_key: event.id,
           bot_config: {
             bot_name: "Brief Notetaker",
+            // Information des participants (RGPD) : personne ne doit
+            // découvrir après coup qu'un compte rendu a été produit. Le
+            // message est épinglé sur Meet ; Zoom et Teams l'affichent comme
+            // un message ordinaire (`pin` y est ignoré, pas une erreur).
+            chat: {
+              on_bot_join: {
+                send_to: "everyone",
+                message:
+                  "Bonjour, je suis Brief Notetaker : j'enregistre et je transcris cette réunion pour en produire un compte rendu. Dites-le si vous préférez que je quitte la réunion.",
+                pin: true,
+              },
+            },
             metadata: {
               userId,
               calendarEventId: googleEventId ?? "",

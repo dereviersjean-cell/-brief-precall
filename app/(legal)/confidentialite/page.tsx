@@ -31,8 +31,8 @@ export default function PrivacyPolicyPage() {
         </p>
         <p>
           Pour toute question relative à cette politique ou à vos données, vous pouvez nous écrire à{" "}
-          <a href="mailto:rgpd@infobrief.com" className="text-ink font-medium hover:text-primary transition-colors">
-            rgpd@infobrief.com
+          <a href="mailto:contact@brief-ai.fr" className="text-ink font-medium hover:text-primary transition-colors">
+            contact@brief-ai.fr
           </a>
           .
         </p>
@@ -98,6 +98,11 @@ export default function PrivacyPolicyPage() {
           <li><b className="text-ink">Resend</b> — envoi des emails transactionnels de Brief (notifications, résumés hebdomadaires).</li>
           <li><b className="text-ink">Stripe</b> — facturation de votre organisation.</li>
           <li><b className="text-ink">Pappers</b> — données légales publiques sur les entreprises françaises.</li>
+          <li><b className="text-ink">Apollo.io</b> — enrichissement de la fiche du contact que vous vous apprêtez à appeler (poste, ancienneté, entreprise).</li>
+          <li><b className="text-ink">Serper</b> — recherche d&apos;actualités publiques sur l&apos;entreprise du prospect.</li>
+          <li><b className="text-ink">Vercel</b> (région Paris) — hébergement de l&apos;application.</li>
+          <li><b className="text-ink">Inngest</b> — exécution des traitements de fond (synchronisation des agendas, envois programmés).</li>
+          <li><b className="text-ink">Sentry</b> — remontée des erreurs techniques de l&apos;application.</li>
           <li>Le cas échéant : <b className="text-ink">HubSpot, Pipedrive, Notion, Slack</b> — uniquement si vous ou votre organisation connectez ces outils.</li>
         </ul>
         <p>Nous pouvons également communiquer des données si la loi nous y oblige, ou pour protéger nos droits, notre sécurité ou celle de nos utilisateurs.</p>
@@ -126,8 +131,8 @@ export default function PrivacyPolicyPage() {
         <p>
           Conformément au RGPD, vous disposez d&apos;un droit d&apos;accès, de rectification, d&apos;effacement, de
           portabilité et d&apos;opposition sur vos données personnelles. Pour l&apos;exercer, écrivez-nous à{" "}
-          <a href="mailto:rgpd@infobrief.com" className="text-ink font-medium hover:text-primary transition-colors">
-            rgpd@infobrief.com
+          <a href="mailto:contact@brief-ai.fr" className="text-ink font-medium hover:text-primary transition-colors">
+            contact@brief-ai.fr
           </a>
           . Vous disposez également du droit d&apos;introduire une réclamation auprès de la CNIL (cnil.fr).
         </p>
