@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, Sparkles, CheckCircle2, ShieldCheck, TrendingUp, MessagesSquare } from "lucide-react";
+import { ArrowLeft, Sparkles, CheckCircle2, TrendingUp, MessagesSquare } from "lucide-react";
 import { GoogleSignInButton } from "./GoogleSignInButton";
 import { MicrosoftSignInButton } from "./MicrosoftSignInButton";
 import { safeInternalPath } from "@/lib/safe-path";
@@ -74,14 +74,6 @@ export default async function LoginPage({
               <GoogleSignInButton callbackUrl={destination} />
               <MicrosoftSignInButton callbackUrl={destination} />
             </div>
-
-            <p className="mt-8 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              Accès sur invitation —{" "}
-              <a href="mailto:hello@oliverlist.com" className="text-ink font-semibold hover:text-primary transition-colors">
-                demander un accès
-              </a>
-            </p>
           </div>
         </div>
 
