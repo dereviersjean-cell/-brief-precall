@@ -26,8 +26,7 @@ export type AuthProvider = "google" | "microsoft";
 export type LoginResolution =
   | { status: "ok"; userId: string; role: UserRole | null }
   | { status: "disabled" }
-  | { status: "conflict" }
-  | { status: "not_invited" };
+  | { status: "conflict" };
 
 type AuthUserRow = {
   id: string;
@@ -92,13 +91,21 @@ export async function resolveUserForLogin(params: {
     return { status: "ok", userId: byEmail.id, role: byEmail.role };
   }
 
-  // Aucune ligne pour cet email : l'inscription n'est PAS libre. Un compte
-  // n'existe que créé par un administrateur (/admin/users) ou invité par un
-  // manager (inviteCommercial) — les deux insèrent la ligne avant la
-  // première connexion, qui la retrouve par email juste au-dessus.
-  // Auparavant, toute personne possédant un compte Google pouvait se
-  // connecter et consommer briefs et appels IA aux frais de Brief.
-  return { status: "not_invited" };
+  // Inscription OUVERTE, choix produit de Jean le 16/09/2026 : la création
+  // du compte à la première connexion est conservée, revenant sur la
+  // fermeture posée la veille. À savoir : ce compte n'a pas
+  // d'organization_id, et seules les pages gardées par la facturation le
+  // bloquent — il peut donc générer des briefs (20/jour, lib/rate-limit.ts)
+  // aux frais de Brief. Si le coût devient visible, la fermeture consiste à
+  // renvoyer ici { status: "not_invited" } (git log sur ce fichier).
+  const { data: created, error: createError } = await supabaseAdmin
+    .from("users")
+    .insert({ email, name, avatar_url: avatarUrl, [column]: providerId })
+    .select("id, role")
+    .single();
+  if (createError) throw createError;
+  const createdRow = created as { id: string; role: UserRole | null };
+  return { status: "ok", userId: createdRow.id, role: createdRow.role };
 }
 
 export async function saveGoogleTokens(

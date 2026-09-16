@@ -125,6 +125,22 @@ export default function PrivacyPolicyPage() {
           données sont supprimées ou anonymisées dans un délai raisonnable, sauf obligation légale de conservation
           plus longue (ex. facturation).
         </p>
+        <ul className="mt-4 space-y-2 list-disc pl-5">
+          <li>
+            <b className="text-ink">Transcriptions, analyses de rendez-vous et briefs</b> — 24 mois à compter de leur
+            création, puis suppression.
+          </li>
+          <li>
+            <b className="text-ink">Comptes, contacts et références clients</b> — tant que votre compte est actif.
+          </li>
+          <li>
+            <b className="text-ink">Après résiliation ou suppression de votre compte</b> — suppression sous 30 jours.
+          </li>
+          <li>
+            <b className="text-ink">Données de facturation</b> — conservées le temps imposé par la loi (10 ans pour les
+            pièces comptables).
+          </li>
+        </ul>
       </Section>
 
       <Section title="Vos droits">
