@@ -264,7 +264,16 @@ export const processReferencesImport = inngest.createFunction(
 export const syncRecallCalendars = inngest.createFunction(
   {
     id: "sync-recall-calendars",
-    triggers: [{ cron: "*/5 * * * *" }],
+    // Toutes les 5 minutes, du lundi au samedi, de 7h à 21h55 (heure de
+    // Paris). La fréquence de 5 minutes est la marge dont dispose un
+    // commercial qui cale un rendez-vous à la dernière minute : le bot n'est
+    // programmé que par une synchronisation ANTÉRIEURE au début de la
+    // réunion (constaté le 16/09/2026 sur un RDV créé 18 minutes avant,
+    // manqué à la seconde près). Les plages mortes sont exclues parce qu'une
+    // exécution y est une exécution payée pour rien.
+    // `TZ=` est indispensable : sans lui Inngest lit l'expression en UTC, ce
+    // qui décalerait la plage d'une ou deux heures selon la saison.
+    triggers: [{ cron: "TZ=Europe/Paris */5 7-21 * * 1-6" }],
   },
   async ({ step }) => {
     const users = (await step.run("get-users-with-recall", async () => {
