@@ -326,6 +326,27 @@ export type TranscriptJson = {
   total_duration_ms: number;
 };
 
+// Nombre de mots réellement prononcés dans un transcript Recall brut.
+//
+// Un enregistrement peut aboutir avec un transcript VIDE (0 segment) : micro
+// coupé, personne n'a parlé, bot resté seul. Constaté le 28/09/2026 sur un
+// Teams de 78 s — Recall l'a transcrit trois fois à vide, quelle que soit la
+// langue. Brief l'analysait quand même : 0/5 partout, un email de suivi qui
+// parlait de « récupérer la transcription », et un zéro dans les moyennes.
+// Le webhook s'en sert pour ne pas analyser ce qui n'a pas été dit.
+export const MIN_SPOKEN_WORDS_FOR_ANALYSIS = 15;
+
+export function countSpokenWords(recallTranscript: unknown): number {
+  if (!Array.isArray(recallTranscript)) return 0;
+  let count = 0;
+  for (const segment of recallTranscript as RecallTranscriptSegment[]) {
+    for (const word of segment?.words ?? []) {
+      if (typeof word?.text === "string" && word.text.trim()) count++;
+    }
+  }
+  return count;
+}
+
 // Normalizes a raw Recall transcript into speaker-turns with millisecond
 // timestamps, for calls.transcript_json. A "turn" is a run of consecutive
 // segments from the same participant merged into one — Recall itself splits

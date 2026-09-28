@@ -151,6 +151,10 @@ export default function TaskEmailModal({
           </button>
         </div>
 
+        {/* Masqué quand l'organisation n'a aucun type de call (même règle que
+            la page du call) : une liste réduite à « Prompt par défaut »
+            n'offre aucun choix. */}
+        {templates.length > 0 && (
         <div className="flex items-center gap-2 mb-4">
           <label htmlFor="task-email-template" className="text-xs text-slate-400 shrink-0">
             Type de call
@@ -179,6 +183,7 @@ export default function TaskEmailModal({
             </button>
           )}
         </div>
+        )}
 
         {!hasGenerated ? (
           <div className="flex flex-col items-center justify-center gap-3 py-12">

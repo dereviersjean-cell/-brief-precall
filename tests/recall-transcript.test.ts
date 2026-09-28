@@ -1,6 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { transcriptToText, buildTranscriptJson } from "../lib/recall";
+import { transcriptToText, buildTranscriptJson, countSpokenWords } from "../lib/recall";
 
 // Ingestion des calls (webhook Recall). Un transcript mal lu contamine tout
 // ce qui en découle : analyse, scores, objections, verbatims, analytics — et
@@ -72,5 +72,22 @@ describe("buildTranscriptJson — bug #1 (participant, pas speaker)", () => {
     assert.equal(json.turns[0].start_ms, 0);
     assert.ok(json.turns[1].start_ms >= json.turns[0].end_ms, "les tours ne se chevauchent pas");
     assert.ok(json.total_duration_ms > 0);
+  });
+});
+
+describe("countSpokenWords", () => {
+  test("transcript vide ou illisible : zéro mot, donc pas d'analyse", () => {
+    assert.equal(countSpokenWords([]), 0);
+    assert.equal(countSpokenWords(null), 0);
+    assert.equal(countSpokenWords({ segments: [] }), 0);
+  });
+
+  test("compte les mots prononcés, pas les segments ni les mots vides", () => {
+    const content = [
+      segment(1, "Jean", [["Bonjour", 0, 0.5], ["Martin", 0.5, 1]]),
+      segment(2, "Martin", [["Oui", 1.2, 1.5], [" ", 1.5, 1.6]]),
+      segment(1, "Jean", []),
+    ];
+    assert.equal(countSpokenWords(content), 3);
   });
 });

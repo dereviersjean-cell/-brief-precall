@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Webhook } from "svix";
-import { createAsyncTranscript, getBotInfo, getTranscriptContent, transcriptToText, buildTranscriptJson, resolveSpeakerNames } from "@/lib/recall";
+import { createAsyncTranscript, getBotInfo, getTranscriptContent, transcriptToText, buildTranscriptJson, resolveSpeakerNames, countSpokenWords, MIN_SPOKEN_WORDS_FOR_ANALYSIS } from "@/lib/recall";
 import { createCall, getUserProfile, getUserName, getUserEmail, saveCallAnalysis, updateCallProspectIdentity, updateCallAnalysisKeyPoints, updateCallFollowUp, getContact, createContact, updateContact, generateTasksFromTemplates, getPlaybookSnapshotForUser, getUserOrganizationId, getMeetingStageConfigForOrganization, saveCallAnalytics, type CallData } from "@/lib/db";
 import { computeCallInteractionMetrics } from "@/lib/call-analytics";
 import { reportError, reportWarning } from "@/lib/monitoring";
@@ -256,108 +256,118 @@ export async function POST(request: NextRequest) {
             }
           }
 
+          // Pas de parole, pas d'analyse (voir countSpokenWords) : le call est
+          // enregistré avec sa vidéo, mais ni analyse, ni email de suivi, ni
+          // notification — et donc aucun 0/5 dans les moyennes.
+          const spokenWords = countSpokenWords(content);
+          const hasSpeech = spokenWords >= MIN_SPOKEN_WORDS_FOR_ANALYSIS;
+
           // Step 3 — analyze call with Claude (non-blocking, result shared with step 4)
           let savedAnalysis: Awaited<ReturnType<typeof analyzeCall>> | null = null;
           let keyPoints: string | null = null;
-          try {
-            const profile = await getUserProfile(userId);
-            const meetingDate = new Date().toISOString().split("T")[0] ?? "";
-            // Snapshot the org's playbook now (sous-étape B) — falls back to
-            // the hardcoded 4-dimension default when the user has no org or
-            // no playbook yet, so this always resolves to something.
-            const playbookSnapshot = await getPlaybookSnapshotForUser(userId);
-            savedAnalysis = await analyzeCall(
-              transcriptText,
-              {
-                clientName: profile?.company_name ?? "",
-                clientWebsite: "",
-                prospectName: companyName ?? "",
-                prospectWebsite: contactEmail ? contactEmail.split("@")[1] ?? "" : "",
-                meetingDate,
-                meetingStage:
-                  meetingStage && stageConfig
-                    ? { label: MEETING_STAGE_LABELS[meetingStage], guidance: stageConfig[meetingStage].guidance }
-                    : null,
-              },
-              playbookSnapshot
-            );
-            const { id: analysisId } = await saveCallAnalysis(call.id, savedAnalysis, playbookSnapshot);
-            console.log("[bot-webhook] call analysis saved, global_score:", savedAnalysis.scores.global_score);
-
-            // Qui était en face (migration 015). Le résumé le dit en toutes
-            // lettres, mais en prose : un petit appel Haiku le met sous une
-            // forme qu'une liste peut afficher. Après l'enregistrement de
-            // l'analyse et sans await bloquant sa suite : c'est un confort
-            // d'affichage, son échec ne doit rien emporter.
+          if (!hasSpeech) {
+            console.log("[bot-webhook] no speech in transcript (", spokenWords, "words ), skipping analysis and follow-up email");
+          } else {
             try {
-              const identity = await extractCallIdentity({
-                summary: savedAnalysis.summary,
-                keyPoints: null,
-                speakerNames: Object.values(speakerNamesOverride ?? {}),
-                commercialCompany: profile?.company_name ?? null,
-              });
-              if (identity) {
-                await updateCallProspectIdentity(call.id, identity);
-                console.log("[bot-webhook] prospect identity:", identity.prospectCompany, identity.prospectContacts);
-              }
-            } catch (identityErr) {
-              reportError("bot-webhook.extractCallIdentity", identityErr, { callId: call.id });
-            }
+              const profile = await getUserProfile(userId);
+              const meetingDate = new Date().toISOString().split("T")[0] ?? "";
+              // Snapshot the org's playbook now (sous-étape B) — falls back to
+              // the hardcoded 4-dimension default when the user has no org or
+              // no playbook yet, so this always resolves to something.
+              const playbookSnapshot = await getPlaybookSnapshotForUser(userId);
+              savedAnalysis = await analyzeCall(
+                transcriptText,
+                {
+                  clientName: profile?.company_name ?? "",
+                  clientWebsite: "",
+                  prospectName: companyName ?? "",
+                  prospectWebsite: contactEmail ? contactEmail.split("@")[1] ?? "" : "",
+                  meetingDate,
+                  meetingStage:
+                    meetingStage && stageConfig
+                      ? { label: MEETING_STAGE_LABELS[meetingStage], guidance: stageConfig[meetingStage].guidance }
+                      : null,
+                },
+                playbookSnapshot
+              );
+              const { id: analysisId } = await saveCallAnalysis(call.id, savedAnalysis, playbookSnapshot);
+              console.log("[bot-webhook] call analysis saved, global_score:", savedAnalysis.scores.global_score);
 
-            if (savedAnalysis.objections.length > 0) {
-              if (organizationId) {
-                await indexCallObjections(organizationId, call.id, contactEmail, savedAnalysis.objections, transcriptText, transcriptJson?.turns ?? null).catch((err) =>
-                    reportError("bot-webhook.indexCallObjections", err, { callId: call.id })
+              // Qui était en face (migration 015). Le résumé le dit en toutes
+              // lettres, mais en prose : un petit appel Haiku le met sous une
+              // forme qu'une liste peut afficher. Après l'enregistrement de
+              // l'analyse et sans await bloquant sa suite : c'est un confort
+              // d'affichage, son échec ne doit rien emporter.
+              try {
+                const identity = await extractCallIdentity({
+                  summary: savedAnalysis.summary,
+                  keyPoints: null,
+                  speakerNames: Object.values(speakerNamesOverride ?? {}),
+                  commercialCompany: profile?.company_name ?? null,
+                });
+                if (identity) {
+                  await updateCallProspectIdentity(call.id, identity);
+                  console.log("[bot-webhook] prospect identity:", identity.prospectCompany, identity.prospectContacts);
+                }
+              } catch (identityErr) {
+                reportError("bot-webhook.extractCallIdentity", identityErr, { callId: call.id });
+              }
+
+              if (savedAnalysis.objections.length > 0) {
+                if (organizationId) {
+                  await indexCallObjections(organizationId, call.id, contactEmail, savedAnalysis.objections, transcriptText, transcriptJson?.turns ?? null).catch((err) =>
+                      reportError("bot-webhook.indexCallObjections", err, { callId: call.id })
+                  );
+                }
+              }
+
+              try {
+                const { createdCount, toPushToHubSpot } = await generateTasksFromTemplates(userId, "call", call.id, {
+                  contact_id: null,
+                  contact_email: contactEmail,
+                  contact_name: null,
+                });
+                console.log("[bot-webhook] tasks generated from post_call templates:", createdCount);
+                await pushNewTasksToHubSpot(userId, toPushToHubSpot, contactEmail).catch((hubspotErr) =>
+                  console.warn(
+                    "[bot-webhook] pushNewTasksToHubSpot failed (non-blocking):",
+                    hubspotErr instanceof Error ? hubspotErr.message : String(hubspotErr)
+                  )
+                );
+              } catch (taskErr) {
+                console.warn(
+                  "[bot-webhook] generateTasksFromTemplates failed (non-blocking):",
+                  taskErr instanceof Error ? taskErr.message : String(taskErr)
                 );
               }
-            }
 
-            try {
-              const { createdCount, toPushToHubSpot } = await generateTasksFromTemplates(userId, "call", call.id, {
-                contact_id: null,
-                contact_email: contactEmail,
-                contact_name: null,
-              });
-              console.log("[bot-webhook] tasks generated from post_call templates:", createdCount);
-              await pushNewTasksToHubSpot(userId, toPushToHubSpot, contactEmail).catch((hubspotErr) =>
-                console.warn(
-                  "[bot-webhook] pushNewTasksToHubSpot failed (non-blocking):",
-                  hubspotErr instanceof Error ? hubspotErr.message : String(hubspotErr)
-                )
-              );
-            } catch (taskErr) {
-              console.warn(
-                "[bot-webhook] generateTasksFromTemplates failed (non-blocking):",
-                taskErr instanceof Error ? taskErr.message : String(taskErr)
-              );
-            }
-
-            // Step 3b — generate + persist key_points now (module Distribution
-            // Flexible, sous-étape B) so the post-call notification email
-            // (Step 6 below) has real content instead of an empty section.
-            // app/api/feedback/[id]/key-points/route.ts remains the on-demand
-            // fallback for calls where this fails, or that predate it.
-            try {
-              const transcriptForKeyPoints = transcriptJson
-                ? transcriptJson.turns
-                    .map((t) => `${speakerNamesOverride[t.speaker_id] || t.speaker_id}: ${t.text}`)
-                    .join("\n")
-                : transcriptText;
-              keyPoints = await generateKeyPoints(transcriptForKeyPoints);
-              if (keyPoints) {
-                await updateCallAnalysisKeyPoints(analysisId, call.id, keyPoints);
-                console.log("[bot-webhook] key_points generated and saved");
-              } else {
-                console.log("[bot-webhook] generateKeyPoints returned null (non-blocking)");
+              // Step 3b — generate + persist key_points now (module Distribution
+              // Flexible, sous-étape B) so the post-call notification email
+              // (Step 6 below) has real content instead of an empty section.
+              // app/api/feedback/[id]/key-points/route.ts remains the on-demand
+              // fallback for calls where this fails, or that predate it.
+              try {
+                const transcriptForKeyPoints = transcriptJson
+                  ? transcriptJson.turns
+                      .map((t) => `${speakerNamesOverride[t.speaker_id] || t.speaker_id}: ${t.text}`)
+                      .join("\n")
+                  : transcriptText;
+                keyPoints = await generateKeyPoints(transcriptForKeyPoints);
+                if (keyPoints) {
+                  await updateCallAnalysisKeyPoints(analysisId, call.id, keyPoints);
+                  console.log("[bot-webhook] key_points generated and saved");
+                } else {
+                  console.log("[bot-webhook] generateKeyPoints returned null (non-blocking)");
+                }
+              } catch (keyPointsErr) {
+                console.log(
+                  "[bot-webhook] key_points generation failed (non-blocking):",
+                  keyPointsErr instanceof Error ? keyPointsErr.message : String(keyPointsErr)
+                );
               }
-            } catch (keyPointsErr) {
-              console.log(
-                "[bot-webhook] key_points generation failed (non-blocking):",
-                keyPointsErr instanceof Error ? keyPointsErr.message : String(keyPointsErr)
-              );
+            } catch (analysisErr) {
+              reportError("bot-webhook.analyzeCall", analysisErr, { callId: call.id });
             }
-          } catch (analysisErr) {
-            reportError("bot-webhook.analyzeCall", analysisErr, { callId: call.id });
           }
 
           // Step 4 — upsert contact (non-blocking)
@@ -396,7 +406,10 @@ export async function POST(request: NextRequest) {
           // dropped 25/07/2026, see lib/gmail.ts) — generateFollowUpEmail
           // falls back to a professional-by-default tone without it.
           try {
-            if (!contactEmail) {
+            if (!hasSpeech) {
+              // Déjà journalisé à l'étape 3 : un email de suivi écrit sur un
+              // call sans parole ne peut qu'inventer.
+            } else if (!contactEmail) {
               console.log("[bot-webhook] no contactEmail, skipping follow-up email");
             } else {
               const followUp = await generateFollowUpEmail(transcriptText, savedAnalysis?.next_steps ?? [], contactEmail);

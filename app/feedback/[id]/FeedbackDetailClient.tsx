@@ -693,6 +693,51 @@ export default function FeedbackDetailClient({
     négatif: "bg-red-100 text-red-600",
   };
 
+  // Partagé entre la vue analysée et la vue « aucune parole » : sur un call
+  // non analysé, l'enregistrement reste le seul moyen de vérifier ce qui
+  // s'est passé (micro coupé, personne n'a parlé).
+  const recordingPanel = hasVideo ? (
+    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Enregistrement</h2>
+        {videoStatus === "idle" && (
+          <button
+            onClick={loadVideo}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-[color:var(--violet)] hover:brightness-90 transition-colors px-2.5 py-1 rounded-lg border border-[color:var(--lavender-strong)] hover:bg-[color:var(--lavender)]"
+          >
+            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+            Voir l&apos;enregistrement
+          </button>
+        )}
+        {videoStatus === "loading" && (
+          <span className="text-xs text-slate-400">Chargement…</span>
+        )}
+      </div>
+      {videoStatus === "ready" && videoUrl && (
+        <video
+          ref={videoRef}
+          controls
+          src={videoUrl}
+          onTimeUpdate={(e) => setCurrentTimeMs(Math.floor(e.currentTarget.currentTime * 1000))}
+          className="w-full rounded-xl bg-black"
+          style={{ maxHeight: "320px" }}
+        />
+      )}
+      {videoStatus === "unavailable" && (
+        <p className="text-sm text-slate-400 italic">Enregistrement non disponible.</p>
+      )}
+    </div>
+  ) : (
+    readOnly && <ReadOnlyVideoStatus call={call} />
+  );
+
+  // Transcript vide : le webhook n'analyse plus un call sans parole
+  // (countSpokenWords, lib/recall.ts). Le dire, plutôt que « Analyse non
+  // disponible », qui laisse croire à une panne.
+  const noSpeech = !a && allTurns.length === 0;
+
   const TABS: { key: Tab; label: string }[] = [
     { key: "overview", label: "Overview" },
     { key: "email", label: "Email de suivi" },
@@ -760,7 +805,22 @@ export default function FeedbackDetailClient({
           </div>
         </div>
 
-        {!a ? (
+        {noSpeech ? (
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-5 items-start">
+            <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-8">
+              <h2 className="text-base font-semibold text-slate-900">Aucune parole détectée</h2>
+              <p className="text-sm text-slate-500 mt-2">
+                L&apos;enregistrement ne contient aucune parole exploitable : ce rendez-vous n&apos;a donc été ni analysé,
+                ni noté, et aucun email de suivi n&apos;a été rédigé. Il ne compte pas dans vos moyennes.
+              </p>
+              <p className="text-sm text-slate-500 mt-2">
+                Le plus souvent, le micro était coupé ou personne n&apos;a pris la parole. Vous pouvez le vérifier en
+                écoutant l&apos;enregistrement.
+              </p>
+            </div>
+            <div>{recordingPanel}</div>
+          </div>
+        ) : !a ? (
           <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-10 text-center text-slate-400 text-sm">
             Analyse non disponible pour cet appel.
           </div>
@@ -860,6 +920,10 @@ export default function FeedbackDetailClient({
                   <ReadOnlyEmailBlock call={call} />
                 ) : (
                 <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
+                  {/* Masqué quand l'organisation n'a aucun type de call : une
+                      liste réduite à « Prompt par défaut » n'offre aucun choix
+                      (constaté le 28/09/2026 sur un compte neuf). */}
+                  {templates.length > 0 && (
                   <div className="flex items-center gap-2 mb-4">
                     <label htmlFor="feedback-email-template" className="text-xs text-slate-400 shrink-0">
                       Type de call
@@ -892,6 +956,7 @@ export default function FeedbackDetailClient({
                       </button>
                     )}
                   </div>
+                  )}
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Email de suivi suggéré</h2>
                     {call.follow_up_email && !sentAt && (
@@ -1057,42 +1122,7 @@ export default function FeedbackDetailClient({
             {/* RIGHT — sticky video + transcript, stays in view while the
                 left column scrolls */}
             <div className="lg:sticky lg:top-6 space-y-5">
-              {hasVideo ? (
-                <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Enregistrement</h2>
-                    {videoStatus === "idle" && (
-                      <button
-                        onClick={loadVideo}
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-[color:var(--violet)] hover:brightness-90 transition-colors px-2.5 py-1 rounded-lg border border-[color:var(--lavender-strong)] hover:bg-[color:var(--lavender)]"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M8 5v14l11-7z" />
-                        </svg>
-                        Voir l&apos;enregistrement
-                      </button>
-                    )}
-                    {videoStatus === "loading" && (
-                      <span className="text-xs text-slate-400">Chargement…</span>
-                    )}
-                  </div>
-                  {videoStatus === "ready" && videoUrl && (
-                    <video
-                      ref={videoRef}
-                      controls
-                      src={videoUrl}
-                      onTimeUpdate={(e) => setCurrentTimeMs(Math.floor(e.currentTarget.currentTime * 1000))}
-                      className="w-full rounded-xl bg-black"
-                      style={{ maxHeight: "320px" }}
-                    />
-                  )}
-                  {videoStatus === "unavailable" && (
-                    <p className="text-sm text-slate-400 italic">Enregistrement non disponible.</p>
-                  )}
-                </div>
-              ) : (
-                readOnly && <ReadOnlyVideoStatus call={call} />
-              )}
+              {recordingPanel}
 
               <TranscriptSection
                 callId={call.id}
