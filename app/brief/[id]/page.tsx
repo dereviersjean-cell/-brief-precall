@@ -21,7 +21,18 @@ export default async function BriefPage({
     contactName?: string;
   }>;
 }) {
-  const { id } = await params;
+  const { id: rawId } = await params;
+  // Décodé : Next rend le segment tel quel, encodage compris. Un identifiant
+  // Outlook finit par « = », qui arrive en « %3D » — le brief était enregistré
+  // sous cette forme encodée, que la liste ne retrouvait jamais (bouton
+  // « Préparer » au lieu de « Revoir », cache manqué ; 28/09/2026). Sans
+  // effet sur un identifiant Google ou un UUID, qui n'ont rien à décoder.
+  let id = rawId;
+  try {
+    id = decodeURIComponent(rawId);
+  } catch {
+    // Segment mal encodé : on garde la forme reçue.
+  }
   // PAS de garde isUuid en tête de route ici, contrairement aux autres pages
   // [id] : celle-ci reçoit DEUX formes d'identifiant. Le tableau de bord et les
   // emails de notification pointent vers un identifiant d'événement Google
