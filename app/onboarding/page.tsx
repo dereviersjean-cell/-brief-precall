@@ -111,21 +111,46 @@ export default function OnboardingPage() {
 
   // Enregistre le profil sans quitter le flux — appelé avant toute
   // redirection OAuth, qui ferait sinon perdre les étapes déjà remplies.
+  // Seuls les champs RENSEIGNÉS partent. Le retour de l'OAuth agenda recharge
+  // la page sur ?step=4 avec des champs vides : envoyer `null` pour chacun
+  // effaçait, à la dernière étape, le profil enregistré juste avant de partir
+  // chez Google/Microsoft (constaté le 28/09/2026 sur un compte Outlook,
+  // profil entièrement vide en base). Un champ omis n'est pas touché par
+  // upsertUserProfile. Paramètres > Général garde, lui, le droit de vider un
+  // champ : la règle vit ici, pas dans la route.
+  function filledProfile(): Record<string, string> {
+    const profile: Record<string, string> = {};
+    const productDescription = (valueProposition || whatYouSell).trim();
+    if (companyName.trim()) profile.company_name = companyName.trim();
+    if (productDescription) profile.product_description = productDescription;
+    if (icp.trim()) profile.icp = icp.trim();
+    if (sector.trim()) profile.sector = sector.trim();
+    return profile;
+  }
+
   async function persistProfile() {
     try {
       await fetch("/api/onboarding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          company_name: companyName || null,
-          product_description: valueProposition || whatYouSell || null,
-          icp: icp || null,
-          sector: sector || null,
-        }),
+        body: JSON.stringify(filledProfile()),
+        // Survit au changement de page qui suit (départ vers l'OAuth).
+        keepalive: true,
       });
     } catch {
       // Best-effort : la connexion agenda prime, le profil se resaisit.
     }
+  }
+
+  // Le profil est enregistré AVANT de quitter la page, et on attend la
+  // réponse : lancée sans attendre, la requête pouvait être coupée par la
+  // navigation vers Google/Microsoft.
+  function connectCalendar(event: React.MouseEvent<HTMLAnchorElement>) {
+    event.preventDefault();
+    const href = event.currentTarget.href;
+    void persistProfile().finally(() => {
+      window.location.href = href;
+    });
   }
 
   const totalSteps = STEPS.length;
@@ -144,12 +169,9 @@ export default function OnboardingPage() {
       await fetch("/api/onboarding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          company_name: skip ? null : companyName || null,
-          product_description: skip ? null : valueProposition || whatYouSell || null,
-          icp: skip ? null : icp || null,
-          sector: skip ? null : sector || null,
-        }),
+        // « Passer » envoie un profil vide : la ligne est créée (sinon /brief
+        // renverrait ici), sans rien effacer de ce qui existe déjà.
+        body: JSON.stringify(skip ? {} : filledProfile()),
       });
     } catch {
       // Best-effort — on redirige quoi qu'il arrive
@@ -167,12 +189,7 @@ export default function OnboardingPage() {
       await fetch("/api/onboarding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          company_name: companyName || null,
-          product_description: valueProposition || whatYouSell || null,
-          icp: icp || null,
-          sector: sector || null,
-        }),
+        body: JSON.stringify(filledProfile()),
       });
 
       const payload: Record<string, string> = {
@@ -349,14 +366,14 @@ export default function OnboardingPage() {
                           que dans les paramètres. */}
                       <a
                         href="/api/recall/google-oauth/start?return=/onboarding%3Fstep%3D4"
-                        onClick={() => void persistProfile()}
+                        onClick={connectCalendar}
                         className="inline-flex items-center gap-2 brand-gradient text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:brightness-110 transition-all"
                       >
                         Connecter Google Agenda
                       </a>
                       <a
                         href="/api/recall/microsoft-oauth/start?return=/onboarding%3Fstep%3D4"
-                        onClick={() => void persistProfile()}
+                        onClick={connectCalendar}
                         className="inline-flex items-center gap-2 bg-slate-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-slate-800 transition-colors"
                       >
                         Connecter Outlook
