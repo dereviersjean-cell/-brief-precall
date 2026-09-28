@@ -101,6 +101,7 @@ type CalendarEvent = {
   // "google_calendar" | "microsoft_outlook" — décide du format de `raw`,
   // qui est l'événement tel que l'agenda le fournit (lib/calendar-participants.ts).
   platform?: string | null;
+  platform_id?: string | null;
   raw: Record<string, unknown>;
 };
 
@@ -182,9 +183,14 @@ export async function syncAndScheduleForUser(
 
     const { emails } = readEventParticipants(event.raw, userEmail, event.platform);
     const contactEmail = emails.find((email) => emailDomain(email) !== userDomain) ?? "";
-    const googleEventId = (event.raw?.raw as Record<string, unknown> | undefined)?.id as string | null ?? "";
+    // Identifiant de l'événement CHEZ L'AGENDA (Google ou Microsoft) — le même
+    // que celui sous lequel les briefs sont enregistrés (briefs.calendar_event_id).
+    // Lu jusqu'au 28/09/2026 dans `raw.raw.id`, qui n'existe pas : les calls
+    // arrivaient tous avec un calendar_event_id vide (16 sur 16 en base).
+    // platform_id == raw.id vérifié sur 200 vrais événements.
+    const providerEventId = event.platform_id ?? (typeof event.raw?.id === "string" ? event.raw.id : "");
 
-    console.log(logPrefix, "scheduling bot for", event.start_time, "| contactEmail:", contactEmail, "| googleEventId:", googleEventId);
+    console.log(logPrefix, "scheduling bot for", event.start_time, "| contactEmail:", contactEmail, "| providerEventId:", providerEventId);
     try {
       const botRes = await fetch(`${RECALL_API_V2}/calendar-events/${event.id}/bot/`, {
         method: "POST",
@@ -207,7 +213,7 @@ export async function syncAndScheduleForUser(
             },
             metadata: {
               userId,
-              calendarEventId: googleEventId ?? "",
+              calendarEventId: providerEventId,
               contactEmail: contactEmail ?? "",
               companyName: "",
               // Titre du RDV agenda — relu par le bot-webhook à l'ingestion

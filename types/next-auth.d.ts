@@ -4,7 +4,6 @@ import "next-auth/jwt";
 declare module "next-auth" {
   interface Session {
     accessToken?: string;
-    refreshToken?: string;
     supabaseUserId?: string;
     provider?: string;
     role?: "commercial" | "manager";

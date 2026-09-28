@@ -241,7 +241,10 @@ export const authOptions: AuthOptions = {
 
     async session({ session, token }) {
       session.accessToken = token.accessToken as string | undefined;
-      session.refreshToken = token.refreshToken as string | undefined;
+      // PAS de refreshToken ici : la session est lisible depuis le navigateur
+      // (/api/auth/session), et ce jeton longue durée ouvre l'agenda et l'envoi
+      // d'emails de l'utilisateur. Il reste dans le JWT chiffré, seul endroit
+      // où le serveur en a besoin (renouvellement dans le callback jwt).
       session.supabaseUserId = token.supabaseUserId as string | undefined;
       session.provider = token.provider as string | undefined;
       session.role = token.role;
