@@ -30,8 +30,18 @@ const LABELS: Record<string, string> = {
   calls: "Calls",
 };
 
+// Identifiants d'événement d'agenda : courts chez Google, ~140 caractères
+// terminés par un bourrage « = » chez Microsoft (AQMkADAw…AAAA=). Sans le
+// « = » dans le motif, l'identifiant Outlook s'affichait en entier dans le
+// fil d'Ariane (28/09/2026). Le segment arrive encodé (%3D) : on décode avant.
 function isLikelyId(segment: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(segment) || /^[a-z0-9_-]{20,}$/i.test(segment);
+  let value = segment;
+  try {
+    value = decodeURIComponent(segment);
+  } catch {
+    // Segment mal encodé : on teste tel quel.
+  }
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value) || /^[a-z0-9_+/-]{20,}={0,2}$/i.test(value);
 }
 
 function buildCrumbs(pathname: string): string[] {
