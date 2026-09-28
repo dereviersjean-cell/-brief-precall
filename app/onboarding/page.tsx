@@ -343,7 +343,7 @@ export default function OnboardingPage() {
                 ) : (
                   <>
                     <div className="flex flex-wrap gap-3">
-                      {/* Le profil est enregistré AVANT de partir chez Google :
+                      {/* Le profil est enregistré AVANT de partir chez Google ou Microsoft :
                           l'OAuth quitte la page, et sans ça les trois premières
                           étapes seraient perdues. Le `return` ramène ici plutôt
                           que dans les paramètres. */}
@@ -355,7 +355,7 @@ export default function OnboardingPage() {
                         Connecter Google Agenda
                       </a>
                       <a
-                        href="/api/recall/microsoft-oauth/start"
+                        href="/api/recall/microsoft-oauth/start?return=/onboarding%3Fstep%3D4"
                         onClick={() => void persistProfile()}
                         className="inline-flex items-center gap-2 bg-slate-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-slate-800 transition-colors"
                       >

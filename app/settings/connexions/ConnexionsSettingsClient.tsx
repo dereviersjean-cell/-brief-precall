@@ -71,7 +71,6 @@ export default function ConnexionsSettingsClient({
   }, [searchParams]);
 
   const mailProvider = session?.provider === "google" ? "Google" : session?.provider === "azure-ad" ? "Microsoft" : null;
-  const hasGmailAccess = session?.provider === "google";
 
   return (
     <div>
@@ -205,8 +204,8 @@ export default function ConnexionsSettingsClient({
       {/* Compte Mail — read-only: this is the same account used to log into
           Brief (lib/auth.ts), not a separate integration, so there's no
           connect/disconnect action here (that's the sidebar's "Déconnexion").
-          Only Google sign-ins carry the gmail.readonly/gmail.send scopes —
-          Microsoft/Azure AD sign-ins only request Calendars.Read. */}
+          Google sends through Gmail (gmail.send), Microsoft through Outlook
+          (Mail.Send, since 28/09/2026) — send-only on both sides. */}
       <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] mt-6">
         <div className="px-6 py-5">
           <h2 className="text-sm font-semibold text-slate-900 mb-1">Compte Mail</h2>
@@ -223,9 +222,9 @@ export default function ConnexionsSettingsClient({
                   {mailProvider} — {session?.user?.email}
                 </span>
               </div>
-              {!hasGmailAccess && (
-                <span className="text-xs text-slate-400">Pas d&apos;accès Gmail (connecté via Microsoft)</span>
-              )}
+              <span className="text-xs text-slate-400">
+                Envoi via {session?.provider === "azure-ad" ? "Outlook" : "Gmail"}
+              </span>
             </div>
           ) : (
             <p className="text-sm text-slate-400">Chargement…</p>

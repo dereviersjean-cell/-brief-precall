@@ -8,6 +8,22 @@ import { saveRecallCalendarId } from "@/lib/db";
 import { APP_URL } from "@/lib/app-url";
 
 const SUCCESS_URL = `${APP_URL}/settings/connexions?recall=connected`;
+
+// Destination de retour posée par la route /start (chemin relatif déjà
+// validé là-bas). Absente ou illisible : on retombe sur les paramètres.
+async function resolveSuccessUrl(): Promise<string> {
+  try {
+    const store = await cookies();
+    const target = store.get("recall_oauth_return")?.value;
+    store.delete("recall_oauth_return");
+    if (target && /^\/(?!\/)/.test(target)) {
+      return `${APP_URL}${target}${target.includes("?") ? "&" : "?"}recall=connected`;
+    }
+  } catch {
+    // Repli silencieux : la connexion a réussi, seule la destination change.
+  }
+  return SUCCESS_URL;
+}
 const ERROR_URL = `${APP_URL}/settings/connexions?recall=error`;
 const REDIRECT_URI = `${APP_URL}/api/recall/microsoft-oauth/callback`;
 
@@ -88,7 +104,7 @@ export async function GET(request: NextRequest) {
     console.log("[ms oauth callback] Calendar created, id:", calendar.id);
     await saveRecallCalendarId(userId, calendar.id);
     console.log("[ms oauth callback] recall_calendar_id saved to DB");
-    return NextResponse.redirect(SUCCESS_URL);
+    return NextResponse.redirect(await resolveSuccessUrl());
   } catch (err) {
     console.log("[ms oauth callback] createRecallCalendarV2Microsoft failed:", err instanceof Error ? err.message : String(err));
     return NextResponse.redirect(ERROR_URL);

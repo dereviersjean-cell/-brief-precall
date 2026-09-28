@@ -3,6 +3,7 @@ import GoogleProvider from "next-auth/providers/google";
 import AzureADProvider from "next-auth/providers/azure-ad";
 import { resolveUserForLogin, saveGoogleTokens, getUserRole, type AuthProvider } from "./db";
 import { refreshGoogleAccessToken } from "./gmail";
+import { MICROSOFT_LOGIN_SCOPES, refreshMicrosoftAccessToken } from "./microsoft";
 
 function toAuthProvider(nextAuthProvider: string): AuthProvider | null {
   if (nextAuthProvider === "google") return "google";
@@ -93,7 +94,7 @@ export const authOptions: AuthOptions = {
       tenantId: process.env.AZURE_AD_TENANT_ID,
       authorization: {
         params: {
-          scope: "openid email profile offline_access https://graph.microsoft.com/Calendars.Read",
+          scope: MICROSOFT_LOGIN_SCOPES,
         },
       },
     }),
@@ -210,6 +211,27 @@ export const authOptions: AuthOptions = {
           delete token.error;
         } catch (err) {
           console.error("[auth] refreshGoogleAccessToken failed:", err);
+          token.error = "RefreshAccessTokenError";
+        }
+      }
+
+      // Même chose pour un compte Microsoft. Absent jusqu'au 28/09/2026 : le
+      // jeton Graph expire au bout d'une heure environ, et la liste des RDV
+      // de /brief tombait en erreur jusqu'à la reconnexion suivante.
+      if (
+        token.provider === "azure-ad" &&
+        typeof token.accessTokenExpires === "number" &&
+        Date.now() >= token.accessTokenExpires &&
+        typeof token.refreshToken === "string"
+      ) {
+        try {
+          const refreshed = await refreshMicrosoftAccessToken(token.refreshToken);
+          token.accessToken = refreshed.accessToken;
+          token.refreshToken = refreshed.refreshToken;
+          token.accessTokenExpires = refreshed.expiresAt;
+          delete token.error;
+        } catch (err) {
+          console.error("[auth] refreshMicrosoftAccessToken failed:", err);
           token.error = "RefreshAccessTokenError";
         }
       }

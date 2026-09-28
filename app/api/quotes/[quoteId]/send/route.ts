@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
 import { getQuoteWithLines, markQuoteAsSent, getGoogleTokens } from "@/lib/db";
 import { refreshGoogleAccessToken } from "@/lib/gmail";
+import { outlookSendFailure, sendOutlookMail } from "@/lib/microsoft";
 import { renderQuoteToPdfBuffer } from "@/lib/pdf/QuoteDocument";
 import { APP_URL } from "@/lib/app-url";
 
@@ -96,11 +97,15 @@ export async function POST(
     return NextResponse.json({ error: "Le corps de l'email est requis." }, { status: 400 });
   }
 
+  // Compte Microsoft : envoi via Outlook avec le jeton de la session. Sinon,
+  // Gmail via le refresh_token enregistré (voir plus bas).
+  const viaOutlook = session?.provider === "azure-ad";
+
   // Refresh-token based (not session.accessToken) — this must also work when
   // an admin is impersonating the user (no real Google OAuth session then),
   // consistent with the rest of the quotes module.
-  const { refreshToken } = await getGoogleTokens(auth.userId);
-  if (!refreshToken) {
+  const { refreshToken } = viaOutlook ? { refreshToken: null } : await getGoogleTokens(auth.userId);
+  if (!viaOutlook && !refreshToken) {
     return NextResponse.json(
       { error: "Connectez votre compte Google (Gmail) dans les paramètres avant d'envoyer un devis." },
       { status: 400 }
@@ -123,43 +128,62 @@ export async function POST(
     return NextResponse.json({ error: "Erreur lors de la génération du PDF." }, { status: 500 });
   }
 
-  let accessToken: string;
-  try {
-    accessToken = await refreshGoogleAccessToken(refreshToken);
-  } catch (err) {
-    console.error("[quotes/send] Google token refresh failed:", err);
-    return NextResponse.json(
-      { error: "Session Google expirée. Reconnectez votre compte Google dans les paramètres." },
-      { status: 400 }
-    );
-  }
-
-  const raw = toBase64Url(
-    buildRfc2822WithAttachment({
+  if (viaOutlook) {
+    const sent = await sendOutlookMail(session?.accessToken ?? "", {
       to: quote.client_email,
       subject,
-      body: finalBody,
-      attachmentFilename: `${quote.quote_number}.pdf`,
-      attachmentBuffer: pdfBuffer,
-    })
-  );
-
-  let gmailRes: Response;
-  try {
-    gmailRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ raw }),
+      // Même mise en forme que la branche Gmail (buildRfc2822WithAttachment).
+      body: finalBody.replace(/(?<!\n)\n(?!\n)/g, " "),
+      attachment: {
+        filename: `${quote.quote_number}.pdf`,
+        contentType: "application/pdf",
+        content: pdfBuffer,
+      },
     });
-  } catch (err) {
-    console.error("[quotes/send] Gmail API fetch failed:", err);
-    return NextResponse.json({ error: "Erreur lors de l'envoi de l'email." }, { status: 500 });
-  }
+    if (!sent.ok) {
+      console.error("[quotes/send] Outlook send failed:", sent.status, sent.detail);
+      const failure = outlookSendFailure(sent);
+      return NextResponse.json({ error: failure.error }, { status: failure.status });
+    }
+  } else {
+    let accessToken: string;
+    try {
+      accessToken = await refreshGoogleAccessToken(refreshToken!);
+    } catch (err) {
+      console.error("[quotes/send] Google token refresh failed:", err);
+      return NextResponse.json(
+        { error: "Session Google expirée. Reconnectez votre compte Google dans les paramètres." },
+        { status: 400 }
+      );
+    }
 
-  if (!gmailRes.ok) {
-    const detail = await gmailRes.text();
-    console.error("[quotes/send] Gmail API error:", gmailRes.status, detail);
-    return NextResponse.json({ error: "Erreur lors de l'envoi de l'email." }, { status: 500 });
+    const raw = toBase64Url(
+      buildRfc2822WithAttachment({
+        to: quote.client_email,
+        subject,
+        body: finalBody,
+        attachmentFilename: `${quote.quote_number}.pdf`,
+        attachmentBuffer: pdfBuffer,
+      })
+    );
+
+    let gmailRes: Response;
+    try {
+      gmailRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ raw }),
+      });
+    } catch (err) {
+      console.error("[quotes/send] Gmail API fetch failed:", err);
+      return NextResponse.json({ error: "Erreur lors de l'envoi de l'email." }, { status: 500 });
+    }
+
+    if (!gmailRes.ok) {
+      const detail = await gmailRes.text();
+      console.error("[quotes/send] Gmail API error:", gmailRes.status, detail);
+      return NextResponse.json({ error: "Erreur lors de l'envoi de l'email." }, { status: 500 });
+    }
   }
 
   try {

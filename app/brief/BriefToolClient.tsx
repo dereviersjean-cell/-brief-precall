@@ -644,6 +644,7 @@ export default function BriefToolClient() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const provider = session?.provider ?? "google";
+  const calendarLabel = provider === "azure-ad" ? "Microsoft Calendar" : "Google Calendar";
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[] | null>(null);
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [calendarError, setCalendarError] = useState<string | null>(null);
@@ -721,7 +722,7 @@ export default function BriefToolClient() {
           setCalendarError((data as { error?: string }).error ?? "Erreur inconnue");
         }
       })
-      .catch(() => setCalendarError("Impossible de charger les événements Google Calendar."))
+      .catch(() => setCalendarError(`Impossible de charger les événements ${calendarLabel}.`))
       .finally(() => setCalendarLoading(false));
   }
 
@@ -824,7 +825,7 @@ export default function BriefToolClient() {
           {calendarGroups.length === 0 ? (
             <EmptyState
               title="Aucun rendez-vous à venir pour l'instant."
-              subtitle="Aucun événement Google Calendar avec des participants extérieurs dans les 7 prochains jours."
+              subtitle={`Aucun événement ${calendarLabel} avec des participants extérieurs dans les 7 prochains jours.`}
             />
           ) : (
             calendarGroups.map(([dayKey, events]) => (
@@ -881,7 +882,7 @@ export default function BriefToolClient() {
               <h1 className="text-2xl font-bold text-slate-900">Vos prochains rendez-vous</h1>
               <p className="text-slate-500 text-sm mt-1">
                 {upcomingCount} RDV à venir
-                {showCalendar && ` · ${provider === "azure-ad" ? "Microsoft Calendar" : "Google Calendar"}`}
+                {showCalendar && ` · ${calendarLabel}`}
               </p>
             </div>
             <button

@@ -21,7 +21,7 @@ export default function PrivacyPolicyPage() {
       <h1 className="mt-3 text-[32px] md:text-[38px] leading-tight font-bold tracking-[-0.03em] text-ink">
         Politique de <span className="italic-serif text-primary">confidentialité</span>.
       </h1>
-      <p className="mt-3 text-[13px] text-muted-foreground">Dernière mise à jour : 20 août 2026.</p>
+      <p className="mt-3 text-[13px] text-muted-foreground">Dernière mise à jour : 28 septembre 2026.</p>
 
       <Section title="Qui sommes-nous">
         <p>
@@ -43,12 +43,13 @@ export default function PrivacyPolicyPage() {
         <ul className="list-disc pl-5 space-y-1.5">
           <li><b className="text-ink">Identité</b> — nom, adresse email et photo de profil de votre compte Google/Microsoft.</li>
           <li><b className="text-ink">Agenda</b> — les événements de votre calendrier (horaires, participants, titre du rendez-vous), et la possibilité d&apos;écrire dans la description d&apos;un événement pour y déposer votre brief pré-rendez-vous.</li>
-          <li><b className="text-ink">Emails</b> — l&apos;envoi d&apos;emails à votre initiative (relance, devis) depuis votre propre boîte Gmail, en votre nom, après que vous en ayez relu le contenu. <b className="text-ink">Brief n&apos;a aucun accès en lecture à votre messagerie</b> : ni le contenu de vos messages, ni leurs en-têtes.</li>
+          <li><b className="text-ink">Emails</b> — l&apos;envoi d&apos;emails à votre initiative (relance, devis) depuis votre propre boîte Gmail ou Outlook, en votre nom, après que vous en ayez relu le contenu. <b className="text-ink">Brief n&apos;a aucun accès en lecture à votre messagerie</b> : ni le contenu de vos messages, ni leurs en-têtes.</li>
         </ul>
         <p>
           Nous ne demandons jamais un accès plus large que nécessaire : le seul droit Gmail demandé par Brief est{" "}
           <code>gmail.send</code>, qui permet d&apos;envoyer un message en votre nom et rien d&apos;autre. Aucun
-          scope de lecture n&apos;est demandé, pas même celui limité aux en-têtes.
+          scope de lecture n&apos;est demandé, pas même celui limité aux en-têtes. Il en va de même pour un compte
+          Microsoft : le seul droit de messagerie demandé est <code>Mail.Send</code>, limité lui aussi à l&apos;envoi.
         </p>
         <p>Selon les intégrations que vous ou votre organisation activez, nous pouvons aussi traiter :</p>
         <ul className="list-disc pl-5 space-y-1.5">

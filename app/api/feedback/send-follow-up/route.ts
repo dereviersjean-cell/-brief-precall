@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
 import { getCallWithAnalysis, updateCallContactEmail, updateCallFollowUp, updateFollowUpSentAt, updateGmailThreadId } from "@/lib/db";
 import { isValidEmail } from "@/lib/email-address";
+import { outlookSendFailure, sendOutlookMail } from "@/lib/microsoft";
 
 function encodeMimeSubject(subject: string): string {
   if (/[^\x00-\x7F]/.test(subject)) {
@@ -12,8 +13,12 @@ function encodeMimeSubject(subject: string): string {
   return subject;
 }
 
+function normalizeBody(body: string): string {
+  return body.replace(/(?<!\n)\n(?!\n)/g, " ");
+}
+
 function buildRfc2822(to: string, subject: string, body: string): string {
-  const normalizedBody = body.replace(/(?<!\n)\n(?!\n)/g, " ");
+  const normalizedBody = normalizeBody(body);
   return [
     `To: ${to}`,
     `Subject: ${encodeMimeSubject(subject)}`,
@@ -95,7 +100,7 @@ export async function POST(request: NextRequest) {
 
   const accessToken = session?.accessToken;
   if (!accessToken) {
-    return NextResponse.json({ error: "Token d'accès Google manquant. Reconnectez-vous." }, { status: 401 });
+    return NextResponse.json({ error: "Session expirée. Reconnectez-vous pour envoyer l'email." }, { status: 401 });
   }
 
   // Persist edited content before sending so history reflects what was actually sent
@@ -110,47 +115,64 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Build and send email via Gmail API
-  const raw = toBase64Url(
-    buildRfc2822(recipient, finalSubject, finalBody)
-  );
-
-  let gmailRes: Response;
-  try {
-    gmailRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ raw }),
-    });
-  } catch (err) {
-    console.error("[send-follow-up] Gmail API fetch failed:", err);
-    return NextResponse.json({ error: "Erreur lors de l'envoi de l'email." }, { status: 500 });
-  }
-
-  if (gmailRes.status === 401 || gmailRes.status === 403) {
-    console.error("[send-follow-up] Gmail auth error:", gmailRes.status);
-    return NextResponse.json(
-      { error: "Session Google expirée. Reconnectez-vous pour envoyer l'email." },
-      { status: 401 }
-    );
-  }
-
-  if (!gmailRes.ok) {
-    const detail = await gmailRes.text();
-    console.error("[send-follow-up] Gmail API error:", gmailRes.status, detail);
-    return NextResponse.json({ error: "Erreur lors de l'envoi de l'email." }, { status: 500 });
-  }
-
-  // Parse threadId from Gmail response
   let threadId: string | null = null;
-  try {
-    const gmailData = await gmailRes.json() as { threadId?: string };
-    threadId = gmailData.threadId ?? null;
-  } catch {
-    // non-blocking
+
+  if (session?.provider === "azure-ad") {
+    // Compte Microsoft : envoi via Outlook. Graph ne rend pas d'identifiant
+    // de fil — threadId reste null, ce qui ne prive de rien depuis le retrait
+    // de la détection de réponse (lib/auth.ts).
+    const sent = await sendOutlookMail(accessToken, {
+      to: recipient,
+      subject: finalSubject,
+      body: normalizeBody(finalBody),
+    });
+    if (!sent.ok) {
+      console.error("[send-follow-up] Outlook send failed:", sent.status, sent.detail);
+      const failure = outlookSendFailure(sent);
+      return NextResponse.json({ error: failure.error }, { status: failure.status });
+    }
+  } else {
+    // Build and send email via Gmail API
+    const raw = toBase64Url(
+      buildRfc2822(recipient, finalSubject, finalBody)
+    );
+
+    let gmailRes: Response;
+    try {
+      gmailRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ raw }),
+      });
+    } catch (err) {
+      console.error("[send-follow-up] Gmail API fetch failed:", err);
+      return NextResponse.json({ error: "Erreur lors de l'envoi de l'email." }, { status: 500 });
+    }
+
+    if (gmailRes.status === 401 || gmailRes.status === 403) {
+      console.error("[send-follow-up] Gmail auth error:", gmailRes.status);
+      return NextResponse.json(
+        { error: "Session Google expirée. Reconnectez-vous pour envoyer l'email." },
+        { status: 401 }
+      );
+    }
+
+    if (!gmailRes.ok) {
+      const detail = await gmailRes.text();
+      console.error("[send-follow-up] Gmail API error:", gmailRes.status, detail);
+      return NextResponse.json({ error: "Erreur lors de l'envoi de l'email." }, { status: 500 });
+    }
+
+    // Parse threadId from Gmail response
+    try {
+      const gmailData = await gmailRes.json() as { threadId?: string };
+      threadId = gmailData.threadId ?? null;
+    } catch {
+      // non-blocking
+    }
   }
 
   // L'adresse saisie est enregistrée sur le call APRÈS un envoi réussi : elle

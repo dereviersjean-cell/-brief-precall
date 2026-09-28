@@ -1,5 +1,6 @@
 import { formatContactDisplayName } from "./format";
 import { APP_URL } from "@/lib/app-url";
+import { readEventParticipants, emailDomain } from "./calendar-participants";
 
 const RECALL_BASE_URL = "https://eu-central-1.recall.ai/api/v1";
 
@@ -92,18 +93,15 @@ export async function createRecallCalendarV2Microsoft(
 
 const RECALL_API_V2 = "https://eu-central-1.recall.ai/api/v2";
 
-type Attendee = {
-  email: string;
-  responseStatus: string;
-  self?: boolean;
-};
-
 type CalendarEvent = {
   id: string;
   start_time: string | null;
   meeting_url: string | null;
   bots: unknown[];
-  raw: { attendees?: Attendee[]; [key: string]: unknown };
+  // "google_calendar" | "microsoft_outlook" — décide du format de `raw`,
+  // qui est l'événement tel que l'agenda le fournit (lib/calendar-participants.ts).
+  platform?: string | null;
+  raw: Record<string, unknown>;
 };
 
 export type SyncResult = { checked: number; scheduled: number; skipped: number };
@@ -119,14 +117,13 @@ function getIneligibilityReason(
 ): string | null {
   if (!event.meeting_url) return "no meeting_url";
 
-  const attendees: Attendee[] = event.raw?.attendees ?? [];
+  const { emails, userResponse } = readEventParticipants(event.raw, userEmail, event.platform);
 
-  const hasExternal = attendees.some((a) => (a.email?.split("@")[1] ?? "") !== userDomain);
+  const hasExternal = emails.some((email) => emailDomain(email) !== userDomain);
   if (!hasExternal) return "no external attendee";
 
-  const userAttendee = attendees.find((a) => a.self === true || a.email === userEmail);
-  if (!userAttendee || userAttendee.responseStatus !== "accepted") {
-    return `user not accepted: ${userAttendee?.responseStatus ?? "not found"}`;
+  if (userResponse !== "accepted") {
+    return `user not accepted: ${userResponse ?? "not found"}`;
   }
 
   return null;
@@ -167,7 +164,7 @@ export async function syncAndScheduleForUser(
     return { checked: 0, scheduled: 0, skipped: 0 };
   }
 
-  const userDomain = userEmail.split("@")[1] ?? "";
+  const userDomain = emailDomain(userEmail);
 
   const events = await fetchUpcomingCalendarEvents(calendarId);
   console.log(`[sync] userId ${userId} — ${events.length} upcoming events`);
@@ -181,12 +178,10 @@ export async function syncAndScheduleForUser(
     const ineligibleReason = getIneligibilityReason(event, userEmail, userDomain);
     if (ineligibleReason) { console.log(logPrefix, "skipped —", ineligibleReason); skipped++; continue; }
 
-    const attendees: Attendee[] = event.raw?.attendees ?? [];
-
     if ((event.bots ?? []).length > 0) { console.log(logPrefix, "skipped — bot already scheduled"); skipped++; continue; }
 
-    const externalAttendee = attendees.find((a) => (a.email?.split("@")[1] ?? "") !== userDomain);
-    const contactEmail = externalAttendee?.email ?? "";
+    const { emails } = readEventParticipants(event.raw, userEmail, event.platform);
+    const contactEmail = emails.find((email) => emailDomain(email) !== userDomain) ?? "";
     const googleEventId = (event.raw?.raw as Record<string, unknown> | undefined)?.id as string | null ?? "";
 
     console.log(logPrefix, "scheduling bot for", event.start_time, "| contactEmail:", contactEmail, "| googleEventId:", googleEventId);

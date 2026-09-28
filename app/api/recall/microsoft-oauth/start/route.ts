@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { randomBytes } from "crypto";
 import { getServerSession } from "next-auth/next";
@@ -6,7 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
 import { APP_URL } from "@/lib/app-url";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
   const auth = await requireActiveUser(session);
   if (!auth.ok) return auth.response;
@@ -18,6 +18,22 @@ export async function GET() {
 
   const state = randomBytes(32).toString("hex");
   const cookieStore = await cookies();
+
+  // Où revenir après la connexion — même mécanique et même validation que
+  // la route Google (app/api/recall/google-oauth/start) : l'onboarding doit
+  // reprendre son fil au lieu d'éjecter l'utilisateur dans les paramètres.
+  // Seuls les chemins relatifs passent, sinon redirection ouverte.
+  const requested = request.nextUrl.searchParams.get("return") ?? "";
+  const safeReturn = /^\/(?!\/)[\w\-/?=&.]*$/.test(requested) && !requested.includes("..") ? requested : "";
+  if (safeReturn) {
+    cookieStore.set("recall_oauth_return", safeReturn, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      maxAge: 600,
+      path: "/",
+    });
+  }
   cookieStore.set("recall_ms_oauth_state", state, {
     httpOnly: true,
     secure: true,

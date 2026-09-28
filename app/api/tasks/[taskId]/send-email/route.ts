@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
 import { getTaskById, completeTask, getGoogleTokens, markCallFollowUpSentIfUnset } from "@/lib/db";
 import { refreshGoogleAccessToken } from "@/lib/gmail";
+import { outlookSendFailure, sendOutlookMail } from "@/lib/microsoft";
 
 function encodeMimeSubject(subject: string): string {
   if (/[^\x00-\x7F]/.test(subject)) {
@@ -12,8 +13,12 @@ function encodeMimeSubject(subject: string): string {
   return subject;
 }
 
+function normalizeBody(body: string): string {
+  return body.replace(/(?<!\n)\n(?!\n)/g, " ");
+}
+
 function buildRfc2822(to: string, subject: string, body: string): string {
-  const normalizedBody = body.replace(/(?<!\n)\n(?!\n)/g, " ");
+  const normalizedBody = normalizeBody(body);
   return [
     `To: ${to}`,
     `Subject: ${encodeMimeSubject(subject)}`,
@@ -64,45 +69,62 @@ export async function POST(
     return NextResponse.json({ error: "Le corps de l'email est requis." }, { status: 400 });
   }
 
-  // Refresh-token based (not session.accessToken) — consistent with the
-  // quotes module, so this also works when an admin is impersonating the user.
-  const { refreshToken } = await getGoogleTokens(auth.userId);
-  if (!refreshToken) {
-    return NextResponse.json(
-      { error: "Gmail non connecté. Connectez votre compte Google dans les paramètres pour envoyer cet email." },
-      { status: 400 }
-    );
-  }
-
-  let accessToken: string;
-  try {
-    accessToken = await refreshGoogleAccessToken(refreshToken);
-  } catch (err) {
-    console.error("[tasks/send-email] Google token refresh failed:", err);
-    return NextResponse.json(
-      { error: "Session Google expirée. Reconnectez votre compte Google dans les paramètres." },
-      { status: 400 }
-    );
-  }
-
-  const raw = toBase64Url(buildRfc2822(task.contact_email, subject, bodyText));
-
-  let gmailRes: Response;
-  try {
-    gmailRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ raw }),
+  if (session?.provider === "azure-ad") {
+    // Compte Microsoft : envoi via Outlook, avec le jeton de la session
+    // (renouvelé par lib/auth.ts). Brief ne conserve pas de jeton Microsoft
+    // en base : sous impersonation admin, la session n'est pas celle de
+    // l'utilisateur et on retombe sur la branche Google ci-dessous.
+    const sent = await sendOutlookMail(session.accessToken ?? "", {
+      to: task.contact_email,
+      subject,
+      body: normalizeBody(bodyText),
     });
-  } catch (err) {
-    console.error("[tasks/send-email] Gmail API fetch failed:", err);
-    return NextResponse.json({ error: "Erreur lors de l'envoi de l'email." }, { status: 500 });
-  }
+    if (!sent.ok) {
+      console.error("[tasks/send-email] Outlook send failed:", sent.status, sent.detail);
+      const failure = outlookSendFailure(sent);
+      return NextResponse.json({ error: failure.error }, { status: failure.status });
+    }
+  } else {
+    // Refresh-token based (not session.accessToken) — consistent with the
+    // quotes module, so this also works when an admin is impersonating the user.
+    const { refreshToken } = await getGoogleTokens(auth.userId);
+    if (!refreshToken) {
+      return NextResponse.json(
+        { error: "Gmail non connecté. Connectez votre compte Google dans les paramètres pour envoyer cet email." },
+        { status: 400 }
+      );
+    }
 
-  if (!gmailRes.ok) {
-    const detail = await gmailRes.text();
-    console.error("[tasks/send-email] Gmail API error:", gmailRes.status, detail);
-    return NextResponse.json({ error: "Erreur lors de l'envoi de l'email." }, { status: 500 });
+    let accessToken: string;
+    try {
+      accessToken = await refreshGoogleAccessToken(refreshToken);
+    } catch (err) {
+      console.error("[tasks/send-email] Google token refresh failed:", err);
+      return NextResponse.json(
+        { error: "Session Google expirée. Reconnectez votre compte Google dans les paramètres." },
+        { status: 400 }
+      );
+    }
+
+    const raw = toBase64Url(buildRfc2822(task.contact_email, subject, bodyText));
+
+    let gmailRes: Response;
+    try {
+      gmailRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ raw }),
+      });
+    } catch (err) {
+      console.error("[tasks/send-email] Gmail API fetch failed:", err);
+      return NextResponse.json({ error: "Erreur lors de l'envoi de l'email." }, { status: 500 });
+    }
+
+    if (!gmailRes.ok) {
+      const detail = await gmailRes.text();
+      console.error("[tasks/send-email] Gmail API error:", gmailRes.status, detail);
+      return NextResponse.json({ error: "Erreur lors de l'envoi de l'email." }, { status: 500 });
+    }
   }
 
   try {
