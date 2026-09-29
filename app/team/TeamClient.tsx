@@ -246,6 +246,11 @@ export default function TeamClient({
                       <tr className="border-b border-border bg-slate-50/60">
                         <SortHeader label="Nom" sortKey="name" currentSort={sortKey} currentDirection={sortDirection} onSort={handleSort} />
                         <SortHeader label="Dernière activité" sortKey="activity" currentSort={sortKey} currentDirection={sortDirection} onSort={handleSort} />
+                        {/* Distincte de l'activité : un commercial peut se connecter
+                            sans générer ni brief ni call (migration 018). */}
+                        <th className="px-4 py-3 text-left">
+                          <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Dernière connexion</span>
+                        </th>
                         <th className="px-4 py-3 text-right">
                           <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Performance</span>
                         </th>
@@ -274,6 +279,15 @@ export default function TeamClient({
                                   {c.name || "—"}
                                 </p>
                                 <p className="text-slate-400 text-xs truncate">{c.email}</p>
+                                {c.calendar_disconnected && (
+                                  <span
+                                    title="Plus aucune réunion n'est enregistrée tant que l'agenda n'est pas reconnecté (Paramètres > Connexions)."
+                                    className="mt-1 inline-flex items-center rounded-full bg-red-50 border border-red-200 px-2 py-0.5 text-[11px] font-medium text-red-700"
+                                  >
+                                    Agenda déconnecté
+                                    {c.calendar_disconnected_at ? ` depuis le ${formatDate(c.calendar_disconnected_at)}` : ""}
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </td>
@@ -285,6 +299,9 @@ export default function TeamClient({
                             ) : (
                               formatDate(c.last_activity_at)
                             )}
+                          </td>
+                          <td data-label="Dernière connexion" className="px-4 py-3.5 whitespace-nowrap text-slate-500">
+                            {isPending(c) ? "—" : formatDate(c.last_seen_at)}
                           </td>
                           <td className="px-4 py-3.5 text-right whitespace-nowrap">
                             {isPending(c) ? (

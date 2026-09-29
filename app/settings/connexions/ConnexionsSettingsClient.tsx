@@ -26,10 +26,17 @@ const PIPELINE_STEPS: PipelineStep[] = [
 
 export default function ConnexionsSettingsClient({
   recallConnected,
+  recallDisconnected,
+  recallDisconnectedSince,
+  recallPlatform,
   hasCalendarWriteAccess,
   slackConnected: initialSlackConnected,
 }: {
   recallConnected: boolean;
+  // Agenda enregistré mais coupé chez Recall (jeton expiré ou révoqué).
+  recallDisconnected: boolean;
+  recallDisconnectedSince: string | null;
+  recallPlatform: string | null;
   hasCalendarWriteAccess: boolean;
   slackConnected: boolean;
 }) {
@@ -106,7 +113,28 @@ export default function ConnexionsSettingsClient({
           <p className="text-sm text-slate-500 mb-4">
             Permet l&apos;enregistrement et l&apos;analyse automatique de vos appels avec des prospects.
           </p>
-          {recallConnected ? (
+          {recallConnected && recallDisconnected ? (
+            // Reconnecter crée un nouvel agenda chez Recall ; l'ancien, coupé,
+            // est supprimé au retour (saveReconnectedCalendar).
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <p className="text-sm font-medium text-red-700">Agenda déconnecté</p>
+                <p className="text-sm text-red-600 mt-0.5">
+                  L&apos;accès à votre agenda a expiré
+                  {recallDisconnectedSince
+                    ? ` le ${new Date(recallDisconnectedSince).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}`
+                    : ""}
+                  . Vos rendez-vous ne sont plus enregistrés ni analysés.
+                </p>
+              </div>
+              <a
+                href={recallPlatform === "microsoft_outlook" ? "/api/recall/microsoft-oauth/start" : "/api/recall/google-oauth/start"}
+                className="inline-flex items-center gap-2 brand-gradient text-white text-sm font-semibold px-4 py-2 rounded-lg hover:brightness-110 transition-colors shrink-0"
+              >
+                Reconnecter mon agenda
+              </a>
+            </div>
+          ) : recallConnected ? (
             <div className="flex items-center gap-3">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full">
                 <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

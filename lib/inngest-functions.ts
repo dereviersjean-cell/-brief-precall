@@ -27,6 +27,7 @@ import {
   type DigestRecipient,
 } from "./db";
 import { syncAndScheduleForUser } from "./recall";
+import { checkCalendarHealth } from "./calendar-health";
 import { sendWeeklyDigestForUser } from "./digest";
 import { pushNewTasksToHubSpot } from "./tasks-hubspot-sync";
 import { batchGetHubSpotTaskStatuses, getHubSpotOwnerId, findNewHubSpotTasksForOwner, findClosedDealsForEmail as findClosedHubspotDealForEmail } from "./crm/hubspot";
@@ -287,6 +288,14 @@ export const syncRecallCalendars = inngest.createFunction(
     let totalSkipped = 0;
 
     for (const user of users) {
+      // Agenda coupé chez Recall : prévenir (une fois) et ne rien programmer —
+      // les événements d'un agenda coupé ne sont plus mis à jour, un bot y
+      // partirait sur un rendez-vous peut-être annulé depuis.
+      const health = (await step.run(`check-calendar-${user.id}`, async () => {
+        return checkCalendarHealth(user);
+      })) as { disconnected: boolean };
+      if (health.disconnected) continue;
+
       const result = (await step.run(`sync-user-${user.id}`, async () => {
         return syncAndScheduleForUser(user.id, user.email);
       })) as { checked: number; scheduled: number; skipped: number };

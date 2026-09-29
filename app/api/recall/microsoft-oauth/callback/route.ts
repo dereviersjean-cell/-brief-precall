@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
 import { createRecallCalendarV2Microsoft } from "@/lib/recall";
-import { saveRecallCalendarId } from "@/lib/db";
+import { saveReconnectedCalendar } from "@/lib/calendar-health";
 import { APP_URL } from "@/lib/app-url";
 
 const SUCCESS_URL = `${APP_URL}/settings/connexions?recall=connected`;
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
   try {
     const calendar = await createRecallCalendarV2Microsoft(userId, refreshToken);
     console.log("[ms oauth callback] Calendar created, id:", calendar.id);
-    await saveRecallCalendarId(userId, calendar.id);
+    await saveReconnectedCalendar(userId, calendar.id);
     console.log("[ms oauth callback] recall_calendar_id saved to DB");
     return NextResponse.redirect(await resolveSuccessUrl());
   } catch (err) {

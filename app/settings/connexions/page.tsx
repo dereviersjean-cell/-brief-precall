@@ -2,6 +2,7 @@ import { getRecallCalendarId, getCrmTokens } from "@/lib/db";
 import { getEffectiveUserId } from "@/lib/session-user";
 import { hasCalendarWriteAccess } from "@/lib/google-calendar";
 import { hasSlackConnection } from "@/lib/slack";
+import { getRecallCalendarHealth } from "@/lib/recall";
 import ConnexionsSettingsClient from "./ConnexionsSettingsClient";
 import CrmSection from "./CrmSection";
 
@@ -20,10 +21,19 @@ export default async function ConnexionsSettingsPage() {
       ])
     : [null, false, false, null, null];
 
+  // État réel chez Recall, lu en direct : un identifiant enregistré ne prouve
+  // pas que l'agenda fonctionne (un commercial est resté deux mois « connecté »
+  // avec un jeton expiré). Null si Recall ne répond pas — on affiche alors
+  // « connecté », comme avant, plutôt qu'une fausse alerte.
+  const calendarHealth = recallCalendarId ? await getRecallCalendarHealth(recallCalendarId) : null;
+
   return (
     <>
       <ConnexionsSettingsClient
         recallConnected={recallCalendarId !== null}
+        recallDisconnected={calendarHealth?.status === "disconnected"}
+        recallDisconnectedSince={calendarHealth?.status === "disconnected" ? calendarHealth.since : null}
+        recallPlatform={calendarHealth?.platform ?? null}
         hasCalendarWriteAccess={calendarWriteAccess}
         slackConnected={slackConnected}
       />

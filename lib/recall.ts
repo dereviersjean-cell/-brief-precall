@@ -520,6 +520,40 @@ export async function getBotIdFromCalendarEvent(calendarEventId: string): Promis
   return data.bots?.[0]?.bot_id ?? null;
 }
 
+// État réel d'un agenda chez Recall. Brief tenait un agenda pour connecté
+// dès que recall_calendar_id existait : celui d'un commercial est resté coupé
+// deux mois (jeton Google expiré le 27/07/2026) sans que rien ne le montre.
+// `since` = date du dernier changement d'état (la coupure, le cas échéant).
+// Null si Recall ne répond pas : l'appelant ne conclut alors rien.
+export type RecallCalendarHealth = {
+  status: "connected" | "connecting" | "disconnected" | string;
+  platform: "google_calendar" | "microsoft_outlook" | string | null;
+  since: string | null;
+  reason: string | null;
+};
+
+export async function getRecallCalendarHealth(calendarId: string): Promise<RecallCalendarHealth | null> {
+  try {
+    const res = await fetch(`${RECALL_API_V2}/calendars/${calendarId}/`, { headers: recallHeaders() });
+    if (!res.ok) return null;
+    const data = await res.json() as {
+      status?: string;
+      platform?: string;
+      status_changes?: Array<{ status?: string; created_at?: string; reason?: string }>;
+    };
+    if (!data.status) return null;
+    const last = (data.status_changes ?? []).at(-1);
+    return {
+      status: data.status,
+      platform: data.platform ?? null,
+      since: last?.status === data.status ? last.created_at ?? null : null,
+      reason: last?.status === data.status ? last.reason ?? null : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function deleteRecallCalendar(calendarId: string): Promise<void> {
   const res = await fetch(`${RECALL_API_V2}/calendars/${calendarId}/`, {
     method: "DELETE",

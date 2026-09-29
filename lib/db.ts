@@ -170,6 +170,45 @@ export async function getRecallCalendarId(userId: string): Promise<string | null
   return (data as { recall_calendar_id: string | null } | null)?.recall_calendar_id ?? null;
 }
 
+// État de l'agenda chez Recall (migration 018), relevé par la synchronisation
+// des 5 minutes (lib/calendar-health.ts). Lecture et écriture séparées :
+// l'appelant compare l'état enregistré au nouveau pour savoir s'il vient de
+// basculer, prévient le commercial, et n'enregistre la bascule qu'APRÈS —
+// un email en échec est ainsi retenté au passage suivant au lieu d'être
+// perdu. Les deux lèvent si la migration 018 n'est pas passée.
+export async function getStoredRecallCalendarStatus(userId: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("recall_calendar_status")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as { recall_calendar_status: string | null } | null)?.recall_calendar_status ?? null;
+}
+
+// `changedAt` : date du CHANGEMENT d'état (la coupure), pas du relevé.
+export async function setRecallCalendarStatus(userId: string, status: string, changedAt: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("users")
+    .update({ recall_calendar_status: status, recall_calendar_status_at: changedAt })
+    .eq("id", userId);
+  if (error) throw error;
+}
+
+// Dernière connexion (migration 018). Écrit au plus toutes les 10 minutes :
+// le filtre sur la valeur actuelle rend l'appel quasi gratuit quand il n'y a
+// rien à changer — lib/auth.ts l'appelle à chaque rafraîchissement de rôle.
+export async function touchUserLastSeen(userId: string): Promise<void> {
+  const now = new Date();
+  const threshold = new Date(now.getTime() - 10 * 60 * 1000).toISOString();
+  const { error } = await supabaseAdmin
+    .from("users")
+    .update({ last_seen_at: now.toISOString() })
+    .eq("id", userId)
+    .or(`last_seen_at.is.null,last_seen_at.lt.${threshold}`);
+  if (error) throw error;
+}
+
 export async function saveBrief(
   userId: string,
   companyName: string,
@@ -2194,6 +2233,14 @@ export type TeamOverviewItem = {
   emails_sent_count: number;
   avg_score: number | null;
   last_activity_at: string | null;
+  // Migration 018 — null tant qu'elle n'est pas passée, ou pour un membre
+  // qui ne s'est pas connecté depuis.
+  last_seen_at: string | null;
+  // Agenda relié à Brief mais coupé chez Recall (jeton expiré ou révoqué) :
+  // plus aucune réunion n'est enregistrée. `calendar_disconnected_at` est la
+  // date de la coupure.
+  calendar_disconnected: boolean;
+  calendar_disconnected_at: string | null;
   // Un commercial invité qui ne s'est jamais connecté n'a ni activité ni
   // performance : l'écran Équipe l'affichait comme un membre ordinaire avec
   // des tirets partout, sans dire que son invitation n'avait peut-être jamais
@@ -2261,7 +2308,7 @@ export async function getTeamOverview(managerId: string): Promise<TeamOverviewIt
   if (commercials.length === 0) return [];
   const commercialIds = commercials.map((c) => c.id);
 
-  const [briefsRes, callsRes, statesRes] = await Promise.all([
+  const [briefsRes, callsRes, statesRes, presence] = await Promise.all([
     supabaseAdmin.from("briefs").select("user_id, created_at").in("user_id", commercialIds),
     supabaseAdmin
       .from("calls")
@@ -2270,6 +2317,25 @@ export async function getTeamOverview(managerId: string): Promise<TeamOverviewIt
     // En parallèle des deux autres : l'écran Équipe démarre à froid, on ne lui
     // ajoute pas un aller-retour séquentiel pour deux colonnes.
     supabaseAdmin.from("users").select("id, invited_at, google_id, microsoft_id").in("id", commercialIds),
+    // Colonnes de la migration 018, lues À PART : si elle n'est pas passée,
+    // seule cette requête échoue, et l'écran s'affiche sans ces deux infos.
+    supabaseAdmin
+      .from("users")
+      .select("id, recall_calendar_id, last_seen_at, recall_calendar_status, recall_calendar_status_at")
+      .in("id", commercialIds)
+      .then((res) =>
+        res.error
+          ? new Map<string, never>()
+          : new Map(
+              ((res.data ?? []) as Array<{
+                id: string;
+                recall_calendar_id: string | null;
+                last_seen_at: string | null;
+                recall_calendar_status: string | null;
+                recall_calendar_status_at: string | null;
+              }>).map((u) => [u.id, u])
+            )
+      ),
   ]);
   if (briefsRes.error) throw briefsRes.error;
   if (callsRes.error) throw callsRes.error;
@@ -2318,6 +2384,13 @@ export async function getTeamOverview(managerId: string): Promise<TeamOverviewIt
       emails_sent_count: userCalls.filter((call) => call.follow_up_sent_at != null).length,
       avg_score: avgScore,
       last_activity_at: allDates[0] ?? null,
+      last_seen_at: presence.get(c.id)?.last_seen_at ?? null,
+      calendar_disconnected:
+        presence.get(c.id)?.recall_calendar_id != null && presence.get(c.id)?.recall_calendar_status === "disconnected",
+      calendar_disconnected_at:
+        presence.get(c.id)?.recall_calendar_status === "disconnected"
+          ? presence.get(c.id)?.recall_calendar_status_at ?? null
+          : null,
       invited_at: states.get(c.id)?.invited_at ?? null,
       // Prudence sur l'absence : un membre dont on ne retrouve pas la ligne
       // est considéré comme actif, pour ne pas proposer de renvoyer une

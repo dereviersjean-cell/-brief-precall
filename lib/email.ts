@@ -115,6 +115,50 @@ export async function sendInvitationEmail(params: {
   }
 }
 
+// Agenda coupé chez Recall (jeton expiré ou révoqué) : plus aucune réunion
+// n'est enregistrée, et rien dans l'app ne le montrait tant que personne
+// n'allait voir. Envoyé UNE fois, au passage à « disconnected » détecté par
+// la synchronisation des 5 minutes (lib/calendar-health.ts).
+export async function sendCalendarDisconnectedEmail(params: {
+  to: string;
+  firstName: string | null;
+  disconnectedAt: string | null;
+}): Promise<void> {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const reconnectUrl = `${APP_URL}/settings/connexions`;
+  const since = params.disconnectedAt
+    ? ` depuis le ${new Date(params.disconnectedAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "Europe/Paris" })}`
+    : "";
+  const hello = params.firstName ? `Bonjour ${params.firstName},` : "Bonjour,";
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px; color: #0f172a;">
+      <h1 style="font-size: 20px; margin: 0 0 16px;">Votre agenda n'est plus relié à Brief</h1>
+      <p style="font-size: 14px; color: #475569; line-height: 1.6; margin: 0 0 12px;">${hello}</p>
+      <p style="font-size: 14px; color: #475569; line-height: 1.6; margin: 0 0 12px;">
+        L'accès de Brief à votre agenda a expiré${since}. Tant qu'il n'est pas rétabli, vos rendez-vous en visio
+        ne sont <strong>plus enregistrés ni analysés</strong>.
+      </p>
+      <p style="font-size: 14px; color: #475569; line-height: 1.6; margin: 0 0 24px;">
+        Pour le rétablir, il suffit de reconnecter votre agenda : moins d'une minute.
+      </p>
+      <a href="${reconnectUrl}" style="display: inline-block; background: #4f46e5; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 12px 24px; border-radius: 8px;">
+        Reconnecter mon agenda
+      </a>
+    </div>
+  `;
+
+  const { error } = await resend.emails.send({
+    from: process.env.RESEND_FROM_EMAIL!,
+    to: params.to,
+    subject: "Votre agenda n'est plus relié à Brief",
+    html,
+  });
+  if (error) {
+    throw new Error(`sendCalendarDisconnectedEmail failed: ${error.message}`);
+  }
+}
+
 function buildQuoteAcceptedHtml(params: {
   quoteNumber: string;
   clientName: string;

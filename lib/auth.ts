@@ -1,7 +1,7 @@
 import { type AuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import AzureADProvider from "next-auth/providers/azure-ad";
-import { resolveUserForLogin, saveGoogleTokens, getUserRole, type AuthProvider } from "./db";
+import { resolveUserForLogin, saveGoogleTokens, getUserRole, touchUserLastSeen, type AuthProvider } from "./db";
 import { refreshGoogleAccessToken } from "./gmail";
 import { MICROSOFT_LOGIN_SCOPES, refreshMicrosoftAccessToken } from "./microsoft";
 
@@ -9,6 +9,17 @@ function toAuthProvider(nextAuthProvider: string): AuthProvider | null {
   if (nextAuthProvider === "google") return "google";
   if (nextAuthProvider === "azure-ad") return "microsoft";
   return null;
+}
+
+// Dernière connexion (migration 018), pour l'écran Équipe : il ne montrait
+// que la dernière ACTIVITÉ (brief, call), si bien qu'un commercial qui se
+// connectait sans rien générer semblait absent depuis des semaines. Relevée
+// à la connexion puis à chaque rafraîchissement du rôle (toutes les 10 min
+// d'usage). Jamais bloquant : sans la migration, l'écriture échoue en silence.
+// Attendue : sur Vercel, une écriture lancée sans attendre peut être coupée
+// à la fin de la requête.
+async function recordLastSeen(userId: string): Promise<void> {
+  await touchUserLastSeen(userId).catch(() => {});
 }
 
 export const authOptions: AuthOptions = {
@@ -162,6 +173,7 @@ export const authOptions: AuthOptions = {
               token.supabaseUserId = resolution.userId;
               token.role = resolution.role ?? undefined;
               token.roleRefreshedAt = Date.now();
+              await recordLastSeen(resolution.userId);
 
               if (provider === "google" && account.access_token) {
                 try {
@@ -191,6 +203,7 @@ export const authOptions: AuthOptions = {
           const freshRole = await getUserRole(token.supabaseUserId);
           token.role = freshRole ?? undefined;
           token.roleRefreshedAt = Date.now();
+          await recordLastSeen(token.supabaseUserId);
         } catch (err) {
           // Keep the existing role on transient DB errors; retry next call.
           console.error("[auth] jwt role refresh failed:", err);
