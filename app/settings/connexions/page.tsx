@@ -39,6 +39,7 @@ export default async function ConnexionsSettingsPage() {
         hasCalendarWriteAccess={calendarWriteAccess}
         slackConnected={slackConnected}
         slackEnabled={modules.includes("slack")}
+        crmEnabled={modules.includes("crm")}
       />
       {modules.includes("crm") && (
         <div className="mt-6">

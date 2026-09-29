@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowRight, MapPin, X } from "lucide-react";
+import type { ModuleKey } from "@/lib/modules";
+import { useModules } from "./ModulesProvider";
 
 // Visite guidée de l'interface, par bulles ancrées sur les vrais éléments.
 //
@@ -43,6 +45,9 @@ type TourStep = {
   kind: "section" | "contenu" | "commande";
   title: string;
   body: string;
+  // Étape d'un module activable (lib/modules.ts) : la visite ne montre pas
+  // un module que l'account manager n'a pas encore ouvert.
+  module?: ModuleKey;
 };
 
 const STEPS: TourStep[] = [
@@ -93,6 +98,7 @@ const STEPS: TourStep[] = [
   },
   {
     path: "/demo/analytics",
+    module: "insights",
     target: "analytics-tiles",
     phase: "Progresser",
     kind: "contenu",
@@ -102,6 +108,7 @@ const STEPS: TourStep[] = [
   },
   {
     path: "/demo/objections",
+    module: "objections",
     target: "demo-objections",
     phase: "Progresser",
     kind: "contenu",
@@ -111,6 +118,7 @@ const STEPS: TourStep[] = [
   },
   {
     path: "/demo/playbook",
+    module: "playbook",
     target: "demo-playbook",
     phase: "Progresser",
     kind: "contenu",
@@ -172,6 +180,10 @@ type Placement = {
 };
 
 export default function GuidedTour() {
+  // Les étapes des modules fermés sont retirées : la visite ne présente que
+  // ce que le client a réellement (parcours client, lib/modules.ts).
+  const { isEnabled } = useModules();
+  const steps = useMemo(() => STEPS.filter((step) => !step.module || isEnabled(step.module)), [isEnabled]);
   const router = useRouter();
   const pathname = usePathname();
   const [active, setActive] = useState(false);
@@ -196,7 +208,7 @@ export default function GuidedTour() {
     // Reprise de la position après une navigation entre pages : l'URL est le
     // seul état qui survive au changement de page.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (Number.isInteger(requested) && requested >= 0 && requested < STEPS.length) setIndex(requested);
+    if (Number.isInteger(requested) && requested >= 0 && requested < steps.length) setIndex(requested);
     // La sidebar est un tiroir replié en mobile : les cibles y sont
     // invisibles, et pointer une bulle vers du vide est pire que ne rien
     // montrer.
@@ -205,7 +217,9 @@ export default function GuidedTour() {
     // impossibles dans un initialiseur useState sans provoquer un écart
     // d'hydratation. Un effet au montage est ici l'outil prévu.
     setActive(true);
-  }, []);
+    // Relu quand la liste des étapes change (modules chargés après le
+    // montage) : l'étape demandée dans l'URL peut n'exister qu'ensuite.
+  }, [steps.length]);
 
   // Suivi de la cible image par image (requestAnimationFrame), et non par
   // écouteurs `scroll`/`resize`.
@@ -221,7 +235,7 @@ export default function GuidedTour() {
   // La boucle ne provoque un rendu que si le rectangle a réellement changé.
   useEffect(() => {
     if (!active) return;
-    const step = STEPS[index];
+    const step = steps[index];
     if (!step) return;
 
     // Repart d'un état « non mesuré » : sinon le rectangle de l'étape
@@ -271,7 +285,7 @@ export default function GuidedTour() {
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [active, index, pathname]);
+  }, [active, index, pathname, steps]);
 
   // Hauteur réelle de la bulle : elle change d'une étape à l'autre (textes de
   // longueurs différentes) et au redimensionnement de la fenêtre (retour à la
@@ -320,15 +334,15 @@ export default function GuidedTour() {
 
   if (!active) return null;
 
-  const step = STEPS[index];
-  const isLast = index === STEPS.length - 1;
+  const step = steps[index];
+  const isLast = index === steps.length - 1;
 
   function next() {
     if (isLast) {
       close();
       return;
     }
-    const target = STEPS[index + 1];
+    const target = steps[index + 1];
     // L'index avance TOUJOURS, y compris quand on change de page.
     //
     // Les pages /demo partagent un layout, et ce composant y est monté : Next
@@ -506,7 +520,7 @@ export default function GuidedTour() {
           <Header step={step} />
         </div>
         <div className="shrink-0 border-t border-slate-100 px-5 pb-5 pt-3">
-          <Footer index={index} isLast={isLast} onClose={close} onNext={next} />
+          <Footer index={index} total={steps.length} isLast={isLast} onClose={close} onNext={next} />
         </div>
       </div>
     </div>
@@ -544,11 +558,13 @@ function Header({ step }: { step: TourStep }) {
 
 function Footer({
   index,
+  total,
   isLast,
   onClose,
   onNext,
 }: {
   index: number;
+  total: number;
   isLast: boolean;
   onClose: () => void;
   onNext: () => void;
@@ -558,7 +574,7 @@ function Footer({
       {/* Progression segmentée : un « 3 sur 15 » ne dit pas s'il reste
           beaucoup, une barre le montre d'un coup d'œil. */}
       <div className="flex items-center gap-1">
-        {STEPS.map((_, i) => (
+        {Array.from({ length: total }, (_, i) => (
           <span
             key={i}
             className={`h-1 flex-1 rounded-full transition-colors ${
@@ -568,7 +584,7 @@ function Footer({
         ))}
       </div>
       <p className="mt-1.5 text-[11px] text-slate-400">
-        Étape {index + 1} sur {STEPS.length}
+        Étape {index + 1} sur {total}
       </p>
 
       <div className="mt-4 flex items-center justify-between gap-3">

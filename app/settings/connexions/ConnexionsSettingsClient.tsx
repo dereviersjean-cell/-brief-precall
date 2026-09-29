@@ -17,12 +17,23 @@ const PIPELINE_STEPS: PipelineStep[] = [
     title: "Un bot rejoint la visio",
     description: "Il enregistre l'échange, le transcrit, et l'analyse repart dans votre compte-rendu.",
   },
-  {
-    icon: Share2,
-    title: "Restitué dans vos outils",
-    description: "Notes poussées dans HubSpot ou Pipedrive, alertes dans Slack — sans repasser par Brief.",
-  },
 ];
+
+// Troisième étape selon les modules ouverts (parcours client) : un client à
+// qui l'on n'a pas encore présenté le CRM ou Slack ne doit pas en lire le nom
+// ici — ce texte trahissait des modules fermés (29/09/2026).
+function deliveryStep(crmEnabled: boolean, slackEnabled: boolean): (typeof PIPELINE_STEPS)[number] {
+  if (crmEnabled && slackEnabled) {
+    return { icon: Share2, title: "Restitué dans vos outils", description: "Notes poussées dans HubSpot ou Pipedrive, alertes dans Slack — sans repasser par Brief." };
+  }
+  if (crmEnabled) {
+    return { icon: Share2, title: "Restitué dans votre CRM", description: "Notes poussées dans HubSpot ou Pipedrive — sans repasser par Brief." };
+  }
+  if (slackEnabled) {
+    return { icon: Share2, title: "Restitué dans Slack", description: "Briefs et comptes-rendus en message privé — sans repasser par Brief." };
+  }
+  return { icon: Share2, title: "Le compte-rendu vous attend", description: "Analyse, points clés et scores, quelques minutes après la fin du rendez-vous." };
+}
 
 export default function ConnexionsSettingsClient({
   recallConnected,
@@ -32,6 +43,7 @@ export default function ConnexionsSettingsClient({
   hasCalendarWriteAccess,
   slackConnected: initialSlackConnected,
   slackEnabled,
+  crmEnabled,
 }: {
   recallConnected: boolean;
   // Agenda enregistré mais coupé chez Recall (jeton expiré ou révoqué).
@@ -40,8 +52,10 @@ export default function ConnexionsSettingsClient({
   recallPlatform: string | null;
   hasCalendarWriteAccess: boolean;
   slackConnected: boolean;
-  // Module Slack ouvert pour l'organisation (parcours client) — sinon, pas de carte.
+  // Modules ouverts pour l'organisation (parcours client) — sinon, ni carte
+  // ni mention dans les textes.
   slackEnabled: boolean;
+  crmEnabled: boolean;
 }) {
   const router = useRouter();
   const { data: session } = useSession();
@@ -100,13 +114,18 @@ export default function ConnexionsSettingsClient({
         </div>
       )}
 
-      <HowItWorksCard title="Connexions" steps={PIPELINE_STEPS}>
+      <HowItWorksCard title="Connexions" steps={[...PIPELINE_STEPS, deliveryStep(crmEnabled, slackEnabled)]}>
         C&apos;est ici que Brief cesse d&apos;être une application à ouvrir pour devenir automatique. Une fois votre
         agenda connecté, vous n&apos;avez plus rien à déclencher :{" "}
         <span className="font-medium text-slate-900">le brief est prêt avant le rendez-vous</span> et le compte-rendu
-        arrive après, sans action de votre part. Le CRM et Slack décident ensuite d&apos;
-        <span className="font-medium text-slate-900">où</span> ce travail vous est livré — dans HubSpot ou Pipedrive,
-        là où vous suivez déjà vos deals. Sans agenda connecté, tout reste possible mais devient manuel : chaque brief
+        arrive après, sans action de votre part.{" "}
+        {crmEnabled && (
+          <>
+            Le CRM décide ensuite d&apos;<span className="font-medium text-slate-900">où</span> ce travail vous est
+            livré — dans HubSpot ou Pipedrive, là où vous suivez déjà vos deals.{" "}
+          </>
+        )}
+        Sans agenda connecté, tout reste possible mais devient manuel : chaque brief
         est à demander, et aucun appel n&apos;est enregistré ni analysé.
       </HowItWorksCard>
 
