@@ -43,6 +43,67 @@ async function send(url: string, init: RequestInit): Promise<void> {
   }
 }
 
+// Actions secondaires d'un membre, dans un menu pour ne pas encombrer la
+// ligne : désactiver (réversible, bloque la connexion), retirer du client
+// (le compte reste), supprimer définitivement (le compte ET tout son
+// historique — double confirmation, comme dans Monitoring).
+function MemberMenu({
+  member,
+  disabled,
+  onDisable,
+  onRestore,
+  onRemove,
+  onDelete,
+}: {
+  member: ClientMember;
+  disabled: boolean;
+  onDisable: () => void;
+  onRestore: () => void;
+  onRemove: () => void;
+  onDelete: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const item = "w-full text-left px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-50";
+  const pick = (action: () => void) => () => {
+    setOpen(false);
+    action();
+  };
+  return (
+    <div className="relative inline-block text-left">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        disabled={disabled}
+        aria-label={`Autres actions pour ${member.name || member.email}`}
+        className="px-2 py-0.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg disabled:opacity-50"
+      >
+        ⋯
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 mt-1 w-56 bg-white border border-slate-200 rounded-lg shadow-lg z-20 py-1">
+            {member.status === "disabled" ? (
+              <button onClick={pick(onRestore)} className={`${item} text-slate-700`}>
+                Réactiver le compte
+              </button>
+            ) : (
+              <button onClick={pick(onDisable)} className={`${item} text-slate-700`}>
+                Désactiver le compte
+              </button>
+            )}
+            <button onClick={pick(onRemove)} className={`${item} text-slate-700`}>
+              Retirer du client
+            </button>
+            <button onClick={pick(onDelete)} className={`${item} text-red-600 hover:bg-red-50`}>
+              Supprimer définitivement
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function TeamPanel({
   organizationId,
   members,
@@ -87,6 +148,22 @@ export default function TeamPanel({
   function remove(member: ClientMember) {
     if (!window.confirm(`Retirer ${member.name || member.email} de ce client ?`)) return;
     void run(member.id, () => send(`/api/admin/organizations/${organizationId}/members/${member.id}`, { method: "DELETE" }));
+  }
+
+  function disable(member: ClientMember) {
+    if (!window.confirm(`Désactiver ${member.name || member.email} ? Il ne pourra plus se connecter ; ses données sont conservées et le compte peut être réactivé.`)) return;
+    void run(member.id, () => send(`/api/admin/users/${member.id}?mode=soft`, { method: "DELETE" }), "Compte désactivé.");
+  }
+
+  function restore(member: ClientMember) {
+    void run(member.id, () => send(`/api/admin/users/${member.id}/restore`, { method: "POST" }), "Compte réactivé.");
+  }
+
+  function hardDelete(member: ClientMember) {
+    const who = member.name || member.email;
+    if (!window.confirm(`Supprimer définitivement ${who} ? Tout son historique (briefs, calls, analyses…) est effacé, sans retour possible.`)) return;
+    if (!window.confirm(`Dernière confirmation : supprimer définitivement ${member.email} ?`)) return;
+    void run(member.id, () => send(`/api/admin/users/${member.id}?mode=hard`, { method: "DELETE" }), `${who} a été supprimé.`);
   }
 
   function resendInvitation(member: ClientMember) {
@@ -230,9 +307,14 @@ export default function TeamPanel({
                         Ouvrir le compte
                       </button>
                     )}
-                    <button onClick={() => remove(m)} disabled={busyId !== null} className="text-xs text-slate-400 hover:text-red-600 disabled:opacity-50">
-                      Retirer
-                    </button>
+                    <MemberMenu
+                      member={m}
+                      disabled={busyId !== null}
+                      onDisable={() => disable(m)}
+                      onRestore={() => restore(m)}
+                      onRemove={() => remove(m)}
+                      onDelete={() => hardDelete(m)}
+                    />
                   </div>
                 </td>
               </tr>

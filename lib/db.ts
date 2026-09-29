@@ -136,11 +136,15 @@ export async function getGoogleTokens(
   };
 }
 
+// Comptes actifs seulement : un compte désactivé gardait son agenda, et la
+// synchro des 5 minutes continuait d'envoyer le bot (payé à l'heure) à ses
+// réunions (constaté le 29/09/2026). Réactivé, il reprend sans rien refaire.
 export async function getAllUsersWithRecallCalendar(): Promise<{ id: string; email: string; recall_calendar_id: string }[]> {
   const { data, error } = await supabaseAdmin
     .from("users")
     .select("id, email, recall_calendar_id")
-    .not("recall_calendar_id", "is", null);
+    .not("recall_calendar_id", "is", null)
+    .is("disabled_at", null);
   if (error) throw error;
   return (data ?? []) as { id: string; email: string; recall_calendar_id: string }[];
 }
@@ -2079,57 +2083,19 @@ export async function removeAllLinksForUser(userId: string): Promise<void> {
 // verified via Supabase's REST/PostgREST API (no SQL introspection access in
 // this environment), so this guarantees a clean delete regardless of what the
 // actual FK constraints turn out to be.
+// Suppression définitive : le compte et TOUT son historique, en une seule
+// transaction côté base (fonction SQL hard_delete_user, migration 021). La
+// version précédente supprimait table par table depuis ici, sans
+// transaction, et oubliait 16 des 26 tables liées à un utilisateur — elle
+// pouvait échouer à mi-chemin après avoir effacé calls et briefs.
+// Sans la migration, refuse sans rien toucher.
 export async function hardDeleteUser(userId: string): Promise<void> {
-  const { data: userCalls, error: userCallsError } = await supabaseAdmin
-    .from("calls")
-    .select("id")
-    .eq("user_id", userId);
-  if (userCallsError) throw userCallsError;
-
-  const callIds = ((userCalls ?? []) as { id: string }[]).map((c) => c.id);
-  if (callIds.length > 0) {
-    const { error: callAnalysisError } = await supabaseAdmin
-      .from("call_analysis")
-      .delete()
-      .in("call_id", callIds);
-    if (callAnalysisError) throw callAnalysisError;
+  const { error } = await supabaseAdmin.rpc("hard_delete_user", { p_user_id: userId });
+  if (!error) return;
+  if (error.code === "PGRST202") {
+    throw new Error("La migration 021 (suppression définitive) n'est pas encore passée sur Supabase : rien n'a été supprimé.");
   }
-
-  const { error: callsError } = await supabaseAdmin.from("calls").delete().eq("user_id", userId);
-  if (callsError) throw callsError;
-
-  const { error: briefsError } = await supabaseAdmin.from("briefs").delete().eq("user_id", userId);
-  if (briefsError) throw briefsError;
-
-  const { error: contactsError } = await supabaseAdmin.from("contacts").delete().eq("user_id", userId);
-  if (contactsError) throw contactsError;
-
-  const { error: crmError } = await supabaseAdmin.from("crm_connections").delete().eq("user_id", userId);
-  if (crmError) throw crmError;
-
-  const { error: profileError } = await supabaseAdmin.from("user_profiles").delete().eq("user_id", userId);
-  if (profileError) throw profileError;
-
-  const { error: referencesError } = await supabaseAdmin.from("client_references").delete().eq("user_id", userId);
-  if (referencesError) throw referencesError;
-
-  const { error: importJobsError } = await supabaseAdmin.from("import_jobs").delete().eq("user_id", userId);
-  if (importJobsError) throw importJobsError;
-
-  const { error: scheduledMeetingsError } = await supabaseAdmin.from("scheduled_meetings").delete().eq("user_id", userId);
-  if (scheduledMeetingsError) throw scheduledMeetingsError;
-
-  await removeAllLinksForUser(userId);
-
-  // Other users this one invited keep their row — just drop the now-dangling reference.
-  const { error: invitedByError } = await supabaseAdmin
-    .from("users")
-    .update({ invited_by: null })
-    .eq("invited_by", userId);
-  if (invitedByError) throw invitedByError;
-
-  const { error: deleteError } = await supabaseAdmin.from("users").delete().eq("id", userId);
-  if (deleteError) throw deleteError;
+  throw error;
 }
 
 export type LinkedUser = {

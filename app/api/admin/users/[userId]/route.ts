@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
-import { softDeleteUser, hardDeleteUser } from "@/lib/db";
+import { softDeleteUser, hardDeleteUser, getRecallCalendarId } from "@/lib/db";
+import { deleteRecallCalendar } from "@/lib/recall";
 
 export async function DELETE(
   request: NextRequest,
@@ -15,7 +16,16 @@ export async function DELETE(
 
   try {
     if (mode === "hard") {
+      // L'agenda vit chez Recall, hors de la base : lu avant la suppression,
+      // supprimé après. Sans ça, le bot continuait de rejoindre les réunions
+      // d'un compte qui n'existe plus.
+      const calendarId = await getRecallCalendarId(userId).catch(() => null);
       await hardDeleteUser(userId);
+      if (calendarId) {
+        await deleteRecallCalendar(calendarId).catch((err) =>
+          console.error("[admin/users] deleteRecallCalendar failed after hard delete:", err instanceof Error ? err.message : String(err))
+        );
+      }
     } else {
       await softDeleteUser(userId);
     }
