@@ -7,7 +7,7 @@ import {
   PhoneCall,
   Mail,
   PenLine,
-  LayoutDashboard,
+  Activity,
   Building2,
   BookOpen,
   LogOut,
@@ -15,15 +15,27 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-const TABS: { label: string; href: string; icon: LucideIcon }[] = [
-  { label: "Config", href: "/admin", icon: Settings },
-  { label: "Test Brief", href: "/admin/test-brief", icon: FlaskConical },
-  { label: "Test Analyse", href: "/admin/test-analysis", icon: PhoneCall },
-  { label: "Test Email", href: "/admin/test-email", icon: Mail },
-  { label: "Prompts", href: "/admin/prompts", icon: PenLine },
-  { label: "Aide", href: "/admin/help", icon: BookOpen },
-  { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
-  { label: "Organisations", href: "/admin/organizations", icon: Building2 },
+// Deux espaces (29/09/2026) : le suivi des clients, que les account managers
+// ouvrent chaque jour, et les outils techniques (réglages des prompts, bancs
+// d'essai, monitoring), qu'ils n'ont pas besoin de voir. L'admin s'ouvre sur
+// les clients.
+const SECTIONS: { title: string; items: { label: string; href: string; icon: LucideIcon }[] }[] = [
+  {
+    title: "Suivi clients",
+    items: [{ label: "Clients", href: "/admin/clients", icon: Building2 }],
+  },
+  {
+    title: "Outils techniques",
+    items: [
+      { label: "Config du brief", href: "/admin/config", icon: Settings },
+      { label: "Prompts", href: "/admin/prompts", icon: PenLine },
+      { label: "Test brief", href: "/admin/test-brief", icon: FlaskConical },
+      { label: "Test analyse", href: "/admin/test-analysis", icon: PhoneCall },
+      { label: "Test email", href: "/admin/test-email", icon: Mail },
+      { label: "Articles d'aide", href: "/admin/help", icon: BookOpen },
+      { label: "Monitoring", href: "/admin/dashboard", icon: Activity },
+    ],
+  },
 ];
 
 export function AdminNav() {
@@ -50,25 +62,34 @@ export function AdminNav() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {TABS.map(({ label, href, icon: Icon }) => {
-          const active = pathname === href;
-          return (
-            <a
-              key={href}
-              href={href}
-              className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                active ? "bg-indigo-50 text-indigo-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-              }`}
-            >
-              {active && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-sm bg-indigo-600" />
-              )}
-              <Icon className="w-4 h-4 shrink-0" />
-              {label}
-            </a>
-          );
-        })}
+      <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto">
+        {SECTIONS.map((section) => (
+          <div key={section.title}>
+            <p className="px-3 mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-slate-400">{section.title}</p>
+            <div className="space-y-0.5">
+              {section.items.map(({ label, href, icon: Icon }) => {
+                // Une section active sur ses sous-pages aussi (fiche d'un
+                // client, détail d'un utilisateur).
+                const active = pathname === href || pathname.startsWith(`${href}/`);
+                return (
+                  <a
+                    key={href}
+                    href={href}
+                    className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                      active ? "bg-indigo-50 text-indigo-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                    }`}
+                  >
+                    {active && (
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-sm bg-indigo-600" />
+                    )}
+                    <Icon className="w-4 h-4 shrink-0" />
+                    {label}
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* Bottom — logout */}

@@ -1,14 +1,7 @@
 import { redirect } from "next/navigation";
-import { isAdminAuthenticated } from "@/lib/admin-auth";
-import { listOrganizationsWithCounts } from "@/lib/db";
-import OrganizationsAdminClient from "./OrganizationsAdminClient";
 
-export default async function OrganizationsAdminPage() {
-  if (!(await isAdminAuthenticated())) {
-    redirect("/admin");
-  }
-
-  const organizations = await listOrganizationsWithCounts();
-
-  return <OrganizationsAdminClient organizations={organizations} />;
+// Remplacée le 29/09/2026 par l'espace « Suivi clients ». Gardée en
+// redirection pour les favoris.
+export default function OrganizationsAdminPage() {
+  redirect("/admin/clients");
 }
