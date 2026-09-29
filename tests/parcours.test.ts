@@ -29,6 +29,13 @@ describe("computeParcours", () => {
     assert.equal(p.late, true);
   });
 
+  test("l'état reste transmissible au navigateur (aucune RegExp, même quand le prochain module en a)", () => {
+    const p = computeParcours("2026-09-17", ["playbook"], NOW);
+    assert.equal(p.nextModule?.key, "follow_up");
+    // Une RegExp deviendrait {} à l'aller-retour JSON : l'égalité le détecte.
+    assert.deepEqual(JSON.parse(JSON.stringify(p)), p);
+  });
+
   test("modules ouverts dans l'ordre : le prochain est le suivant du parcours", () => {
     const p = computeParcours("2026-09-17", ["playbook", "follow_up"], NOW);
     assert.equal(p.nextModule?.key, "objections");

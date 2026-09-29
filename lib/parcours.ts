@@ -1,4 +1,4 @@
-import { MODULES, type ModuleDefinition, type ModuleKey } from "./modules";
+import { MODULES, type ModuleKey } from "./modules";
 
 // Où en est un client dans son parcours de 8 semaines (document « Brief —
 // Parcours client type »). Sans dépendance : testé directement
@@ -12,7 +12,11 @@ export type ParcoursState = {
   week: number | null;
   finished: boolean;
   // Prochain module du parcours pas encore ouvert, dans l'ordre des semaines.
-  nextModule: ModuleDefinition | null;
+  // Réduit à ce qui s'affiche : la définition complète porte des RegExp
+  // (chemins du module), que Next refuse de transmettre d'un composant
+  // serveur à un composant client — la page Clients plantait dès que le
+  // prochain module était « Emails de suivi » (29/09/2026).
+  nextModule: { key: ModuleKey; label: string; week: number | null } | null;
   // Le prochain module aurait déjà dû être ouvert : sa semaine est passée.
   late: boolean;
   openCount: number;
@@ -27,7 +31,8 @@ export function computeParcours(
   now: Date = new Date()
 ): ParcoursState {
   const parcoursModules = MODULES.filter((m) => m.week !== null).sort((a, b) => (a.week ?? 0) - (b.week ?? 0));
-  const nextModule = parcoursModules.find((m) => !enabled.includes(m.key)) ?? null;
+  const next = parcoursModules.find((m) => !enabled.includes(m.key));
+  const nextModule = next ? { key: next.key, label: next.label, week: next.week } : null;
 
   let week: number | null = null;
   let finished = false;
