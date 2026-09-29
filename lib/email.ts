@@ -100,7 +100,7 @@ export function buildInvitationHtml(params: {
             </tr>
             <tr>
               <td style="padding: 20px 8px 0 8px; font-size: 12px; line-height: 1.6; color: #94A3B8; text-align: center;">
-                Vous recevez cet email parce que ${inviter} vous a invité à rejoindre Brief.<br />
+                Vous recevez cet email parce qu'un compte Brief a été ouvert à votre nom pour l'équipe ${org}.<br />
                 Si vous ne vous y attendiez pas, vous pouvez l'ignorer.<br />
                 <a href="${APP_URL}" style="color: #94A3B8;">brief-ai.fr</a>
               </td>

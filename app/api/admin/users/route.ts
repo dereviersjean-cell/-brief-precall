@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
-import { createInvitedUser, getOrganization, getUserForInvitation, type UserRole } from "@/lib/db";
+import { createInvitedUser, getOrganization, type UserRole } from "@/lib/db";
 import { sendInvitationEmail } from "@/lib/email";
 
-// The admin backoffice itself has no identity (shared password auth) — but
-// the person operating it may also be logged into the app via NextAuth (e.g.
-// a manager with admin access). When that's the case we credit them as the
-// inviter; otherwise invited_by stays null and the email uses a generic name.
+// L'admin n'a pas d'identité (mot de passe partagé) : ses invitations sont
+// signées au nom de Brief.
 const FALLBACK_INVITER_NAME = "L'équipe Brief";
 
 export async function POST(request: NextRequest) {
@@ -30,8 +26,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Rôle invalide." }, { status: 400 });
   }
 
-  const session = await getServerSession(authOptions);
-  const invitedBy = session?.supabaseUserId ?? null;
+  // Une invitation envoyée depuis l'admin est signée « L'équipe Brief »,
+  // toujours (décision de Jean, 29/09/2026). Avant, elle créditait le compte
+  // connecté à l'application dans le même navigateur — ce qui signait au nom
+  // Google de la personne, au hasard de sa session.
+  const invitedBy = null;
 
   let userId: string;
   try {
@@ -51,8 +50,7 @@ export async function POST(request: NextRequest) {
   // logged but never rolls it back, so the admin can resend later.
   try {
     const organization = await getOrganization(organizationId);
-    const inviter = invitedBy ? await getUserForInvitation(invitedBy) : null;
-    const invitedByName = inviter ? inviter.name || inviter.email : FALLBACK_INVITER_NAME;
+    const invitedByName = FALLBACK_INVITER_NAME;
 
     await sendInvitationEmail({
       to: email,

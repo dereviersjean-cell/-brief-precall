@@ -27,10 +27,15 @@ export async function POST(
 
   const organization = await getOrganization(user.organization_id);
 
+  // Signé par l'inviteur seulement s'il appartient au même client (un
+  // manager qui a invité son commercial) ; sinon « L'équipe Brief ». Les
+  // invitations faites depuis l'admin avant le 29/09/2026 portent en
+  // invited_by le compte connecté par hasard dans le navigateur : sans ce
+  // filtre, le renvoi les signerait encore à ce nom.
   let invitedByName = FALLBACK_INVITER_NAME;
   if (user.invited_by) {
     const inviter = await getUserForInvitation(user.invited_by);
-    if (inviter) invitedByName = inviter.name || inviter.email;
+    if (inviter && inviter.organization_id === user.organization_id) invitedByName = inviter.name || inviter.email;
   }
 
   try {
