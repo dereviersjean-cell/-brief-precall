@@ -780,6 +780,7 @@ export default function BriefClient({
               <CompanyLogo
                 src={brief?.contact?.company?.logoUrl}
                 domain={companyDomainFromEmail(contactEmail)}
+                name={brief?.contact?.company?.name ?? meeting.company}
                 alt={brief?.contact?.company?.name ?? displayName}
                 className="w-14 h-14 rounded-2xl object-contain shrink-0 bg-white border border-slate-200 p-1.5"
                 fallback={

@@ -26,17 +26,13 @@ export function companyNameFromDomain(domain: string | null | undefined): string
   return root.charAt(0).toUpperCase() + root.slice(1);
 }
 
-// Logo d'entreprise déduit du domaine, via le service de favicons de Google.
-//
-// Pourquoi celui-ci : gratuit, sans clé, sans quota — donc utilisable sur une
-// LISTE, là où résoudre chaque entreprise via l'annuaire coûterait un appel
-// et un crédit par ligne à chaque affichage. Clearbit, l'autre candidat
-// habituel, ne répond plus depuis son rachat (vérifié le 04/09/2026).
-//
-// Contrepartie à connaître : le domaine du prospect transite par Google
-// depuis le navigateur. Ce sont des domaines publics, mais ce n'est pas rien
-// sur une application qui manipule des données commerciales.
-export function companyLogoUrlFromDomain(domain: string | null | undefined): string | null {
-  if (!domain) return null;
-  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`;
+// Adresse du logo d'une entreprise, résolu côté serveur par
+// app/api/company-logo : favicon du domaine, sinon vrai site trouvé par une
+// recherche sur le nom. Null quand on n'a ni domaine ni nom.
+export function companyLogoUrl(domain: string | null | undefined, name?: string | null): string | null {
+  const params = new URLSearchParams();
+  if (domain) params.set("d", domain);
+  const cleanName = name?.trim();
+  if (cleanName) params.set("n", cleanName);
+  return params.toString() ? `/api/company-logo?${params.toString()}` : null;
 }

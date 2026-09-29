@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import type { ReactNode } from "react";
-import { companyLogoUrlFromDomain } from "@/lib/company-domain";
+import { companyLogoUrl } from "@/lib/company-domain";
 
 /**
  * Logo d'entreprise, avec repli sur ce qui était affiché avant lui (une
  * initiale, généralement).
  *
  * Deux sources, dans cet ordre : `src` quand l'annuaire nous a donné un vrai
- * logo (meilleure qualité, déjà payé), sinon le favicon déduit du domaine.
+ * logo (meilleure qualité, déjà payé), sinon le logo trouvé par le serveur à
+ * partir du domaine et du nom de l'entreprise (app/api/company-logo).
  *
  * Le repli n'est pas un détail : un favicon manque pour beaucoup de domaines,
  * et une image cassée serait pire que l'initiale qu'elle remplace. Le parent
@@ -19,38 +20,27 @@ import { companyLogoUrlFromDomain } from "@/lib/company-domain";
 export default function CompanyLogo({
   src,
   domain,
+  name,
   alt,
   className,
   fallback,
 }: {
   src?: string | null;
   domain?: string | null;
+  // Nom de l'entreprise : permet de trouver son site quand le domaine de
+  // l'adresse email n'a pas de logo (ou pas de site).
+  name?: string | null;
   alt: string;
   className: string;
   fallback: ReactNode;
 }) {
+  const [srcFailed, setSrcFailed] = useState(false);
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const faviconUrl = companyLogoUrlFromDomain(domain);
-  const url = src || faviconUrl;
-  const imgRef = useRef<HTMLImageElement>(null);
-
-  function check(img: HTMLImageElement) {
-    // Sans favicon connu, le service de Google répond 404 avec un globe
-    // générique de 16 px — que le navigateur affiche comme une vraie image
-    // (constaté le 29/09/2026 sur scutum.com). Les vrais logos demandés en
-    // 64 px arrivent en 32 px ou plus : 16 px et moins = pas de logo.
-    if (url === faviconUrl && img.naturalWidth <= 16) setFailed(true);
-    else setLoaded(true);
-  }
-
-  // Image déjà en cache avant que React n'écoute onLoad : l'événement ne
-  // viendrait jamais et le logo resterait invisible.
-  useEffect(() => {
-    const img = imgRef.current;
-    if (img?.complete && img.naturalWidth > 0) check(img);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url]);
+  // Logo de l'annuaire d'abord ; s'il ne charge pas, celui trouvé par le
+  // serveur plutôt que l'initiale directement.
+  const usingSrc = !!src && !srcFailed;
+  const url = usingSrc ? src : companyLogoUrl(domain, name);
 
   if (!url || failed) return <>{fallback}</>;
 
@@ -59,11 +49,15 @@ export default function CompanyLogo({
     <img
       src={url}
       alt={alt}
-      onError={() => setFailed(true)}
-      ref={imgRef}
-      onLoad={(e) => check(e.currentTarget)}
-      // Invisible le temps de savoir si c'est un vrai logo : pas de globe qui
-      // clignote avant d'être remplacé par l'initiale.
+      onError={() => (usingSrc ? setSrcFailed(true) : setFailed(true))}
+      // Image déjà en cache avant que React n'écoute onLoad : l'événement ne
+      // viendrait jamais et le logo resterait invisible.
+      ref={(img) => {
+        if (img?.complete && img.naturalWidth > 0 && !loaded) setLoaded(true);
+      }}
+      onLoad={() => setLoaded(true)}
+      // Invisible jusqu'au chargement : pas d'icône d'image cassée le temps
+      // que le serveur réponde qu'il n'a rien trouvé.
       className={`${className}${loaded ? "" : " invisible"}`}
     />
   );

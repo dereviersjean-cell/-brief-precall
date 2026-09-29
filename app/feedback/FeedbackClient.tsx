@@ -375,13 +375,12 @@ function CallRow({
     >
       <div className="flex min-w-0 items-center gap-3.5">
         <div className="relative shrink-0">
-          {/* Logo de l'entreprise du contact, déduit de son domaine (favicon),
-              et non résolu via l'annuaire : sur une liste ce serait un appel
-              et un crédit par ligne à chaque affichage. Repli sur l'initiale,
-              qui reste le cas d'une adresse personnelle (gmail, orange…) ou
-              d'un domaine sans favicon. */}
+          {/* Logo de l'entreprise du contact, trouvé par le serveur à partir
+              de son domaine et du nom de l'entreprise (app/api/company-logo,
+              mis en cache). Repli sur l'initiale quand rien n'est trouvé. */}
           <CompanyLogo
             domain={companyDomainFromEmail(call.contact_email)}
+            name={call.prospect_company?.trim() || call.company_name?.trim() || null}
             alt={call.company_name ?? contactName}
             className="h-10 w-10 rounded-xl object-contain bg-white border border-border p-1 shadow-[var(--shadow-sm)]"
             fallback={

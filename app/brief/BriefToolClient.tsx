@@ -243,11 +243,12 @@ function CalendarEventCard({
       <div className="w-px h-10 bg-slate-200 shrink-0" />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1 flex-wrap">
-          {/* Le logo de l'entreprise du participant externe. Déduit de son
-              domaine (favicon), et non résolu via l'annuaire : sur une liste,
-              ce serait un appel et un crédit par ligne à chaque affichage. */}
+          {/* Le logo de l'entreprise du participant externe, trouvé par le
+              serveur à partir de son domaine et du nom de l'entreprise
+              (app/api/company-logo, mis en cache). */}
           <CompanyLogo
             domain={companyDomainFromEmail(getCompanyAttendee(event)?.email)}
+            name={event.company}
             alt={event.summary}
             className="w-7 h-7 rounded-lg object-contain shrink-0 bg-white border border-border p-0.5"
             fallback={
@@ -607,6 +608,7 @@ function RecentBriefsCard({ briefs }: { briefs: StoredBrief[] }) {
           >
             <CompanyLogo
               domain={companyDomainFromEmail(brief.contact_email)}
+              name={brief.company_name}
               alt={formatCompanyName(brief.company_name)}
               className="w-8 h-8 rounded-lg object-contain shrink-0 bg-white border border-border p-0.5"
               fallback={
