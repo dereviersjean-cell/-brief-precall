@@ -405,7 +405,7 @@ function OutcomeBadge({ outcome }: { outcome: DealOutcomeInfo | null }) {
 // never expanded, no reason to pay for an embedding + RPC call on every
 // feedback page load. Local expand/loading/result state per item, not lifted
 // to the parent — each objection's "cas similaires" search is independent.
-function ObjectionItem({ objection, response }: { objection: string; response: string }) {
+function ObjectionItem({ objection, response, trainingEnabled }: { objection: string; response: string; trainingEnabled: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [similar, setSimilar] = useState<SimilarObjection[] | null>(null);
@@ -450,12 +450,14 @@ function ObjectionItem({ objection, response }: { objection: string; response: s
         >
           {expanded ? "Masquer les cas similaires" : "Voir des cas similaires déjà traités"}
         </button>
-        <Link
-          href={`/training?objection=${encodeURIComponent(objection)}`}
-          className="text-xs text-[color:var(--violet)] font-medium hover:underline"
-        >
-          M&apos;entraîner sur cette objection →
-        </Link>
+        {trainingEnabled && (
+          <Link
+            href={`/training?objection=${encodeURIComponent(objection)}`}
+            className="text-xs text-[color:var(--violet)] font-medium hover:underline"
+          >
+            M&apos;entraîner sur cette objection →
+          </Link>
+        )}
       </span>
       {expanded && (
         <div className="pl-4 mt-2 space-y-2">
@@ -818,7 +820,8 @@ export default function FeedbackDetailClient({
               <h2 className="text-base font-semibold text-slate-900">Aucune parole détectée</h2>
               <p className="text-sm text-slate-500 mt-2">
                 L&apos;enregistrement ne contient aucune parole exploitable : ce rendez-vous n&apos;a donc été ni analysé,
-                ni noté, et aucun email de suivi n&apos;a été rédigé. Il ne compte pas dans vos moyennes.
+                ni noté{followUpEnabled ? ", et aucun email de suivi n'a été rédigé" : ""}. Il ne compte pas dans vos
+                moyennes.
               </p>
               <p className="text-sm text-slate-500 mt-2">
                 Le plus souvent, le micro était coupé ou personne n&apos;a pris la parole. Vous pouvez le vérifier en
@@ -900,13 +903,20 @@ export default function FeedbackDetailClient({
                     </div>
                   </div>
 
-                  {/* Objections */}
-                  {(a.objections ?? []).length > 0 && (
+                  {/* Objections — module du parcours (semaine 5) : fermé, la
+                      section n'existe pas. Les objections restent extraites et
+                      apparaissent sur les calls passés le jour où il s'ouvre. */}
+                  {isModuleEnabled("objections") && (a.objections ?? []).length > 0 && (
                     <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
                       <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Objections rencontrées</h2>
                       <ul className="space-y-3">
                         {(a.objections ?? []).map((o, i) => (
-                          <ObjectionItem key={i} objection={o.objection} response={o.response} />
+                          <ObjectionItem
+                            key={i}
+                            objection={o.objection}
+                            response={o.response}
+                            trainingEnabled={isModuleEnabled("training")}
+                          />
                         ))}
                       </ul>
                     </div>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Store, FileText, Target } from "lucide-react";
 import HowItWorksCard, { type PipelineStep } from "@/app/settings/_components/HowItWorksCard";
+import { useModules } from "@/app/components/ModulesProvider";
 
 const PIPELINE_STEPS: PipelineStep[] = [
   {
@@ -33,6 +34,7 @@ export default function GeneralSettingsClient({
   initialIcp,
   initialCompanyName,
 }: Props) {
+  const followUp = useModules().isEnabled("follow_up");
   const [productDescription, setProductDescription] = useState(initialProductDescription);
   const [icp, setIcp] = useState(initialIcp);
   const [companyName, setCompanyName] = useState(initialCompanyName);
@@ -101,7 +103,7 @@ export default function GeneralSettingsClient({
         de génération, sous forme de{" "}
         <span className="font-medium text-slate-900">contexte du commercial</span> : ce que vous vendez sert à
         formuler des arguments qui relient votre offre aux besoins réels du prospect, votre cible oriente l&apos;angle
-        de qualification, et votre nom commercial signe les accroches et les emails de suivi générés. Laissés vides,
+        de qualification, et votre nom commercial signe les accroches{followUp ? " et les emails de suivi" : ""} générés. Laissés vides,
         les briefs restent corrects mais génériques — ils décrivent le prospect sans jamais le rapprocher de vous.
       </HowItWorksCard>
 
@@ -123,7 +125,7 @@ export default function GeneralSettingsClient({
               />
               <p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-400">
                 <svg className="w-3.5 h-3.5 text-[color:var(--violet)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 16v-4m0-4h.01"/></svg>
-                Utilisé pour signer les accroches et emails de suivi générés.
+                {followUp ? "Utilisé pour signer les accroches et emails de suivi générés." : "Utilisé pour signer les accroches générées."}
               </p>
             </div>
 

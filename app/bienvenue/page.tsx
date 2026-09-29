@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getEffectiveUserId } from "@/lib/session-user";
-import { getActivationState, getUserName } from "@/lib/db";
+import { getActivationState, getEnabledModulesForUser, getUserName } from "@/lib/db";
 import WelcomeClient from "./WelcomeClient";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,7 @@ export default async function BienvenuePage() {
   const userId = await getEffectiveUserId();
   if (!userId) redirect("/login");
 
-  const [activation, name] = await Promise.all([
+  const [activation, name, modules] = await Promise.all([
     getActivationState(userId).catch(() => ({
       // Repli : la présentation reste utile même si l'état d'activation
       // n'a pas pu être calculé.
@@ -22,7 +22,10 @@ export default async function BienvenuePage() {
       total: 0,
     })),
     getUserName(userId),
+    // La présentation ne décrit que ce que le compte a : un client en début
+    // de parcours n'a ni objections, ni email de suivi, ni CRM.
+    getEnabledModulesForUser(userId),
   ]);
 
-  return <WelcomeClient activation={activation} firstName={name?.split(" ")[0] ?? null} />;
+  return <WelcomeClient activation={activation} firstName={name?.split(" ")[0] ?? null} modules={modules} />;
 }

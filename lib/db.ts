@@ -5581,6 +5581,10 @@ export type HelpArticle = {
   title: string;
   content: string;
   visible_to: HelpArticleVisibility;
+  // Module du parcours dont parle l'article (migration 022) : fermé pour le
+  // client, l'article n'existe pas pour lui. Null = socle, toujours affiché.
+  // Absent tant que la migration n'est pas passée.
+  module?: ModuleKey | null;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -5612,6 +5616,7 @@ export type HelpArticleInput = {
   title: string;
   content: string;
   visible_to: HelpArticleVisibility;
+  module?: ModuleKey | null;
   sort_order?: number;
 };
 
@@ -5634,6 +5639,9 @@ export async function createHelpArticle(data: HelpArticleInput): Promise<string>
       content: data.content,
       visible_to: data.visible_to,
       sort_order: sortOrder,
+      // Seulement si renseigné : avant la migration 022, la colonne n'existe
+      // pas et l'écrire ferait échouer toute création d'article.
+      ...(data.module ? { module: data.module } : {}),
     })
     .select("id")
     .single();
@@ -5648,6 +5656,7 @@ export async function updateHelpArticle(articleId: string, data: Partial<HelpArt
   if (data.content !== undefined) patch.content = data.content;
   if (data.visible_to !== undefined) patch.visible_to = data.visible_to;
   if (data.sort_order !== undefined) patch.sort_order = data.sort_order;
+  if (data.module !== undefined) patch.module = data.module;
 
   const { error } = await supabaseAdmin.from("help_articles").update(patch).eq("id", articleId);
   if (error) throw error;

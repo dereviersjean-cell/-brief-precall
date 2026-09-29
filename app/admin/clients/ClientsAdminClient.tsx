@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, Plus, AlertTriangle, CalendarClock, PhoneCall, Route } from "lucide-react";
@@ -210,6 +211,13 @@ export default function ClientsAdminClient({ clients, now: nowISO }: { clients: 
                     </td>
                     <td className={`px-4 py-4 whitespace-nowrap ${reviewOverdue ? "text-red-600 font-medium" : "text-slate-700"}`}>
                       {formatReview(client.nextReviewAt)}
+                      <Link
+                        href={`/admin/clients/${client.id}/point`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-0.5 block text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                      >
+                        Préparer le point →
+                      </Link>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <p className="text-slate-700">

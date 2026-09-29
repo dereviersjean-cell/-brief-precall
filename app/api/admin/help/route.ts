@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { isModuleKey, type ModuleKey } from "@/lib/modules";
 import { getAllHelpArticles, createHelpArticle, type HelpArticleVisibility } from "@/lib/db";
 
 const VALID_VISIBILITY = new Set<HelpArticleVisibility>(["manager", "commercial", "both"]);
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
   }
 
-  let body: { category?: string; title?: string; content?: string; visible_to?: string };
+  let body: { category?: string; title?: string; content?: string; visible_to?: string; module?: string | null };
   try {
     body = await request.json();
   } catch {
@@ -30,6 +31,9 @@ export async function POST(request: NextRequest) {
   if (!VALID_VISIBILITY.has(visibleTo as HelpArticleVisibility)) {
     return NextResponse.json({ error: "visible_to invalide." }, { status: 400 });
   }
+  if (body.module != null && !isModuleKey(body.module)) {
+    return NextResponse.json({ error: "module invalide." }, { status: 400 });
+  }
 
   try {
     const id = await createHelpArticle({
@@ -37,6 +41,7 @@ export async function POST(request: NextRequest) {
       title: body.title.trim(),
       content: body.content.trim(),
       visible_to: visibleTo as HelpArticleVisibility,
+      module: (body.module ?? null) as ModuleKey | null,
     });
     return NextResponse.json({ id });
   } catch (err) {

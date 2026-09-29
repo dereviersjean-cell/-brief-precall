@@ -208,7 +208,17 @@ export default function ClientDetailClient({
             {overview.accountManager ? ` · suivi par ${overview.accountManager}` : ""}
           </>
         }
-        actions={<RenameButton organizationId={overview.id} name={overview.name} />}
+        actions={
+          <div className="flex items-center gap-2">
+            <RenameButton organizationId={overview.id} name={overview.name} />
+            <Link
+              href={`/admin/clients/${overview.id}/point`}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700"
+            >
+              Préparer le point
+            </Link>
+          </div>
+        }
       />
 
       {overview.alerts.length > 0 && (

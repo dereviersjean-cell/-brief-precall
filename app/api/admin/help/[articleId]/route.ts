@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { isModuleKey, type ModuleKey } from "@/lib/modules";
 import { updateHelpArticle, deleteHelpArticle, type HelpArticleVisibility } from "@/lib/db";
 
 const VALID_VISIBILITY = new Set<HelpArticleVisibility>(["manager", "commercial", "both"]);
@@ -10,7 +11,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
   const { articleId } = await params;
 
-  let body: { category?: string; title?: string; content?: string; visible_to?: string };
+  let body: { category?: string; title?: string; content?: string; visible_to?: string; module?: string | null };
   try {
     body = await request.json();
   } catch {
@@ -19,6 +20,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (body.visible_to !== undefined && !VALID_VISIBILITY.has(body.visible_to as HelpArticleVisibility)) {
     return NextResponse.json({ error: "visible_to invalide." }, { status: 400 });
   }
+  if (body.module != null && !isModuleKey(body.module)) {
+    return NextResponse.json({ error: "module invalide." }, { status: 400 });
+  }
 
   try {
     await updateHelpArticle(articleId, {
@@ -26,6 +30,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       title: body.title,
       content: body.content,
       visible_to: body.visible_to as HelpArticleVisibility | undefined,
+      module: body.module as ModuleKey | null | undefined,
     });
     return NextResponse.json({ ok: true });
   } catch (err) {

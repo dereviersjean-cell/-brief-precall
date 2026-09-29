@@ -8,12 +8,42 @@ import type { HelpArticle, HelpArticleVisibility } from "@/lib/db";
 import { AdminPageShell, AdminPageHeader } from "@/app/admin/AdminShell";
 import { markdownComponents } from "@/lib/markdown-components";
 import FadeIn from "@/app/dashboard/FadeIn";
+import { MODULES, isModuleKey, type ModuleKey } from "@/lib/modules";
+
+type NewArticle = { category: string; title: string; content: string; visible_to: HelpArticleVisibility; module: ModuleKey | null };
 
 const VISIBILITY_LABELS: Record<HelpArticleVisibility, string> = {
   both: "Manager + Commercial",
   manager: "Manager uniquement",
   commercial: "Commercial uniquement",
 };
+
+// Un article rattaché à un module n'apparaît dans l'aide que chez les clients
+// qui ont ce module ouvert (parcours client). « Socle » = toujours affiché.
+function ModuleSelect({
+  value,
+  onChange,
+  className,
+}: {
+  value: ModuleKey | null;
+  onChange: (next: ModuleKey | null) => void;
+  className: string;
+}) {
+  return (
+    <select
+      value={value ?? ""}
+      onChange={(e) => onChange(isModuleKey(e.target.value) ? e.target.value : null)}
+      className={className}
+    >
+      <option value="">Socle — toujours visible</option>
+      {MODULES.map((m) => (
+        <option key={m.key} value={m.key}>
+          Module {m.label}
+        </option>
+      ))}
+    </select>
+  );
+}
 
 function InlineText({
   value,
@@ -78,7 +108,7 @@ function ArticleCard({
   article: HelpArticle;
   index: number;
   total: number;
-  onUpdate: (patch: Partial<Pick<HelpArticle, "title" | "content" | "visible_to">>) => Promise<void>;
+  onUpdate: (patch: Partial<Pick<HelpArticle, "title" | "content" | "visible_to" | "module">>) => Promise<void>;
   onDelete: () => void;
   onMove: (direction: "up" | "down") => void;
 }) {
@@ -126,19 +156,33 @@ function ArticleCard({
         </div>
       </div>
 
-      <div className="mt-2">
-        <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Visible par</label>
-        <select
-          value={article.visible_to}
-          onChange={(e) => onUpdate({ visible_to: e.target.value as HelpArticleVisibility })}
-          className="h-8 px-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-        >
-          {(Object.keys(VISIBILITY_LABELS) as HelpArticleVisibility[]).map((v) => (
-            <option key={v} value={v}>
-              {VISIBILITY_LABELS[v]}
-            </option>
-          ))}
-        </select>
+      <div className="mt-2 flex flex-wrap gap-4">
+        <div>
+          <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Visible par</label>
+          <select
+            value={article.visible_to}
+            onChange={(e) => onUpdate({ visible_to: e.target.value as HelpArticleVisibility })}
+            className="h-8 px-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          >
+            {(Object.keys(VISIBILITY_LABELS) as HelpArticleVisibility[]).map((v) => (
+              <option key={v} value={v}>
+                {VISIBILITY_LABELS[v]}
+              </option>
+            ))}
+          </select>
+        </div>
+        {/* Absent tant que la migration 022 n'est pas passée : un choix
+            qu'on ne pourrait pas enregistrer serait pire que pas de choix. */}
+        {article.module !== undefined && (
+          <div>
+            <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Module</label>
+            <ModuleSelect
+              value={article.module}
+              onChange={(next) => onUpdate({ module: next })}
+              className="h-8 px-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+          </div>
+        )}
       </div>
 
       <div className="mt-4">
@@ -197,12 +241,13 @@ function AddArticleModal({
   categories: string[];
   defaultCategory: string;
   onClose: () => void;
-  onCreate: (data: { category: string; title: string; content: string; visible_to: HelpArticleVisibility }) => Promise<void>;
+  onCreate: (data: NewArticle) => Promise<void>;
 }) {
   const [category, setCategory] = useState(defaultCategory);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [visibleTo, setVisibleTo] = useState<HelpArticleVisibility>("both");
+  const [module, setModule] = useState<ModuleKey | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit() {
@@ -211,7 +256,7 @@ function AddArticleModal({
     const trimmedContent = content.trim();
     if (!trimmedCategory || !trimmedTitle || !trimmedContent) return;
     setLoading(true);
-    await onCreate({ category: trimmedCategory, title: trimmedTitle, content: trimmedContent, visible_to: visibleTo });
+    await onCreate({ category: trimmedCategory, title: trimmedTitle, content: trimmedContent, visible_to: visibleTo, module });
     setLoading(false);
   }
 
@@ -230,7 +275,7 @@ function AddArticleModal({
               list="help-categories"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              placeholder="ex. Général, Devis, Facturation…"
+              placeholder="ex. Général, Objections, Facturation…"
               className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
             <datalist id="help-categories">
@@ -244,7 +289,7 @@ function AddArticleModal({
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="ex. Créer et envoyer un devis"
+              placeholder="ex. Comprendre l'analyse d'un call"
               className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
@@ -261,6 +306,14 @@ function AddArticleModal({
                 </option>
               ))}
             </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Module</label>
+            <ModuleSelect
+              value={module}
+              onChange={setModule}
+              className="w-full h-9 px-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Contenu (markdown)</label>
@@ -308,7 +361,7 @@ export default function HelpAdminClient({ articles: initialArticles }: { article
     return map;
   }, [articles]);
 
-  async function handleUpdateArticle(articleId: string, patch: Partial<Pick<HelpArticle, "title" | "content" | "visible_to">>) {
+  async function handleUpdateArticle(articleId: string, patch: Partial<Pick<HelpArticle, "title" | "content" | "visible_to" | "module">>) {
     const prev = articles;
     setArticles((as) => as.map((a) => (a.id === articleId ? { ...a, ...patch } : a)));
     try {
@@ -363,7 +416,7 @@ export default function HelpAdminClient({ articles: initialArticles }: { article
     }
   }
 
-  async function handleAddArticle(data: { category: string; title: string; content: string; visible_to: HelpArticleVisibility }) {
+  async function handleAddArticle(data: NewArticle) {
     try {
       const res = await fetch("/api/admin/help", {
         method: "POST",
@@ -380,6 +433,7 @@ export default function HelpAdminClient({ articles: initialArticles }: { article
           title: data.title,
           content: data.content,
           visible_to: data.visible_to,
+          module: data.module,
           sort_order: (byCategory.get(data.category)?.length ?? 0),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),

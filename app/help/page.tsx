@@ -3,7 +3,7 @@ import remarkGfm from "remark-gfm";
 import Link from "next/link";
 import { ArrowRight, HelpCircle } from "lucide-react";
 import { getEffectiveUserId } from "@/lib/session-user";
-import { getUserRole, getHelpArticlesForRole, type HelpArticle } from "@/lib/db";
+import { getEnabledModulesForUser, getUserRole, getHelpArticlesForRole, type HelpArticle } from "@/lib/db";
 import { markdownComponents } from "@/lib/markdown-components";
 import FadeIn from "@/app/dashboard/FadeIn";
 
@@ -26,8 +26,15 @@ export default async function HelpPage() {
   // (same pattern as dashboard/page.tsx). Falls back to the more
   // restrictive "commercial" scope if a role can't be resolved, rather than
   // risk showing manager-only content.
-  const role = userId ? await getUserRole(userId) : null;
-  const articles = await getHelpArticlesForRole(role === "manager" ? "manager" : "commercial");
+  const [role, modules] = await Promise.all([
+    userId ? getUserRole(userId) : Promise.resolve(null),
+    userId ? getEnabledModulesForUser(userId) : Promise.resolve(null),
+  ]);
+  // Un article rattaché à un module fermé n'existe pas pour ce client
+  // (parcours client, lib/modules.ts) : l'aide ne décrit que ce qu'il a.
+  const articles = (await getHelpArticlesForRole(role === "manager" ? "manager" : "commercial")).filter(
+    (a) => !a.module || (modules?.includes(a.module) ?? false)
+  );
 
   const byCategory = new Map<string, HelpArticle[]>();
   for (const a of articles) {
