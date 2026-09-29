@@ -3,6 +3,7 @@ import { readPromptConfig, DEFAULT_CALL_ANALYSIS_SYSTEM_PROMPT, OBJECTION_DEFINI
 import { DEFAULT_PLAYBOOK_SNAPSHOT } from "./db";
 import type { PlaybookSnapshot, CallObjection } from "./db";
 import { extractJsonObject } from "./ai-json";
+import { computeWeightedGlobalScore, type ScoresDict } from "./playbook-scores";
 
 // Dimension keys are dynamic — driven by whatever playbook (org-specific or
 // the hardcoded default) was passed to analyzeCall, not a fixed set. See
@@ -40,8 +41,9 @@ const DEFAULT_ANALYSIS: CallAnalysis = {
 function validateCallAnalysisShape(parsed: unknown): CallAnalysis {
   const obj = parsed as Record<string, unknown>;
   const missing: string[] = [];
-  if (typeof obj?.scores !== "object" || obj.scores === null || typeof (obj.scores as Record<string, unknown>).global_score !== "number") {
-    missing.push("scores.global_score");
+  // global_score n'est plus exigé : il est recalculé par le code (analyzeCall).
+  if (typeof obj?.scores !== "object" || obj.scores === null) {
+    missing.push("scores");
   }
   if (typeof obj?.summary !== "string") missing.push("summary");
   if (!Array.isArray(obj?.strong_points)) missing.push("strong_points");
@@ -121,7 +123,13 @@ ${transcript}`;
     const textBlock = message.content.find((b) => b.type === "text");
     raw = textBlock?.type === "text" ? textBlock.text : "";
 
-    return validateCallAnalysisShape(JSON.parse(extractJsonObject(raw)));
+    const analysis = validateCallAnalysisShape(JSON.parse(extractJsonObject(raw)));
+    // Score global calculé par le code, jamais par le modèle : sur 15
+    // analyses mesurées le 29/09/2026, 9 avaient une moyenne pondérée fausse
+    // (jusqu'à 0,5 point d'écart).
+    analysis.scores.global_score =
+      computeWeightedGlobalScore(analysis.scores as ScoresDict, playbookSnapshot) ?? 0;
+    return analysis;
   } catch (err) {
     console.error(
       "[call-analysis] analyzeCall failed:",

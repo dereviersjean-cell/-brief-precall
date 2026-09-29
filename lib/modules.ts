@@ -53,7 +53,7 @@ export const MODULES: ModuleDefinition[] = [
   {
     key: "follow_up",
     label: "Emails de suivi",
-    description: "Email rédigé après chaque call, modèles par type de call.",
+    description: "Email rédigé après chaque call, prêt à relire et envoyer.",
     week: 4,
     paths: [
       "/settings/email-templates",

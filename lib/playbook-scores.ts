@@ -58,3 +58,26 @@ export function getEffectiveScoresForDisplay(callAnalysis: {
     return [{ key, label: LEGACY_DIMENSION_LABELS[key] ?? key, score: entry.score, description: entry.description, weight: 1 }];
   });
 }
+
+// Score global d'un call = moyenne des notes par dimension, pondérée par les
+// poids du playbook, arrondie au dixième. Calculée ici plutôt que demandée au
+// modèle : un calcul fait par le code est exact et suit toujours les vrais
+// poids, là où le modèle faisait l'arithmétique de tête. Null si aucune note
+// ne correspond aux dimensions de la grille.
+export function computeWeightedGlobalScore(
+  scores: ScoresDict | null,
+  snapshot: { dimensions: Array<{ key: string; weight: number }> }
+): number | null {
+  if (!scores) return null;
+  let weighted = 0;
+  let totalWeight = 0;
+  for (const dim of snapshot.dimensions) {
+    const entry = scores[dim.key];
+    if (!entry || typeof entry !== "object" || typeof entry.score !== "number") continue;
+    const weight = dim.weight > 0 ? dim.weight : 1;
+    weighted += entry.score * weight;
+    totalWeight += weight;
+  }
+  if (totalWeight === 0) return null;
+  return Math.round((weighted / totalWeight) * 10) / 10;
+}

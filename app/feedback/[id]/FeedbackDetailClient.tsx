@@ -2,20 +2,18 @@
 
 import Link from "next/link";
 import { useState, useEffect, useRef, type ReactNode } from "react";
-import { Settings, Search, Pencil } from "lucide-react";
-import type { CallWithAnalysis, EmailTemplate } from "@/lib/db";
+import { Search, Pencil } from "lucide-react";
+import type { CallWithAnalysis } from "@/lib/db";
 import { MEETING_STAGE_LABELS } from "@/lib/meeting-stage";
 import type { ConversationAnalytics } from "@/lib/transcript-analytics";
 import { getEffectiveScoresForDisplay } from "@/lib/playbook-scores";
 import { formatContactDisplayName } from "@/lib/format";
 import { isValidEmail } from "@/lib/email-address";
-import TemplatePromptSettingsModal from "@/app/components/TemplatePromptSettingsModal";
 import { useModules } from "@/app/components/ModulesProvider";
 import ConversationAnalyticsBlock from "./ConversationAnalyticsBlock";
 import KeyPointsBlock from "./KeyPointsBlock";
 import SpeakerTimelineBlock from "./SpeakerTimelineBlock";
 
-const DEFAULT_PROMPT_VALUE = "__default__";
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -556,9 +554,6 @@ export default function FeedbackDetailClient({
   const [sentAt, setSentAt] = useState<string | null>(call.follow_up_sent_at ?? null);
   const [videoStatus, setVideoStatus] = useState<VideoStatus>("idle");
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
-  const [showPromptSettings, setShowPromptSettings] = useState(false);
   // Destinataire de l'email de suivi. Sert aux deux chemins : la génération à
   // la demande quand l'ingestion a sauté l'email, ET l'envoi quand le call n'a
   // pas de contact — un rendez-vous dont l'invitation ne portait aucun
@@ -651,29 +646,6 @@ export default function FeedbackDetailClient({
     }
   }, [videoStatus, pendingSeekMs]);
 
-  // Org email templates for the "Type de call" dropdown — an empty result is
-  // expected (no manager has visited /team/email-templates yet) and just
-  // leaves the dropdown on "Prompt par défaut", not an error.
-  useEffect(() => {
-    if (readOnly) return;
-    let cancelled = false;
-    fetch("/api/email-templates")
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data: EmailTemplate[]) => {
-        if (cancelled) return;
-        setTemplates(data);
-        setSelectedTemplateId(data.length > 0 ? data[0].id : DEFAULT_PROMPT_VALUE);
-      })
-      .catch(() => {
-        if (!cancelled) setSelectedTemplateId(DEFAULT_PROMPT_VALUE);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [readOnly]);
-
-
-  const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
 
   const a = call.analysis;
   const globalScore = a?.scores?.global_score ?? null;
@@ -937,43 +909,10 @@ export default function FeedbackDetailClient({
                   <ReadOnlyEmailBlock call={call} />
                 ) : (
                 <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
-                  {/* Masqué quand l'organisation n'a aucun type de call : une
-                      liste réduite à « Prompt par défaut » n'offre aucun choix
-                      (constaté le 28/09/2026 sur un compte neuf). */}
-                  {templates.length > 0 && (
-                  <div className="flex items-center gap-2 mb-4">
-                    <label htmlFor="feedback-email-template" className="text-xs text-slate-400 shrink-0">
-                      Type de call
-                    </label>
-                    <select
-                      id="feedback-email-template"
-                      value={selectedTemplateId}
-                      onChange={(e) => setSelectedTemplateId(e.target.value)}
-                      className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] max-w-[220px]"
-                    >
-                      {selectedTemplateId === "" && (
-                        <option value="" disabled hidden>
-                          Sélectionner un type
-                        </option>
-                      )}
-                      <option value={DEFAULT_PROMPT_VALUE}>Prompt par défaut</option>
-                      {templates.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name}
-                        </option>
-                      ))}
-                    </select>
-                    {selectedTemplate && (
-                      <button
-                        onClick={() => setShowPromptSettings(true)}
-                        title="Personnaliser le prompt pour vos futures générations"
-                        className="shrink-0 text-slate-400 hover:text-slate-600 transition-colors p-1"
-                      >
-                        <Settings className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                  )}
+                  {/* Le menu « Type de call » a été retiré le 29/09/2026 : il ne
+                      changeait rien à l'email (les modèles par type de call ne
+                      servaient qu'aux tâches). Décision de Jean : pas de
+                      modèles par type de call pour l'email de suivi. */}
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Email de suivi suggéré</h2>
                     {call.follow_up_email && !sentAt && (
@@ -1155,14 +1094,6 @@ export default function FeedbackDetailClient({
         )}
       </div>
 
-      {showPromptSettings && selectedTemplate && (
-        <TemplatePromptSettingsModal
-          templateId={selectedTemplate.id}
-          templateName={selectedTemplate.name}
-          defaultSystemPrompt={selectedTemplate.system_prompt}
-          onClose={() => setShowPromptSettings(false)}
-        />
-      )}
     </div>
   );
 }

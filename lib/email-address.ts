@@ -20,3 +20,23 @@ const EMAIL = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
 export function isValidEmail(value: string): boolean {
   return EMAIL.test(value.trim());
 }
+
+// Prénom du destinataire tiré de son adresse (prenom.nom@, prenom_nom@) : le
+// transcript ne porte souvent aucun nom (« Unknown: »), et le modèle en
+// inventait un — « Guillaume » pour william.bouzemarene@, constaté le
+// 29/09/2026. Rien quand l'adresse ne commence pas par un prénom plausible.
+const GENERIC_MAILBOXES = new Set([
+  "contact", "info", "infos", "hello", "bonjour", "admin", "sales", "vente", "ventes", "commercial",
+  "support", "service", "direction", "compta", "comptabilite", "rh", "team", "equipe", "office", "pro",
+]);
+
+export function firstNameFromEmail(email: string): string | null {
+  const local = email.split("@")[0]?.toLowerCase() ?? "";
+  const match = local.match(/^([a-zà-öø-ÿ]{3,})(?:-[a-zà-öø-ÿ]{2,})?[._]/);
+  if (!match || GENERIC_MAILBOXES.has(match[1])) return null;
+  const first = local.slice(0, match[0].length - 1);
+  return first
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("-");
+}

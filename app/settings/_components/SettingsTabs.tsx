@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Settings, Link as LinkIcon, Library, CreditCard, MessagesSquare, Mail } from "lucide-react";
+import { Settings, Link as LinkIcon, Library, CreditCard, MessagesSquare } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ModuleKey } from "@/lib/modules";
 import { useModules } from "@/app/components/ModulesProvider";
@@ -24,10 +24,9 @@ const NAV_ITEMS: { href: string; label: string; icon: LucideIcon; managerOnly?: 
   // faisait apparaître une barre de défilement sous les onglets.
   { href: "/settings/references", label: "Références", icon: Library, module: "references" },
   { href: "/settings/objections", label: "Objections", icon: MessagesSquare, module: "objections" },
-  // Réglage d'organisation, arrivé de /team le 04/09/2026. managerOnly : la
-  // page elle-même redirige déjà un commercial, l'onglet ne doit pas lui
-  // promettre un écran qu'il ne peut pas ouvrir.
-  { href: "/settings/email-templates", label: "Templates emails", icon: Mail, managerOnly: true, module: "follow_up" },
+  // « Templates emails » retiré le 29/09/2026 (décision de Jean) : ces modèles
+  // ne servaient qu'aux emails des tâches, masquées, jamais à l'email de suivi
+  // après un call. La page reste joignable par URL (/settings/email-templates).
   { href: "/settings/billing", label: "Facturation", icon: CreditCard, managerOnly: true },
 ];
 

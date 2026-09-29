@@ -119,7 +119,7 @@ export default function TestEmailAdminClient() {
           icon={Mail}
           eyebrow="Outils techniques"
           title="Test de l'email de suivi"
-          subtitle="Historique email vide — ton par défaut"
+          subtitle="Génère un email de suivi à partir d’un transcript, avec le prompt enregistré."
         />
       </FadeIn>
 

@@ -401,10 +401,9 @@ export async function POST(request: NextRequest) {
             reportWarning("bot-webhook.contactUpsert", contactErr, { callId: call.id });
           }
 
-          // Step 5 — generate follow-up email (non-blocking). No longer
-          // fetches Google email history for context (gmail.readonly
-          // dropped 25/07/2026, see lib/gmail.ts) — generateFollowUpEmail
-          // falls back to a professional-by-default tone without it.
+          // Step 5 — generate follow-up email (non-blocking), from the full
+          // transcript plus the analysis summary and key points, signed by
+          // the commercial (lib/email-followup.ts).
           try {
             if (!hasSpeech) {
               // Déjà journalisé à l'étape 3 : un email de suivi écrit sur un
@@ -412,10 +411,22 @@ export async function POST(request: NextRequest) {
             } else if (!contactEmail) {
               console.log("[bot-webhook] no contactEmail, skipping follow-up email");
             } else {
-              const followUp = await generateFollowUpEmail(transcriptText, savedAnalysis?.next_steps ?? [], contactEmail);
-              if (followUp) {
-                await updateCallFollowUp(call.id, followUp);
-                console.log("[bot-webhook] follow-up email saved, subject:", followUp.subject);
+              const followUp = await generateFollowUpEmail({
+                transcript: transcriptText,
+                transcriptJson,
+                speakerNames: speakerNamesOverride,
+                summary: savedAnalysis?.summary ?? null,
+                keyPoints,
+                nextSteps: savedAnalysis?.next_steps ?? [],
+                contactEmail,
+                prospectCompany: companyName,
+                senderUserId: userId,
+              });
+              if (followUp.status === "ok") {
+                await updateCallFollowUp(call.id, followUp.email);
+                console.log("[bot-webhook] follow-up email saved, subject:", followUp.email.subject);
+              } else if (followUp.status === "skipped") {
+                console.log("[bot-webhook] follow-up email skipped: no usable sales exchange in this call");
               }
             }
           } catch (followUpErr) {

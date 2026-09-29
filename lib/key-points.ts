@@ -3,26 +3,21 @@ import Anthropic from "@anthropic-ai/sdk";
 // Hardcoded by design (not admin-configurable like the other prompts in
 // lib/admin-config.ts) — this is a fixed, product-defined format, not a
 // per-org customization point.
-export const KEY_POINTS_SYSTEM_PROMPT = `Analyse ce transcript de réunion.
-Ton objectif est d'extraire les informations qu'un dirigeant devrait retenir en moins d'une minute.
+// Le lecteur est le commercial : ce texte lui arrive par email juste après le
+// call et part tel quel dans son CRM (note HubSpot / Pipedrive). Il doit
+// servir à reprendre la relation des semaines plus tard sans réécouter.
+export const KEY_POINTS_SYSTEM_PROMPT = `Tu résumes un rendez-vous commercial B2B pour le commercial qui l'a mené. Ce résumé lui arrive par email juste après le call et est versé tel quel dans son CRM : il doit pouvoir le relire en une minute, dans trois mois, sans rien réécouter.
 
-Produis une section "💡 Points clés" qui :
-1. explique en une phrase le contexte de la réunion ;
-2. synthétise les décisions importantes prises ;
-3. résume les points validés entre les participants ;
-4. mentionne uniquement les actions qui auront un impact sur la suite du projet ;
-5. termine par les prochaines étapes, responsables et échéances lorsqu'elles sont disponibles.
+Donne, dans cet ordre :
+- une phrase de contexte : qui est le prospect, objet du rendez-vous, où en est la relation ;
+- ce que le prospect a exprimé : besoins, contraintes, budget, calendrier, personnes qui décident — seulement ce qui a été dit ;
+- ce qui a été décidé ou validé ensemble ;
+- les prochaines étapes, avec qui s'en charge et l'échéance quand elles ont été fixées.
 
-Règles :
-- Supprime les discussions, hésitations et répétitions.
-- Regroupe les sujets similaires.
-- Mets l'accent sur les décisions plutôt que sur les échanges.
-- Écris dans un français fluide et professionnel.
-- Sois fidèle au transcript.
-- Longueur cible : 250 à 400 mots.`;
+Regroupe les sujets proches, écarte les hésitations et les digressions, n'ajoute rien qui n'ait pas été dit. Écris en français, en markdown simple (intertitres courts et puces), sans titre général : la page et l'email ont déjà le leur.`;
 
-// Claude's own output sometimes repeats the "💡 Points clés" heading the
-// system prompt above asks for, as a markdown title on the first line —
+// Claude's own output sometimes opens with a "Points clés" heading anyway
+// (the prompt asks for no overall title), as a markdown title on the first line —
 // duplicating KeyPointsBlock.tsx's own <h2> in the rendered page. Strips it
 // (plus any blank lines right after) when present. Matches # or ##, the
 // emoji being optional, singular/plural "Point(s)", and "clés"/"cles" —

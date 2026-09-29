@@ -35,7 +35,6 @@ Pour chaque dimension fournie, tu attribues :
 - Une description factuelle (2-3 phrases) expliquant le score en citant des éléments concrets du transcript
 
 Tu produis aussi :
-- Un \`global_score\` = moyenne pondérée des scores par leur poids, arrondie à 1 décimale (sur 5)
 - Un \`sentiment\` global : "positif", "neutre" ou "négatif"
 - Un résumé général (3-5 phrases) : contexte, valeur créée, risques
 - Une liste de \`strong_points\` (points forts, 2-4)
@@ -48,7 +47,6 @@ ${OBJECTION_DEFINITION}
 Réponds UNIQUEMENT en JSON strict, sans markdown, avec la structure :
 {
   "scores": {
-    "global_score": 0.0,
     "<key_dimension_1>": { "score": 0, "description": "..." },
     "<key_dimension_2>": { "score": 0, "description": "..." }
   },
@@ -62,23 +60,15 @@ Réponds UNIQUEMENT en JSON strict, sans markdown, avec la structure :
 
 Les clés <key_dimension_X> doivent correspondre EXACTEMENT aux \`key\` fournies dans la liste des dimensions du contexte utilisateur.`;
 
-// Ton par défaut fixe (pas d'historique d'échanges à observer) — gmail.readonly
-// a été retiré des scopes OAuth le 25/07/2026 (évite l'audit CASA payant
-// exigé pour les scopes Restricted), donc plus jamais d'historique email
-// disponible en contexte ici.
+// Style de l'email de suivi, éditable en admin. Le reste — qui écrit, ce qui
+// est interdit, le format JSON, le cas « rien à dire » — est imposé par le
+// code (lib/email-followup.ts). Aucune référence à un historique d'emails :
+// Brief n'en lit plus depuis le retrait de gmail.readonly (25/07/2026).
 export const DEFAULT_EMAIL_FOLLOWUP_PROMPT =
-`TA MISSION
-
-Rédige un email de suivi à envoyer à ce contact qui :
-- Utilise un ton professionnel et chaleureux
-- Mentionne brièvement 1-2 points clés discutés pendant le call
-- Propose clairement la prochaine étape identifiée
-- Reste concis (5-8 lignes maximum)
-
-FORMAT DE SORTIE
-
-Réponds uniquement en JSON valide, sur une seule ligne, sans markdown :
-{"subject":"","body":""}`;
+`Remercie en une phrase, rappelle un ou deux points concrets qui comptent pour le prospect, puis propose clairement la prochaine étape convenue, avec sa date et son horaire s'ils ont été fixés.
+Reprends le registre du rendez-vous : tutoiement si le commercial et le prospect se tutoyaient, vouvoiement sinon.
+Ton professionnel et chaleureux, sans formules toutes faites. Cinq à huit lignes en paragraphes courts, sans liste à puces : le prospect doit pouvoir le lire en trente secondes, le détail viendra au prochain rendez-vous.
+Objet court et précis, qui dit de quoi parle l'email.`;
 
 export const DEFAULT_QUOTE_GENERATION_PROMPT =
 `Tu es un assistant qui aide un commercial à préparer un devis pour un prospect avec qui il a échangé.

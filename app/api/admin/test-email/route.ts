@@ -25,15 +25,21 @@ export async function POST(request: NextRequest) {
   const promptUsed =
     (await readPromptConfig("email_followup_prompt")) ?? DEFAULT_EMAIL_FOLLOWUP_PROMPT;
 
-  const email = await generateFollowUpEmail(
-    transcript.trim(),
+  const result = await generateFollowUpEmail({
+    transcript: transcript.trim(),
     nextSteps,
-    contactEmail.trim() || "contact@exemple.com"
-  );
+    contactEmail: contactEmail.trim() || "contact@exemple.com",
+  });
 
-  if (!email) {
+  if (result.status === "skipped") {
+    return NextResponse.json(
+      { error: "Pas d'email : le modèle juge que ce transcript ne contient pas d'échange commercial exploitable." },
+      { status: 422 }
+    );
+  }
+  if (result.status === "error") {
     return NextResponse.json({ error: "Échec de la génération de l'email." }, { status: 500 });
   }
 
-  return NextResponse.json({ email, prompt_used: promptUsed });
+  return NextResponse.json({ email: result.email, prompt_used: promptUsed });
 }

@@ -68,18 +68,35 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   // soit ne doit pas devenir le contact du rendez-vous. La page laisse la
   // saisir à nouveau au moment d'envoyer, y compris après un rechargement.
 
-  const nextSteps = call.analysis?.next_steps ?? [];
-  const followUp = await generateFollowUpEmail(call.transcript, nextSteps, contactEmail);
+  const result = await generateFollowUpEmail({
+    transcript: call.transcript,
+    transcriptJson: call.transcript_json,
+    speakerNames: call.speaker_names_override,
+    summary: call.analysis?.summary ?? null,
+    keyPoints: call.analysis?.key_points ?? null,
+    nextSteps: call.analysis?.next_steps ?? [],
+    contactEmail,
+    prospectCompany: call.company_name,
+    // Toujours au nom du commercial qui a mené le call, même quand c'est son
+    // manager qui déclenche la génération.
+    senderUserId: call.user_id,
+  });
 
-  // null = réponse hors contrat, déjà tracée et remontée par validateAiShape.
-  // On le dit à l'utilisateur au lieu d'enregistrer un email vide.
-  if (!followUp) {
+  if (result.status === "skipped") {
+    return NextResponse.json(
+      { error: "Ce rendez-vous ne contient pas assez d'échange avec le prospect pour rédiger un email de suivi." },
+      { status: 422 }
+    );
+  }
+  // Réponse hors contrat, déjà tracée et remontée par validateAiShape. On le
+  // dit à l'utilisateur au lieu d'enregistrer un email vide.
+  if (result.status === "error") {
     return NextResponse.json(
       { error: "La génération a échoué. Réessayez — si cela persiste, le prompt d'email de suivi est à vérifier." },
       { status: 502 }
     );
   }
 
-  await updateCallFollowUp(callId, followUp);
-  return NextResponse.json({ followUp });
+  await updateCallFollowUp(callId, result.email);
+  return NextResponse.json({ followUp: result.email });
 }
