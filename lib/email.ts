@@ -16,40 +16,101 @@ const NOTIF = {
   card: "#F9FAFB",
 };
 
-const ROLE_LABELS: Record<"manager" | "commercial", string> = {
-  manager: "Manager",
-  commercial: "Commercial",
-};
+// Échappe une valeur saisie (nom, organisation) avant de l'insérer dans le
+// HTML de l'email : un nom contenant « < » casserait la mise en page.
+function escapeHtml(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
 
-function buildInvitationHtml(params: {
+// Email d'invitation, refait le 29/09/2026 (retour de Jean : trop nu). Mise
+// en page d'email classique — tableaux et styles en ligne, pas de flex ni
+// de CSS externe, que Gmail et Outlook ignorent. Couleurs de la marque
+// (--gradient-brand de globals.css, avec une couleur de repli pour les
+// clients qui ne gèrent pas les dégradés). Les bénéfices listés sont ceux du
+// SOCLE uniquement (briefs, agenda, comptes-rendus) : un nouveau client est
+// dans le parcours, ses autres modules sont encore fermés.
+export function buildInvitationHtml(params: {
+  to: string;
   invitedByName: string;
   organizationName: string;
   role: "manager" | "commercial";
 }): string {
-  const { invitedByName, organizationName, role } = params;
   const loginUrl = `${APP_URL}/login`;
+  const inviter = escapeHtml(params.invitedByName);
+  const org = escapeHtml(params.organizationName);
+  const email = escapeHtml(params.to);
+  const role = params.role === "manager" ? "manager" : "commercial";
+  const brand = "#2B4BD0";
+  const brandGradient = "linear-gradient(135deg, #2B4BD0 0%, #1D86E0 100%)";
 
-  return `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px; color: #0f172a;">
-      <div style="width: 40px; height: 40px; background: #4f46e5; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 24px;">
-        <span style="color: #ffffff; font-weight: bold; font-size: 18px; line-height: 40px; text-align: center; display: block; width: 40px;">B</span>
-      </div>
-      <h1 style="font-size: 20px; margin: 0 0 16px;">Vous êtes invité(e) à rejoindre Brief</h1>
-      <p style="font-size: 14px; color: #475569; line-height: 1.6; margin: 0 0 12px;">
-        <strong>${invitedByName}</strong> a créé un compte pour vous sur Brief, au sein de l'organisation
-        <strong>${organizationName}</strong>, avec le rôle <strong>${ROLE_LABELS[role]}</strong>.
-      </p>
-      <p style="font-size: 14px; color: #475569; line-height: 1.6; margin: 0 0 24px;">
-        Connectez-vous avec le même email via Google ou Microsoft pour activer votre compte.
-      </p>
-      <a href="${loginUrl}" style="display: inline-block; background: #4f46e5; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 12px 24px; border-radius: 8px;">
-        Accéder à Brief
-      </a>
-      <p style="font-size: 12px; color: #94a3b8; margin-top: 32px;">
-        Si vous ne vous attendiez pas à cet email, vous pouvez l'ignorer sans risque.
-      </p>
-    </div>
-  `;
+  const benefit = (title: string, text: string) => `
+    <tr>
+      <td valign="top" style="padding: 0 12px 14px 0; width: 22px;">
+        <div style="width: 22px; height: 22px; border-radius: 11px; background: #EAF0FF; color: ${brand}; font-size: 13px; font-weight: 700; line-height: 22px; text-align: center;">&#10003;</div>
+      </td>
+      <td valign="top" style="padding: 0 0 14px 0; font-size: 14px; line-height: 1.5; color: #334155;">
+        <strong style="color: #0F172A;">${title}</strong><br />${text}
+      </td>
+    </tr>`;
+
+  return `<!doctype html>
+<html lang="fr">
+  <body style="margin: 0; padding: 0; background: #F3F5FA;">
+    <div style="display: none; max-height: 0; overflow: hidden; opacity: 0;">${inviter} vous a ouvert un accès à Brief pour l'équipe ${org}.</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #F3F5FA; padding: 32px 12px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 560px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+            <tr>
+              <td style="padding: 0 4px 20px 4px;">
+                <table role="presentation" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="width: 36px; height: 36px; border-radius: 10px; background: ${brand}; background-image: ${brandGradient}; color: #FFFFFF; font-size: 18px; font-weight: 700; text-align: center; line-height: 36px;">B</td>
+                    <td style="padding-left: 10px; font-size: 18px; font-weight: 700; color: #0F172A;">Brief</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="background: #FFFFFF; border: 1px solid #E5E9F2; border-radius: 16px; overflow: hidden;">
+                <div style="height: 4px; background: ${brand}; background-image: ${brandGradient};"></div>
+                <div style="padding: 32px 32px 28px 32px;">
+                  <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: ${brand};">Équipe ${org}</p>
+                  <h1 style="margin: 0 0 16px 0; font-size: 24px; line-height: 1.3; color: #0F172A;">Votre accès à Brief est prêt</h1>
+                  <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: #334155;">
+                    <strong style="color: #0F172A;">${inviter}</strong> vous a ouvert un compte pour l'équipe <strong style="color: #0F172A;">${org}</strong>, en tant que ${role}.
+                  </p>
+                  <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 0 12px 0;">
+                    ${benefit("Un brief avant chaque rendez-vous", "L'entreprise, l'interlocuteur et les bons angles, préparés pour vous.")}
+                    ${benefit("Vos rendez-vous repérés dans votre agenda", "Google ou Outlook : rien à saisir, Brief sait quand vous voyez qui.")}
+                    ${benefit("Le compte-rendu de vos calls", "Points clés et analyse de chaque visio, sans prendre de notes.")}
+                  </table>
+                  <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 0 24px 0;">
+                    <tr>
+                      <td style="border-radius: 10px; background: ${brand}; background-image: ${brandGradient};">
+                        <a href="${loginUrl}" style="display: inline-block; padding: 14px 28px; font-size: 15px; font-weight: 600; color: #FFFFFF; text-decoration: none;">Activer mon compte &rarr;</a>
+                      </td>
+                    </tr>
+                  </table>
+                  <div style="background: #F6F8FC; border: 1px solid #E5E9F2; border-radius: 10px; padding: 14px 16px; font-size: 13px; line-height: 1.55; color: #475569;">
+                    Connectez-vous avec <strong style="color: #0F172A;">Google ou Microsoft</strong>, en utilisant cette adresse&nbsp;: <strong style="color: #0F172A;">${email}</strong>.
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 20px 8px 0 8px; font-size: 12px; line-height: 1.6; color: #94A3B8; text-align: center;">
+                Vous recevez cet email parce que ${inviter} vous a invité à rejoindre Brief.<br />
+                Si vous ne vous y attendiez pas, vous pouvez l'ignorer.<br />
+                <a href="${APP_URL}" style="color: #94A3B8;">brief-ai.fr</a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
 }
 
 // Alerte interne — CTA "Je veux débloquer ce module" sur la page verrouillée
@@ -106,7 +167,8 @@ export async function sendInvitationEmail(params: {
   const { error } = await resend.emails.send({
     from: process.env.RESEND_FROM_EMAIL!,
     to: params.to,
-    subject: "Vous êtes invité(e) à rejoindre Brief",
+    // Le nom de l'équipe dans l'objet : c'est lui que le destinataire reconnaît.
+    subject: `Votre accès à Brief pour l'équipe ${params.organizationName}`,
     html: buildInvitationHtml(params),
   });
 

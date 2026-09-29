@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import BriefPreview from "./BriefPreview";
+import { useModules } from "@/app/components/ModulesProvider";
 
 const SECTOR_SUGGESTIONS = [
   "SaaS B2B",
@@ -53,12 +54,27 @@ const STEPS = [
   {
     step: 5,
     pillar: "Progresser",
-    promise:
-      "Chaque rendez-vous est noté sur la grille de votre équipe, et vous voyez quelles objections reviennent et comment vous les traitez.",
+    promise: "Vos cas clients enrichissent vos briefs : Brief cite ceux qui ressemblent le plus au prospect.",
     title: "Vos références clients",
-    subtitle: "Vos cas clients servent d'arguments quand une objection ressemble à une déjà traitée.",
+    subtitle: "Importez vos cas clients : ils deviennent des arguments dans vos briefs.",
   },
 ];
+
+// Promesse affichée au-dessus de chaque étape. Celles des étapes 3 et 4
+// citaient les emails de suivi et les objections, qu'un client en début de
+// parcours n'a pas encore : elles ne les nomment que si le module est ouvert.
+function promiseFor(step: number, followUp: boolean, objections: boolean): string {
+  if (step === 3) {
+    return followUp ? "Ces éléments alimentent vos briefs et vos emails de suivi." : "Ces éléments alimentent vos briefs.";
+  }
+  if (step === 4) {
+    const extras = [objections ? "les objections" : null, followUp ? "un email de suivi prêt à relire" : null].filter(Boolean);
+    return `Un assistant rejoint vos visios, prend des notes, et vous envoie le compte-rendu${
+      extras.length ? `, ${extras.join(" et ")}` : ""
+    }.`;
+  }
+  return STEPS[step - 1]?.promise ?? "";
+}
 
 // ─── Progress bar ─────────────────────────────────────────────────────────────
 
@@ -153,7 +169,14 @@ export default function OnboardingPage() {
     });
   }
 
-  const totalSteps = STEPS.length;
+  // Parcours client (lib/modules.ts) : l'étape Références n'existe que si le
+  // module est ouvert, et les promesses ne citent que ce que le client a.
+  // Avant le 29/09/2026, un nouveau client voyait l'étape 5 alors que le
+  // module lui était fermé.
+  const { isEnabled } = useModules();
+  const referencesEnabled = isEnabled("references");
+  const totalSteps = referencesEnabled ? STEPS.length : STEPS.length - 1;
+  const hasRefContent = !!refFile || refText.trim().length > 0;
   const showPreview = step <= 3;
   const isLast = step === totalSteps;
 
@@ -221,7 +244,8 @@ export default function OnboardingPage() {
     }
   }
 
-  const { title, subtitle, pillar, promise } = STEPS[step - 1];
+  const { title, subtitle, pillar } = STEPS[step - 1];
+  const promise = promiseFor(step, isEnabled("follow_up"), isEnabled("objections"));
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -502,19 +526,28 @@ export default function OnboardingPage() {
                 </>
               ) : (
                 <div className="flex items-center justify-between w-full">
+                  {/* Dernière étape. Références : « Terminer » tant que rien
+                      n'est choisi — le bouton n'est plus grisé sans raison
+                      apparente —, « Importer et terminer » dès qu'un fichier
+                      ou un texte est là. Sans le module Références, la
+                      dernière étape est l'agenda : « Terminer ». */}
+                  {step === 5 && hasRefContent ? (
+                    <button
+                      onClick={() => handleFinish(false)}
+                      disabled={saving || refLoading}
+                      className="text-sm text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
+                    >
+                      Passer cette étape
+                    </button>
+                  ) : (
+                    <span />
+                  )}
                   <button
-                    onClick={() => handleFinish(false)}
+                    onClick={step === 5 && hasRefContent ? handleImport : () => handleFinish(false)}
                     disabled={saving || refLoading}
-                    className="text-sm text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
-                  >
-                    Passer cette étape
-                  </button>
-                  <button
-                    onClick={handleImport}
-                    disabled={saving || refLoading || (!refFile && !refText.trim())}
                     className="flex items-center gap-2 brand-gradient text-white text-sm font-semibold px-7 py-2.5 rounded-lg hover:brightness-110 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {refLoading ? "Import en cours…" : "Importer et continuer →"}
+                    {refLoading ? "Import en cours…" : step === 5 && hasRefContent ? "Importer et terminer →" : "Terminer →"}
                   </button>
                 </div>
               )}
