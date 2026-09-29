@@ -8,7 +8,7 @@ import { enrichFromCRM } from "./crm/enrichment";
 import type { CrmEnrichment } from "./crm/enrichment";
 import { extractJsonObject } from "./ai-json";
 import { seniorityLabel, type ApolloContact } from "./apollo";
-import { reportWarning } from "./monitoring";
+import { reportError, reportWarning } from "./monitoring";
 
 const client = new Anthropic();
 
@@ -256,29 +256,63 @@ export async function generateBrief(
     apolloContact ?? null
   );
 
-  let message = await runBriefRequest(config.model, config, userPrompt);
-  if (message.stop_reason === "refusal") {
-    // Un refus arrive sans contenu exploitable. On le signale (un refus sur
-    // un simple brief d'entreprise mérite d'être vu) et on repasse la même
-    // demande sur le modèle de secours plutôt que de laisser le commercial
-    // sans brief.
-    reportWarning("brief.refusal", `Refus du modèle ${config.model} pour « ${company} »`, {
-      category: message.stop_details?.category ?? null,
-    });
-    message = await runBriefRequest(FALLBACK_MODEL, config, userPrompt);
+  // Deux essais au plus : le second seulement si la réponse ne contient pas de
+  // JSON exploitable (constaté en production le 29/09/2026 sur le test du
+  // brief, sans cause reproduite).
+  let lastRaw = "";
+  let lastStop: string | null = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    let message = await runBriefRequest(config.model, config, userPrompt);
+    if (message.stop_reason === "refusal") {
+      // Un refus arrive sans contenu exploitable. On le signale (un refus sur
+      // un simple brief d'entreprise mérite d'être vu) et on repasse la même
+      // demande sur le modèle de secours plutôt que de laisser le commercial
+      // sans brief.
+      reportWarning("brief.refusal", `Refus du modèle ${config.model} pour « ${company} »`, {
+        category: message.stop_details?.category ?? null,
+      });
+      message = await runBriefRequest(FALLBACK_MODEL, config, userPrompt);
+    }
+
+    const parsed = parseBriefResponse(message);
+    if (parsed.ok) return parsed.value;
+    lastRaw = parsed.raw;
+    lastStop = message.stop_reason;
+    console.warn(`[brief-generator] JSON introuvable (essai ${attempt + 1}, stop=${message.stop_reason})`);
   }
 
-  const textBlock = message.content.filter((b) => b.type === "text").pop();
-  if (!textBlock || textBlock.type !== "text") {
-    throw new Error("Réponse inattendue de l'API.");
-  }
+  reportError("brief.invalidJson", new Error("Le modèle n'a pas retourné du JSON valide."), {
+    company,
+    stopReason: lastStop,
+    raw: lastRaw.slice(0, 2000),
+  });
+  throw new Error("Le modèle n'a pas retourné du JSON valide.");
+}
 
-  try {
-    return JSON.parse(extractJsonObject(textBlock.text));
-  } catch {
-    console.error("[brief-generator] Échec du parsing JSON :\n", textBlock.text);
-    throw new Error("Le modèle n'a pas retourné du JSON valide.");
+// La réponse finale peut être découpée en plusieurs blocs de texte (citations
+// de la recherche web, phrase ajoutée après le JSON…) : on essaie d'abord le
+// texte assemblé de tous les blocs qui suivent le dernier appel d'outil, puis
+// chaque bloc seul, du dernier au premier.
+function parseBriefResponse(message: Anthropic.Message): { ok: true; value: unknown } | { ok: false; raw: string } {
+  const lastToolIndex = message.content.reduce(
+    (last, b, i) => (b.type !== "text" && b.type !== "thinking" && b.type !== "redacted_thinking" ? i : last),
+    -1
+  );
+  const finalTexts = message.content
+    .slice(lastToolIndex + 1)
+    .filter((b): b is Anthropic.TextBlock => b.type === "text")
+    .map((b) => b.text);
+  const allTexts = message.content.filter((b): b is Anthropic.TextBlock => b.type === "text").map((b) => b.text);
+  const candidates = [finalTexts.join(""), ...[...allTexts].reverse()];
+  for (const candidate of candidates) {
+    if (!candidate.trim()) continue;
+    try {
+      return { ok: true, value: JSON.parse(extractJsonObject(candidate)) };
+    } catch {
+      // candidat suivant
+    }
   }
+  return { ok: false, raw: allTexts.join("\n---\n") };
 }
 
 // Un appel de génération, avec la reprise des pauses de la recherche web.

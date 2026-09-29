@@ -1,7 +1,7 @@
 import { type AuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import AzureADProvider from "next-auth/providers/azure-ad";
-import { resolveUserForLogin, saveGoogleTokens, getUserRole, touchUserLastSeen, type AuthProvider } from "./db";
+import { resolveUserForLogin, saveGoogleTokens, getGoogleTokens, getUserRole, touchUserLastSeen, type AuthProvider } from "./db";
 import { refreshGoogleAccessToken } from "./gmail";
 import { MICROSOFT_LOGIN_SCOPES, refreshMicrosoftAccessToken } from "./microsoft";
 
@@ -180,6 +180,18 @@ export const authOptions: AuthOptions = {
                   await saveGoogleTokens(resolution.userId, account.access_token, account.refresh_token);
                 } catch (err) {
                   console.error("[auth] saveGoogleTokens failed:", err);
+                }
+                // Google n'envoie de refresh_token qu'au premier consentement :
+                // sans lui, la session expirait au bout d'une heure et la
+                // liste des RDV affichait une erreur Google. On reprend celui
+                // déjà enregistré pour ce compte, s'il existe.
+                if (!account.refresh_token) {
+                  try {
+                    const stored = await getGoogleTokens(resolution.userId);
+                    if (stored.refreshToken) token.refreshToken = stored.refreshToken;
+                  } catch (err) {
+                    console.error("[auth] getGoogleTokens failed:", err);
+                  }
                 }
               }
             }

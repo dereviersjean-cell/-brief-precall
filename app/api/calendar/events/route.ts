@@ -63,6 +63,16 @@ export async function GET() {
       return NextResponse.json(manualEvents);
     }
     const message = err instanceof Error ? err.message : "Erreur calendrier";
-    return NextResponse.json({ error: message }, { status: 500 });
+    // Accès expiré ou révoqué chez Google / Microsoft : le message brut de
+    // l'API (en anglais, avec un lien développeur) n'aide pas l'utilisateur.
+    const authExpired = /invalid authentication credentials|invalid_grant|unauthenticated|\b401\b|InvalidAuthenticationToken/i.test(message);
+    return NextResponse.json(
+      {
+        error: authExpired
+          ? "Votre connexion à votre agenda a expiré. Reconnectez-vous pour afficher vos prochains rendez-vous."
+          : "Impossible de charger vos rendez-vous pour le moment. Réessayez dans quelques minutes.",
+      },
+      { status: authExpired ? 401 : 500 }
+    );
   }
 }

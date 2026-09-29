@@ -799,7 +799,15 @@ export default function BriefToolClient() {
         <div className="bg-red-50 border border-red-100 rounded-2xl p-4 mb-6 flex items-center justify-between gap-4 flex-wrap">
           <p className="text-sm text-red-700">{calendarError}</p>
           <button
-            onClick={() => signIn(provider === "azure-ad" ? "azure-ad" : "google", { callbackUrl: "/brief" })}
+            // prompt=consent pour Google : c'est le seul moyen d'obtenir une
+            // nouvelle clé de renouvellement (refresh_token). Une connexion
+            // simple rend un accès valable une heure, et l'erreur revenait
+            // aussitôt après (constaté le 29/09/2026).
+            onClick={() =>
+              provider === "azure-ad"
+                ? signIn("azure-ad", { callbackUrl: "/brief" })
+                : signIn("google", { callbackUrl: "/brief" }, { prompt: "consent" })
+            }
             className="text-sm font-medium text-red-700 border border-red-200 bg-white px-3 h-8 rounded-lg hover:bg-red-100 transition-colors duration-200 shrink-0"
           >
             Reconnecter
