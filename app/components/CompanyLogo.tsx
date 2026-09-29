@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { companyLogoUrlFromDomain } from "@/lib/company-domain";
 
@@ -30,7 +30,27 @@ export default function CompanyLogo({
   fallback: ReactNode;
 }) {
   const [failed, setFailed] = useState(false);
-  const url = src || companyLogoUrlFromDomain(domain);
+  const [loaded, setLoaded] = useState(false);
+  const faviconUrl = companyLogoUrlFromDomain(domain);
+  const url = src || faviconUrl;
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  function check(img: HTMLImageElement) {
+    // Sans favicon connu, le service de Google répond 404 avec un globe
+    // générique de 16 px — que le navigateur affiche comme une vraie image
+    // (constaté le 29/09/2026 sur scutum.com). Les vrais logos demandés en
+    // 64 px arrivent en 32 px ou plus : 16 px et moins = pas de logo.
+    if (url === faviconUrl && img.naturalWidth <= 16) setFailed(true);
+    else setLoaded(true);
+  }
+
+  // Image déjà en cache avant que React n'écoute onLoad : l'événement ne
+  // viendrait jamais et le logo resterait invisible.
+  useEffect(() => {
+    const img = imgRef.current;
+    if (img?.complete && img.naturalWidth > 0) check(img);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url]);
 
   if (!url || failed) return <>{fallback}</>;
 
@@ -40,7 +60,11 @@ export default function CompanyLogo({
       src={url}
       alt={alt}
       onError={() => setFailed(true)}
-      className={className}
+      ref={imgRef}
+      onLoad={(e) => check(e.currentTarget)}
+      // Invisible le temps de savoir si c'est un vrai logo : pas de globe qui
+      // clignote avant d'être remplacé par l'initiale.
+      className={`${className}${loaded ? "" : " invisible"}`}
     />
   );
 }
