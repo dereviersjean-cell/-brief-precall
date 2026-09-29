@@ -24,7 +24,7 @@ function Toggle({ on, disabled, label, onClick }: { on: boolean; disabled: boole
       aria-pressed={on}
       aria-label={`${on ? "Fermer" : "Ouvrir"} le module ${label}`}
       className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
-        on ? "bg-indigo-600" : "bg-slate-200"
+        on ? "brand-gradient" : "bg-slate-200"
       }`}
     >
       <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${on ? "translate-x-6" : "translate-x-1"}`} />
@@ -79,9 +79,9 @@ export default function ParcoursPanel({
   const onDemand = MODULES.filter((m) => m.week === null);
 
   return (
-    <section className="bg-white rounded-2xl border border-slate-200 p-6">
+    <section className="bg-white rounded-2xl border border-border p-6 shadow-[var(--shadow-sm)]">
       <div className="flex items-baseline justify-between gap-4">
-        <h2 className="text-sm font-semibold text-slate-900">Parcours</h2>
+        <h2 className="text-[15px] font-semibold tracking-tight text-slate-900">Parcours</h2>
         <span className="text-xs text-slate-400">
           {modules.length} sur {MODULES.length} modules ouverts
         </span>
@@ -94,7 +94,7 @@ export default function ParcoursPanel({
         </p>
       )}
       {available && !explicit && (
-        <p className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+        <p className="mb-4 rounded-lg border border-border bg-slate-50 px-3 py-2 text-xs text-slate-600">
           Client antérieur au parcours : tous ses modules sont ouverts. Le premier réglage fixe la liste.
         </p>
       )}
@@ -108,17 +108,17 @@ export default function ParcoursPanel({
           return (
             <li
               key={week}
-              className={`flex gap-4 rounded-xl px-3 py-3 ${isCurrent ? "bg-indigo-50/70 ring-1 ring-indigo-100" : ""}`}
+              className={`flex gap-4 rounded-xl px-3 py-3 ${isCurrent ? "bg-[color:var(--lavender)] ring-1 ring-[color:var(--lavender-strong)]" : ""}`}
             >
               <div
                 className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
-                  isCurrent ? "bg-indigo-600 text-white" : isPast ? "bg-slate-200 text-slate-600" : "bg-slate-100 text-slate-400"
+                  isCurrent ? "brand-gradient text-white" : isPast ? "bg-slate-200 text-slate-600" : "bg-slate-100 text-slate-400"
                 }`}
               >
                 S{week}
               </div>
               <div className="flex-1 min-w-0 space-y-2">
-                {isCurrent && <p className="text-[11px] font-semibold uppercase tracking-wide text-indigo-600">Cette semaine</p>}
+                {isCurrent && <p className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--violet)]">Cette semaine</p>}
                 {socle && (
                   <div>
                     <p className="text-sm font-medium text-slate-800">{socle.label}</p>

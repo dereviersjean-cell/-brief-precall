@@ -38,10 +38,10 @@ function Delta({ now, before, decimals = 0 }: { now: number | null; before: numb
 
 function Section({ step, title, duration, children }: { step?: number; title: string; duration?: string; children: ReactNode }) {
   return (
-    <section className="bg-white rounded-2xl border border-slate-200 p-6">
+    <section className="bg-white rounded-2xl border border-border p-6 shadow-[var(--shadow-sm)]">
       <div className="flex items-baseline justify-between gap-3 mb-4">
-        <h2 className="text-sm font-semibold text-slate-900">
-          {step !== undefined && <span className="mr-2 text-indigo-600">{step}.</span>}
+        <h2 className="text-[15px] font-semibold tracking-tight text-slate-900">
+          {step !== undefined && <span className="mr-2 text-[color:var(--violet)]">{step}.</span>}
           {title}
         </h2>
         {duration && <span className="text-xs text-slate-400">{duration}</span>}
@@ -57,7 +57,7 @@ function CriterionBox({ label, criterion, result }: { label: string; criterion: 
       ? "border-emerald-200 bg-emerald-50 text-emerald-900"
       : result.status === "unmet"
       ? "border-amber-200 bg-amber-50 text-amber-900"
-      : "border-slate-200 bg-slate-50 text-slate-700";
+      : "border-border bg-slate-50 text-slate-700";
   const Icon = result.status === "met" ? CheckCircle2 : result.status === "unmet" ? AlertTriangle : CircleDashed;
   return (
     <div className={`rounded-xl border px-4 py-3 ${tone}`}>
@@ -132,7 +132,7 @@ function OpenModuleButton({
       <button
         onClick={() => void openModule()}
         disabled={pending}
-        className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+        className="px-4 py-2 brand-gradient text-white rounded-lg text-sm font-medium hover:brightness-110 disabled:opacity-50"
       >
         {pending ? "Ouverture…" : `Ouvrir ${label}`}
       </button>
@@ -169,7 +169,7 @@ function CallCard({ label, call }: { label: string; call: ReviewCall }) {
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 p-4">
+    <div className="rounded-xl border border-border p-4">
       <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</p>
       <div className="mt-1 flex items-baseline justify-between gap-3">
         <p className="font-medium text-slate-900">{call.title}</p>
@@ -188,7 +188,7 @@ function CallCard({ label, call }: { label: string; call: ReviewCall }) {
       <button
         onClick={() => void openAsUser()}
         disabled={pending}
-        className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
+        className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-[color:var(--violet)] hover:text-[color:var(--violet)] disabled:opacity-50"
       >
         <Play className="h-3.5 w-3.5" />
         {pending ? "Ouverture…" : `Ouvrir dans le compte de ${call.userLabel}`}
@@ -218,7 +218,7 @@ export default function ClientReviewClient({ review }: { review: ClientReview })
     <AdminPageShell maxWidth="max-w-5xl">
       <Link
         href={`/admin/clients/${overview.id}`}
-        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 transition-colors mb-4"
+        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-[color:var(--violet)] transition-colors mb-4"
       >
         <ArrowLeft className="w-4 h-4" />
         Fiche client
@@ -251,7 +251,7 @@ export default function ClientReviewClient({ review }: { review: ClientReview })
           },
           { label: "RDV dans les 7 jours", value: String(totals.upcomingMeetings), delta: null },
         ].map((tile) => (
-          <div key={tile.label} className="bg-white rounded-2xl border border-slate-200 px-4 py-3">
+          <div key={tile.label} className="bg-white rounded-2xl border border-border px-4 py-3 shadow-[var(--shadow-sm)]">
             <p className="text-xs text-slate-500">{tile.label}</p>
             <p className="mt-1 flex items-baseline gap-2">
               <span className="text-xl font-semibold text-slate-900">{tile.value}</span>
@@ -273,7 +273,7 @@ export default function ClientReviewClient({ review }: { review: ClientReview })
               <p className="mb-3 text-xs text-slate-400">Choisissez-en un seul : c&apos;est lui qui ouvre le point.</p>
               <ul className="space-y-3">
                 {review.findings.map((f) => (
-                  <li key={f.text} className="rounded-xl border border-slate-200 px-4 py-3">
+                  <li key={f.text} className="rounded-xl border border-border px-4 py-3">
                     <p className="text-sm font-medium text-slate-900">« {f.text} »</p>
                     <p className="mt-0.5 text-xs text-slate-400">{f.source}</p>
                   </li>
@@ -433,7 +433,7 @@ export default function ClientReviewClient({ review }: { review: ClientReview })
                 <li key={o.label} className="flex items-center justify-between gap-3 py-2 text-sm">
                   <span className="text-slate-800">
                     {o.label}
-                    {o.isNew && <span className="ml-2 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">nouvelle</span>}
+                    {o.isNew && <span className="ml-2 rounded-full bg-[color:var(--lavender)] px-2 py-0.5 text-xs font-medium text-[color:var(--violet)]">nouvelle</span>}
                     {!o.isNew && o.thisWeek > o.prevWeek && (
                       <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">en hausse</span>
                     )}

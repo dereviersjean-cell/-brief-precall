@@ -35,7 +35,7 @@ function RoleFilterBar({
           key={f.value}
           onClick={() => onChange(f.value)}
           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-            value === f.value ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            value === f.value ? "brand-gradient text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
           }`}
         >
           {f.label} ({counts[f.value]})
@@ -120,7 +120,7 @@ function UserActionsMenu({ user, onChanged }: { user: UserDashboardStat; onChang
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 mt-1 w-56 bg-white border border-slate-200 rounded-lg shadow-lg z-20 py-1">
+          <div className="absolute right-0 mt-1 w-56 bg-white border border-border rounded-lg shadow-lg z-20 py-1">
             {user.disabled_at ? (
               <button
                 onClick={handleRestore}
@@ -174,7 +174,7 @@ function DashboardTable({ stats, onChanged }: { stats: UserDashboardStat[]; onCh
     <div className="overflow-x-auto">
       <table className="w-full text-sm text-left border-collapse">
         <thead>
-          <tr className="border-b border-slate-200">
+          <tr className="border-b border-border">
             <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Email</th>
             <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Rôle</th>
             <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Inscrit le</th>
@@ -208,7 +208,7 @@ function DashboardTable({ stats, onChanged }: { stats: UserDashboardStat[]; onCh
               <td className="py-3 pr-4 text-slate-500 whitespace-nowrap">{formatAdminDate(u.last_activity_at)}</td>
               <td className="py-3 pr-4">
                 {u.recall_connected ? (
-                  <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700">Connecté</span>
+                  <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-[color:var(--lavender-strong)] text-[color:var(--violet)]">Connecté</span>
                 ) : (
                   <span className="text-slate-300 text-xs">—</span>
                 )}
@@ -269,8 +269,8 @@ export default function DashboardAdminClient() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <Spinner className="w-8 h-8 text-indigo-600" />
+      <div className="brief-ui min-h-screen bg-[color:var(--background)] flex items-center justify-center">
+        <Spinner className="w-8 h-8 text-[color:var(--violet)]" />
       </div>
     );
   }
@@ -291,14 +291,14 @@ export default function DashboardAdminClient() {
       <FadeIn>
         <AdminPageHeader
           icon={LayoutDashboard}
-          eyebrow="Vue d'ensemble"
-          title="Dashboard utilisateurs"
+          eyebrow="Outils techniques"
+          title="Monitoring"
           subtitle={`${stats.length} utilisateur${stats.length > 1 ? "s" : ""} sur la plateforme`}
           actions={
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-border rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
             >
               {refreshing ? <Spinner /> : <RefreshCw className="w-4 h-4" />}
               Actualiser
@@ -314,7 +314,7 @@ export default function DashboardAdminClient() {
       </div>
 
       <FadeIn delay={0.1}>
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
+        <div className="bg-white rounded-2xl border border-border p-6 mb-6 shadow-[var(--shadow-sm)]">
           <RoleFilterBar value={roleFilter} onChange={setRoleFilter} counts={roleCounts} />
           <DashboardTable stats={filteredStats} onChanged={fetchStats} />
         </div>

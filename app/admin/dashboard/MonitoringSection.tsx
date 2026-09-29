@@ -42,8 +42,8 @@ export default function MonitoringSection() {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-6">
-      <h2 className="text-xs font-semibold text-indigo-600 uppercase tracking-widest mb-4">Monitoring (Sentry)</h2>
+    <div className="bg-white rounded-2xl border border-border p-6 shadow-[var(--shadow-sm)]">
+      <h2 className="text-[15px] font-semibold tracking-tight text-slate-900 mb-4">Monitoring (Sentry)</h2>
 
       {status === null ? (
         <p className="text-sm text-slate-400">Vérification…</p>
@@ -72,7 +72,7 @@ export default function MonitoringSection() {
       <button
         onClick={sendTest}
         disabled={sending || !status?.configured}
-        className="mt-4 inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="mt-4 inline-flex items-center gap-2 h-9 px-3.5 rounded-lg brand-gradient text-white text-sm font-medium hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         <Send className="w-3.5 h-3.5" />
         {sending ? "Envoi…" : "Envoyer une erreur de test"}

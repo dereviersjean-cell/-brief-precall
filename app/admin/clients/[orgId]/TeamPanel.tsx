@@ -81,7 +81,7 @@ function MemberMenu({
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 mt-1 w-56 bg-white border border-slate-200 rounded-lg shadow-lg z-20 py-1">
+          <div className="absolute right-0 mt-1 w-56 bg-white border border-border rounded-lg shadow-lg z-20 py-1">
             {member.status === "disabled" ? (
               <button onClick={pick(onRestore)} className={`${item} text-slate-700`}>
                 Réactiver le compte
@@ -227,12 +227,12 @@ export default function TeamPanel({
     });
   }
 
-  const input = "px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500";
+  const input = "px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20";
 
   return (
-    <section className="bg-white rounded-2xl border border-slate-200 p-6">
+    <section className="bg-white rounded-2xl border border-border p-6 shadow-[var(--shadow-sm)]">
       <div className="flex items-baseline justify-between gap-4 mb-4">
-        <h2 className="text-sm font-semibold text-slate-900">Équipe</h2>
+        <h2 className="text-[15px] font-semibold tracking-tight text-slate-900">Équipe</h2>
         <span className="text-xs text-slate-400">{members.length} membre{members.length > 1 ? "s" : ""}</span>
       </div>
 
@@ -274,7 +274,7 @@ export default function TeamPanel({
                     value={m.role ?? ""}
                     disabled={busyId !== null}
                     onChange={(e) => changeRole(m, e.target.value as UserRole)}
-                    className="w-full px-2 py-1 border border-slate-200 rounded-lg text-xs bg-white disabled:opacity-50"
+                    className="w-full px-2 py-1 border border-border rounded-lg text-xs bg-white disabled:opacity-50"
                   >
                     <option value="commercial">Commercial</option>
                     <option value="manager">Manager</option>
@@ -298,12 +298,12 @@ export default function TeamPanel({
                 <td className="px-3 pr-6 py-3 text-right">
                   <div className="flex flex-col items-end gap-1.5">
                     {m.status === "invited" && (
-                      <button onClick={() => resendInvitation(m)} disabled={busyId !== null} className="text-xs font-medium text-indigo-600 hover:underline disabled:opacity-50">
+                      <button onClick={() => resendInvitation(m)} disabled={busyId !== null} className="text-xs font-medium text-[color:var(--violet)] hover:underline disabled:opacity-50">
                         Renvoyer l&apos;invitation
                       </button>
                     )}
                     {m.status === "active" && (
-                      <button onClick={() => void openAccount(m)} disabled={busyId !== null} className="text-xs font-medium text-indigo-600 hover:underline disabled:opacity-50">
+                      <button onClick={() => void openAccount(m)} disabled={busyId !== null} className="text-xs font-medium text-[color:var(--violet)] hover:underline disabled:opacity-50">
                         Ouvrir le compte
                       </button>
                     )}
@@ -342,7 +342,7 @@ export default function TeamPanel({
               <option value="commercial">Commercial</option>
               <option value="manager">Manager</option>
             </select>
-            <button onClick={invite} disabled={busyId !== null || !inviteEmail.trim()} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+            <button onClick={invite} disabled={busyId !== null || !inviteEmail.trim()} className="px-4 py-2 brand-gradient text-white rounded-lg text-sm font-medium hover:brightness-110 disabled:opacity-50">
               Inviter
             </button>
           </div>
@@ -363,7 +363,7 @@ export default function TeamPanel({
               <option value="commercial">Commercial</option>
               <option value="manager">Manager</option>
             </select>
-            <button onClick={attach} disabled={busyId !== null || !attachId} className="px-4 py-2 border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 disabled:opacity-50">
+            <button onClick={attach} disabled={busyId !== null || !attachId} className="px-4 py-2 border border-border text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 disabled:opacity-50">
               Rattacher
             </button>
           </div>

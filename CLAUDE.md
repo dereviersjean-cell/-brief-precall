@@ -277,7 +277,7 @@ Livré et testé en conditions réelles sur le compte Oliverlist le 19 juillet 2
 - Tokens oklch dans `app/globals.css` : la marque est le **bleu #2A5CE0** mais les tokens gardent leurs noms historiques — `--violet` (= le bleu de marque), `--lavender`, `--lavender-strong`, `border-border`, ombres via les variables `--shadow-xs` / `--shadow-sm` / `--shadow-md` / `--shadow-glow`, classe `brand-gradient` pour les boutons primaires (+ `hover:brightness-110`). ATTENTION : Tailwind v4 scanne aussi les fichiers markdown du repo — ne jamais écrire de classe arbitraire invalide (crochets + slash) dans une doc, ça casse la compilation CSS
 - Primitives partagées : `app/components/ui/ui-bits.tsx` (Button, Card, ScoreChip, SentimentChip, StatCard, StatusChip, Eyebrow) + `PageHeader.tsx` + `TopBar.tsx` (breadcrumb, dans les 10 layouts)
 - Fonts scopées via la classe `.brief-ui` (Inter Tight + Instrument Serif italic)
-- **Zéro classe `indigo-*` hors `/admin`** (qui garde volontairement son design dédié). Toute nouvelle UI utilise les tokens, jamais indigo/violet Tailwind littéral (exception : couleurs catégorielles type badges emerald/amber/violet-50)
+- **Zéro classe `indigo-*`, admin compris** (l'admin a rejoint le design system le 29/09/2026, décision de Jean : même barre latérale, même police, mêmes tokens ; `ADMIN_INPUT` et `AdminCard` dans `app/admin/AdminShell.tsx`). Toute nouvelle UI utilise les tokens, jamais indigo/violet Tailwind littéral (exception : couleurs catégorielles type badges emerald/amber/violet-50)
 - Mobile : sidebar en drawer auto-contenu (`AppSidebar.tsx`, `useState` + translate + auto-close sur pathname), layouts en `ml-0 lg:ml-60`, tables larges dans `overflow-x-auto`
 
 ### PWA — installable depuis le 31 août 2026
@@ -412,7 +412,7 @@ Ce que l'audit a refermé, pour ne pas rouvrir les mêmes portes :
 - ❌ Décider d'un placement à l'écran à partir d'une dimension supposée plutôt que mesurée (cf. bug #27)
 - ❌ Suivre une cible qui bouge avec des écouteurs `scroll` + une transition CSS — l'élément suivi paraît glisser derrière le contenu ; `requestAnimationFrame` sans transition
 - ❌ Laisser un écran de démonstration pointer vers une vraie page de détail — ses entités n'existent pas en base (`ConditionalLink` rend la ligne inerte)
-- ❌ Utiliser des classes `indigo-*` (ou violet/purple Tailwind littéral pour la marque) hors `/admin` — toujours les tokens du design system
+- ❌ Utiliser des classes `indigo-*` (ou violet/purple Tailwind littéral pour la marque), admin compris — toujours les tokens du design system
 - ❌ Créer une route de génération IA sans `checkAiGenerationRateLimit`
 - ❌ Faire traiter par un seul appel IA une liste dont la taille n'est pas bornée — découper en lots (cf. bug #25)
 - ❌ Modifier un prompt par défaut sans vérifier si une version éditée existe dans `admin_config` (cf. bug #24)

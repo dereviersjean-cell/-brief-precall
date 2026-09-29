@@ -53,7 +53,7 @@ export function UpcomingMeetingsTable({
     <div className="overflow-x-auto">
       <table className="w-full text-sm text-left border-collapse">
         <thead>
-          <tr className="border-b border-slate-200">
+          <tr className="border-b border-border">
             {showUserColumn && (
               <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Utilisateur</th>
             )}
@@ -100,7 +100,7 @@ export function FailedRecordingsTable({
     <div className="overflow-x-auto">
       <table className="w-full text-sm text-left border-collapse">
         <thead>
-          <tr className="border-b border-slate-200">
+          <tr className="border-b border-border">
             {showUserColumn && (
               <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Utilisateur</th>
             )}

@@ -51,12 +51,12 @@ function AlertChip({ alert }: { alert: ClientAlert }) {
 
 function Tile({ icon: Icon, label, value, tone = "default" }: { icon: typeof Building2; label: string; value: number; tone?: "default" | "danger" }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+    <div className="bg-white rounded-2xl border border-border p-5 shadow-[var(--shadow-sm)]">
       <div className="flex items-center justify-between">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{label}</p>
         <Icon className={`w-4 h-4 ${tone === "danger" && value > 0 ? "text-red-500" : "text-slate-300"}`} />
       </div>
-      <p className={`mt-2 text-2xl font-bold ${tone === "danger" && value > 0 ? "text-red-600" : "text-slate-900"}`}>{value}</p>
+      <p className={`mt-2 text-2xl font-semibold ${tone === "danger" && value > 0 ? "text-red-600" : "text-slate-900"}`}>{value}</p>
     </div>
   );
 }
@@ -91,7 +91,7 @@ function NewClientForm({ onCreated }: { onCreated: (id: string) => void }) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+        className="flex items-center gap-2 px-4 py-2 brand-gradient text-white rounded-lg text-sm font-medium hover:brightness-110 transition-colors"
       >
         <Plus className="w-4 h-4" />
         Nouveau client
@@ -106,12 +106,12 @@ function NewClientForm({ onCreated }: { onCreated: (id: string) => void }) {
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="Nom de l'entreprise"
-        className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-56"
+        className="px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 w-56"
       />
       <button
         type="submit"
         disabled={loading || !name.trim()}
-        className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50"
+        className="px-4 py-2 brand-gradient text-white rounded-lg text-sm font-medium hover:brightness-110 transition-colors disabled:opacity-50"
       >
         {loading ? "Création…" : "Créer"}
       </button>
@@ -179,11 +179,11 @@ export default function ClientsAdminClient({ clients, now: nowISO }: { clients: 
         <Tile icon={PhoneCall} label="Calls sur 7 jours" value={calls7d} />
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-border overflow-hidden shadow-[var(--shadow-sm)]">
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[900px]">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50/60 text-left">
+              <tr className="border-b border-border bg-slate-50/60 text-left">
                 {["Client", "Parcours", "Prochain point", "Équipe", "7 derniers jours", "Alertes"].map((h) => (
                   <th key={h} className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                     {h}
@@ -198,7 +198,7 @@ export default function ClientsAdminClient({ clients, now: nowISO }: { clients: 
                   <tr
                     key={client.id}
                     onClick={() => router.push(`/admin/clients/${client.id}`)}
-                    className="border-b border-slate-100 last:border-b-0 hover:bg-indigo-50/40 cursor-pointer align-top"
+                    className="border-b border-slate-100 last:border-b-0 hover:bg-[color:var(--lavender)] cursor-pointer align-top"
                   >
                     <td className="px-4 py-4">
                       <p className="font-medium text-slate-900">{client.name}</p>
@@ -214,7 +214,7 @@ export default function ClientsAdminClient({ clients, now: nowISO }: { clients: 
                       <Link
                         href={`/admin/clients/${client.id}/point`}
                         onClick={(e) => e.stopPropagation()}
-                        className="mt-0.5 block text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                        className="mt-0.5 block text-xs font-medium text-[color:var(--violet)] hover:text-[color:var(--violet)]"
                       >
                         Préparer le point →
                       </Link>

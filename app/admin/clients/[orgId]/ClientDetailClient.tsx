@@ -76,12 +76,12 @@ function SuiviPanel({ detail }: { detail: ClientDetail }) {
     }
   }
 
-  const input = "w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-50";
+  const input = "w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 disabled:bg-slate-50";
   const disabled = !detail.followUpAvailable || saving;
 
   return (
-    <section className="bg-white rounded-2xl border border-slate-200 p-6">
-      <h2 className="text-sm font-semibold text-slate-900 mb-4">Suivi</h2>
+    <section className="bg-white rounded-2xl border border-border p-6 shadow-[var(--shadow-sm)]">
+      <h2 className="text-[15px] font-semibold tracking-tight text-slate-900 mb-4">Suivi</h2>
       {!detail.followUpAvailable && (
         <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
           La migration 020 n&apos;est pas passée : ces champs ne peuvent pas encore être enregistrés.
@@ -103,7 +103,7 @@ function SuiviPanel({ detail }: { detail: ClientDetail }) {
         </label>
       </div>
       <div className="mt-4 flex items-center gap-3">
-        <button onClick={() => void save()} disabled={disabled} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+        <button onClick={() => void save()} disabled={disabled} className="px-4 py-2 brand-gradient text-white rounded-lg text-sm font-medium hover:brightness-110 disabled:opacity-50">
           {saving ? "Enregistrement…" : "Enregistrer"}
         </button>
         {message && <span className={`text-xs ${message.tone === "ok" ? "text-emerald-600" : "text-red-600"}`}>{message.text}</span>}
@@ -130,7 +130,7 @@ function RenameButton({ organizationId, name }: { organizationId: string; name: 
     router.refresh();
   }
   return (
-    <button onClick={() => void rename()} className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">
+    <button onClick={() => void rename()} className="px-3 py-2 border border-border rounded-lg text-sm text-slate-600 hover:bg-slate-50">
       Renommer
     </button>
   );
@@ -154,8 +154,8 @@ function DangerZone({ organizationId, name, memberCount }: { organizationId: str
     router.push("/admin/clients");
   }
   return (
-    <section className="bg-white rounded-2xl border border-slate-200 p-6">
-      <h2 className="text-sm font-semibold text-slate-900 mb-1">Zone dangereuse</h2>
+    <section className="bg-white rounded-2xl border border-border p-6 shadow-[var(--shadow-sm)]">
+      <h2 className="text-[15px] font-semibold tracking-tight text-slate-900 mb-1">Zone dangereuse</h2>
       <p className="text-xs text-slate-400 mb-4">La suppression est définitive, et impossible tant que le client a des membres.</p>
       <button
         onClick={() => void remove()}
@@ -193,7 +193,7 @@ export default function ClientDetailClient({
 
   return (
     <AdminPageShell>
-      <Link href="/admin/clients" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 transition-colors mb-4">
+      <Link href="/admin/clients" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-[color:var(--violet)] transition-colors mb-4">
         <ArrowLeft className="w-4 h-4" />
         Clients
       </Link>
@@ -213,7 +213,7 @@ export default function ClientDetailClient({
             <RenameButton organizationId={overview.id} name={overview.name} />
             <Link
               href={`/admin/clients/${overview.id}/point`}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700"
+              className="px-4 py-2 brand-gradient text-white rounded-lg text-sm font-medium hover:brightness-110"
             >
               Préparer le point
             </Link>

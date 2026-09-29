@@ -43,13 +43,13 @@ export default function RecallStatusSection() {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-8">
+    <div className="bg-white rounded-2xl border border-border p-6 space-y-8 shadow-[var(--shadow-sm)]">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-slate-900">Statut Recall</h2>
+        <h2 className="text-[15px] font-semibold tracking-tight text-slate-900">Statut Recall</h2>
         <button
           onClick={handleRefresh}
           disabled={refreshing || state === "loading"}
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-border rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
         >
           {refreshing ? <Spinner /> : <RefreshCw className="w-4 h-4" />}
           Actualiser
@@ -58,7 +58,7 @@ export default function RecallStatusSection() {
 
       {state === "loading" && (
         <div className="flex items-center justify-center py-10">
-          <Spinner className="w-6 h-6 text-indigo-600" />
+          <Spinner className="w-6 h-6 text-[color:var(--violet)]" />
         </div>
       )}
 

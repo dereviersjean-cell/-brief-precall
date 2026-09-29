@@ -85,25 +85,21 @@ export default function UserDetailAdminClient({
       <div className="space-y-6">
         <Link
           href="/admin/dashboard"
-          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-[color:var(--violet)] transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          Retour au dashboard
+          Monitoring
         </Link>
 
         <FadeIn>
-          <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8">
-            <div
-              aria-hidden
-              className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-indigo-200/50 via-violet-200/40 to-transparent blur-3xl"
-            />
-            <div className="relative flex items-start justify-between gap-4 flex-wrap">
+          <div className="rounded-2xl border border-border bg-white p-8 shadow-[var(--shadow-sm)]">
+            <div className="flex items-start justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white font-semibold text-lg shrink-0">
+                <div className="w-12 h-12 rounded-full brand-gradient flex items-center justify-center text-white font-semibold text-lg shrink-0">
                   {(user.name || user.email).slice(0, 1).toUpperCase()}
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-3 flex-wrap">
+                  <h1 className="text-2xl font-semibold tracking-tight text-slate-900 flex items-center gap-3 flex-wrap">
                     {user.name || user.email}
                     <RoleBadge role={user.role} />
                   </h1>
@@ -123,7 +119,7 @@ export default function UserDetailAdminClient({
                 <button
                   onClick={handleRefresh}
                   disabled={refreshing}
-                  className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-border rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
                 >
                   {refreshing ? <Spinner /> : <RefreshCw className="w-4 h-4" />}
                   Actualiser
@@ -146,15 +142,15 @@ export default function UserDetailAdminClient({
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white rounded-2xl border border-slate-200 p-5">
+          <div className="bg-white rounded-2xl border border-border p-5 shadow-[var(--shadow-sm)]">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Dernière activité</p>
             <p className="text-sm text-slate-900 mt-1.5">{formatAdminDate(user.last_activity_at)}</p>
           </div>
-          <div className="bg-white rounded-2xl border border-slate-200 p-5">
+          <div className="bg-white rounded-2xl border border-border p-5 shadow-[var(--shadow-sm)]">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Connexions</p>
             <div className="flex flex-wrap gap-1.5 items-center">
               {user.recall_connected ? (
-                <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700">Recall connecté</span>
+                <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-[color:var(--lavender-strong)] text-[color:var(--violet)]">Recall connecté</span>
               ) : (
                 <span className="text-slate-300 text-xs">Recall non connecté</span>
               )}
@@ -165,10 +161,10 @@ export default function UserDetailAdminClient({
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-8">
+        <div className="bg-white rounded-2xl border border-border p-6 space-y-8 shadow-[var(--shadow-sm)]">
           {state === "loading" && (
             <div className="flex items-center justify-center py-10">
-              <Spinner className="w-6 h-6 text-indigo-600" />
+              <Spinner className="w-6 h-6 text-[color:var(--violet)]" />
             </div>
           )}
 
@@ -200,7 +196,7 @@ export default function UserDetailAdminClient({
           )}
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 p-6">
+        <div className="bg-white rounded-2xl border border-border p-6 shadow-[var(--shadow-sm)]">
           <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
             Historique impersonations ({impersonationLogs.length})
           </h3>
@@ -209,7 +205,7 @@ export default function UserDetailAdminClient({
           ) : (
             <table className="w-full text-sm text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-200">
+                <tr className="border-b border-border">
                   <th className="py-2 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">
                     Démarré le
                   </th>

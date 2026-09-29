@@ -25,17 +25,17 @@ function EmailDisplay({ email }: { email: { subject: string; body: string } }) {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+    <div className="bg-white rounded-2xl border border-border p-5 shadow-[var(--shadow-sm)]">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Email généré</h2>
         <button
           onClick={handleCopy}
-          className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors px-2.5 py-1 rounded-lg border border-indigo-200 hover:bg-indigo-50"
+          className="text-xs font-medium text-[color:var(--violet)] hover:text-[color:var(--violet)] transition-colors px-2.5 py-1 rounded-lg border border-[color:var(--lavender-strong)] hover:bg-[color:var(--lavender)]"
         >
           {copied ? "Copié !" : "Copier"}
         </button>
       </div>
-      <p className="text-sm font-bold text-slate-800 mb-3">{email.subject}</p>
+      <p className="text-sm font-semibold text-slate-800 mb-3">{email.subject}</p>
       <pre className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed bg-gray-50 rounded-xl px-4 py-3 font-sans">
         {email.body}
       </pre>
@@ -47,12 +47,12 @@ function EmailDisplay({ email }: { email: { subject: string; body: string } }) {
 
 function PromptViewer({ prompt }: { prompt: string }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+    <div className="bg-white rounded-2xl border border-border p-5 shadow-[var(--shadow-sm)]">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Prompt utilisé</h2>
         <a
           href="/admin/prompts"
-          className="text-xs font-medium text-indigo-600 hover:text-indigo-700 underline underline-offset-2"
+          className="text-xs font-medium text-[color:var(--violet)] hover:text-[color:var(--violet)] underline underline-offset-2"
         >
           Modifier ce prompt →
         </a>
@@ -117,15 +117,15 @@ export default function TestEmailAdminClient() {
       <FadeIn>
         <AdminPageHeader
           icon={Mail}
-          eyebrow="Outil de test"
-          title="Test email de suivi"
+          eyebrow="Outils techniques"
+          title="Test de l'email de suivi"
           subtitle="Historique email vide — ton par défaut"
         />
       </FadeIn>
 
       <div className="space-y-6">
         {/* Form */}
-        <form onSubmit={handleGenerate} className="bg-white rounded-2xl border border-slate-200 p-6 space-y-5">
+        <form onSubmit={handleGenerate} className="bg-white rounded-2xl border border-border p-6 space-y-5 shadow-[var(--shadow-sm)]">
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
               Transcription *
@@ -136,7 +136,7 @@ export default function TestEmailAdminClient() {
               rows={15}
               required
               placeholder={"[00:00] Commercial : Bonjour...\n[00:20] Prospect : ..."}
-              className="w-full px-3.5 py-3 border border-slate-200 rounded-lg text-sm text-slate-800 font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-y"
+              className="w-full px-3.5 py-3 border border-border rounded-lg text-sm text-slate-800 font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-transparent resize-y"
             />
           </div>
 
@@ -149,7 +149,7 @@ export default function TestEmailAdminClient() {
               onChange={(e) => setNextStepsRaw(e.target.value)}
               rows={3}
               placeholder={"Envoyer une proposition commerciale\nPlanifier une démo technique"}
-              className="w-full px-3.5 py-3 border border-slate-200 rounded-lg text-sm text-slate-800 leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-y"
+              className="w-full px-3.5 py-3 border border-border rounded-lg text-sm text-slate-800 leading-relaxed focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-transparent resize-y"
             />
           </div>
 
@@ -162,7 +162,7 @@ export default function TestEmailAdminClient() {
               value={contactEmail}
               onChange={(e) => setContactEmail(e.target.value)}
               placeholder="prospect@entreprise.com"
-              className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-3.5 py-2.5 border border-border rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-transparent"
             />
           </div>
 
@@ -170,7 +170,7 @@ export default function TestEmailAdminClient() {
             <button
               type="submit"
               disabled={generating || !transcript.trim()}
-              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2.5 brand-gradient text-white rounded-lg text-sm font-semibold hover:brightness-110 transition-colors disabled:opacity-50"
             >
               {generating && <Spinner />}
               {generating ? "Génération en cours…" : "Générer l'email"}

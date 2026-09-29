@@ -78,7 +78,7 @@ function InlineText({
             setEditing(false);
           }
         }}
-        className={`w-full border border-slate-300 rounded-lg px-1.5 py-0.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${className ?? ""}`}
+        className={`w-full border border-slate-300 rounded-lg px-1.5 py-0.5 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-[color:var(--ring)] ${className ?? ""}`}
       />
     );
   }
@@ -124,7 +124,7 @@ function ArticleCard({
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+    <div className="bg-white rounded-2xl border border-border p-5 shadow-[var(--shadow-sm)]">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <InlineText value={article.title} onSave={(v) => onUpdate({ title: v })} className="font-semibold text-slate-900 block" />
@@ -133,7 +133,7 @@ function ArticleCard({
           <button
             onClick={() => onMove("up")}
             disabled={index === 0}
-            className="h-7 w-7 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-200"
+            className="h-7 w-7 flex items-center justify-center rounded-lg border border-border text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-200"
             aria-label="Monter"
           >
             <ArrowUp className="w-3.5 h-3.5" />
@@ -141,14 +141,14 @@ function ArticleCard({
           <button
             onClick={() => onMove("down")}
             disabled={index === total - 1}
-            className="h-7 w-7 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-200"
+            className="h-7 w-7 flex items-center justify-center rounded-lg border border-border text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-200"
             aria-label="Descendre"
           >
             <ArrowDown className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={onDelete}
-            className="h-7 px-2.5 flex items-center gap-1 rounded-lg border border-slate-200 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors duration-200 ml-1"
+            className="h-7 px-2.5 flex items-center gap-1 rounded-lg border border-border text-xs font-medium text-red-600 hover:bg-red-50 transition-colors duration-200 ml-1"
           >
             <Trash2 className="w-3.5 h-3.5" />
             Supprimer
@@ -162,7 +162,7 @@ function ArticleCard({
           <select
             value={article.visible_to}
             onChange={(e) => onUpdate({ visible_to: e.target.value as HelpArticleVisibility })}
-            className="h-8 px-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            className="h-8 px-2.5 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-[color:var(--ring)]"
           >
             {(Object.keys(VISIBILITY_LABELS) as HelpArticleVisibility[]).map((v) => (
               <option key={v} value={v}>
@@ -179,7 +179,7 @@ function ArticleCard({
             <ModuleSelect
               value={article.module}
               onChange={(next) => onUpdate({ module: next })}
-              className="h-8 px-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="h-8 px-2.5 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-[color:var(--ring)]"
             />
           </div>
         )}
@@ -197,7 +197,7 @@ function ArticleCard({
           </button>
         </div>
         {preview ? (
-          <div className="border border-slate-200 rounded-lg px-3.5 py-3 min-h-[200px]">
+          <div className="border border-border rounded-lg px-3.5 py-3 min-h-[200px]">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
               {contentDraft}
             </ReactMarkdown>
@@ -207,7 +207,7 @@ function ArticleCard({
             value={contentDraft}
             onChange={(e) => setContentDraft(e.target.value)}
             rows={10}
-            className="w-full px-3.5 py-3 border border-slate-200 rounded-lg text-sm text-slate-900 font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-y"
+            className="w-full px-3.5 py-3 border border-border rounded-lg text-sm text-slate-900 font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-[color:var(--ring)] resize-y"
           />
         )}
         <div className="flex items-center justify-end gap-2 mt-2">
@@ -215,14 +215,14 @@ function ArticleCard({
           <button
             onClick={() => setContentDraft(article.content)}
             disabled={!contentDirty}
-            className="h-8 px-3 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors duration-200 disabled:opacity-40"
+            className="h-8 px-3 text-sm font-medium text-slate-600 border border-border rounded-lg hover:bg-slate-50 transition-colors duration-200 disabled:opacity-40"
           >
             Annuler
           </button>
           <button
             onClick={handleSaveContent}
             disabled={!contentDirty || savingContent}
-            className="h-8 px-3 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors duration-200 disabled:opacity-50"
+            className="h-8 px-3 text-sm font-medium text-white brand-gradient rounded-lg hover:brightness-110 transition-colors duration-200 disabled:opacity-50"
           >
             {savingContent ? "Enregistrement…" : "Enregistrer"}
           </button>
@@ -263,7 +263,7 @@ function AddArticleModal({
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 px-4" onClick={onClose}>
       <div
-        className="bg-white rounded-2xl border border-slate-200 p-6 w-full max-w-lg shadow-xl max-h-[85vh] overflow-y-auto"
+        className="bg-white rounded-2xl border border-border p-6 w-full max-w-lg shadow-xl max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="font-semibold text-slate-900 mb-4">Ajouter un article</h2>
@@ -276,7 +276,7 @@ function AddArticleModal({
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               placeholder="ex. Général, Objections, Facturation…"
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-[color:var(--ring)]"
             />
             <datalist id="help-categories">
               {categories.map((c) => (
@@ -290,7 +290,7 @@ function AddArticleModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="ex. Comprendre l'analyse d'un call"
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-[color:var(--ring)]"
             />
           </div>
           <div>
@@ -298,7 +298,7 @@ function AddArticleModal({
             <select
               value={visibleTo}
               onChange={(e) => setVisibleTo(e.target.value as HelpArticleVisibility)}
-              className="w-full h-9 px-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full h-9 px-2.5 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-[color:var(--ring)]"
             >
               {(Object.keys(VISIBILITY_LABELS) as HelpArticleVisibility[]).map((v) => (
                 <option key={v} value={v}>
@@ -312,7 +312,7 @@ function AddArticleModal({
             <ModuleSelect
               value={module}
               onChange={setModule}
-              className="w-full h-9 px-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full h-9 px-2.5 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-[color:var(--ring)]"
             />
           </div>
           <div>
@@ -322,21 +322,21 @@ function AddArticleModal({
               onChange={(e) => setContent(e.target.value)}
               rows={8}
               placeholder="## Sous-titre&#10;&#10;Texte de l'article…"
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-y"
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-[color:var(--ring)] resize-y"
             />
           </div>
         </div>
         <div className="flex justify-end gap-2 mt-5">
           <button
             onClick={onClose}
-            className="h-8 px-4 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors duration-200"
+            className="h-8 px-4 text-sm font-medium text-slate-600 border border-border rounded-lg hover:bg-slate-50 transition-colors duration-200"
           >
             Annuler
           </button>
           <button
             onClick={handleSubmit}
             disabled={!category.trim() || !title.trim() || !content.trim() || loading}
-            className="h-8 px-4 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors duration-200 disabled:opacity-50"
+            className="h-8 px-4 text-sm font-medium text-white brand-gradient rounded-lg hover:brightness-110 transition-colors duration-200 disabled:opacity-50"
           >
             {loading ? "Création…" : "Ajouter"}
           </button>
@@ -450,8 +450,8 @@ export default function HelpAdminClient({ articles: initialArticles }: { article
       <FadeIn>
         <AdminPageHeader
           icon={BookOpen}
-          eyebrow="Base de connaissance"
-          title="Aide"
+          eyebrow="Outils techniques"
+          title="Articles d'aide"
           subtitle={`${articles.length} article${articles.length > 1 ? "s" : ""} — contenu affiché sur /help selon le rôle (manager, commercial, ou les deux).`}
         />
       </FadeIn>
@@ -460,7 +460,7 @@ export default function HelpAdminClient({ articles: initialArticles }: { article
         <div className="space-y-8">
           {Array.from(byCategory.entries()).map(([category, categoryArticles]) => (
             <div key={category}>
-              <h2 className="text-sm font-semibold text-slate-900 mb-3">{category}</h2>
+              <h2 className="text-[15px] font-semibold tracking-tight text-slate-900 mb-3">{category}</h2>
               <div className="space-y-4">
                 {categoryArticles.map((article, index) => (
                   <ArticleCard
@@ -484,7 +484,7 @@ export default function HelpAdminClient({ articles: initialArticles }: { article
 
         <button
           onClick={() => setShowAddModal(true)}
-          className="mt-6 h-9 px-3.5 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors duration-200"
+          className="mt-6 h-9 px-3.5 inline-flex items-center gap-1.5 rounded-lg border border-border bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors duration-200"
         >
           <Plus className="w-4 h-4" />
           Ajouter un article

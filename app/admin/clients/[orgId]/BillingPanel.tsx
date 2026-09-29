@@ -9,7 +9,7 @@ import type { OrganizationBilling } from "@/lib/db";
 
 const BILLING_STATUS_META: Record<string, { label: string; className: string }> = {
   none: { label: "Aucun abonnement", className: "bg-slate-100 text-slate-600" },
-  trialing: { label: "Essai gratuit", className: "bg-indigo-100 text-indigo-700" },
+  trialing: { label: "Essai gratuit", className: "bg-[color:var(--lavender-strong)] text-[color:var(--violet)]" },
   active: { label: "Actif", className: "bg-emerald-100 text-emerald-700" },
   grace_period: { label: "Paiement en échec", className: "bg-amber-100 text-amber-700" },
   blocked: { label: "Accès suspendu", className: "bg-red-100 text-red-700" },
@@ -70,7 +70,7 @@ function BillingOverrideActions({
           <button
             onClick={() => runAction("unblock")}
             disabled={pending}
-            className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+            className="px-3 py-1.5 bg-white border border-border rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
           >
             Débloquer manuellement
           </button>
@@ -79,7 +79,7 @@ function BillingOverrideActions({
           <button
             onClick={() => runAction("extend_grace")}
             disabled={pending}
-            className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+            className="px-3 py-1.5 bg-white border border-border rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
           >
             Prolonger la grâce de 48h
           </button>
@@ -93,9 +93,9 @@ function BillingOverrideActions({
 export default function BillingPanel({ organizationId, billing }: { organizationId: string; billing: OrganizationBilling | null }) {
   const router = useRouter();
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-6">
+    <div className="bg-white rounded-2xl border border-border p-6 shadow-[var(--shadow-sm)]">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold text-slate-900">Facturation</h2>
+        <h2 className="text-[15px] font-semibold tracking-tight text-slate-900">Facturation</h2>
         {(() => {
           const meta = BILLING_STATUS_META[billing?.billing_status ?? "none"] ?? BILLING_STATUS_META.none;
           return (

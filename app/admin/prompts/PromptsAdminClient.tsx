@@ -151,7 +151,7 @@ function PromptSection({
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
+    <div className="bg-white rounded-2xl border border-border p-6 space-y-4 shadow-[var(--shadow-sm)]">
       <div>
         <h2 className="text-base font-semibold text-slate-900">{title}</h2>
         <p className="text-sm text-slate-500 mt-0.5">{description}</p>
@@ -163,7 +163,7 @@ function PromptSection({
           if (saveState === "saved" || saveState === "error") setSaveState("idle");
         }}
         rows={12}
-        className="w-full px-3.5 py-3 border border-slate-200 rounded-lg text-sm text-slate-800 font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-y"
+        className="w-full px-3.5 py-3 border border-border rounded-lg text-sm text-slate-800 font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-transparent resize-y"
       />
       <div className="flex items-center justify-between gap-3">
         <button
@@ -183,7 +183,7 @@ function PromptSection({
           <button
             onClick={handleSave}
             disabled={saveState === "saving" || !value.trim()}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 brand-gradient text-white rounded-lg text-sm font-semibold hover:brightness-110 transition-colors disabled:opacity-50"
           >
             {saveState === "saving" && <Spinner />}
             {saveState === "saving" ? "Sauvegarde…" : "Sauvegarder"}
@@ -209,7 +209,7 @@ function PromptTabs({
   dirtyKeys: Set<PromptKey>;
 }) {
   return (
-    <div className="inline-flex items-center gap-1 bg-white rounded-xl border border-slate-200 p-1 flex-wrap">
+    <div className="inline-flex items-center gap-1 bg-white rounded-xl border border-border p-1 flex-wrap">
       {PROMPT_META.map(({ key, tabLabel }) => {
         const active = key === activeKey;
         return (
@@ -217,7 +217,7 @@ function PromptTabs({
             key={key}
             onClick={() => onSelect(key)}
             className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
-              active ? "bg-indigo-600 text-white" : "text-slate-500 hover:text-slate-700"
+              active ? "brand-gradient text-white" : "text-slate-500 hover:text-slate-700"
             }`}
           >
             {tabLabel}
@@ -257,8 +257,8 @@ export default function PromptsAdminClient() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <Spinner className="w-8 h-8 text-indigo-600" />
+      <div className="brief-ui min-h-screen bg-[color:var(--background)] flex items-center justify-center">
+        <Spinner className="w-8 h-8 text-[color:var(--violet)]" />
       </div>
     );
   }
@@ -271,8 +271,8 @@ export default function PromptsAdminClient() {
       <FadeIn>
         <AdminPageHeader
           icon={PenLine}
-          eyebrow="Génération IA"
-          title="Gestion des prompts"
+          eyebrow="Outils techniques"
+          title="Prompts"
           subtitle="Chaque prompt est sauvegardé indépendamment"
         />
       </FadeIn>
