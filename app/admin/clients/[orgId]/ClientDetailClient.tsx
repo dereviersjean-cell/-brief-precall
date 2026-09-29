@@ -226,13 +226,15 @@ export default function ClientDetailClient({
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] items-start">
-        <div className="space-y-6 min-w-0">
+      {/* Deux colonnes sur grand écran seulement : en dessous, la colonne
+          Équipe devenait trop étroite pour son tableau. Empilé, l'ordre suit
+          l'usage pendant un point — l'équipe, puis le suivi et le parcours,
+          puis la facturation, la zone dangereuse en dernier. */}
+      <div className="grid gap-6 items-start 2xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="min-w-0 2xl:col-start-1 2xl:row-start-1">
           <TeamPanel organizationId={overview.id} members={detail.members} availableUsers={availableUsers} />
-          <BillingPanel organizationId={overview.id} billing={billing} />
-          <DangerZone organizationId={overview.id} name={overview.name} memberCount={detail.members.length} />
         </div>
-        <div className="space-y-6">
+        <div className="space-y-6 2xl:col-start-2 2xl:row-start-1 2xl:row-span-3">
           <SuiviPanel detail={detail} />
           <ParcoursPanel
             organizationId={overview.id}
@@ -241,6 +243,12 @@ export default function ClientDetailClient({
             available={detail.modulesAvailable}
             currentWeek={overview.parcours.week}
           />
+        </div>
+        <div className="min-w-0 2xl:col-start-1">
+          <BillingPanel organizationId={overview.id} billing={billing} />
+        </div>
+        <div className="min-w-0 2xl:col-start-1">
+          <DangerZone organizationId={overview.id} name={overview.name} memberCount={detail.members.length} />
         </div>
       </div>
     </AdminPageShell>

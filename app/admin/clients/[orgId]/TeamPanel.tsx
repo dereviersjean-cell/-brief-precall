@@ -159,12 +159,23 @@ export default function TeamPanel({
         <span className="text-xs text-slate-400">{members.length} membre{members.length > 1 ? "s" : ""}</span>
       </div>
 
-      <div className="overflow-x-auto -mx-6">
-        <table className="w-full text-sm min-w-[760px]">
+      {/* Pas de largeur minimale ni de défilement horizontal : la colonne
+          d'actions était poussée hors de vue dans la colonne gauche de la
+          fiche (constaté le 29/09/2026). Connexion et activité partagent une
+          colonne, les actions s'empilent. */}
+      <div className="-mx-6">
+        <table className="w-full text-sm table-fixed">
+          <colgroup>
+            <col />
+            <col className="w-[120px]" />
+            <col className="w-[150px]" />
+            <col className="w-[140px]" />
+            <col className="w-[120px]" />
+          </colgroup>
           <thead>
             <tr className="border-y border-slate-100 bg-slate-50/60 text-left">
-              {["Membre", "Rôle", "Dernière connexion", "Agenda", "7 derniers jours", ""].map((h) => (
-                <th key={h} className="px-6 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+              {["Membre", "Rôle", "Activité", "Agenda", ""].map((h, i) => (
+                <th key={i} className={`py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400 ${i === 0 ? "pl-6 pr-3" : "px-3"}`}>
                   {h}
                 </th>
               ))}
@@ -172,51 +183,63 @@ export default function TeamPanel({
           </thead>
           <tbody>
             {members.map((m) => (
-              <tr key={m.id} className="border-b border-slate-100 last:border-b-0 align-middle">
-                <td className="px-6 py-3">
-                  <p className="font-medium text-slate-900">{m.name || "—"}</p>
-                  <p className="text-xs text-slate-400">{m.email}</p>
+              <tr key={m.id} className="border-b border-slate-100 last:border-b-0 align-top">
+                <td className="pl-6 pr-3 py-3 min-w-0">
+                  <p className="font-medium text-slate-900 truncate">{m.name || "—"}</p>
+                  <p className="text-xs text-slate-400 truncate" title={m.email}>
+                    {m.email}
+                  </p>
                   {m.status === "invited" && <p className="text-[11px] font-medium text-amber-700 mt-0.5">Invitation en attente</p>}
                   {m.status === "disabled" && <p className="text-[11px] font-medium text-slate-500 mt-0.5">Compte désactivé</p>}
                 </td>
-                <td className="px-6 py-3">
+                <td className="px-3 py-3">
                   <select
                     value={m.role ?? ""}
                     disabled={busyId !== null}
                     onChange={(e) => changeRole(m, e.target.value as UserRole)}
-                    className="px-2 py-1 border border-slate-200 rounded-lg text-xs bg-white disabled:opacity-50"
+                    className="w-full px-2 py-1 border border-slate-200 rounded-lg text-xs bg-white disabled:opacity-50"
                   >
                     <option value="commercial">Commercial</option>
                     <option value="manager">Manager</option>
                   </select>
                 </td>
-                <td className="px-6 py-3 text-slate-600 whitespace-nowrap">{m.status === "invited" ? "—" : formatDay(m.lastSeenAt)}</td>
-                <td className="px-6 py-3">
+                <td className="px-3 py-3">
+                  {m.status === "invited" ? (
+                    <p className="text-xs text-slate-400">—</p>
+                  ) : (
+                    <>
+                      <p className="text-slate-700">{m.lastSeenAt ? `Vu le ${formatDay(m.lastSeenAt)}` : "Pas vu récemment"}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {m.calls7d} call{m.calls7d > 1 ? "s" : ""} · {m.briefs7d} brief{m.briefs7d > 1 ? "s" : ""} sur 7 j
+                      </p>
+                    </>
+                  )}
+                </td>
+                <td className="px-3 py-3">
                   <AgendaBadge member={m} />
                 </td>
-                <td className="px-6 py-3 text-slate-600 whitespace-nowrap">
-                  {m.calls7d} call{m.calls7d > 1 ? "s" : ""}
-                  <span className="text-slate-400"> · {m.briefs7d} brief{m.briefs7d > 1 ? "s" : ""}</span>
-                </td>
-                <td className="px-6 py-3 text-right whitespace-nowrap space-x-3">
-                  {m.status === "invited" ? (
-                    <button onClick={() => resendInvitation(m)} disabled={busyId !== null} className="text-xs font-medium text-indigo-600 hover:underline disabled:opacity-50">
-                      Renvoyer l&apos;invitation
+                <td className="px-3 pr-6 py-3 text-right">
+                  <div className="flex flex-col items-end gap-1.5">
+                    {m.status === "invited" && (
+                      <button onClick={() => resendInvitation(m)} disabled={busyId !== null} className="text-xs font-medium text-indigo-600 hover:underline disabled:opacity-50">
+                        Renvoyer l&apos;invitation
+                      </button>
+                    )}
+                    {m.status === "active" && (
+                      <button onClick={() => void openAccount(m)} disabled={busyId !== null} className="text-xs font-medium text-indigo-600 hover:underline disabled:opacity-50">
+                        Ouvrir le compte
+                      </button>
+                    )}
+                    <button onClick={() => remove(m)} disabled={busyId !== null} className="text-xs text-slate-400 hover:text-red-600 disabled:opacity-50">
+                      Retirer
                     </button>
-                  ) : m.status === "active" ? (
-                    <button onClick={() => void openAccount(m)} disabled={busyId !== null} className="text-xs font-medium text-indigo-600 hover:underline disabled:opacity-50">
-                      Ouvrir le compte
-                    </button>
-                  ) : null}
-                  <button onClick={() => remove(m)} disabled={busyId !== null} className="text-xs text-slate-400 hover:text-red-600 disabled:opacity-50">
-                    Retirer
-                  </button>
+                  </div>
                 </td>
               </tr>
             ))}
             {members.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-sm text-slate-400">
+                <td colSpan={5} className="px-6 py-8 text-center text-sm text-slate-400">
                   Aucun membre : invitez le premier ci-dessous.
                 </td>
               </tr>
