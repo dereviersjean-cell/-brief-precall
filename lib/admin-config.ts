@@ -246,25 +246,35 @@ export type AdminConfig = {
   overviewLength: "court" | "moyen" | "long";
   tone: "formel" | "professionnel" | "direct";
   model: string;
+  // Niveau de réflexion sur Sonnet 5.5 / Opus 5.5 (lib/brief-generator.ts).
+  // Absent = « low ». Pas de réglage dans l'interface : il se choisit sur
+  // mesure (durée et coût d'un brief), pas au jugé.
+  effort?: "low" | "medium" | "high";
 };
 
 const SUPABASE_KEY = "main_config";
 
 export const DEFAULT_CONFIG: AdminConfig = {
+  // Le prompt porte le rôle et la méthode, commun à tous les clients. Les
+  // règles précises (format JSON, nombre d'éléments, vocabulaire du métier du
+  // prospect, ancrage dans un fait trouvé, pain points en hypothèses) sont
+  // imposées par le code dans le message utilisateur (buildUserPrompt) : les
+  // écrire aussi ici créerait deux versions qui finissent par se contredire.
+  // Jamais « SaaS » ni aucun secteur ici : le supposer a fait douter le modèle
+  // d'une entreprise de filtration d'eau (BE WTR, 03/09/2026).
   systemPrompt:
-    "Tu es un expert en vente B2B SaaS avec 10 ans d'expérience.\n" +
-    "Tu génères des briefs pré-call ultra-précis et actionnables pour des commerciaux.\n" +
-    "Avant de rédiger, utilise l'outil de recherche web pour trouver des faits concrets et récents sur l'entreprise visée (produit exact, actualité, levée de fonds, clients, taille d'équipe...). N'utilise JAMAIS de généralités sectorielles (« startup SaaS B2B en forte croissance », « enjeux classiques du secteur »...) comme substitut à un fait vérifié — un brief bâti sur ces généralités est inutile au commercial, qui les connaît déjà.\n" +
-    "Si la recherche remonte une entreprise dont le nom correspond clairement au nom donné (à l'orthographe, l'espacement ou la casse près — ex. « Bewtr » et « BE WTR » sont la même entreprise), utilise ces informations avec confiance, MÊME si son secteur d'activité surprend ou diffère du profil client habituel du commercial. Ne présuppose jamais le secteur du prospect à partir de qui l'appelle — une entreprise de filtration d'eau ou de tout autre secteur non-SaaS est un résultat parfaitement valide.\n" +
-    "Réserve la mention explicite d'un manque d'information au cas où la recherche ne remonte VRAIMENT rien de pertinent sur cette entreprise précise (ex. « Peu d'information publique disponible sur [entreprise] — à vérifier en direct pendant l'appel. ») — jamais quand elle trouve un résultat clair qui te surprend simplement.\n" +
-    "Tes briefs sont fondés sur la réalité du marché, concis et orientés résultat.\n" +
-    "Réponds UNIQUEMENT avec du JSON valide, sans backticks, sans markdown, sans texte avant ou après.",
+    "Tu prépares des briefs avant rendez-vous pour des commerciaux B2B. Ton lecteur a deux minutes avant son appel : chaque ligne doit l'aider à mieux mener CE rendez-vous, avec CE prospect.\n" +
+    "Avant d'écrire, cherche des faits vérifiables sur l'entreprise : activité exacte, clients, taille, actualité, recrutements, levées de fonds.\n" +
+    "Distingue ce que tu sais de ce que tu supposes. Un fait trouvé s'écrit comme un fait ; une déduction s'écrit comme une hypothèse à vérifier en rendez-vous.\n" +
+    "Écarte toute phrase qui vaudrait pour n'importe quelle entreprise du même secteur : le commercial la connaît déjà.\n" +
+    "Écris comme un commercial expérimenté qui briefe un collègue : phrases courtes, concrètes, sans formules marketing.",
   painPointsCount: 3,
   argumentsCount: 3,
   keywordsCount: 5,
   overviewLength: "moyen",
   tone: "professionnel",
-  model: "claude-sonnet-4-6",
+  model: "claude-sonnet-5-5",
+  effort: "low",
 };
 
 export async function readConfig(): Promise<AdminConfig> {

@@ -30,7 +30,12 @@ type AdminState = "loading" | "login" | "ready";
 
 const HISTORY_KEY = "admin_test_history";
 
+// Les anciens libellés restent pour afficher l'historique des tests. Haiku
+// n'est plus proposé : il ne sait pas faire la recherche web utilisée par le
+// brief (web_search_20260209), la génération échouait.
 const MODEL_LABELS: Record<string, string> = {
+  "claude-sonnet-5-5": "Sonnet 5.5",
+  "claude-opus-5-5": "Opus 5.5",
   "claude-sonnet-4-6": "Sonnet 4.6",
   "claude-opus-4-8": "Opus 4.8",
   "claude-haiku-4-5-20251001": "Haiku 4.5",
@@ -445,7 +450,7 @@ function AdminPanel({ initialConfig }: { initialConfig: AdminConfig }) {
               <SectionTitle>Modèle & Génération</SectionTitle>
               <div className="space-y-5">
                 <div className="grid grid-cols-3 gap-2">
-                  {(["claude-haiku-4-5-20251001", "claude-sonnet-4-6", "claude-opus-4-8"] as const).map((m) => (
+                  {(["claude-sonnet-4-6", "claude-sonnet-5-5", "claude-opus-5-5"] as const).map((m) => (
                     <button
                       key={m}
                       onClick={() => patch("model", m)}

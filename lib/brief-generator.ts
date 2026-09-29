@@ -8,8 +8,25 @@ import { enrichFromCRM } from "./crm/enrichment";
 import type { CrmEnrichment } from "./crm/enrichment";
 import { extractJsonObject } from "./ai-json";
 import { seniorityLabel, type ApolloContact } from "./apollo";
+import { reportWarning } from "./monitoring";
 
 const client = new Anthropic();
+
+// Modèle de secours quand le modèle configuré refuse de répondre
+// (stop_reason « refusal », ses classifieurs de sécurité peuvent se tromper
+// sur un contenu anodin). Sonnet 4.6 : génération précédente, sans ces
+// classifieurs, compatible avec la même recherche web.
+const FALLBACK_MODEL = "claude-sonnet-4-6";
+
+// Modèles dont on règle le niveau de réflexion (output_config.effort). Sur
+// Sonnet 5.5 et Opus 5.5 la réflexion est toujours active ; l'effort est le
+// seul réglage, et il pèse directement sur la durée et le coût d'un brief.
+const EFFORT_MODELS = new Set(["claude-sonnet-5-5", "claude-opus-5-5"]);
+
+// Une recherche web longue peut rendre la main en cours de route
+// (stop_reason « pause_turn ») : on renvoie la réponse telle quelle pour
+// que le modèle reprenne, dans cette limite.
+const MAX_PAUSE_RESUMES = 3;
 
 const OVERVIEW_LENGTH: Record<AdminConfig["overviewLength"], string> = {
   court: "2 phrases",
@@ -138,7 +155,7 @@ Retourne ce JSON (structure stricte, aucun texte autour). Même si tu as utilis�
   "overview": "Vue d'ensemble en ${overviewDesc} : secteur, modèle économique, taille et positionnement marché",
   "accroche": "Une seule phrase d'accroche percutante et personnalisée pour ouvrir le call — spécifique à l'actualité ou au contexte de l'entreprise",
   "pain_points": [
-    { "title": "Nom court du pain point", "detail": "Description précise en 1-2 phrases" }
+    { "title": "Nom court de la difficulté supposée", "detail": "L'indice concret qui te le fait supposer, puis la question à poser en rendez-vous pour le vérifier" }
   ],
   "arguments": [
     { "title": "Titre de l'argument commercial", "detail": "Bénéfice concret chiffré si possible" }
@@ -147,7 +164,7 @@ Retourne ce JSON (structure stricte, aucun texte autour). Même si tu as utilis�
 ${referencesSchema}${actualitesSchema}${relationalSchema}}
 
 Contraintes :
-- Exactement ${config.painPointsCount} pain_points
+- Exactement ${config.painPointsCount} pain_points. Ce sont des HYPOTHÈSES : tu ne sais pas ce qui pose problème chez ${company}, tu le supposes. Chaque "detail" part d'un indice concret (un fait trouvé, sa taille, son marché, son actualité) et se termine par une question ouverte que le commercial peut poser pour le vérifier. N'écris jamais « ils souffrent de… » ni « leur problème est… » : un commercial qui affirme à tort connaître les difficultés de son prospect perd sa crédibilité dès la première minute
 - Exactement ${config.argumentsCount} arguments
 - Exactement ${config.keywordsCount} termes dans "vocabulaire". Ce sont les mots du MÉTIER DU PROSPECT, ceux que ses pairs emploient entre eux : procédés, normes et réglementations de son secteur, indicateurs qu'il pilote, acteurs et fournisseurs de sa filière, contraintes propres à son activité. Objectif : que le commercial ait l'air de connaître le métier de son interlocuteur dès les premières minutes. N'y mets JAMAIS de vocabulaire de la VENTE (pipeline, taux de conversion, prospection, ROI commercial, cycle de vente...) : le commercial le maîtrise déjà, ça ne lui apprend rien et ça ne l'aide pas à paraître expert du secteur d'en face
 - Tout en français
@@ -227,33 +244,29 @@ export async function generateBrief(
     relationalHistoryBlock = `\n# HISTORIQUE RELATIONNEL AVEC CE CONTACT\n\nVous avez déjà eu ${contactResult.total_calls} échange(s) avec ce contact. Voici un résumé de votre dernier call :\n\n${contactResult.last_call_summary}\n\nUtilise cet historique pour enrichir le brief — mentionne les engagements pris précédemment, le contexte déjà établi, et adapte l'approche en conséquence. Ajoute un champ "historique_relationnel" dans le JSON de sortie avec une synthèse courte de ce qu'il faut retenir de cet historique pour ce nouveau call.\n`;
   }
 
-  const message = await client.messages.create({
-    model: config.model,
-    max_tokens: 6000,
-    system: config.systemPrompt,
-    // _20260209 (filtrage dynamique) plutôt que la variante _20250305 : le
-    // modèle configuré (claude-sonnet-4-6) la supporte, et de meilleurs
-    // résultats de recherche sont le levier le plus direct contre un brief
-    // générique — voir la consigne d'ancrage ajoutée ci-dessus et dans le
-    // system prompt par défaut (lib/admin-config.ts).
-    tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 }],
-    messages: [
-      {
-        role: "user",
-        content: buildUserPrompt(
-          company,
-          legalContext,
-          newsContext,
-          config,
-          userContext,
-          similarRefs,
-          relationalHistoryBlock,
-          crmData,
-          apolloContact ?? null
-        ),
-      },
-    ],
-  });
+  const userPrompt = buildUserPrompt(
+    company,
+    legalContext,
+    newsContext,
+    config,
+    userContext,
+    similarRefs,
+    relationalHistoryBlock,
+    crmData,
+    apolloContact ?? null
+  );
+
+  let message = await runBriefRequest(config.model, config, userPrompt);
+  if (message.stop_reason === "refusal") {
+    // Un refus arrive sans contenu exploitable. On le signale (un refus sur
+    // un simple brief d'entreprise mérite d'être vu) et on repasse la même
+    // demande sur le modèle de secours plutôt que de laisser le commercial
+    // sans brief.
+    reportWarning("brief.refusal", `Refus du modèle ${config.model} pour « ${company} »`, {
+      category: message.stop_details?.category ?? null,
+    });
+    message = await runBriefRequest(FALLBACK_MODEL, config, userPrompt);
+  }
 
   const textBlock = message.content.filter((b) => b.type === "text").pop();
   if (!textBlock || textBlock.type !== "text") {
@@ -266,6 +279,38 @@ export async function generateBrief(
     console.error("[brief-generator] Échec du parsing JSON :\n", textBlock.text);
     throw new Error("Le modèle n'a pas retourné du JSON valide.");
   }
+}
+
+// Un appel de génération, avec la reprise des pauses de la recherche web.
+async function runBriefRequest(model: string, config: AdminConfig, userPrompt: string): Promise<Anthropic.Message> {
+  const messages: Anthropic.MessageParam[] = [{ role: "user", content: userPrompt }];
+  let message: Anthropic.Message | null = null;
+
+  for (let attempt = 0; attempt <= MAX_PAUSE_RESUMES; attempt++) {
+    message = await client.messages.create({
+      model,
+      // La réflexion compte dans max_tokens sur Sonnet 5.5 / Opus 5.5 : 6000
+      // suffisait au seul JSON, pas à la réflexion qui le précède.
+      max_tokens: 16000,
+      system: config.systemPrompt,
+      ...(EFFORT_MODELS.has(model) ? { output_config: { effort: config.effort ?? "low" } } : {}),
+      // _20260209 (filtrage dynamique) : supporté par Sonnet 4.6, Sonnet 5.5
+      // et Opus 5.5 — de meilleurs résultats de recherche sont le levier le
+      // plus direct contre un brief générique.
+      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 }],
+      messages,
+    });
+
+    // Coût et durée d'un brief lisibles dans les logs Vercel : c'est la seule
+    // trace de ce que coûte chaque réglage de modèle ou d'effort.
+    console.log(
+      `[brief-generator] ${message.model} stop=${message.stop_reason} in=${message.usage.input_tokens} out=${message.usage.output_tokens} searches=${message.usage.server_tool_use?.web_search_requests ?? 0}`
+    );
+
+    if (message.stop_reason !== "pause_turn") break;
+    messages.push({ role: "assistant", content: message.content });
+  }
+  return message as Anthropic.Message;
 }
 
 // Raw shape generateBrief actually returns (the JSON schema dictated to
