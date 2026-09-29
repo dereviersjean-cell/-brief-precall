@@ -11,7 +11,6 @@ import {
   Building2,
   BookOpen,
   LogOut,
-  ShieldCheck,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -27,7 +26,7 @@ const SECTIONS: { title: string; items: { label: string; href: string; icon: Luc
   {
     title: "Outils techniques",
     items: [
-      { label: "Config du brief", href: "/admin/config", icon: Settings },
+      { label: "Réglages du brief", href: "/admin/config", icon: Settings },
       { label: "Prompts", href: "/admin/prompts", icon: PenLine },
       { label: "Test brief", href: "/admin/test-brief", icon: FlaskConical },
       { label: "Test analyse", href: "/admin/test-analysis", icon: PhoneCall },
@@ -47,25 +46,25 @@ export function AdminNav() {
   }
 
   return (
-    <aside className="fixed left-0 top-0 h-full w-64 bg-white border-r border-slate-200 flex flex-col z-20">
-      {/* Logo */}
-      <div className="px-5 h-16 flex items-center border-b border-slate-100 shrink-0">
-        <a href="/admin" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-lg flex items-center justify-center shrink-0 shadow-sm shadow-indigo-200">
-            <ShieldCheck className="w-4 h-4 text-white" />
+    // Même barre que l'app client (AppSidebar.tsx) : largeur, logo, style des
+    // liens. Seul le sous-titre « Administration » dit où l'on est.
+    <aside className="brief-ui fixed left-0 top-0 z-20 flex h-full w-60 flex-col border-r border-border bg-white/80 backdrop-blur-xl">
+      <div className="flex shrink-0 items-center gap-2.5 px-5 pb-4 pt-5">
+        <a href="/admin" className="flex min-w-0 flex-1 items-center gap-2.5">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl brand-gradient text-sm font-semibold text-white shadow-[var(--shadow-glow)]">
+            B
           </div>
-          <div>
-            <span className="font-semibold text-slate-900 text-sm leading-none block">Brief</span>
-            <span className="text-[11px] text-slate-400 leading-none">Administration</span>
+          <div className="min-w-0 leading-tight">
+            <div className="text-[15px] font-semibold tracking-tight text-slate-900">Brief</div>
+            <div className="text-[10.5px] text-slate-500">Administration</div>
           </div>
         </a>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto">
+      <nav className="flex-1 space-y-4 overflow-y-auto px-3 pb-3">
         {SECTIONS.map((section) => (
           <div key={section.title}>
-            <p className="px-3 mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-slate-400">{section.title}</p>
+            <p className="px-3.5 pb-1.5 pt-2 text-[10.5px] font-medium uppercase tracking-[0.08em] text-slate-400">{section.title}</p>
             <div className="space-y-0.5">
               {section.items.map(({ label, href, icon: Icon }) => {
                 // Une section active sur ses sous-pages aussi (fiche d'un
@@ -75,14 +74,14 @@ export function AdminNav() {
                   <a
                     key={href}
                     href={href}
-                    className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                      active ? "bg-indigo-50 text-indigo-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                    className={`relative flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm transition-all ${
+                      active
+                        ? "bg-[color:var(--lavender)] font-medium text-[color:var(--violet)]"
+                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                     }`}
                   >
-                    {active && (
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-sm bg-indigo-600" />
-                    )}
-                    <Icon className="w-4 h-4 shrink-0" />
+                    {active && <span className="absolute bottom-1.5 left-0 top-1.5 w-[3px] rounded-r-full brand-gradient" />}
+                    <Icon className="h-[15px] w-[15px] shrink-0" strokeWidth={active ? 2.25 : 1.75} />
                     {label}
                   </a>
                 );
@@ -92,13 +91,12 @@ export function AdminNav() {
         ))}
       </nav>
 
-      {/* Bottom — logout */}
-      <div className="border-t border-slate-100 px-3 py-3 shrink-0">
+      <div className="shrink-0 px-3 py-3">
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors duration-200"
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-[11.5px] font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
         >
-          <LogOut className="w-4 h-4 shrink-0" />
+          <LogOut className="h-3 w-3" />
           Déconnexion
         </button>
       </div>
