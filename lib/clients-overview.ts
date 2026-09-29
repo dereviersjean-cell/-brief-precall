@@ -77,17 +77,25 @@ function plural(n: number, singular: string, pluralForm: string): string {
   return `${n} ${n > 1 ? pluralForm : singular}`;
 }
 
-export async function getClientsOverview(now: Date = new Date()): Promise<ClientOverview[]> {
+// `organizationId` : un seul client (sa fiche), mêmes calculs que la liste.
+export async function getClientsOverview(now: Date = new Date(), organizationId?: string): Promise<ClientOverview[]> {
   const since = new Date(now.getTime() - WEEK_MS).toISOString();
 
+  let orgsQuery = supabaseAdmin.from("organizations").select("*").order("name", { ascending: true });
+  let usersQuery = supabaseAdmin
+    .from("users")
+    .select(
+      "id, organization_id, invited_at, google_id, microsoft_id, disabled_at, recall_calendar_id, recall_calendar_status, last_seen_at"
+    )
+    .not("organization_id", "is", null);
+  if (organizationId) {
+    orgsQuery = orgsQuery.eq("id", organizationId);
+    usersQuery = usersQuery.eq("organization_id", organizationId);
+  }
+
   const [orgsRes, usersRes, callsRes, briefsRes] = await Promise.all([
-    supabaseAdmin.from("organizations").select("*").order("name", { ascending: true }),
-    supabaseAdmin
-      .from("users")
-      .select(
-        "id, organization_id, invited_at, google_id, microsoft_id, disabled_at, recall_calendar_id, recall_calendar_status, last_seen_at"
-      )
-      .not("organization_id", "is", null),
+    orgsQuery,
+    usersQuery,
     supabaseAdmin.from("calls").select("user_id").gte("created_at", since),
     supabaseAdmin.from("briefs").select("user_id").gte("created_at", since),
   ]);
@@ -205,4 +213,107 @@ export type ClientFollowUpPatch = {
 export async function updateClientFollowUp(organizationId: string, patch: ClientFollowUpPatch): Promise<void> {
   const { error } = await supabaseAdmin.from("organizations").update(patch).eq("id", organizationId);
   if (error) throw error;
+}
+
+// ─── Fiche d'un client ──────────────────────────────────────────────────────
+
+export type ClientMember = {
+  id: string;
+  name: string | null;
+  email: string;
+  role: "manager" | "commercial" | null;
+  status: "active" | "invited" | "disabled";
+  lastSeenAt: string | null;
+  agenda: "connected" | "disconnected" | "missing";
+  agendaSince: string | null;
+  calls7d: number;
+  briefs7d: number;
+  // Liaisons manager ↔ commercial : changer le rôle les supprime, l'écran
+  // demande confirmation.
+  linksCount: number;
+};
+
+export type ClientDetail = {
+  overview: ClientOverview;
+  // Champs de suivi modifiables (migration 020 passée).
+  followUpAvailable: boolean;
+  // Modules modifiables (migration 019 passée).
+  modulesAvailable: boolean;
+  members: ClientMember[];
+};
+
+export async function getClientDetail(organizationId: string, now: Date = new Date()): Promise<ClientDetail | null> {
+  const [overview] = await getClientsOverview(now, organizationId);
+  if (!overview) return null;
+
+  const since = new Date(now.getTime() - WEEK_MS).toISOString();
+  const [orgRes, usersRes] = await Promise.all([
+    supabaseAdmin.from("organizations").select("*").eq("id", organizationId).maybeSingle(),
+    supabaseAdmin
+      .from("users")
+      .select(
+        "id, name, email, role, invited_at, google_id, microsoft_id, disabled_at, recall_calendar_id, recall_calendar_status, recall_calendar_status_at, last_seen_at"
+      )
+      .eq("organization_id", organizationId)
+      .order("name", { ascending: true }),
+  ]);
+  if (usersRes.error) throw usersRes.error;
+
+  const rows = (usersRes.data ?? []) as Array<{
+    id: string;
+    name: string | null;
+    email: string;
+    role: "manager" | "commercial" | null;
+    invited_at: string | null;
+    google_id: string | null;
+    microsoft_id: string | null;
+    disabled_at: string | null;
+    recall_calendar_id: string | null;
+    recall_calendar_status: string | null;
+    recall_calendar_status_at: string | null;
+    last_seen_at: string | null;
+  }>;
+  const ids = rows.map((r) => r.id);
+
+  const [callsRes, briefsRes, linksRes] = ids.length
+    ? await Promise.all([
+        supabaseAdmin.from("calls").select("user_id").in("user_id", ids).gte("created_at", since),
+        supabaseAdmin.from("briefs").select("user_id").in("user_id", ids).gte("created_at", since),
+        supabaseAdmin.from("manager_commercial_links").select("manager_id, commercial_id").or(
+          `manager_id.in.(${ids.join(",")}),commercial_id.in.(${ids.join(",")})`
+        ),
+      ])
+    : [{ data: [] }, { data: [] }, { data: [] }];
+
+  const calls = countByUser((callsRes.data ?? []) as { user_id: string }[]);
+  const briefs = countByUser((briefsRes.data ?? []) as { user_id: string }[]);
+  const links = (linksRes.data ?? []) as { manager_id: string; commercial_id: string }[];
+
+  const members: ClientMember[] = rows.map((r) => {
+    const status: ClientMember["status"] =
+      r.disabled_at != null ? "disabled" : r.invited_at != null && r.google_id == null && r.microsoft_id == null ? "invited" : "active";
+    const agenda: ClientMember["agenda"] =
+      r.recall_calendar_id == null ? "missing" : r.recall_calendar_status === "disconnected" ? "disconnected" : "connected";
+    return {
+      id: r.id,
+      name: r.name,
+      email: r.email,
+      role: r.role,
+      status,
+      lastSeenAt: r.last_seen_at,
+      agenda,
+      agendaSince: agenda === "disconnected" ? r.recall_calendar_status_at : null,
+      calls7d: calls.get(r.id) ?? 0,
+      briefs7d: briefs.get(r.id) ?? 0,
+      linksCount: links.filter((l) => l.manager_id === r.id || l.commercial_id === r.id).length,
+    };
+  });
+
+  const org = (orgRes.data ?? {}) as Record<string, unknown>;
+  return {
+    overview,
+    followUpAvailable: "account_manager" in org,
+    modulesAvailable: "enabled_modules" in org,
+    members,
+  };
 }

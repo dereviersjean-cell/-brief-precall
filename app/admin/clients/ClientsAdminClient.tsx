@@ -168,7 +168,7 @@ export default function ClientsAdminClient({ clients, now: nowISO }: { clients: 
         eyebrow="Suivi clients"
         title="Clients"
         subtitle={`${clients.length} client${clients.length > 1 ? "s" : ""}, dont ${inParcours} en parcours. Les clients à surveiller sont en tête de liste.`}
-        actions={<NewClientForm onCreated={(id) => router.push(`/admin/organizations/${id}`)} />}
+        actions={<NewClientForm onCreated={(id) => router.push(`/admin/clients/${id}`)} />}
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -196,7 +196,7 @@ export default function ClientsAdminClient({ clients, now: nowISO }: { clients: 
                 return (
                   <tr
                     key={client.id}
-                    onClick={() => router.push(`/admin/organizations/${client.id}`)}
+                    onClick={() => router.push(`/admin/clients/${client.id}`)}
                     className="border-b border-slate-100 last:border-b-0 hover:bg-indigo-50/40 cursor-pointer align-top"
                   >
                     <td className="px-4 py-4">
