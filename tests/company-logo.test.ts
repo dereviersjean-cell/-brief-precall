@@ -1,6 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { hostMatchesCompanyName, isPublicHostname } from "../lib/company-logo";
+import { guessHostsFromName, hostMatchesCompanyName, isPublicHostname } from "../lib/company-logo";
 
 // Recherche de logo : le serveur n'interroge que des sites publics, et
 // n'affiche jamais le logo d'une autre entreprise que celle du rendez-vous.
@@ -28,5 +28,15 @@ describe("hostMatchesCompanyName", () => {
     assert.equal(hostMatchesCompanyName("societe.com", "Scutum"), false);
     assert.equal(hostMatchesCompanyName("linkedin.com", "Scutum"), false);
     assert.equal(hostMatchesCompanyName("groupe-france.fr", "Groupe France"), false);
+  });
+});
+
+describe("guessHostsFromName", () => {
+  test("domaines plausibles d'après le nom", () => {
+    assert.deepEqual(guessHostsFromName("Scutum"), ["scutum.fr", "scutum.com"]);
+    assert.deepEqual(guessHostsFromName("BE WTR"), ["bewtr.fr", "bewtr.com", "be-wtr.fr", "be-wtr.com"]);
+  });
+  test("rien quand le nom n'a que des mots génériques", () => {
+    assert.deepEqual(guessHostsFromName("Groupe France"), []);
   });
 });

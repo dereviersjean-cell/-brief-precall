@@ -30,9 +30,11 @@ export function companyNameFromDomain(domain: string | null | undefined): string
 // app/api/company-logo : favicon du domaine, sinon vrai site trouvé par une
 // recherche sur le nom. Null quand on n'a ni domaine ni nom.
 export function companyLogoUrl(domain: string | null | undefined, name?: string | null): string | null {
-  const params = new URLSearchParams();
+  // v : à incrémenter quand la recherche change, pour que les réponses déjà
+  // mises en cache (notamment les « rien trouvé ») ne s'appliquent plus.
+  const params = new URLSearchParams({ v: "2" });
   if (domain) params.set("d", domain);
   const cleanName = name?.trim();
   if (cleanName) params.set("n", cleanName);
-  return params.toString() ? `/api/company-logo?${params.toString()}` : null;
+  return params.has("d") || params.has("n") ? `/api/company-logo?${params.toString()}` : null;
 }

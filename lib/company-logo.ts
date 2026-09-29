@@ -35,3 +35,16 @@ export function hostMatchesCompanyName(host: string, name: string): boolean {
   if (root.includes(words.join(""))) return true;
   return words.some((w) => w.length >= 4 && root.includes(w)) && root.length <= words.join("").length + 12;
 }
+
+// Domaines plausibles d'après le seul nom, quand la recherche web n'a rien
+// donné (ou n'est pas configurée) : « Scutum » → scutum.fr, scutum.com ;
+// « BE WTR » → bewtr.fr, bewtr.com, be-wtr.fr, be-wtr.com. Seuls ceux qui ont
+// réellement un logo sont retenus par l'appelant.
+export function guessHostsFromName(name: string): string[] {
+  const tokens = normalize(name)
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w && !GENERIC_WORDS.has(w));
+  if (tokens.length === 0) return [];
+  const roots = [...new Set([tokens.join(""), tokens.join("-")])].filter((r) => r.length >= 3 && r.length <= 40);
+  return roots.flatMap((root) => [`${root}.fr`, `${root}.com`]).filter(isPublicHostname);
+}
