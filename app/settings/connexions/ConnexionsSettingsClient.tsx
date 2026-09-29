@@ -31,6 +31,7 @@ export default function ConnexionsSettingsClient({
   recallPlatform,
   hasCalendarWriteAccess,
   slackConnected: initialSlackConnected,
+  slackEnabled,
 }: {
   recallConnected: boolean;
   // Agenda enregistré mais coupé chez Recall (jeton expiré ou révoqué).
@@ -39,6 +40,8 @@ export default function ConnexionsSettingsClient({
   recallPlatform: string | null;
   hasCalendarWriteAccess: boolean;
   slackConnected: boolean;
+  // Module Slack ouvert pour l'organisation (parcours client) — sinon, pas de carte.
+  slackEnabled: boolean;
 }) {
   const router = useRouter();
   const { data: session } = useSession();
@@ -264,6 +267,7 @@ export default function ConnexionsSettingsClient({
           in the CRM section just below (CrmSection.tsx). Status fetched
           server-side (page.tsx, via hasSlackConnection) so there's no
           loading flash. */}
+      {slackEnabled && (
       <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] mt-6">
         <div className="px-6 py-5">
           <h2 className="text-sm font-semibold text-slate-900 mb-1">Compte Slack</h2>
@@ -308,6 +312,7 @@ export default function ConnexionsSettingsClient({
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }

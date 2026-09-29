@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Target, MessagesSquare, BookOpen, BarChart3, Dumbbell, Lock } from "lucide-react";
+import { LayoutDashboard, Target, MessagesSquare, BookOpen, BarChart3, Dumbbell } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import type { ModuleKey } from "@/lib/modules";
+import { useModules } from "./ModulesProvider";
 
 // Sidebar n'a plus qu'un lien unique « Performance » (AppSidebar.tsx) — la
 // navigation entre les sous-sections se fait ici, en onglets, même pattern
@@ -18,37 +19,24 @@ import type { LucideIcon } from "lucide-react";
 // playbook est la grille de notation, il appartient au thème Performance
 // bien plus qu'au pilotage d'équipe, et les commerciaux doivent pouvoir le
 // consulter (en lecture seule, cf. app/dashboard/playbook/page.tsx).
-const TABS: { href: string; label: string; icon: LucideIcon }[] = [
+// `module` : onglet d'un module activable (lib/modules.ts), absent tant que
+// l'account manager ne l'a pas ouvert pour l'organisation.
+const TABS: { href: string; label: string; icon: LucideIcon; module?: ModuleKey }[] = [
   { href: "/dashboard", label: "Vue d'ensemble", icon: LayoutDashboard },
   { href: "/dashboard/scores", label: "Scores", icon: Target },
-  { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/dashboard/objections", label: "Objections", icon: MessagesSquare },
-  { href: "/dashboard/playbook", label: "Playbook", icon: BookOpen },
-  { href: "/training", label: "Entraînement", icon: Dumbbell },
+  { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, module: "insights" },
+  { href: "/dashboard/objections", label: "Objections", icon: MessagesSquare, module: "objections" },
+  { href: "/dashboard/playbook", label: "Playbook", icon: BookOpen, module: "playbook" },
+  { href: "/training", label: "Entraînement", icon: Dumbbell, module: "training" },
 ];
 
 export default function PerformanceTabs() {
   const pathname = usePathname();
 
-  // Module additionnel (migration 003) — grise l'onglet quand non débloqué
-  // pour l'organisation. Purement visuel : /training applique le vrai gate
-  // côté serveur quelle que soit cette valeur (fail-closed par défaut, donc
-  // pas de flash "actif" avant la réponse).
-  const [trainingEnabled, setTrainingEnabled] = useState(false);
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/training/status")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { enabled: boolean } | null) => {
-        if (!cancelled && data) setTrainingEnabled(data.enabled);
-      })
-      .catch(() => {
-        // reste verrouillé visuellement — cohérent avec le fail-closed serveur
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // Entraînement était grisé avec un cadenas quand il n'était pas débloqué.
+  // Depuis le parcours client (29/09/2026), un module fermé n'apparaît pas.
+  const { isEnabled } = useModules();
+  const tabs = TABS.filter((tab) => !tab.module || isEnabled(tab.module));
 
   return (
     // Collée sous la TopBar (elle-même `sticky top-0`, h-14 = 56px) : sans
@@ -58,27 +46,22 @@ export default function PerformanceTabs() {
     // et non par-dessus. Même fond translucide flouté qu'elle, sinon le
     // contenu se voit au travers en défilant.
     <nav data-tour="performance-tabs" className="sticky top-14 z-[9] flex items-center gap-1 overflow-x-auto no-scrollbar border-b border-border bg-white/70 px-4 backdrop-blur-xl lg:px-10">
-      {TABS.map((tab) => {
+      {tabs.map((tab) => {
         const active = tab.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(tab.href);
         const Icon = tab.icon;
-        const locked = tab.href === "/training" && !trainingEnabled;
         return (
           <Link
             key={tab.href}
             href={tab.href}
-            title={locked ? "Module additionnel — non débloqué" : undefined}
             className={`relative inline-flex items-center gap-2 whitespace-nowrap px-3.5 h-11 text-[13px] font-medium transition-colors ${
-              locked
-                ? "text-slate-400 hover:text-slate-500"
-                : active
+              active
                 ? "text-[color:var(--violet)]"
                 : "text-slate-500 hover:text-slate-900"
             }`}
           >
             <Icon className="h-3.5 w-3.5" strokeWidth={active ? 2.25 : 1.75} />
             {tab.label}
-            {locked && <Lock className="h-3 w-3 text-slate-300" />}
-            {active && !locked && <span className="absolute inset-x-2 -bottom-px h-[2px] rounded-full brand-gradient" />}
+            {active && <span className="absolute inset-x-2 -bottom-px h-[2px] rounded-full brand-gradient" />}
           </Link>
         );
       })}

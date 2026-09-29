@@ -1,3 +1,5 @@
+import type { ModuleKey } from "./modules";
+
 export type NotificationEventType = "brief_precall" | "analyse_postcall";
 export type NotificationChannel = "email" | "calendar" | "hubspot" | "pipedrive" | "slack";
 
@@ -5,6 +7,17 @@ export type NotificationChannel = "email" | "calendar" | "hubspot" | "pipedrive"
 export const AVAILABLE_CHANNELS: Record<NotificationEventType, NotificationChannel[]> = {
   brief_precall: ["email", "calendar", "hubspot", "pipedrive", "slack"],
   analyse_postcall: ["email", "hubspot", "pipedrive", "slack"], // pas de calendar pour l'analyse
+};
+
+// Canal qui ne sort de Brief que si son module est ouvert pour l'organisation
+// (parcours client, lib/modules.ts). Lu par l'écran des préférences, qui
+// masque le canal, et par lib/notifications-dispatcher.ts, qui ne l'utilise
+// pas — une préférence cochée avant la fermeture d'un module ne doit pas
+// continuer d'écrire dans le CRM ou Slack.
+export const CHANNEL_MODULE: Partial<Record<NotificationChannel, ModuleKey>> = {
+  hubspot: "crm",
+  pipedrive: "crm",
+  slack: "slack",
 };
 
 // Métadonnées d'affichage (label + description + statut d'implémentation)

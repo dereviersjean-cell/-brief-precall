@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Settings, Link as LinkIcon, Library, CreditCard, MessagesSquare, Mail } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import type { ModuleKey } from "@/lib/modules";
+import { useModules } from "@/app/components/ModulesProvider";
 
 // Onglets retirés le 21/08/2026, à la demande de Jean — les PAGES existent
 // toujours et restent accessibles par URL directe, seul l'onglet disparaît :
@@ -14,18 +16,18 @@ import type { LucideIcon } from "lucide-react";
 // Remettre un onglet = remettre sa ligne ici, rien d'autre à défaire.
 // Objections a rejoint Paramètres depuis Performance (recentrage produit,
 // 24 juillet 2026) — ouverte à tous (pas managerOnly), comme avant.
-const NAV_ITEMS: { href: string; label: string; icon: LucideIcon; managerOnly?: boolean }[] = [
+const NAV_ITEMS: { href: string; label: string; icon: LucideIcon; managerOnly?: boolean; module?: ModuleKey }[] = [
   { href: "/settings/general", label: "Général", icon: Settings },
   { href: "/settings/connexions", label: "Connexions", icon: LinkIcon },
   // « Références clients » raccourci en « Références » : avec l'ajout de
   // « Tester un call », la barre débordait de son conteneur max-w-4xl et
   // faisait apparaître une barre de défilement sous les onglets.
-  { href: "/settings/references", label: "Références", icon: Library },
-  { href: "/settings/objections", label: "Objections", icon: MessagesSquare },
+  { href: "/settings/references", label: "Références", icon: Library, module: "references" },
+  { href: "/settings/objections", label: "Objections", icon: MessagesSquare, module: "objections" },
   // Réglage d'organisation, arrivé de /team le 04/09/2026. managerOnly : la
   // page elle-même redirige déjà un commercial, l'onglet ne doit pas lui
   // promettre un écran qu'il ne peut pas ouvrir.
-  { href: "/settings/email-templates", label: "Templates emails", icon: Mail, managerOnly: true },
+  { href: "/settings/email-templates", label: "Templates emails", icon: Mail, managerOnly: true, module: "follow_up" },
   { href: "/settings/billing", label: "Facturation", icon: CreditCard, managerOnly: true },
 ];
 
@@ -34,7 +36,10 @@ export default function SettingsTabs() {
   const { data: session } = useSession();
   const isManager = session?.role === "manager";
 
-  const items = NAV_ITEMS.filter((item) => !item.managerOnly || isManager);
+  const { isEnabled } = useModules();
+
+  // Un module fermé (lib/modules.ts) n'a pas d'onglet.
+  const items = NAV_ITEMS.filter((item) => (!item.managerOnly || isManager) && (!item.module || isEnabled(item.module)));
 
   return (
     <nav className="flex items-center gap-1 overflow-x-auto no-scrollbar border-b border-border">

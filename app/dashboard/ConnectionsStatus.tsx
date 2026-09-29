@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getCrmTokens, getDigestPreference } from "@/lib/db";
+import { getCrmTokens, getDigestPreference, getEnabledModulesForUser } from "@/lib/db";
 import { hasSlackConnection } from "@/lib/slack";
 
 function StatusRow({ label, connected, href }: { label: string; connected: boolean; href: string }) {
@@ -26,20 +26,28 @@ function StatusRow({ label, connected, href }: { label: string; connected: boole
 // fix it if not. Digest gets its own line since it's opt-in per timing
 // rather than a binary connect/disconnect like the others.
 export default async function ConnectionsStatus({ userId }: { userId: string }) {
-  const [hubspot, pipedrive, slack, digest] = await Promise.all([
+  const [hubspot, pipedrive, slack, digest, modules] = await Promise.all([
     getCrmTokens(userId, "hubspot"),
     getCrmTokens(userId, "pipedrive"),
     hasSlackConnection(userId),
     getDigestPreference(userId),
+    getEnabledModulesForUser(userId),
   ]);
+
+  // Une ligne par module ouvert (parcours client) ; aucune, pas de carte.
+  const showCrm = modules.includes("crm");
+  const showSlack = modules.includes("slack");
+  const showDigest = modules.includes("weekly_digest");
+  if (!showCrm && !showSlack && !showDigest) return null;
 
   return (
     <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
       <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-1">Connexions & distribution</h2>
       <div className="divide-y divide-slate-100">
-        <StatusRow label="HubSpot" connected={hubspot !== null} href="/settings/connexions" />
-        <StatusRow label="Pipedrive" connected={pipedrive !== null} href="/settings/connexions" />
-        <StatusRow label="Slack" connected={slack} href="/settings/connexions" />
+        {showCrm && <StatusRow label="HubSpot" connected={hubspot !== null} href="/settings/connexions" />}
+        {showCrm && <StatusRow label="Pipedrive" connected={pipedrive !== null} href="/settings/connexions" />}
+        {showSlack && <StatusRow label="Slack" connected={slack} href="/settings/connexions" />}
+        {showDigest && (
         <div className="flex items-center justify-between py-2">
           <span className="text-sm text-slate-600">Digest hebdomadaire</span>
           {digest.enabled ? (
@@ -54,6 +62,7 @@ export default async function ConnectionsStatus({ userId }: { userId: string }) 
             </Link>
           )}
         </div>
+        )}
       </div>
     </div>
   );

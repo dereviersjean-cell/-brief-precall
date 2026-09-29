@@ -3,7 +3,7 @@ import type { AdminConfig } from "./admin-config";
 import type { NewsArticle } from "./news";
 import { findSimilarReferences } from "./embeddings";
 import type { SimilarReference } from "./embeddings";
-import { getContact } from "./db";
+import { getContact, getEnabledModulesForUser } from "./db";
 import { enrichFromCRM } from "./crm/enrichment";
 import type { CrmEnrichment } from "./crm/enrichment";
 import { extractJsonObject } from "./ai-json";
@@ -196,14 +196,19 @@ export async function generateBrief(
     .filter(Boolean)
     .join(" ");
 
+  // Références clients et données CRM n'entrent dans le brief que si leur
+  // module est ouvert (parcours client, lib/modules.ts) : un brief ne doit pas
+  // montrer un module avant que l'account manager l'ait présenté.
+  const modules = userId ? await getEnabledModulesForUser(userId) : [];
+
   const [similarRefs, crmData, contactResult] = await Promise.all([
-    userId
+    userId && modules.includes("references")
       ? findSimilarReferences(userId, prospectContext, 8).catch((err) => {
           console.warn("[brief-generator] findSimilarReferences failed:", err);
           return [] as SimilarReference[];
         })
       : Promise.resolve([] as SimilarReference[]),
-    userId
+    userId && modules.includes("crm")
       ? enrichFromCRM(userId, company).catch((err) => {
           console.warn("[brief-generator] enrichFromCRM failed:", err);
           return null;

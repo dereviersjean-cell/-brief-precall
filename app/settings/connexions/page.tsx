@@ -1,4 +1,4 @@
-import { getRecallCalendarId, getCrmTokens } from "@/lib/db";
+import { getRecallCalendarId, getCrmTokens, getEnabledModulesForUser } from "@/lib/db";
 import { getEffectiveUserId } from "@/lib/session-user";
 import { hasCalendarWriteAccess } from "@/lib/google-calendar";
 import { hasSlackConnection } from "@/lib/slack";
@@ -26,6 +26,8 @@ export default async function ConnexionsSettingsPage() {
   // avec un jeton expiré). Null si Recall ne répond pas — on affiche alors
   // « connecté », comme avant, plutôt qu'une fausse alerte.
   const calendarHealth = recallCalendarId ? await getRecallCalendarHealth(recallCalendarId) : null;
+  // Cartes CRM et Slack : seulement si le module est ouvert (parcours client).
+  const modules = userId ? await getEnabledModulesForUser(userId) : [];
 
   return (
     <>
@@ -36,10 +38,13 @@ export default async function ConnexionsSettingsPage() {
         recallPlatform={calendarHealth?.platform ?? null}
         hasCalendarWriteAccess={calendarWriteAccess}
         slackConnected={slackConnected}
+        slackEnabled={modules.includes("slack")}
       />
-      <div className="mt-6">
-        <CrmSection pipedriveConnected={pipedriveTokens !== null} hubspotConnected={hubspotTokens !== null} />
-      </div>
+      {modules.includes("crm") && (
+        <div className="mt-6">
+          <CrmSection pipedriveConnected={pipedriveTokens !== null} hubspotConnected={hubspotTokens !== null} />
+        </div>
+      )}
     </>
   );
 }

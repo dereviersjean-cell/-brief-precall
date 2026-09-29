@@ -25,9 +25,11 @@ import {
   type UnansweredFollowUpCall,
   type UnansweredQuote,
   type DigestRecipient,
+  isModuleEnabledForUser,
 } from "./db";
 import { syncAndScheduleForUser } from "./recall";
 import { checkCalendarHealth } from "./calendar-health";
+import type { ModuleKey } from "./modules";
 import { sendWeeklyDigestForUser } from "./digest";
 import { pushNewTasksToHubSpot } from "./tasks-hubspot-sync";
 import { batchGetHubSpotTaskStatuses, getHubSpotOwnerId, findNewHubSpotTasksForOwner, findClosedDealsForEmail as findClosedHubspotDealForEmail } from "./crm/hubspot";
@@ -572,14 +574,23 @@ export const syncDealOutcomes = inngest.createFunction(
 // time) — verified against Inngest's docs for the "TZ=<IANA name> <cron>"
 // prefix syntax.
 
+// Garde, parmi des utilisateurs, ceux dont l'organisation a ce module ouvert.
+async function onlyWithModule<T extends { id: string }>(users: T[], key: ModuleKey): Promise<T[]> {
+  const open = await Promise.all(users.map((user) => isModuleEnabledForUser(user.id, key)));
+  return users.filter((_, i) => open[i]);
+}
+
 export const sendFridayEveningDigests = inngest.createFunction(
   {
     id: "send-friday-evening-digests",
     triggers: [{ cron: "TZ=Europe/Paris 0 18 * * 5" }],
   },
   async ({ step }) => {
+    // Seulement les organisations où le bilan hebdo est ouvert (parcours
+    // client, lib/modules.ts) : une préférence « activé » posée avant la
+    // fermeture du module n'envoie rien.
     const users = (await step.run("get-digest-users", async () => {
-      return getUsersForDigestTiming("friday_evening");
+      return onlyWithModule(await getUsersForDigestTiming("friday_evening"), "weekly_digest");
     })) as DigestRecipient[];
 
     console.log("[send-friday-evening-digests] users opted in:", users.length);
@@ -610,8 +621,11 @@ export const sendMondayMorningDigests = inngest.createFunction(
     triggers: [{ cron: "TZ=Europe/Paris 0 8 * * 1" }],
   },
   async ({ step }) => {
+    // Seulement les organisations où le bilan hebdo est ouvert (parcours
+    // client, lib/modules.ts) : une préférence « activé » posée avant la
+    // fermeture du module n'envoie rien.
     const users = (await step.run("get-digest-users", async () => {
-      return getUsersForDigestTiming("monday_morning");
+      return onlyWithModule(await getUsersForDigestTiming("monday_morning"), "weekly_digest");
     })) as DigestRecipient[];
 
     console.log("[send-monday-morning-digests] users opted in:", users.length);

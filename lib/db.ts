@@ -5,6 +5,7 @@ import { computeQuoteTotals } from "./quote-calc";
 import type { TranscriptJson } from "./recall";
 import type { NotificationEventType, NotificationChannel, NotificationPreference } from "./notification-preferences";
 import { coerceMeetingStageConfig, type MeetingStage, type MeetingStageConfig } from "./meeting-stage";
+import { resolveEnabledModules, type ModuleKey } from "./modules";
 
 export async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 500): Promise<T> {
   let lastError: unknown;
@@ -1734,14 +1735,6 @@ export async function isTrainingEnabledForOrganization(organizationId: string): 
   }
 }
 
-export async function setTrainingEnabledForOrganization(organizationId: string, enabled: boolean): Promise<void> {
-  const { error } = await supabaseAdmin
-    .from("organizations")
-    .update({ training_enabled: enabled })
-    .eq("id", organizationId);
-  if (error) throw error;
-}
-
 // Trace du CTA "Je veux débloquer ce module" (migration 004) — durable en
 // base même si l'email admin échoue. La dédup 24h (hasRecentTrainingUnlockRequest)
 // ne regarde QUE les demandes dont l'email est réellement parti
@@ -1923,6 +1916,60 @@ export async function getUserOrganizationId(userId: string): Promise<string | nu
     .maybeSingle();
   if (error) throw error;
   return (data as { organization_id: string | null } | null)?.organization_id ?? null;
+}
+
+// Modules actifs (parcours client, migration 019 — voir lib/modules.ts).
+// `organizations(*)` plutôt que les colonnes nommées : sans la migration,
+// enabled_modules n'existe pas et la requête ne doit pas échouer pour autant.
+// En cas d'erreur, tout reste actif : c'est l'état d'avant le parcours, et un
+// module qui disparaît par accident serait pire qu'un module visible trop tôt.
+export async function getEnabledModulesForUser(userId: string): Promise<ModuleKey[]> {
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("organizations(*)")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) return resolveEnabledModules(null);
+  const org = (data as { organizations: { enabled_modules?: string[] | null; training_enabled?: boolean | null } | null } | null)
+    ?.organizations;
+  return resolveEnabledModules(org ?? null);
+}
+
+export async function isModuleEnabledForUser(userId: string, key: ModuleKey): Promise<boolean> {
+  return (await getEnabledModulesForUser(userId)).includes(key);
+}
+
+export async function getEnabledModulesForOrganization(organizationId: string): Promise<ModuleKey[]> {
+  const { data, error } = await supabaseAdmin.from("organizations").select("*").eq("id", organizationId).maybeSingle();
+  if (error) return resolveEnabledModules(null);
+  return resolveEnabledModules((data as { enabled_modules?: string[] | null; training_enabled?: boolean | null } | null) ?? null);
+}
+
+// Réglage par l'account manager : la liste devient explicite et fait seule
+// foi. `training_enabled` est tenu aligné, le temps que tout ce qui le lit
+// encore passe par les modules.
+// Pour l'admin : les modules actifs ET si la liste est explicite (réglée par
+// l'account manager) ou héritée (organisation antérieure au parcours, NULL).
+export async function getOrganizationModulesState(
+  organizationId: string
+): Promise<{ modules: ModuleKey[]; explicit: boolean; migrated: boolean }> {
+  const { data, error } = await supabaseAdmin.from("organizations").select("*").eq("id", organizationId).maybeSingle();
+  if (error) return { modules: resolveEnabledModules(null), explicit: false, migrated: false };
+  const row = (data as { enabled_modules?: string[] | null; training_enabled?: boolean | null } | null) ?? null;
+  return {
+    modules: resolveEnabledModules(row),
+    explicit: Array.isArray(row?.enabled_modules),
+    // La colonne n'apparaît dans `*` qu'une fois la migration 019 passée.
+    migrated: row != null && "enabled_modules" in row,
+  };
+}
+
+export async function setEnabledModulesForOrganization(organizationId: string, modules: ModuleKey[]): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("organizations")
+    .update({ enabled_modules: modules, training_enabled: modules.includes("training") })
+    .eq("id", organizationId);
+  if (error) throw error;
 }
 
 export async function getOrganizationForUser(userId: string): Promise<Organization | null> {
@@ -4327,6 +4374,12 @@ export async function generateTasksFromTemplates(
   sourceId: string,
   contactData: TaskContactData
 ): Promise<GenerateTasksResult> {
+  // Module Tâches fermé (parcours client) : aucune tâche. Contrairement à
+  // l'analyse ou aux emails, rédigés en arrière-plan pour être prêts à
+  // l'ouverture, une tâche est datée — l'ouvrir sur des relances échues depuis
+  // des semaines serait pire que de démarrer à vide.
+  if (!(await isModuleEnabledForUser(userId, "tasks"))) return { createdCount: 0, toPushToHubSpot: [] };
+
   const triggerType = TRIGGER_TYPE_BY_SOURCE[sourceType];
 
   const { data: templates, error } = await supabaseAdmin
@@ -7379,9 +7432,10 @@ export type ActivationState = {
 };
 
 export async function getActivationState(userId: string): Promise<ActivationState> {
-  const [organizationId, role] = await Promise.all([
+  const [organizationId, role, modules] = await Promise.all([
     getUserOrganizationId(userId).catch(() => null),
     getUserRole(userId).catch(() => null),
+    getEnabledModulesForUser(userId),
   ]);
 
   const [profile, calendarRow, playbook, callCount] = await Promise.all([
@@ -7412,7 +7466,9 @@ export async function getActivationState(userId: string): Promise<ActivationStat
     // commercial. Lui demander de « définir votre playbook » l'enverrait sur
     // un écran où il ne peut rien faire, et le laisserait avec une checklist
     // qu'il ne peut pas terminer.
-    ...(role === "manager" ? [{ key: "playbook" as const, done: !!playbook }] : []),
+    // Et seulement si le module Playbook est ouvert (parcours client) : une
+    // étape vers une page fermée enverrait le manager sur un écran absent.
+    ...(role === "manager" && modules.includes("playbook") ? [{ key: "playbook" as const, done: !!playbook }] : []),
     // Le premier call analysé est le moment où le produit devient concret.
     { key: "premier-call", done: callCount > 0 },
   ];

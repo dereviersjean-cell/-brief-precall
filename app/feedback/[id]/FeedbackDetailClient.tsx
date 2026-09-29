@@ -10,6 +10,7 @@ import { getEffectiveScoresForDisplay } from "@/lib/playbook-scores";
 import { formatContactDisplayName } from "@/lib/format";
 import { isValidEmail } from "@/lib/email-address";
 import TemplatePromptSettingsModal from "@/app/components/TemplatePromptSettingsModal";
+import { useModules } from "@/app/components/ModulesProvider";
 import ConversationAnalyticsBlock from "./ConversationAnalyticsBlock";
 import KeyPointsBlock from "./KeyPointsBlock";
 import SpeakerTimelineBlock from "./SpeakerTimelineBlock";
@@ -541,6 +542,7 @@ export default function FeedbackDetailClient({
   backLabel?: string;
 }) {
   const [tab, setTab] = useState<Tab>("overview");
+  const { isEnabled: isModuleEnabled } = useModules();
   const [copied, setCopied] = useState(false);
   const [subject, setSubject] = useState(call.follow_up_email?.subject ?? "");
   const [body, setBody] = useState(call.follow_up_email?.body ?? "");
@@ -738,10 +740,15 @@ export default function FeedbackDetailClient({
   // disponible », qui laisse croire à une panne.
   const noSpeech = !a && allTurns.length === 0;
 
+  // « Email de suivi » n'existe que si le module est ouvert (parcours client,
+  // lib/modules.ts). L'email est rédigé en arrière-plan quoi qu'il arrive : à
+  // l'ouverture du module, chaque call a déjà le sien.
+  const followUpEnabled = isModuleEnabled("follow_up");
   const TABS: { key: Tab; label: string }[] = [
     { key: "overview", label: "Overview" },
-    { key: "email", label: "Email de suivi" },
+    ...(followUpEnabled ? [{ key: "email" as const, label: "Email de suivi" }] : []),
   ];
+  const activeTab: Tab = tab === "email" && !followUpEnabled ? "overview" : tab;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -834,7 +841,7 @@ export default function FeedbackDetailClient({
                     key={t.key}
                     onClick={() => setTab(t.key)}
                     className={`px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors duration-200 ${
-                      tab === t.key ? "brand-gradient text-white" : "text-slate-500 hover:text-slate-700"
+                      activeTab === t.key ? "brand-gradient text-white" : "text-slate-500 hover:text-slate-700"
                     }`}
                   >
                     {t.label}
@@ -842,7 +849,7 @@ export default function FeedbackDetailClient({
                 ))}
               </div>
 
-              {tab === "overview" && (
+              {activeTab === "overview" && (
                 <div className="space-y-5">
                   {/* Points clés — generated on demand (not by analyzeCall), cached
                       on call_analysis.key_points. */}
@@ -915,7 +922,7 @@ export default function FeedbackDetailClient({
                 </div>
               )}
 
-              {tab === "email" && (
+              {activeTab === "email" && (
                 readOnly ? (
                   <ReadOnlyEmailBlock call={call} />
                 ) : (

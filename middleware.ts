@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { blockingModuleForPath, modulesForPath, resolveEnabledModules, type ModuleKey } from "@/lib/modules";
 
 export const config = {
   matcher: [
@@ -18,6 +19,20 @@ export const config = {
     "/onboarding/:path*",
     "/bienvenue/:path*",
     "/demo/:path*",
+    // Routes d'API des modules activables (lib/modules.ts) : seul le verrou
+    // de module s'y applique, l'authentification reste l'affaire de chaque
+    // route. Toute nouvelle route d'un module doit relever d'un de ces
+    // préfixes — sinon elle échappe au verrou.
+    "/api/playbook/:path*",
+    "/api/email-templates/:path*",
+    "/api/feedback/:path*",
+    "/api/objections/:path*",
+    "/api/crm/:path*",
+    "/api/tasks/:path*",
+    "/api/training/:path*",
+    "/api/digest-preferences/:path*",
+    "/api/slack/:path*",
+    "/api/client-references/:path*",
   ],
 };
 
@@ -26,8 +41,15 @@ export const config = {
 // (embeddings, Anthropic SDK, etc.) into the edge runtime.
 // Billing status is embedded in the same query (organizations via the FK on
 // organization_id) rather than a second round-trip.
-async function getUserGateInfo(userId: string): Promise<{ disabled: boolean; billingBlocked: boolean }> {
-  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=disabled_at,organizations(billing_status)`;
+//
+// `organizations(*)` et pas une liste de colonnes : les modules actifs
+// (migration 019) viennent de la même ligne, et une colonne nommée qui
+// n'existe pas encore ferait échouer toute la requête — donc sauter les
+// gardes ci-dessous. `*` rend ce qui existe.
+type GateInfo = { disabled: boolean; billingBlocked: boolean; modules: ModuleKey[] };
+
+async function getUserGateInfo(userId: string): Promise<GateInfo> {
+  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=disabled_at,organizations(*)`;
   try {
     const res = await fetch(url, {
       headers: {
@@ -38,8 +60,11 @@ async function getUserGateInfo(userId: string): Promise<{ disabled: boolean; bil
     // Fail open on infra errors — these are soft gates (admin disable,
     // billing), not the primary auth boundary, so a Supabase hiccup
     // shouldn't lock everyone out.
-    if (!res.ok) return { disabled: false, billingBlocked: false };
-    const rows = (await res.json()) as { disabled_at: string | null; organizations: { billing_status: string } | null }[];
+    if (!res.ok) return { disabled: false, billingBlocked: false, modules: resolveEnabledModules(null) };
+    const rows = (await res.json()) as {
+      disabled_at: string | null;
+      organizations: { billing_status: string; enabled_modules?: string[] | null; training_enabled?: boolean | null } | null;
+    }[];
     const row = rows[0];
     // "canceled" bloque au même titre que "blocked" — une résiliation coupe
     // l'accès immédiatement, pas de période de grâce (celle-ci ne s'applique
@@ -48,10 +73,46 @@ async function getUserGateInfo(userId: string): Promise<{ disabled: boolean; bil
     return {
       disabled: row?.disabled_at != null,
       billingBlocked: status === "blocked" || status === "canceled",
+      modules: resolveEnabledModules(row?.organizations),
     };
   } catch {
-    return { disabled: false, billingBlocked: false };
+    return { disabled: false, billingBlocked: false, modules: resolveEnabledModules(null) };
   }
+}
+
+// Même calcul que lib/admin-auth.ts, en Web Crypto : le middleware ne charge
+// pas le module `crypto` de Node.
+async function isAdminCookieValid(request: NextRequest): Promise<boolean> {
+  const cookie = request.cookies.get("admin_session")?.value;
+  if (!cookie) return false;
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(`admin_session:${process.env.ADMIN_PASSWORD ?? ""}`)
+  );
+  const hex = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+  return cookie === hex;
+}
+
+// L'utilisateur dont les modules s'appliquent : celui qu'un administrateur
+// incarne (même règle que lib/impersonation.ts — le cookie ne compte qu'avec
+// une session admin valide), sinon celui de la session. L'account manager qui
+// ouvre le compte d'un client voit ainsi exactement ce que voit le client.
+async function effectiveUserId(request: NextRequest, sessionUserId: string | undefined): Promise<string | undefined> {
+  const impersonated = request.cookies.get("brief_impersonate_user_id")?.value;
+  if (impersonated && (await isAdminCookieValid(request))) return impersonated;
+  return sessionUserId;
+}
+
+// Module désactivé = introuvable, jamais « verrouillé » : le client ne doit
+// pas savoir qu'il existe avant que l'account manager le lui ouvre.
+function moduleNotFound(request: NextRequest): NextResponse {
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    return NextResponse.json({ error: "Introuvable." }, { status: 404 });
+  }
+  const url = request.nextUrl.clone();
+  url.pathname = "/brief";
+  url.search = "";
+  return NextResponse.redirect(url);
 }
 
 export async function middleware(request: NextRequest) {
@@ -70,6 +131,17 @@ export async function middleware(request: NextRequest) {
 
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
   const supabaseUserId = token?.supabaseUserId as string | undefined;
+
+  // Routes d'API : seul le verrou de module. Hors module (le socle d'un
+  // préfixe partagé, comme /api/feedback/[id]/key-points), rien à faire ; sans
+  // utilisateur, la route répond elle-même 401.
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    if (modulesForPath(request.nextUrl.pathname).length === 0) return NextResponse.next();
+    const userId = await effectiveUserId(request, supabaseUserId);
+    if (!userId) return NextResponse.next();
+    const { modules } = await getUserGateInfo(userId);
+    return blockingModuleForPath(request.nextUrl.pathname, modules) ? moduleNotFound(request) : NextResponse.next();
+  }
 
   if (!supabaseUserId) {
     // Sans session, on renvoie vers la connexion en gardant la destination.
@@ -112,6 +184,15 @@ export async function middleware(request: NextRequest) {
     url.pathname = "/compte-suspendu";
     url.search = "";
     return NextResponse.redirect(url);
+  }
+
+  // Page d'un module désactivé. Les gardes ci-dessus portent sur la session ;
+  // les modules, sur l'utilisateur effectivement affiché (impersonation
+  // comprise) — une seule requête de plus, et seulement dans ce cas.
+  if (modulesForPath(request.nextUrl.pathname).length > 0) {
+    const userId = await effectiveUserId(request, supabaseUserId);
+    const modules = userId === supabaseUserId ? gate.modules : (await getUserGateInfo(userId!)).modules;
+    if (blockingModuleForPath(request.nextUrl.pathname, modules)) return moduleNotFound(request);
   }
 
   return NextResponse.next();

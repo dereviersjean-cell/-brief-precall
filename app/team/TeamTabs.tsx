@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Users, BarChart3 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import type { ModuleKey } from "@/lib/modules";
+import { useModules } from "@/app/components/ModulesProvider";
 
 // Sidebar n'a plus qu'un lien unique « Équipe » (AppSidebar.tsx) — la
 // navigation entre les sous-sections se fait ici, en onglets, comme
@@ -16,9 +18,9 @@ import type { LucideIcon } from "lucide-react";
 // d'équipe. Les deux routes survivent en redirection pour les favoris, d'où
 // leur présence dans KNOWN_SEGMENTS : sans elle, la barre d'onglets
 // disparaîtrait le temps de la redirection.
-const TABS: { href: string; label: string; icon: LucideIcon }[] = [
+const TABS: { href: string; label: string; icon: LucideIcon; module?: ModuleKey }[] = [
   { href: "/team", label: "Équipe", icon: Users },
-  { href: "/team/insights", label: "Insights", icon: BarChart3 },
+  { href: "/team/insights", label: "Insights", icon: BarChart3, module: "insights" },
 ];
 
 const KNOWN_SEGMENTS = new Set(["playbook", "email-templates", "insights"]);
@@ -26,6 +28,8 @@ const KNOWN_SEGMENTS = new Set(["playbook", "email-templates", "insights"]);
 export default function TeamTabs() {
   const pathname = usePathname();
   const firstSegment = pathname.split("/")[2];
+  const { isEnabled } = useModules();
+  const tabs = TABS.filter((tab) => !tab.module || isEnabled(tab.module));
 
   // /team/[commercialId](/calls/...) — pas une des catégories connues.
   if (firstSegment && !KNOWN_SEGMENTS.has(firstSegment)) return null;
@@ -33,7 +37,7 @@ export default function TeamTabs() {
   return (
     // Collée sous la TopBar, comme PerformanceTabs — voir le commentaire là-bas.
     <nav className="sticky top-14 z-[9] flex items-center gap-1 overflow-x-auto no-scrollbar border-b border-border bg-white/70 px-4 backdrop-blur-xl lg:px-10">
-      {TABS.map((tab) => {
+      {tabs.map((tab) => {
         const active = tab.href === "/team" ? pathname === "/team" : pathname.startsWith(tab.href);
         const Icon = tab.icon;
         return (

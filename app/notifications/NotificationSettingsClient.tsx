@@ -6,12 +6,14 @@ import { AlertTriangle, Info } from "lucide-react";
 import {
   AVAILABLE_CHANNELS,
   CHANNEL_META,
+  CHANNEL_MODULE,
   type NotificationEventType,
   type NotificationChannel,
   type NotificationPreference,
 } from "@/lib/notification-preferences";
 import type { DigestPreference, DigestTiming } from "@/lib/db";
 import FadeIn from "@/app/dashboard/FadeIn";
+import { useModules } from "@/app/components/ModulesProvider";
 import { PageHeader } from "@/app/components/ui/PageHeader";
 import { Card } from "@/app/components/ui/ui-bits";
 
@@ -39,6 +41,8 @@ export default function NotificationSettingsClient({
   const [preferences, setPreferences] = useState<Map<string, boolean>>(
     () => new Map(initialPreferences.map((p) => [prefKey(p.event_type, p.channel), p.enabled]))
   );
+  // Canaux CRM et Slack, digest : visibles seulement si leur module est ouvert.
+  const { isEnabled: isModuleEnabled } = useModules();
 
   const activeChannelsCount = useMemo(
     () => Array.from(preferences.values()).filter(Boolean).length,
@@ -185,7 +189,12 @@ export default function NotificationSettingsClient({
               <p className="text-xs text-slate-400 mt-1 mb-3">{section.description}</p>
 
               <Card padded={false} className="divide-y divide-slate-100">
-                {AVAILABLE_CHANNELS[section.eventType].map((channel) => {
+                {AVAILABLE_CHANNELS[section.eventType]
+                  .filter((channel) => {
+                    const required = CHANNEL_MODULE[channel];
+                    return !required || isModuleEnabled(required);
+                  })
+                  .map((channel) => {
                   const meta = CHANNEL_META[channel];
                   const enabled = preferences.get(prefKey(section.eventType, channel)) ?? false;
                   const disabled = !meta.implemented;
@@ -291,6 +300,7 @@ export default function NotificationSettingsClient({
         ))}
       </div>
 
+      {isModuleEnabled("weekly_digest") && (
       <FadeIn delay={0.15}>
         <div className="mt-8">
           <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[color:var(--violet)]">Digest hebdomadaire</h2>
@@ -356,6 +366,7 @@ export default function NotificationSettingsClient({
           </Card>
         </div>
       </FadeIn>
+      )}
     </div>
   );
 }

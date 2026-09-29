@@ -1,4 +1,5 @@
-import { getEffectiveChannelsForUser, getUserName, getUserEmail } from "./db";
+import { getEffectiveChannelsForUser, getUserName, getUserEmail, getEnabledModulesForUser } from "./db";
+import { CHANNEL_MODULE, type NotificationEventType, type NotificationChannel } from "./notification-preferences";
 import { sendBriefPreCallEmail, sendCallAnalysisEmail } from "./email";
 import { appendBriefToCalendarEvent, hasCalendarWriteAccess } from "./google-calendar";
 import { formatBriefAsMarkdown, type GeneratedBriefJson } from "./brief-generator";
@@ -35,6 +36,21 @@ export type BriefDispatchResult = {
   slack: string | null;
 };
 
+// Canaux choisis par l'utilisateur ET ouverts pour son organisation : une
+// préférence HubSpot ou Slack cochée ne sert que si le module CRM ou Slack
+// est actif (parcours client, lib/modules.ts). Sinon Brief écrirait dans le
+// CRM d'un client à qui l'on n'a pas encore présenté ce module.
+async function openChannels(userId: string, eventType: NotificationEventType): Promise<NotificationChannel[]> {
+  const [channels, modules] = await Promise.all([
+    getEffectiveChannelsForUser(userId, eventType),
+    getEnabledModulesForUser(userId),
+  ]);
+  return channels.filter((channel) => {
+    const required = CHANNEL_MODULE[channel];
+    return !required || modules.includes(required);
+  });
+}
+
 export async function dispatchBriefPreCall(
   userId: string,
   brief: GeneratedBriefJson,
@@ -42,7 +58,7 @@ export async function dispatchBriefPreCall(
 ): Promise<BriefDispatchResult> {
   const results: BriefDispatchResult = { email: null, calendar: null, hubspot: null, pipedrive: null, slack: null };
 
-  const channels = await getEffectiveChannelsForUser(userId, "brief_precall");
+  const channels = await openChannels(userId, "brief_precall");
   if (channels.length === 0) return results;
 
   const briefMarkdown = formatBriefAsMarkdown(brief);
@@ -213,7 +229,7 @@ export async function dispatchCallAnalysis(
 ): Promise<CallAnalysisDispatchResult> {
   const results: CallAnalysisDispatchResult = { email: null, hubspot: null, pipedrive: null, slack: null };
 
-  const channels = await getEffectiveChannelsForUser(userId, "analyse_postcall");
+  const channels = await openChannels(userId, "analyse_postcall");
   if (channels.length === 0) return results;
 
   const analysisUrl = `${APP_URL}/feedback/${callContext.callId}`;

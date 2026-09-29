@@ -1,5 +1,5 @@
 import { createHubSpotTask, hasHubSpotWriteAccess } from "./crm/hubspot";
-import { linkHubSpotTaskId, type CreatedTaskForHubSpot } from "./db";
+import { linkHubSpotTaskId, isModuleEnabledForUser, type CreatedTaskForHubSpot } from "./db";
 
 // Called after generateTasksFromTemplates (lib/db.ts) with whichever of the
 // newly-created tasks have push_to_hubspot enabled on their template. One
@@ -17,6 +17,9 @@ export async function pushNewTasksToHubSpot(
   contactEmail: string | null
 ): Promise<void> {
   if (tasks.length === 0 || !contactEmail) return;
+  // Rien n'est écrit dans le CRM tant que le module CRM n'est pas ouvert
+  // (parcours client, lib/modules.ts).
+  if (!(await isModuleEnabledForUser(userId, "crm"))) return;
 
   const hasAccess = await hasHubSpotWriteAccess(userId).catch(() => false);
   if (!hasAccess) return;
