@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, FileText, Video, Users, Settings, HelpCircle, LogOut, Sparkles, Menu, X } from "lucide-react";
+import { LayoutDashboard, FileText, Video, Users, Settings, HelpCircle, LogOut, Sparkles, Menu, X, Lock } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { fetchJsonOnce } from "@/lib/fetch-once";
 import type { ChromeState } from "@/lib/chrome-state";
@@ -66,6 +66,24 @@ function NavLink({
         </span>
       )}
     </Link>
+  );
+}
+
+// Entrée de l'accès complet montrée à une inscription libre (accès « briefs ») :
+// grisée, sans lien, avec un cadenas — pour faire savoir que la fonction
+// existe et se débloque, sans qu'elle mène nulle part. Contrairement à un
+// module fermé chez un client accompagné, qui reste invisible.
+function LockedNavItem({ label, icon: Icon }: { label: string; icon: LucideIcon }) {
+  return (
+    <div
+      aria-disabled="true"
+      title="Disponible avec l'accès complet"
+      className="flex cursor-not-allowed select-none items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm text-slate-400"
+    >
+      <Icon className="h-[15px] w-[15px] shrink-0" strokeWidth={1.75} />
+      <span className="flex-1">{label}</span>
+      <Lock className="h-3 w-3 shrink-0" />
+    </div>
   );
 }
 
@@ -219,6 +237,12 @@ export default function AppSidebar() {
                 }
               />
             ))}
+            {briefsOnly && (
+              <>
+                <LockedNavItem label="Analyse rendez-vous" icon={Video} />
+                <LockedNavItem label="Performance" icon={LayoutDashboard} />
+              </>
+            )}
           </div>
         </div>
 

@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import BriefPreview from "./BriefPreview";
+import WelcomeStep from "./WelcomeStep";
+import { useSession } from "next-auth/react";
 import { useModules } from "@/app/components/ModulesProvider";
 
 const SECTOR_SUGGESTIONS = [
@@ -115,14 +117,25 @@ export default function OnboardingPage() {
     needsCompany: false,
     briefsOnly: false,
   });
+  // Rien n'est affiché avant de savoir à quel compte on parle : sans ça, une
+  // inscription libre verrait l'étape 1 s'afficher puis céder la place à
+  // l'écran de bienvenue.
+  const [accountLoaded, setAccountLoaded] = useState(false);
   useEffect(() => {
     fetch("/api/onboarding")
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { needsCompany?: boolean; briefsOnly?: boolean } | null) => {
         if (data) setAccount({ needsCompany: data.needsCompany === true, briefsOnly: data.briefsOnly === true });
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setAccountLoaded(true));
   }, []);
+
+  // Inscription libre : un écran de bienvenue avant la première question.
+  const { data: session } = useSession();
+  const firstName = session?.user?.name?.trim().split(/\s+/)[0] ?? null;
+  const [welcomeDone, setWelcomeDone] = useState(false);
+  const showWelcome = account.needsCompany && !welcomeDone && step === 1;
 
   const [whatYouSell, setWhatYouSell] = useState("");
   const [icp, setIcp] = useState("");
@@ -303,6 +316,9 @@ export default function OnboardingPage() {
       </header>
 
       <main className="flex-1 flex items-center justify-center px-4 py-12">
+        {!accountLoaded ? null : showWelcome ? (
+          <WelcomeStep firstName={firstName} onStart={() => setWelcomeDone(true)} />
+        ) : (
         <div className="w-full max-w-4xl">
           {/* Progress */}
           <ProgressBar current={step} total={totalSteps} />
@@ -629,6 +645,7 @@ export default function OnboardingPage() {
             ))}
           </div>
         </div>
+        )}
       </main>
     </div>
   );
