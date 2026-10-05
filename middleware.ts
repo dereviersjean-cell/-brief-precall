@@ -1,7 +1,16 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
-import { blockingModuleForPath, modulesForPath, resolveEnabledModules, type ModuleKey } from "@/lib/modules";
+import {
+  blockingModuleForPath,
+  isApiClosedInBriefsAccess,
+  isPageOpenInBriefsAccess,
+  modulesForPath,
+  resolveAccessLevel,
+  resolveEnabledModules,
+  type AccessLevel,
+  type ModuleKey,
+} from "@/lib/modules";
 
 export const config = {
   matcher: [
@@ -33,6 +42,10 @@ export const config = {
     "/api/digest-preferences/:path*",
     "/api/slack/:path*",
     "/api/client-references/:path*",
+    // Branchement du bot d'enregistrement : fermé en accès « briefs »
+    // (inscription libre, lib/modules.ts). Les webhooks Recall du même
+    // préfixe arrivent sans session et passent sans requête.
+    "/api/recall/:path*",
   ],
 };
 
@@ -46,7 +59,26 @@ export const config = {
 // (migration 019) viennent de la même ligne, et une colonne nommée qui
 // n'existe pas encore ferait échouer toute la requête — donc sauter les
 // gardes ci-dessous. `*` rend ce qui existe.
-type GateInfo = { disabled: boolean; billingBlocked: boolean; modules: ModuleKey[] };
+//
+// `needsCompany` : inscription libre pas encore rattachée à une entreprise
+// (aucune organisation). `accessLevel` : 'briefs' pour une inscription libre,
+// terminée ou non (lib/modules.ts).
+type GateInfo = {
+  disabled: boolean;
+  billingBlocked: boolean;
+  modules: ModuleKey[];
+  accessLevel: AccessLevel;
+  needsCompany: boolean;
+};
+
+// Repli sur erreur d'infrastructure : rien ne se ferme.
+const OPEN_GATE: GateInfo = {
+  disabled: false,
+  billingBlocked: false,
+  modules: resolveEnabledModules(null),
+  accessLevel: "full",
+  needsCompany: false,
+};
 
 async function getUserGateInfo(userId: string): Promise<GateInfo> {
   const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=disabled_at,organizations(*)`;
@@ -60,12 +92,18 @@ async function getUserGateInfo(userId: string): Promise<GateInfo> {
     // Fail open on infra errors — these are soft gates (admin disable,
     // billing), not the primary auth boundary, so a Supabase hiccup
     // shouldn't lock everyone out.
-    if (!res.ok) return { disabled: false, billingBlocked: false, modules: resolveEnabledModules(null) };
+    if (!res.ok) return OPEN_GATE;
     const rows = (await res.json()) as {
       disabled_at: string | null;
-      organizations: { billing_status: string; enabled_modules?: string[] | null; training_enabled?: boolean | null } | null;
+      organizations: {
+        billing_status: string;
+        enabled_modules?: string[] | null;
+        training_enabled?: boolean | null;
+        access_level?: string | null;
+      } | null;
     }[];
     const row = rows[0];
+    const needsCompany = row != null && row.organizations == null;
     // "canceled" bloque au même titre que "blocked" — une résiliation coupe
     // l'accès immédiatement, pas de période de grâce (celle-ci ne s'applique
     // qu'aux échecs de paiement, cf. invoice.payment_failed dans le webhook).
@@ -73,10 +111,12 @@ async function getUserGateInfo(userId: string): Promise<GateInfo> {
     return {
       disabled: row?.disabled_at != null,
       billingBlocked: status === "blocked" || status === "canceled",
-      modules: resolveEnabledModules(row?.organizations),
+      modules: needsCompany ? [] : resolveEnabledModules(row?.organizations),
+      accessLevel: needsCompany ? "briefs" : resolveAccessLevel(row?.organizations),
+      needsCompany,
     };
   } catch {
-    return { disabled: false, billingBlocked: false, modules: resolveEnabledModules(null) };
+    return OPEN_GATE;
   }
 }
 
@@ -136,10 +176,12 @@ export async function middleware(request: NextRequest) {
   // préfixe partagé, comme /api/feedback/[id]/key-points), rien à faire ; sans
   // utilisateur, la route répond elle-même 401.
   if (request.nextUrl.pathname.startsWith("/api/")) {
-    if (modulesForPath(request.nextUrl.pathname).length === 0) return NextResponse.next();
+    const closedInBriefs = isApiClosedInBriefsAccess(request.nextUrl.pathname);
+    if (modulesForPath(request.nextUrl.pathname).length === 0 && !closedInBriefs) return NextResponse.next();
     const userId = await effectiveUserId(request, supabaseUserId);
     if (!userId) return NextResponse.next();
-    const { modules } = await getUserGateInfo(userId);
+    const { modules, accessLevel } = await getUserGateInfo(userId);
+    if (closedInBriefs && accessLevel === "briefs") return moduleNotFound(request);
     return blockingModuleForPath(request.nextUrl.pathname, modules) ? moduleNotFound(request) : NextResponse.next();
   }
 
@@ -186,14 +228,27 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Page d'un module désactivé. Les gardes ci-dessus portent sur la session ;
-  // les modules, sur l'utilisateur effectivement affiché (impersonation
-  // comprise) — une seule requête de plus, et seulement dans ce cas.
-  if (modulesForPath(request.nextUrl.pathname).length > 0) {
-    const userId = await effectiveUserId(request, supabaseUserId);
-    const modules = userId === supabaseUserId ? gate.modules : (await getUserGateInfo(userId!)).modules;
-    if (blockingModuleForPath(request.nextUrl.pathname, modules)) return moduleNotFound(request);
+  // Les gardes ci-dessus portent sur la session ; entreprise, niveau d'accès
+  // et modules, sur l'utilisateur effectivement affiché (impersonation
+  // comprise) — une requête de plus, et seulement en impersonation.
+  const userId = await effectiveUserId(request, supabaseUserId);
+  const view = userId === supabaseUserId ? gate : await getUserGateInfo(userId!);
+  const pathname = request.nextUrl.pathname;
+
+  // Inscription libre sans entreprise : l'onboarding d'abord, rien d'autre.
+  if (view.needsCompany && !pathname.startsWith("/onboarding")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/onboarding";
+    url.search = "";
+    return NextResponse.redirect(url);
   }
+
+  // Accès « briefs » : tout ce qui n'est pas le brief ramène au brief, sans
+  // message — comme un module fermé, le reste n'existe pas pour ce compte.
+  if (view.accessLevel === "briefs" && !isPageOpenInBriefsAccess(pathname)) return moduleNotFound(request);
+
+  // Page d'un module désactivé.
+  if (blockingModuleForPath(pathname, view.modules)) return moduleNotFound(request);
 
   return NextResponse.next();
 }

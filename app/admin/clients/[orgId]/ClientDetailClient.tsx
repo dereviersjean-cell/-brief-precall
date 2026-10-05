@@ -252,6 +252,7 @@ export default function ClientDetailClient({
             inParcours={overview.inParcours}
             available={detail.modulesAvailable}
             currentWeek={overview.parcours.week}
+            initialAccessLevel={overview.accessLevel}
           />
         </div>
         <div className="min-w-0 2xl:col-start-1">

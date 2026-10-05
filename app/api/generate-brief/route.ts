@@ -8,8 +8,9 @@ import { generateBrief, type GeneratedBriefJson } from "@/lib/brief-generator";
 import { enrichWithPappers } from "@/lib/pappers";
 import { fetchRecentNews } from "@/lib/news";
 import { enrichContact, buildContactCard } from "@/lib/apollo";
-import { getBriefByEventId, saveBrief, getUserProfile, withRetry } from "@/lib/db";
-import { checkRateLimit, retryAfterMinutes } from "@/lib/rate-limit";
+import { getAccessForUser, getBriefByEventId, saveBrief, getUserProfile, withRetry } from "@/lib/db";
+import { checkRateLimit, enforceDailyBriefQuota, retryAfterMinutes } from "@/lib/rate-limit";
+import { BRIEFS_ACCESS_DAILY_LIMIT } from "@/lib/sales-contact";
 import { dispatchBriefPreCall } from "@/lib/notifications-dispatcher";
 import { formatContactDisplayName } from "@/lib/format";
 
@@ -61,13 +62,26 @@ export async function POST(request: NextRequest) {
 
   const trimmed = cleanCompanyName(company);
 
-  let userId: string | null = null;
+  // Connexion obligatoire. Avant le 05/10/2026, un appel sans session
+  // continuait « sans cache ni persistance » : n'importe qui pouvait générer
+  // des briefs aux frais de Brief sans même un compte, et depuis l'ouverture
+  // des inscriptions plus rien ne justifie cette porte.
+  const session = await getServerSession(authOptions);
+  const auth = await requireActiveUser(session);
+  if (!auth.ok) return auth.response;
+  const userId: string = auth.userId;
+
+  // Inscription libre (lib/modules.ts) : entreprise obligatoire, et quota
+  // quotidien appliqué plus bas, après la relecture du cache.
+  let briefsOnly = false;
   try {
-    const session = await getServerSession(authOptions);
-    const auth = await requireActiveUser(session);
-    if (auth.ok) userId = auth.userId;
-  } catch {
-    // Session/compte non disponible ou désactivé — on continue sans cache ni persistance
+    const access = await getAccessForUser(userId);
+    if (access.needsCompany) {
+      return NextResponse.json({ error: "Indiquez d'abord le nom de votre entreprise." }, { status: 403 });
+    }
+    briefsOnly = access.accessLevel === "briefs";
+  } catch (err) {
+    console.error("[generate-brief] lecture du niveau d'accès échouée :", err);
   }
 
   // Rate limiting
@@ -122,6 +136,22 @@ export async function POST(request: NextRequest) {
       }
     } catch (err) {
       console.error("[generate-brief] Cache lookup failed:", err);
+    }
+  }
+
+  // Quota de l'accès « briefs » : ici et pas plus haut, pour ne décompter que
+  // les vraies générations (une régénération compte, une relecture non).
+  if (briefsOnly) {
+    const quota = await enforceDailyBriefQuota(userId, BRIEFS_ACCESS_DAILY_LIMIT);
+    if (!quota.allowed) {
+      return NextResponse.json(
+        {
+          error: `Vous avez utilisé vos ${BRIEFS_ACCESS_DAILY_LIMIT} briefs du jour. Le compteur repart à zéro à minuit.`,
+          retryAfterMs: quota.retryAfterMs,
+          quotaReached: true,
+        },
+        { status: 429 }
+      );
     }
   }
 

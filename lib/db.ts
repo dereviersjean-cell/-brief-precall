@@ -5,7 +5,7 @@ import { computeQuoteTotals } from "./quote-calc";
 import type { TranscriptJson } from "./recall";
 import type { NotificationEventType, NotificationChannel, NotificationPreference } from "./notification-preferences";
 import { coerceMeetingStageConfig, type MeetingStage, type MeetingStageConfig } from "./meeting-stage";
-import { resolveEnabledModules, type ModuleKey } from "./modules";
+import { resolveAccessLevel, resolveEnabledModules, type AccessLevel, type ModuleKey } from "./modules";
 
 export async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 500): Promise<T> {
   let lastError: unknown;
@@ -92,12 +92,11 @@ export async function resolveUserForLogin(params: {
     return { status: "ok", userId: byEmail.id, role: byEmail.role };
   }
 
-  // Inscription OUVERTE, choix produit de Jean le 16/09/2026 : la création
-  // du compte à la première connexion est conservée, revenant sur la
-  // fermeture posée la veille. À savoir : ce compte n'a pas
-  // d'organization_id, et seules les pages gardées par la facturation le
-  // bloquent — il peut donc générer des briefs (20/jour, lib/rate-limit.ts)
-  // aux frais de Brief. Si le coût devient visible, la fermeture consiste à
+  // Inscription OUVERTE (Jean, 16/09/2026, cadrée le 05/10/2026) : le compte
+  // est créé à la première connexion, sans organisation. Le middleware
+  // l'envoie alors nommer son entreprise (onboarding), qui crée une
+  // organisation en accès « briefs » : briefs seuls, 10 par jour
+  // (lib/modules.ts, lib/sales-contact.ts). Pour fermer l'inscription :
   // renvoyer ici { status: "not_invited" } (git log sur ce fichier).
   const { data: created, error: createError } = await supabaseAdmin
     .from("users")
@@ -1936,6 +1935,9 @@ export async function getEnabledModulesForUser(userId: string): Promise<ModuleKe
   if (error) return resolveEnabledModules(null);
   const org = (data as { organizations: { enabled_modules?: string[] | null; training_enabled?: boolean | null } | null } | null)
     ?.organizations;
+  // Sans organisation = inscription libre pas terminée (lib/modules.ts) :
+  // aucun module, donc ni bilan hebdo ni rien de ce qui sort de Brief.
+  if (data && !org) return [];
   return resolveEnabledModules(org ?? null);
 }
 
@@ -1972,6 +1974,75 @@ export async function setEnabledModulesForOrganization(organizationId: string, m
   const { error } = await supabaseAdmin
     .from("organizations")
     .update({ enabled_modules: modules, training_enabled: modules.includes("training") })
+    .eq("id", organizationId);
+  if (error) throw error;
+}
+
+// Ce que l'utilisateur affiché a le droit de voir : modules, niveau d'accès,
+// et s'il doit encore nommer son entreprise (inscription libre pas terminée).
+// Même lecture `organizations(*)` que le middleware, mêmes règles.
+export type UserAccess = { modules: ModuleKey[]; accessLevel: AccessLevel; needsCompany: boolean };
+
+export async function getAccessForUser(userId: string): Promise<UserAccess> {
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("organizations(*)")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  type OrgRow = { enabled_modules?: string[] | null; training_enabled?: boolean | null; access_level?: string | null };
+  const org = (data as { organizations: OrgRow | null } | null)?.organizations ?? null;
+  const needsCompany = data != null && org == null;
+  return {
+    modules: needsCompany ? [] : resolveEnabledModules(org),
+    accessLevel: needsCompany ? "briefs" : resolveAccessLevel(org),
+    needsCompany,
+  };
+}
+
+// Inscription libre : l'entreprise saisie à l'onboarding devient une
+// organisation en accès « briefs », modules tous fermés, et l'inscrit y est
+// rattaché comme commercial (l'admin le promeut le jour où l'équipe arrive).
+//
+// Une organisation par inscription, même nom ou pas : deux collègues qui
+// s'inscrivent séparément ne se voient pas — l'admin les regroupe.
+//
+// Concurrence : l'onboarding peut poster deux fois (enregistrement avant un
+// départ puis fin d'étape). Le rattachement ne prend que si l'utilisateur
+// n'a pas encore d'organisation ; sinon l'organisation tout juste créée est
+// supprimée, et la sienne est conservée.
+//
+// Lève si la migration 024 n'est pas passée : jamais d'accès complet par
+// défaut à une inscription libre.
+export async function attachSelfServeOrganization(userId: string, companyName: string): Promise<string> {
+  const { data: created, error: createError } = await supabaseAdmin
+    .from("organizations")
+    .insert({ name: companyName, access_level: "briefs", enabled_modules: [] })
+    .select("id")
+    .single();
+  if (createError) throw createError;
+  const orgId = (created as { id: string }).id;
+
+  const { data: attached, error: attachError } = await supabaseAdmin
+    .from("users")
+    .update({ organization_id: orgId, role: "commercial" })
+    .eq("id", userId)
+    .is("organization_id", null)
+    .select("organization_id");
+  if (attachError || !attached || attached.length === 0) {
+    await supabaseAdmin.from("organizations").delete().eq("id", orgId);
+    if (attachError) throw attachError;
+    const existing = await getUserOrganizationId(userId);
+    if (!existing) throw new Error("attachSelfServeOrganization: utilisateur introuvable");
+    return existing;
+  }
+  return orgId;
+}
+
+export async function setAccessLevelForOrganization(organizationId: string, accessLevel: AccessLevel): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("organizations")
+    .update({ access_level: accessLevel })
     .eq("id", organizationId);
   if (error) throw error;
 }

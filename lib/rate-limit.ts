@@ -222,3 +222,60 @@ export async function enforceAiGenerationLimit(
 
   return { allowed: true, retryAfterMs: 0 };
 }
+
+// Quota de briefs par JOUR CIVIL (heure de Paris) — accès « briefs » des
+// inscriptions libres (lib/modules.ts). Un jour civil plutôt qu'une fenêtre
+// glissante : « 10 par jour, remis à zéro à minuit » se comprend, « 10 sur les
+// dernières 24 h » oblige à se souvenir de l'heure de son premier brief.
+//
+// Ne compte que les GÉNÉRATIONS : l'appelant le place après la relecture du
+// cache, rouvrir un brief déjà prêt ne coûte rien et ne doit rien décompter.
+// Comptage partagé uniquement : le limiteur en mémoire repartirait de zéro à
+// chaque instance. Table injoignable → on laisse passer (même arbitrage que
+// checkSharedRateLimit), le limiteur en mémoire reste en amont.
+export async function enforceDailyBriefQuota(
+  userId: string,
+  max: number
+): Promise<{ allowed: boolean; retryAfterMs: number }> {
+  const now = new Date();
+  const dayStart = startOfParisDay(now);
+  const bucket = `brief-day:${userId}`;
+
+  const { count, error } = await supabaseAdmin
+    .from("rate_limit_events")
+    .select("id", { count: "exact", head: true })
+    .eq("bucket", bucket)
+    .gte("created_at", dayStart.toISOString());
+
+  if (error) {
+    console.warn("[rate-limit] quota quotidien indisponible, génération autorisée :", error.message);
+    return { allowed: true, retryAfterMs: 0 };
+  }
+
+  if ((count ?? 0) >= max) {
+    const nextDay = dayStart.getTime() + 24 * 60 * 60 * 1000;
+    return { allowed: false, retryAfterMs: Math.max(0, nextDay - now.getTime()) };
+  }
+
+  const { error: insertError } = await supabaseAdmin.from("rate_limit_events").insert({ bucket });
+  if (insertError) {
+    console.warn("[rate-limit] enregistrement du brief au quota échoué :", insertError.message);
+  }
+  return { allowed: true, retryAfterMs: 0 };
+}
+
+// Minuit à Paris pour l'instant donné. L'heure murale écoulée depuis minuit
+// est retirée de l'instant ; les jours de changement d'heure, le début de
+// journée glisse d'une heure — sans effet sur un quota quotidien.
+function startOfParisDay(now: Date): Date {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Paris",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
+  const elapsedMs = ((get("hour") * 60 + get("minute")) * 60 + get("second")) * 1000 + now.getMilliseconds();
+  return new Date(now.getTime() - elapsedMs);
+}

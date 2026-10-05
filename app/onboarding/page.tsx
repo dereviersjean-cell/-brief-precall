@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import BriefPreview from "./BriefPreview";
 import { useModules } from "@/app/components/ModulesProvider";
@@ -105,6 +105,24 @@ export default function OnboardingPage() {
     return Number.isInteger(requested) && requested >= 1 && requested <= 5 ? requested : 1;
   });
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Inscription libre (lib/modules.ts) : `needsCompany` tant que le compte
+  // n'est rattaché à aucune entreprise — le nom devient obligatoire et
+  // l'onboarding ne se saute pas. `briefsOnly` : ni agenda à brancher (pas
+  // d'enregistrement), ni références — trois étapes.
+  const [account, setAccount] = useState<{ needsCompany: boolean; briefsOnly: boolean }>({
+    needsCompany: false,
+    briefsOnly: false,
+  });
+  useEffect(() => {
+    fetch("/api/onboarding")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { needsCompany?: boolean; briefsOnly?: boolean } | null) => {
+        if (data) setAccount({ needsCompany: data.needsCompany === true, briefsOnly: data.briefsOnly === true });
+      })
+      .catch(() => {});
+  }, []);
 
   const [whatYouSell, setWhatYouSell] = useState("");
   const [icp, setIcp] = useState("");
@@ -175,7 +193,8 @@ export default function OnboardingPage() {
   // module lui était fermé.
   const { isEnabled } = useModules();
   const referencesEnabled = isEnabled("references");
-  const totalSteps = referencesEnabled ? STEPS.length : STEPS.length - 1;
+  const totalSteps = account.briefsOnly ? 3 : referencesEnabled ? STEPS.length : STEPS.length - 1;
+  const companyMissing = account.needsCompany && step === 3 && !companyName.trim();
   const hasRefContent = !!refFile || refText.trim().length > 0;
   const showPreview = step <= 3;
   const isLast = step === totalSteps;
@@ -186,22 +205,36 @@ export default function OnboardingPage() {
     }
   }
 
+  // Accès « briefs » : pas de /bienvenue, qui présente l'accès complet.
+  const afterOnboarding = account.briefsOnly ? "/brief" : "/bienvenue";
+
   async function handleFinish(skip = false) {
     setSaving(true);
+    setSaveError(null);
     try {
-      await fetch("/api/onboarding", {
+      const res = await fetch("/api/onboarding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // « Passer » envoie un profil vide : la ligne est créée (sinon /brief
         // renverrait ici), sans rien effacer de ce qui existe déjà.
         body: JSON.stringify(skip ? {} : filledProfile()),
       });
+      // Sans entreprise enregistrée, le middleware ramènerait ici : on reste
+      // et on dit pourquoi. Sinon best-effort, comme avant.
+      if (!res.ok && account.needsCompany) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        setSaveError(data.error ?? "Erreur lors de la sauvegarde. Réessayez.");
+        return;
+      }
     } catch {
-      // Best-effort — on redirige quoi qu'il arrive
+      if (account.needsCompany) {
+        setSaveError("Impossible de contacter le serveur. Vérifiez votre connexion.");
+        return;
+      }
     } finally {
       setSaving(false);
-      router.push("/bienvenue");
     }
+    router.push(afterOnboarding);
   }
 
   async function handleImport() {
@@ -258,12 +291,14 @@ export default function OnboardingPage() {
             </div>
             <span className="font-semibold text-slate-900">Brief</span>
           </div>
-          <button
-            onClick={() => handleFinish(true)}
-            className="text-sm text-slate-400 hover:text-slate-600 transition-colors"
-          >
-            Ignorer l&apos;onboarding
-          </button>
+          {!account.needsCompany && (
+            <button
+              onClick={() => handleFinish(true)}
+              className="text-sm text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              Ignorer l&apos;onboarding
+            </button>
+          )}
         </div>
       </header>
 
@@ -346,16 +381,21 @@ export default function OnboardingPage() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Nom commercial
+                    {account.needsCompany ? "Nom de votre entreprise" : "Nom commercial"}
                   </label>
                   <input
                     type="text"
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                     autoFocus
+                    required={account.needsCompany}
+                    maxLength={200}
                     placeholder="Ex : Acme Solutions"
                     className="w-full px-3.5 py-2.5 border border-border rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
                   />
+                  {account.needsCompany && (
+                    <p className="mt-1.5 text-xs text-slate-400">Obligatoire : votre compte Brief est rattaché à cette entreprise.</p>
+                  )}
                 </div>
 
                 <div>
@@ -508,15 +548,20 @@ export default function OnboardingPage() {
             <div className="flex items-center justify-between mt-8">
               {!isLast ? (
                 <>
+                  {companyMissing ? (
+                    <span />
+                  ) : (
+                    <button
+                      onClick={advance}
+                      className="text-sm text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      Passer
+                    </button>
+                  )}
                   <button
                     onClick={advance}
-                    className="text-sm text-slate-400 hover:text-slate-600 transition-colors"
-                  >
-                    Passer
-                  </button>
-                  <button
-                    onClick={advance}
-                    className="flex items-center gap-2 brand-gradient text-white text-sm font-semibold px-6 py-2.5 rounded-lg hover:brightness-110 transition-colors"
+                    disabled={companyMissing}
+                    className="flex items-center gap-2 brand-gradient text-white text-sm font-semibold px-6 py-2.5 rounded-lg hover:brightness-110 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Continuer
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -544,7 +589,7 @@ export default function OnboardingPage() {
                   )}
                   <button
                     onClick={step === 5 && hasRefContent ? handleImport : () => handleFinish(false)}
-                    disabled={saving || refLoading}
+                    disabled={saving || refLoading || companyMissing}
                     className="flex items-center gap-2 brand-gradient text-white text-sm font-semibold px-7 py-2.5 rounded-lg hover:brightness-110 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {refLoading ? "Import en cours…" : step === 5 && hasRefContent ? "Importer et terminer →" : "Terminer →"}
@@ -552,6 +597,7 @@ export default function OnboardingPage() {
                 </div>
               )}
             </div>
+            {saveError && <p className="mt-3 text-sm text-red-600">{saveError}</p>}
           </div>
 
           {/* L'aperçu n'accompagne que les étapes de profil : sur l'agenda et
@@ -573,7 +619,7 @@ export default function OnboardingPage() {
 
           {/* Step dots */}
           <div className="flex items-center justify-center gap-2 mt-6">
-            {STEPS.map((s) => (
+            {STEPS.slice(0, totalSteps).map((s) => (
               <div
                 key={s.step}
                 className={`w-1.5 h-1.5 rounded-full transition-all ${

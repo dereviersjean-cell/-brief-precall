@@ -9,6 +9,9 @@ import { Calendar, Plus, ArrowRight, Sparkles, Users, X } from "lucide-react";
 import StatTile from "@/app/dashboard/StatTile";
 import FadeIn from "@/app/dashboard/FadeIn";
 import CompanyLogo from "@/app/components/CompanyLogo";
+import TalkToSales from "@/app/components/TalkToSales";
+import { useModules } from "@/app/components/ModulesProvider";
+import { BRIEFS_ACCESS_DAILY_LIMIT, SALES_CONTACT } from "@/lib/sales-contact";
 import { GENERIC_EMAIL_DOMAINS, companyDomainFromEmail } from "@/lib/company-domain";
 
 interface CalendarEvent {
@@ -654,6 +657,7 @@ export default function BriefToolClient() {
   const [modalDefaultCompany, setModalDefaultCompany] = useState("");
   const [recentBriefs, setRecentBriefs] = useState<StoredBrief[]>([]);
   const [showAddMeetingModal, setShowAddMeetingModal] = useState(false);
+  const { briefsOnly } = useModules();
 
   // Redirect to onboarding if authenticated but no profile yet
   useEffect(() => {
@@ -776,6 +780,17 @@ export default function BriefToolClient() {
 
   const feedContent = (
     <>
+      {/* Inscription libre (accès « briefs ») : ce qui existe au-delà, et à
+          qui en parler. */}
+      {briefsOnly && (
+        <div className="mb-6">
+          <TalkToSales
+            variant="banner"
+            description={`Votre accès comprend ${BRIEFS_ACCESS_DAILY_LIMIT} briefs par jour. Enregistrement et analyse de vos rendez-vous, emails de suivi, coaching de l'équipe : ${SALES_CONTACT.firstName} vous montre le reste de Brief en 30 minutes.`}
+          />
+        </div>
+      )}
+
       {/* Connect Google Calendar banner */}
       {!isAuthenticated && status !== "loading" && (
         <div className="bg-[color:var(--lavender)] border border-[color:var(--lavender-strong)] rounded-2xl p-4 mb-6 flex items-center justify-between gap-4 flex-wrap">

@@ -124,6 +124,14 @@ function NewClientForm({ onCreated }: { onCreated: (id: string) => void }) {
 }
 
 function ParcoursCell({ client }: { client: ClientOverview }) {
+  if (client.accessLevel === "briefs") {
+    return (
+      <div>
+        <p className="text-sm text-slate-700">Inscription libre</p>
+        <p className="text-xs text-slate-400 mt-0.5">Briefs uniquement · à passer en accès complet</p>
+      </div>
+    );
+  }
   if (!client.inParcours) {
     return (
       <div>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell, ChevronRight } from "lucide-react";
 import GlobalSearch from "./GlobalSearch";
+import { useModules } from "./ModulesProvider";
 
 // Porté du mockup Lovable (app-shell.tsx TopBar), juillet 2026. Le champ de
 // recherche est resté désactivé jusqu'au 31/07/2026 — il est maintenant
@@ -64,6 +65,7 @@ function buildCrumbs(pathname: string): string[] {
 export default function TopBar() {
   const pathname = usePathname();
   const crumbs = buildCrumbs(pathname);
+  const fullAccess = useModules().briefsOnly === false;
 
   return (
     <div className="brief-ui sticky top-0 z-10 border-b border-border/80 bg-white/70 backdrop-blur-xl">
@@ -77,19 +79,24 @@ export default function TopBar() {
           ))}
         </nav>
 
-        <div className="ml-auto flex items-center gap-2">
-          <div data-tour="topbar-search">
-            <GlobalSearch />
+        {/* Recherche (contacts, calls) et notifications n'existent qu'en
+            accès complet : en accès « briefs », elles mèneraient à des pages
+            fermées (lib/modules.ts). */}
+        {fullAccess && (
+          <div className="ml-auto flex items-center gap-2">
+            <div data-tour="topbar-search">
+              <GlobalSearch />
+            </div>
+            <Link
+              href="/notifications"
+              title="Notifications"
+              data-tour="nav-notifications"
+              className="grid h-9 w-9 place-items-center rounded-lg border border-border bg-white/60 text-slate-600 hover:bg-white hover:text-slate-900 transition-colors"
+            >
+              <Bell className="h-4 w-4" />
+            </Link>
           </div>
-          <Link
-            href="/notifications"
-            title="Notifications"
-            data-tour="nav-notifications"
-            className="grid h-9 w-9 place-items-center rounded-lg border border-border bg-white/60 text-slate-600 hover:bg-white hover:text-slate-900 transition-colors"
-          >
-            <Bell className="h-4 w-4" />
-          </Link>
-        </div>
+        )}
       </div>
     </div>
   );

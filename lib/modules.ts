@@ -139,7 +139,9 @@ export function isModuleKey(value: unknown): value is ModuleKey {
 // tout reste actif, comme avant — sauf Entraînement, qui suit l'ancien
 // interrupteur `training_enabled`. Dès que l'account manager règle les
 // modules d'une organisation, la liste devient explicite et fait seule foi.
-// Pas d'organisation (compte isolé) : tout est actif.
+// `null` ici = organisation illisible (erreur d'infrastructure) : tout reste
+// ouvert. Un utilisateur SANS organisation, lui, n'a aucun module — c'est une
+// inscription libre pas terminée ; les appelants le traitent avant.
 export function resolveEnabledModules(
   org: { enabled_modules?: string[] | null; training_enabled?: boolean | null } | null | undefined
 ): ModuleKey[] {
@@ -162,4 +164,46 @@ export function modulesForPath(pathname: string): ModuleKey[] {
 // Le premier module désactivé qui ferme ce chemin, ou null s'il est ouvert.
 export function blockingModuleForPath(pathname: string, enabled: readonly ModuleKey[]): ModuleKey | null {
   return modulesForPath(pathname).find((key) => !enabled.includes(key)) ?? null;
+}
+
+// ─── Niveau d'accès (inscription libre, 05/10/2026) ──────────────────────────
+//
+// Au-dessus des modules : une organisation née d'une inscription libre
+// (`access_level = 'briefs'`, migration 024) n'a QUE les briefs — pas
+// d'enregistrement des rendez-vous, pas d'analyse, pas de tableau de bord. Le
+// socle lui-même lui est fermé : un bot Recall est payé à l'heure, et ces
+// comptes ne paient rien. L'account manager la passe en 'full' depuis l'admin
+// le jour où elle devient cliente.
+//
+// Un compte SANS organisation est une inscription pas encore terminée : il est
+// traité comme 'briefs', et le middleware l'envoie d'abord nommer son
+// entreprise (onboarding).
+
+export type AccessLevel = "full" | "briefs";
+
+// Absent ou inconnu = 'full' : une organisation antérieure à la migration 024
+// est cliente par construction (créée par l'admin), jamais une inscription.
+export function resolveAccessLevel(org: { access_level?: string | null } | null | undefined): AccessLevel {
+  return org?.access_level === "briefs" ? "briefs" : "full";
+}
+
+// Pages ouvertes en accès « briefs ». Tout le reste du matcher renvoie vers
+// /brief.
+const BRIEFS_ACCESS_PAGES = ["/brief", "/onboarding", "/settings/general"];
+
+export function isPageOpenInBriefsAccess(pathname: string): boolean {
+  return BRIEFS_ACCESS_PAGES.some((p) => startsWithSegment(pathname, p));
+}
+
+// Routes d'API fermées en accès « briefs » : celles qui branchent le bot
+// d'enregistrement. Les webhooks de Recall (`/api/recall/webhook`,
+// `/api/recall/bot-webhook`) arrivent sans session et ne sont pas concernés.
+const BRIEFS_ACCESS_CLOSED_APIS = [
+  "/api/recall/google-oauth",
+  "/api/recall/microsoft-oauth",
+  "/api/recall/sync-and-schedule",
+];
+
+export function isApiClosedInBriefsAccess(pathname: string): boolean {
+  return BRIEFS_ACCESS_CLOSED_APIS.some((p) => startsWithSegment(pathname, p));
 }

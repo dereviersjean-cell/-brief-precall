@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "./supabase";
-import { resolveEnabledModules, type ModuleKey } from "./modules";
+import { resolveAccessLevel, resolveEnabledModules, type AccessLevel, type ModuleKey } from "./modules";
 import { computeParcours, type ParcoursState } from "./parcours";
 
 // Espace « Suivi clients » de l'admin : un client = une organisation, vue
@@ -35,6 +35,9 @@ export type ClientOverview = {
   // parcours ; sinon client antérieur, tous modules ouverts.
   inParcours: boolean;
   modules: ModuleKey[];
+  // 'briefs' = inscription libre (migration 024) : pas d'agenda à brancher,
+  // donc pas d'alerte d'agenda.
+  accessLevel: AccessLevel;
   parcours: ParcoursState;
   billingStatus: string;
   members: {
@@ -57,6 +60,7 @@ type OrgRow = {
   account_manager?: string | null;
   next_review_at?: string | null;
   parcours_started_at?: string | null;
+  access_level?: string | null;
 };
 
 type UserRow = {
@@ -119,13 +123,14 @@ export async function getClientsOverview(now: Date = new Date(), organizationId?
       return !seenRecently && !workedRecently;
     });
 
+    const accessLevel = resolveAccessLevel(org);
     const inParcours = Array.isArray(org.enabled_modules);
     const modules = resolveEnabledModules(org);
     const parcours = computeParcours(org.parcours_started_at ?? null, modules, now);
     const billingStatus = org.billing_status ?? "none";
 
     const alerts: ClientAlert[] = [];
-    if (agendaDisconnected.length > 0) {
+    if (agendaDisconnected.length > 0 && accessLevel === "full") {
       alerts.push({ kind: "agenda_disconnected", severity: "danger", label: plural(agendaDisconnected.length, "agenda coupé", "agendas coupés") });
     }
     if (billingStatus === "blocked" || billingStatus === "canceled") {
@@ -133,10 +138,14 @@ export async function getClientsOverview(now: Date = new Date(), organizationId?
     } else if (billingStatus === "grace_period") {
       alerts.push({ kind: "billing", severity: "warning", label: "Paiement en échec" });
     }
-    if (inParcours && parcours.late && parcours.nextModule) {
+    // Une inscription libre n'est pas accompagnée : ni module en retard, ni
+    // point à planifier tant que l'account manager ne l'a pas passée en
+    // accès complet.
+    const followed = inParcours && accessLevel === "full";
+    if (followed && parcours.late && parcours.nextModule) {
       alerts.push({ kind: "module_late", severity: "danger", label: `${parcours.nextModule.label} en retard` });
     }
-    if (inParcours && !parcours.finished) {
+    if (followed && !parcours.finished) {
       if (!org.next_review_at) {
         alerts.push({ kind: "review_missing", severity: "warning", label: "Point non planifié" });
       } else if (new Date(org.next_review_at).getTime() < now.getTime()) {
@@ -146,7 +155,7 @@ export async function getClientsOverview(now: Date = new Date(), organizationId?
     if (pending.length > 0) {
       alerts.push({ kind: "pending_invites", severity: "warning", label: plural(pending.length, "invitation en attente", "invitations en attente") });
     }
-    if (agendaMissing.length > 0) {
+    if (agendaMissing.length > 0 && accessLevel === "full") {
       alerts.push({ kind: "agenda_missing", severity: "warning", label: plural(agendaMissing.length, "agenda non branché", "agendas non branchés") });
     }
     if (inactive.length > 0) {
@@ -161,6 +170,7 @@ export async function getClientsOverview(now: Date = new Date(), organizationId?
       parcoursStartedAt: org.parcours_started_at ?? null,
       inParcours,
       modules,
+      accessLevel,
       parcours,
       billingStatus,
       members: {

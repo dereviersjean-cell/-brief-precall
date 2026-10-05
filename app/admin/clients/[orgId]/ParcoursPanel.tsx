@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MODULES, type ModuleKey } from "@/lib/modules";
+import { MODULES, type AccessLevel, type ModuleKey } from "@/lib/modules";
 import { PARCOURS_LAST_WEEK } from "@/lib/parcours";
 
 // Le parcours d'un client, semaine par semaine (document « Brief — Parcours
@@ -38,14 +38,17 @@ export default function ParcoursPanel({
   inParcours,
   available,
   currentWeek,
+  initialAccessLevel,
 }: {
   organizationId: string;
   initialModules: ModuleKey[];
   inParcours: boolean;
   available: boolean;
   currentWeek: number | null;
+  initialAccessLevel: AccessLevel;
 }) {
   const [modules, setModules] = useState<ModuleKey[]>(initialModules);
+  const [accessLevel, setAccessLevel] = useState<AccessLevel>(initialAccessLevel);
   const [explicit, setExplicit] = useState(inParcours);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +78,32 @@ export default function ParcoursPanel({
     }
   }
 
+  // Inscription libre (migration 024) : briefs uniquement tant que ce n'est
+  // pas basculé. Le client voit l'accès complet dès son retour sur l'onglet.
+  async function toggleAccess() {
+    const previous = accessLevel;
+    const next: AccessLevel = accessLevel === "full" ? "briefs" : "full";
+    setAccessLevel(next);
+    setPending(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/organizations/${organizationId}/access`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessLevel: next }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error ?? "Erreur lors de la mise à jour.");
+      }
+    } catch (err) {
+      setAccessLevel(previous);
+      setError(err instanceof Error ? err.message : "Erreur lors de la mise à jour.");
+    } finally {
+      setPending(false);
+    }
+  }
+
   const weeks = Array.from({ length: PARCOURS_LAST_WEEK + 1 }, (_, week) => week);
   const onDemand = MODULES.filter((m) => m.week === null);
 
@@ -87,6 +116,22 @@ export default function ParcoursPanel({
         </span>
       </div>
       <p className="text-xs text-slate-400 mt-1 mb-4">Un module fermé est invisible pour le client : ni menu, ni page.</p>
+
+      <div
+        className={`mb-4 flex items-center justify-between gap-4 rounded-xl px-3 py-3 ${
+          accessLevel === "briefs" ? "bg-amber-50 ring-1 ring-amber-200" : "bg-slate-50"
+        }`}
+      >
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-slate-800">Accès complet</p>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {accessLevel === "briefs"
+              ? "Inscription libre : briefs uniquement, 10 par jour. Ouvrir donne l'agenda, l'enregistrement et l'analyse des calls."
+              : "Socle ouvert : agenda, enregistrement, analyse des calls, briefs sans le plafond de 10 par jour."}
+          </p>
+        </div>
+        <Toggle on={accessLevel === "full"} disabled={pending} label="Accès complet" onClick={() => void toggleAccess()} />
+      </div>
 
       {!available && (
         <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">

@@ -35,10 +35,16 @@ export default function SettingsTabs() {
   const { data: session } = useSession();
   const isManager = session?.role === "manager";
 
-  const { isEnabled } = useModules();
+  const { isEnabled, briefsOnly } = useModules();
 
-  // Un module fermé (lib/modules.ts) n'a pas d'onglet.
-  const items = NAV_ITEMS.filter((item) => (!item.managerOnly || isManager) && (!item.module || isEnabled(item.module)));
+  // Un module fermé (lib/modules.ts) n'a pas d'onglet. En accès « briefs »
+  // (inscription libre), seul Général existe — le middleware ferme les autres.
+  const items = NAV_ITEMS.filter(
+    (item) =>
+      (!item.managerOnly || isManager) &&
+      (!item.module || isEnabled(item.module)) &&
+      (briefsOnly === false || item.href === "/settings/general")
+  );
 
   return (
     <nav className="flex items-center gap-1 overflow-x-auto no-scrollbar border-b border-border">

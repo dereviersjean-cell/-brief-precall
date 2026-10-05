@@ -4,7 +4,7 @@
 - **Produit** : Brief = conversation intelligence pour commerciaux B2B FR (PME/ETI)
 - **Société** : Oliverlist — COO Jean de Reviers. Brief est le premier module d'un SaaS plus large.
 - **Positionnement** : marché FR, données légales Pappers, prix accessible vs Gong/Sybill
-- **Accès** : invitation uniquement, pas d'inscription libre
+- **Accès** : inscription libre depuis le 05/10/2026, limitée aux briefs (10/jour) — voir « Inscription libre » ; les clients accompagnés passent en accès complet depuis l'admin
 
 ## Vision produit
 - **Proposition de valeur unique (recentrage du 24 juillet 2026, décision du directeur commercial) : augmenter le taux de closing.** Pas d'éparpillement en features — tout ce qui ne sert pas directement « préparer / débriefer / progresser » est masqué (voir ci-dessous).
@@ -806,6 +806,19 @@ Les 16 appels IA actifs relus (méthode prompt-audit de la référence Claude). 
 - **`lib/client-review.ts`** : 7 derniers jours contre les 7 précédents. Chaque requête annexe tombe sur une valeur vide en cas d'erreur (un rapport partiel vaut mieux qu'une page d'erreur dix minutes avant un point). **Un score global de 0 = rien d'évaluable** (transcript vide) : exclu des moyennes et des calls à montrer. Aucun texte rédigé par un modèle : que des comptages.
 - Les objections de la semaine s'affichent même module fermé (c'est pour l'account manager), avec un avertissement de ne pas les montrer avant leur semaine ; le constat « objection la plus fréquente » n'est proposé que si le module est ouvert.
 - Référence eslint au 29/09/2026 : **16 problèmes**, identiques avant et après ce chantier. 82 tests.
+
+### Inscription libre — briefs seulement (05/10/2026) — migration 024
+
+N'importe qui peut se connecter avec Google ou Microsoft (pro ou perso) et utiliser Brief, **briefs uniquement**. Décision de Jean du 05/10/2026.
+- **Entreprise obligatoire** : un compte créé à la connexion n'a pas d'organisation. Le middleware le renvoie vers `/onboarding` tant que c'est le cas, et `/api/generate-brief` refuse (403). À l'étape 3, le nom saisi librement crée une organisation (`attachSelfServeOrganization`, lib/db.ts) : `access_level = 'briefs'`, modules tous fermés, inscrit rattaché comme commercial. **Une organisation par inscription**, même si le nom existe déjà — l'admin regroupe. Le rattachement ne prend que si l'utilisateur n'a pas encore d'organisation (double envoi de l'onboarding).
+- **Accès « briefs »** (`organizations.access_level`, `lib/modules.ts`) : au-dessus des modules, il ferme aussi le socle. Pages ouvertes : `/brief`, `/onboarding`, `/settings/general` ; tout le reste du matcher renvoie vers `/brief`. Routes de branchement de l'agenda Recall (`/api/recall/{google,microsoft}-oauth`, `sync-and-schedule`) en 404 — le bot est payé à l'heure. Sidebar réduite à Brief, recherche et cloche masquées, onglets de Paramètres réduits à Général.
+- **10 briefs par jour civil (heure de Paris) et par utilisateur** : `enforceDailyBriefQuota` (lib/rate-limit.ts), comptage PARTAGÉ dans `rate_limit_events`, placé APRÈS la relecture du cache — rouvrir un brief ne décompte rien, régénérer décompte. Limite et contact dans `lib/sales-contact.ts`.
+- **Contact commercial** : `TalkToSales` (barre latérale, haut de `/brief`, et à la place du message de limite quand le quota est atteint) — planning de rendez-vous Google de Hubert + mailto. Changer de contact = `lib/sales-contact.ts`.
+- **`/api/generate-brief` exige une session** : avant, un appel sans session générait quand même un brief, « sans cache ni persistance ».
+- **Passer un client en accès complet** : fiche client admin → Parcours → interrupteur « Accès complet » (`PUT /api/admin/organizations/[orgId]/access`). Les modules se règlent ensuite comme pour tout client. La liste des clients affiche « Inscription libre », sans alertes d'agenda ni de point à planifier.
+- **Un utilisateur sans organisation n'a plus aucun module** (il les avait tous : règle des anciens « comptes isolés », dont il n'existait plus aucun en base). Sinon le bilan hebdo IA partait aussi aux inscriptions pas terminées.
+- **Sans la migration 024, l'inscription ne se termine pas** (la création de l'organisation échoue) : volontaire, jamais d'accès complet par défaut. Les organisations existantes restent en `full` (défaut de la colonne).
+- **Microsoft** : l'app Azure de connexion (`beaef359…`) est DÉJÀ en « Tous les utilisateurs de compte Microsoft » (vérifié le 05/10/2026) ; seule `AZURE_AD_TENANT_ID=common` sur Vercel restait à poser (elle valait l'id du tenant Oliverlist, ce qui fermait la porte à tout autre compte). **Limite réelle** : Azure affiche « End users cannot grant consent to newly registered multitenant apps without verified publishers ». Les comptes personnels (Outlook, Hotmail) passent ; un compte Microsoft 365 d'une autre entreprise verra « Approbation de l'administrateur requise », sauf si son administrateur consent pour son organisation. Lever la limite = vérification de l'éditeur (identifiant Microsoft AI Cloud Partner Program), qui suppose une société.
 
 ### Où en est le code
 

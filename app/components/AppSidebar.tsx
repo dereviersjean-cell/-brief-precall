@@ -8,6 +8,8 @@ import { LayoutDashboard, FileText, Video, Users, Settings, HelpCircle, LogOut, 
 import type { LucideIcon } from "lucide-react";
 import { fetchJsonOnce } from "@/lib/fetch-once";
 import type { ChromeState } from "@/lib/chrome-state";
+import { useModules } from "./ModulesProvider";
+import TalkToSales from "./TalkToSales";
 
 type OrgStatus = {
   organizationName: string | null;
@@ -117,6 +119,11 @@ export default function AppSidebar() {
   const userEmail = session?.user?.email ?? "";
 
   const isManager = session?.role === "manager";
+  // Inscription libre : Brief seul, plus l'encart pour contacter Hubert. Les
+  // entrées de l'accès complet n'apparaissent qu'une fois `false` confirmé
+  // (cf. ModulesProvider).
+  const { briefsOnly } = useModules();
+  const fullAccess = briefsOnly === false;
 
   // « Performance » regroupe Vue d'ensemble + Historique + Entraînement,
   // navigables en onglets (app/components/PerformanceTabs.tsx) — Objections
@@ -134,8 +141,12 @@ export default function AppSidebar() {
 
   const commercialGroup: { href: string; label: string; icon: LucideIcon; active: boolean; badge?: number }[] = [
     { href: "/brief", label: "Brief", icon: FileText, active: briefActive },
-    { href: "/feedback", label: "Analyse rendez-vous", icon: Video, active: feedbackActive },
-    { href: "/dashboard", label: "Performance", icon: LayoutDashboard, active: performanceActive },
+    ...(fullAccess
+      ? [
+          { href: "/feedback", label: "Analyse rendez-vous", icon: Video, active: feedbackActive },
+          { href: "/dashboard", label: "Performance", icon: LayoutDashboard, active: performanceActive },
+        ]
+      : []),
   ];
 
   return (
@@ -167,7 +178,7 @@ export default function AppSidebar() {
       >
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-5 pt-5 pb-4 shrink-0">
-        <Link href="/dashboard" className="flex items-center gap-2.5 min-w-0 flex-1">
+        <Link href={fullAccess ? "/dashboard" : "/brief"} className="flex items-center gap-2.5 min-w-0 flex-1">
           <div className="relative grid h-9 w-9 place-items-center rounded-xl brand-gradient text-white text-sm font-semibold shadow-[var(--shadow-glow)] shrink-0">
             B
             <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-white" />
@@ -213,7 +224,7 @@ export default function AppSidebar() {
 
         {/* Équipe (manager only) — lien unique ; les sous-pages se naviguent
             via des onglets en haut de /team (TeamTabs.tsx). */}
-        {isManager && (
+        {isManager && fullAccess && (
           <div>
             <NavGroupLabel>Manager</NavGroupLabel>
             <div className="space-y-0.5">
@@ -225,6 +236,8 @@ export default function AppSidebar() {
 
       {/* Bottom — help, settings, sign out, user */}
       <div className="px-3 py-3 space-y-1.5 shrink-0">
+        {briefsOnly && <TalkToSales variant="compact" />}
+
         {orgStatus?.billingStatus === "trialing" && orgStatus.trialEndsAt && (
           <div className="relative overflow-hidden rounded-xl border border-border bg-gradient-to-br from-[color:var(--lavender)] to-white p-3">
             <div className="flex items-center gap-2 text-[11px] font-medium text-[color:var(--violet)]">
@@ -239,6 +252,7 @@ export default function AppSidebar() {
           </div>
         )}
 
+        {fullAccess && (
         <Link
           href="/help"
           className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-[11.5px] font-medium hover:bg-slate-50 transition-colors ${
@@ -248,9 +262,12 @@ export default function AppSidebar() {
           <HelpCircle className="h-3 w-3" />
           Aide
         </Link>
+        )}
 
+        {/* /settings/general et non /settings : la racine ne fait que
+            rediriger, et elle est hors des pages ouvertes en accès « briefs ». */}
         <Link
-          href="/settings"
+          href="/settings/general"
           className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-[11.5px] font-medium hover:bg-slate-50 transition-colors ${
             settingsActive ? "text-[color:var(--violet)]" : "text-slate-600"
           }`}

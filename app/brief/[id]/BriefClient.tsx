@@ -8,6 +8,7 @@ import type { CallHistoryItem } from "@/lib/db";
 import { Target, MapPin, Clock, History, Building2, Mail, ExternalLink } from "lucide-react";
 import { StatusChip } from "@/app/components/ui/ui-bits";
 import CompanyLogo from "@/app/components/CompanyLogo";
+import TalkToSales from "@/app/components/TalkToSales";
 import { companyDomainFromEmail } from "@/lib/company-domain";
 
 function formatDateTime(iso: string) {
@@ -569,7 +570,9 @@ export default function BriefClient({
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAiGenerated, setIsAiGenerated] = useState(!!meeting.brief);
-  const [rateLimited, setRateLimited] = useState<{ message: string; retryAfterMs: number } | null>(null);
+  // `quotaReached` : plafond quotidien de l'accès « briefs » (inscription
+  // libre) — on propose alors de parler à Hubert plutôt que d'attendre.
+  const [rateLimited, setRateLimited] = useState<{ message: string; retryAfterMs: number; quotaReached: boolean } | null>(null);
 
   // Renseigner / corriger le contact d'un brief déjà généré. L'adresse était
   // optionnelle à la création d'un RDV manuel et rien ne permettait de la
@@ -676,7 +679,11 @@ export default function BriefClient({
       });
       const data = await res.json();
       if (res.status === 429) {
-        setRateLimited({ message: data.error ?? "Limite atteinte.", retryAfterMs: data.retryAfterMs ?? 0 });
+        setRateLimited({
+          message: data.error ?? "Limite atteinte.",
+          retryAfterMs: data.retryAfterMs ?? 0,
+          quotaReached: data.quotaReached === true,
+        });
         return;
       }
       if (!res.ok) {
@@ -808,8 +815,20 @@ export default function BriefClient({
           </div>
         </div>
 
+        {/* Plafond quotidien de l'accès « briefs » : le contact commercial
+            plutôt qu'une simple attente. */}
+        {rateLimited?.quotaReached && (
+          <div className="mb-6">
+            <TalkToSales
+              variant="banner"
+              title={rateLimited.message}
+              description="Besoin de plus de briefs, ou de l'enregistrement et de l'analyse de vos rendez-vous ? Parlons-en."
+            />
+          </div>
+        )}
+
         {/* Rate limit banner */}
-        {rateLimited && (
+        {rateLimited && !rateLimited.quotaReached && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-start gap-3">
             <svg className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
