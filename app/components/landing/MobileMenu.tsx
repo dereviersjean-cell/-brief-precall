@@ -28,7 +28,7 @@ export function MobileMenu({ links }: { links: { href: string; label: string }[]
         aria-controls="landing-mobile-menu"
         aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
         onClick={() => setOpen((v) => !v)}
-        className="grid h-10 w-10 place-items-center rounded-full text-land-ink hover:bg-land-sunken active:scale-[0.97] transition-transform"
+        className="grid h-11 w-11 place-items-center rounded-full text-land-ink hover:bg-land-sunken active:scale-[0.97] transition-transform"
       >
         {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>

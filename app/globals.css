@@ -389,3 +389,23 @@ body {
     }
   }
 }
+
+/* Surfaces du navigateur sur la landing : sélection, focus clavier, titres
+   équilibrés. Ce sont les détails qui restent aux couleurs du système quand
+   personne ne les règle. */
+.landing ::selection {
+  background: var(--land-accent-soft);
+  color: var(--land-ink);
+}
+.landing :focus-visible {
+  outline: 2px solid var(--land-accent);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+.landing h1,
+.landing h2 {
+  text-wrap: balance;
+}
+.landing p {
+  text-wrap: pretty;
+}

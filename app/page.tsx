@@ -99,6 +99,10 @@ const NAV_LINKS = [
 // Rayons : surfaces en 16 px, boutons et pastilles en pilule. Rien d'autre.
 const BTN_PRIMARY =
   "inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-land-accent px-5 text-[15px] font-medium text-land-accent-ink transition-[filter,transform] hover:brightness-110 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-land-accent";
+// Variante de la barre de navigation : plus compacte sur desktop, mais 40 px
+// minimum au doigt.
+const BTN_NAV =
+  "inline-flex h-10 items-center justify-center whitespace-nowrap rounded-full bg-land-accent px-4 text-[14px] font-medium text-land-accent-ink transition-[filter,transform] hover:brightness-110 active:scale-[0.98] md:h-9";
 const BTN_SECONDARY =
   "inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-full border border-land-line bg-land-surface px-5 text-[15px] font-medium text-land-ink transition-[background-color,transform] hover:bg-land-sunken active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-land-accent";
 
@@ -129,8 +133,8 @@ function Nav() {
           <Link href="/login" className="hidden md:inline-flex text-[14px] font-medium text-land-muted hover:text-land-ink transition-colors">
             Se connecter
           </Link>
-          <Link href="/login" className={`${BTN_PRIMARY} h-9 px-4 text-[14px]`}>
-            Essayer Brief
+          <Link href="/login" className={BTN_NAV}>
+            Essayer gratuitement
           </Link>
           <MobileMenu links={NAV_LINKS} />
         </div>
@@ -150,14 +154,14 @@ function BriefSample() {
       <div className="land-enter rounded-2xl border border-land-line bg-land-surface shadow-[var(--land-shadow)]">
         <div className="flex items-center justify-between gap-3 px-5 pt-5 sm:px-6">
           <span className="text-[13px] font-medium text-land-accent">Brief pré-call</span>
-          <span className="font-mono text-[12.5px] text-land-muted">jeu. 14:30</span>
+          <span className="font-mono text-[12.5px] text-land-muted">Jeudi 14:30</span>
         </div>
         <div className="px-5 pb-5 pt-2 sm:px-6">
           <div className="text-[19px] font-semibold tracking-tight text-land-ink">Présentation Valdor Emballages</div>
           <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
             <span className="text-[14px] text-land-ink">Claire Mercier, directrice des opérations</span>
             <span className="inline-flex items-center rounded-full bg-land-accent-soft px-2 py-0.5 text-[11.5px] font-semibold text-land-accent">
-              Décide
+              Décisionnaire
             </span>
           </div>
         </div>
@@ -183,9 +187,9 @@ function BriefSample() {
               <li>Recrutement d&apos;un responsable supply chain.</li>
             </ul>
           </div>
-          <div className="border-l-2 border-land-accent pl-3.5">
-            <div className="text-[12px] font-medium text-land-muted">Accroche suggérée</div>
-            <p className="mt-1 text-[14px] leading-snug text-land-ink">
+          <div>
+            <div className="text-[12px] font-medium text-land-accent">Accroche suggérée</div>
+            <p className="mt-1 text-[15px] font-medium leading-snug text-land-ink">
               « Vous ouvrez une ligne à Angers : qui pilote la montée en charge côté approvisionnement ? »
             </p>
           </div>
@@ -210,17 +214,16 @@ function Hero() {
   return (
     <section className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-4 pb-16 pt-12 sm:px-6 md:pt-16 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:pb-24 lg:pt-20">
       <div>
-        <p className="text-[14px] font-medium text-land-accent">Brief, pour les équipes commerciales B2B</p>
-        <h1 className="mt-4 text-[42px] font-semibold leading-[1.04] tracking-[-0.035em] text-land-ink sm:text-[54px] lg:text-[62px]">
+        <h1 className="text-balance text-[42px] font-semibold leading-[1.04] tracking-[-0.035em] text-land-ink sm:text-[54px] lg:text-[62px]">
           Augmentez votre taux de closing.
         </h1>
         <p className="mt-5 max-w-[34rem] text-[18px] leading-relaxed text-land-muted">
-          Brief prépare chaque rendez-vous, débriefe chaque call selon votre méthode et fait circuler ce qui gagne
-          dans l&apos;équipe.
+          Brief prépare chaque rendez-vous de vos commerciaux, débriefe chaque call selon votre méthode et fait
+          circuler ce qui gagne dans l&apos;équipe.
         </p>
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <Link href="/login" className={BTN_PRIMARY}>
-            Essayer Brief <ArrowRight className="h-4 w-4" />
+            Essayer gratuitement <ArrowRight className="h-4 w-4" />
           </Link>
           <a href="#methode" className={BTN_SECONDARY}>
             Voir la méthode
@@ -715,7 +718,7 @@ function FinalCTA() {
             href="/login"
             className="inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-full bg-land-accent-ink px-5 text-[15px] font-medium text-land-accent transition-transform hover:opacity-95 active:scale-[0.98]"
           >
-            Essayer Brief <ArrowRight className="h-4 w-4" />
+            Essayer gratuitement <ArrowRight className="h-4 w-4" />
           </Link>
           <a
             href={SALES_CONTACT.bookingUrl}
