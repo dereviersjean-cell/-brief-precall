@@ -419,6 +419,34 @@ body {
 .landing .land-rise {
   animation: land-rise 1100ms cubic-bezier(0.16, 1, 0.3, 1) 150ms both;
 }
+/* Haut de page illustré (12/10/2026, sur le modèle de lemlist et Clay) :
+   l'illustration se pose (léger recul d'échelle, 1,8 s), le texte est là
+   tout de suite, puis le brief monte et vient chevaucher le bas du panneau.
+   Le brief devient opaque en 300 ms : une carte à demi transparente posée sur
+   l'illustration faisait brouillon. Mouvement réduit : fondus seulement. */
+@keyframes land-art-settle {
+  from { transform: scale(1.08); }
+}
+@keyframes land-card-rise {
+  from { transform: translateY(96px); }
+}
+.landing .land-hero-art {
+  animation: land-art-settle 1800ms cubic-bezier(0.16, 1, 0.3, 1) both, land-fade 600ms ease-out both;
+}
+.landing .land-hero-text {
+  animation: land-in 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 90ms);
+}
+.landing .land-card-rise {
+  animation: land-card-rise 1300ms cubic-bezier(0.16, 1, 0.3, 1) 350ms both, land-fade 300ms ease-out 350ms both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing .land-hero-art,
+  .landing .land-hero-text,
+  .landing .land-card-rise {
+    animation: land-fade 250ms ease-out both;
+  }
+}
 .landing .land-write {
   -webkit-mask-image: linear-gradient(90deg, #000 45%, transparent 55%);
   mask-image: linear-gradient(90deg, #000 45%, transparent 55%);
@@ -587,161 +615,76 @@ body {
   }
 }
 
-/* Scène de la séquence : une nappe de couleur derrière l'objet, qui prend la
-   couleur du moment lu (bleu, corail, soleil). */
-.landing .land-stage-glow {
-  transition: background-color 700ms cubic-bezier(0.16, 1, 0.3, 1);
+/* Haut de page épinglé : retiré le 12/10/2026. Il animait la hauteur des
+   blocs du brief (grid-template-rows) au défilement — un recalcul de mise en
+   page à chaque image — et faisait chevaucher la séquence d'un écran entier :
+   Jean trouvait l'enchaînement saccadé. Le haut de page est désormais une
+   section normale ; seule la séquence des trois moments reste collante, et
+   elle n'anime plus que l'opacité et la position (composition seule). */
+
+/* Clic du curseur de démonstration (PerformanceDashboard) : un anneau qui
+   s'élargit et s'efface. */
+@keyframes land-click {
+  from { transform: scale(0.4); opacity: 0.9; }
+  to { transform: scale(1.6); opacity: 0; }
+}
+.landing .land-click {
+  animation: land-click 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* Haut de page épinglé (HeroStage.tsx). Grand écran seulement, et seulement
-   si le navigateur gère les timelines de défilement : la section est plus
-   haute que l'écran, son contenu reste collé sous la barre, et le défilement
-   joue le produit — le titre s'efface (0–25 %), le brief se soulève et se lit
-   en entier (0–35 %, lecture jusqu'à 48 %), puis se replie (sections
-   secondaires refermées) en se posant à l'emplacement exact de l'objet de
-   l'étape « Préparer » (48–80 %), pendant que l'introduction de « La
-   méthode » apparaît à gauche ; enfin relais (98–100 %) : le brief s'efface,
-   la séquence — qui chevauche la fin du haut de page — apparaît au même
-   endroit, frise comprise.
-   Toutes les distances et échelles sont MESURÉES par HeroStage (--hero-tx,
-   --hero-ty, --hero-fit, --hero-dx, --hero-dy, --hero-dock), en partant du
-   coin haut gauche (transform-origin 0 0) — jamais posées en dur. */
-@keyframes land-hero-copy {
-  to { opacity: 0; transform: translateY(-56px) scale(0.97); }
+/* Schéma en orbite de la section Stack : deux anneaux qui tournent en sens
+   inverse, les logos contre-tournent pour rester droits. Transform seul. */
+@keyframes land-orbit {
+  to { transform: rotate(360deg); }
 }
-@keyframes land-hero-sheet {
-  0% { transform: translate(0, 0) scale(1); opacity: 1; }
-  35%, 48% { transform: translate(var(--hero-tx, 0px), var(--hero-ty, 0px)) scale(var(--hero-fit, 1)); }
-  80%, 100% { transform: translate(var(--hero-dx, 0px), var(--hero-dy, 0px)) scale(var(--hero-dock, 0.6)); }
-  98% { opacity: 1; }
-  100% { opacity: 0; }
+.landing .land-orbit {
+  animation: land-orbit 80s linear infinite;
 }
-/* Repli : les sections secondaires se REFERMENT (hauteur animée via la grille
-   0fr) au lieu de s'effacer en laissant des trous dans la carte. */
-@keyframes land-hero-collapse {
-  to { grid-template-rows: 0fr; opacity: 0; }
+.landing .land-orbit-reverse {
+  animation-direction: reverse;
+  animation-duration: 110s;
 }
-@keyframes land-hero-bridge {
-  from { opacity: 0; transform: translateY(32px); }
+.landing .land-orbit .land-orbit-counter {
+  animation: land-orbit 80s linear infinite reverse;
 }
-@keyframes land-hero-fade-out {
-  to { opacity: 0; transform: scale(0.96); }
+.landing .land-orbit-reverse .land-orbit-counter {
+  animation: land-orbit 110s linear infinite;
 }
-@keyframes land-stage-in {
-  from { opacity: 0; pointer-events: none; }
-  to { opacity: 1; pointer-events: auto; }
-}
-.landing .land-hero-collapse {
-  display: grid;
-  grid-template-rows: 1fr;
-}
-.landing .land-hero-collapse > * {
-  min-height: 0;
-  overflow: hidden;
-}
-.landing .land-hero-bridge,
-.landing .land-journey-spacer {
-  display: none;
-}
-@media (min-width: 1024px) {
-  @supports (animation-timeline: view()) {
-    @media (prefers-reduced-motion: no-preference) {
-      /* La timeline du haut de page doit être visible de la séquence, qui
-         n'en descend pas. */
-      .landing main {
-        timeline-scope: --hero;
-      }
-      .landing .land-hero-track {
-        height: 190vh;
-        view-timeline: --hero block;
-      }
-      .landing .land-hero-pin {
-        position: sticky;
-        top: 4rem;
-        height: calc(100vh - 4rem);
-        overflow: clip;
-      }
-      .landing .land-hero-copy {
-        animation: land-hero-copy linear both;
-        animation-timeline: --hero;
-        animation-range: contain 0% contain 25%;
-      }
-      .landing .land-hero-sheet {
-        transform-origin: 0 0;
-        animation: land-hero-sheet linear both;
-        animation-timeline: --hero;
-        animation-range: contain 0% contain 100%;
-      }
-      /* L'aurore cède la place quand le brief se replie : la zone du relais
-         reste claire, comme la séquence qui prend la suite. */
-      .landing .land-hero-aurora {
-        animation: land-hero-fade-out linear both;
-        animation-timeline: --hero;
-        animation-range: contain 40% contain 62%;
-      }
-      .landing .land-hero-collapse {
-        animation: land-hero-collapse linear both;
-        animation-timeline: --hero;
-        animation-range: contain 48% contain 80%;
-      }
-      .landing .land-hero-bridge {
-        display: block;
-        animation: land-hero-bridge linear both;
-        animation-timeline: --hero;
-        /* Après que le brief a dégagé la colonne de gauche (mesuré : bord
-           gauche de la carte au-delà du titre vers 76 %). */
-        animation-range: contain 74% contain 90%;
-      }
-      /* Relais. « La méthode » remonte d'un écran pour chevaucher la fin du
-         haut de page : quand celui-ci se libère, la scène collante de la
-         séquence est déjà en place. Une cale d'un écran en tête de la colonne
-         de texte évite que les étapes ne passent par-dessus le haut de page ;
-         la scène, elle, reste invisible jusqu'au relais. */
-      .landing .land-method {
-        margin-top: calc(-100vh + 4rem);
-        border-top-color: transparent;
-      }
-      .landing .land-journey-spacer {
-        display: block;
-        height: calc(100vh - 4rem);
-      }
-      .landing [data-journey-pin] {
-        animation: land-stage-in linear both;
-        animation-timeline: --hero;
-        animation-range: contain 98% contain 100%;
-      }
-      /* Une seule introduction visible à la fois : celle du haut de page en
-         mode épinglé, celle de la section sinon. */
-      .landing .land-method-intro {
-        display: none;
-      }
-    }
+@media (prefers-reduced-motion: reduce) {
+  .landing .land-orbit,
+  .landing .land-orbit .land-orbit-counter {
+    animation: none;
   }
 }
 
 /* Séquence « un deal, trois moments » : l'objet produit change d'état selon
-   l'étape lue. Sortie : léger recul, flou, fondu ; entrée : remonte et se
-   précise. Pas de glissement latéral, l'objet reste à sa place comme un
-   produit qu'on fait pivoter. */
+   l'étape lue, comme des cartes qui montent l'une après l'autre. Sortie :
+   rapide, l'objet s'efface en remontant ; entrée : un temps après, le
+   suivant arrive du bas et se pose. Sens inverse en remontant la page.
+   Opacité et position seulement (composition) : le flou de sortie
+   (filter: blur) faisait repeindre de gros blocs et accrocher la transition.
+   La transition appliquée est celle de l'état d'arrivée : d'où deux rythmes,
+   une sortie courte et une entrée plus longue, légèrement retardée. */
 .landing .land-stage-item {
   transition:
-    opacity 450ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 800ms cubic-bezier(0.16, 1, 0.3, 1),
-    filter 450ms cubic-bezier(0.16, 1, 0.3, 1);
+    opacity 460ms cubic-bezier(0.33, 1, 0.68, 1) 90ms,
+    transform 820ms cubic-bezier(0.16, 1, 0.3, 1) 40ms;
 }
 .landing .land-stage-item[data-active="false"] {
   opacity: 0;
-  transform: translateY(28px) scale(0.965);
-  filter: blur(8px);
+  transform: translateY(56px) scale(0.96);
   pointer-events: none;
+  transition:
+    opacity 240ms cubic-bezier(0.33, 1, 0.68, 1),
+    transform 520ms cubic-bezier(0.32, 0, 0.67, 0);
 }
 .landing .land-stage-item[data-active="false"][data-past="true"] {
-  transform: translateY(-28px) scale(0.965);
+  transform: translateY(-56px) scale(0.96);
 }
 /* À l'intérieur de l'objet actif, les lignes se cochent l'une après l'autre. */
 .landing .land-step-row {
   transition: opacity 400ms ease-out, transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
-  transition-delay: calc(var(--i, 0) * 140ms + 250ms);
+  transition-delay: calc(var(--i, 0) * 140ms + 350ms);
 }
 /* Seulement dans la scène collante : les objets placés sous leur texte
    (téléphone, tablette) restent toujours visibles. */
@@ -750,26 +693,111 @@ body {
   transform: translateY(8px);
   transition-delay: 0ms;
 }
-/* Frise de la séquence : remplie par paliers d'étape (transition), ou en
-   continu par la timeline de défilement de la colonne de texte quand le
-   navigateur la gère — l'animation l'emporte alors sur le style en ligne. */
-/* Départ à 15 % : la piste n'est jamais vide pendant qu'on lit la première
-   étape (mesuré : ~1/6, 1/2 et 5/6 de la piste au milieu de chaque étape). */
-@keyframes land-fill {
-  from { transform: scaleX(0.15); }
-  to { transform: scaleX(1); }
+
+/* Colonne de texte (grand écran) : l'étape lue est nette, les autres
+   s'estompent ; la pastille reste opaque pour masquer le rail qui passe
+   derrière. Pastille de l'étape lue : halo de sa couleur et léger grossissement ;
+   étape à venir : pastille vide. */
+@media (min-width: 64rem) {
+  .landing .land-step .land-step-text {
+    transition: opacity 500ms cubic-bezier(0.33, 1, 0.68, 1);
+  }
+  .landing .land-step:not([data-state="active"]) .land-step-text {
+    opacity: 0.35;
+  }
+  .landing .land-step-dot {
+    box-shadow: 0 0 0 6px var(--land-bg);
+    transition:
+      transform 600ms cubic-bezier(0.34, 1.4, 0.64, 1),
+      box-shadow 500ms cubic-bezier(0.16, 1, 0.3, 1),
+      background-color 400ms ease-out,
+      color 400ms ease-out;
+  }
+  .landing .land-step[data-state="active"] .land-step-dot {
+    transform: scale(1.12);
+    box-shadow: 0 0 0 6px var(--land-bg), 0 0 0 12px var(--tone-soft);
+  }
+  .landing .land-step[data-state="next"] .land-step-dot {
+    background-color: var(--land-surface) !important;
+    color: var(--land-faint);
+    box-shadow: 0 0 0 6px var(--land-bg), inset 0 0 0 2px var(--land-line);
+  }
 }
-.landing .land-journey-fill {
-  transform-origin: left center;
-  transition: transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
+
+/* Rail vertical : rempli par paliers d'étape (transition), ou en continu là
+   où le navigateur gère les timelines de défilement. `view-timeline-inset`
+   ramène la « fenêtre » de la timeline à une ligne au milieu de l'écran :
+   la piste est vide quand la pastille 1 passe ce milieu, pleine quand la
+   pastille 3 y arrive. L'animation l'emporte alors sur le style en ligne. */
+@keyframes land-fill-y {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+.landing .land-rail-fill {
+  transform-origin: center top;
+  transition: transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
-    .landing .land-journey-fill {
-      animation: land-fill linear both;
-      animation-timeline: --journey;
-      animation-range: contain 0% contain 100%;
+    .landing .land-rail {
+      view-timeline: --rail block;
+      view-timeline-inset: 50% 50%;
     }
+    .landing .land-rail-fill {
+      animation: land-fill-y linear both;
+      animation-timeline: --rail;
+      animation-range: cover 0% cover 100%;
+    }
+  }
+}
+
+/* Carrousel des témoignages (TestimonialCarousel.tsx) : fondu croisé, le
+   texte monte légèrement, le portrait se pose (léger recul d'échelle).
+   Barre de progression du sélecteur actif : 8 s, sa fin fait passer au
+   témoignage suivant ; en pause au survol, au focus et hors de l'écran. */
+@keyframes land-quote-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.landing .land-quote {
+  transition: opacity 500ms cubic-bezier(0.33, 1, 0.68, 1) 120ms;
+}
+.landing .land-quote[data-active="false"] {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 260ms cubic-bezier(0.33, 1, 0.68, 1);
+}
+.landing .land-quote .land-quote-text {
+  transition: transform 700ms cubic-bezier(0.16, 1, 0.3, 1) 120ms;
+}
+.landing .land-quote[data-active="false"] .land-quote-text {
+  transform: translateY(16px);
+  transition-delay: 0ms;
+}
+.landing .land-quote .land-quote-photo {
+  transition: transform 1200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.landing .land-quote[data-active="false"] .land-quote-photo {
+  transform: scale(1.06);
+}
+.landing .land-quote-progress {
+  transform-origin: left center;
+  animation: land-quote-progress 8s linear both;
+}
+.landing [data-inview="false"] .land-quote-progress,
+.landing .land-carousel:hover .land-quote-progress,
+.landing .land-carousel:focus-within .land-quote-progress {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing .land-quote-progress {
+    animation: none;
+    transform: scaleX(1);
+  }
+  .landing .land-quote .land-quote-text,
+  .landing .land-quote .land-quote-photo {
+    transition: none;
+    transform: none;
   }
 }
 
@@ -788,16 +816,18 @@ body {
     animation: land-fade 200ms ease-out both;
   }
   .landing .land-stage-item,
+  .landing .land-stage-item[data-active="false"],
   .landing .land-step-row,
+  .landing .land-step-dot,
   .landing .land-bar {
     transition-duration: 200ms;
     transition-property: opacity;
     transition-delay: 0ms;
   }
   .landing .land-stage-item[data-active="false"],
-  .landing .land-stage-item[data-active="false"][data-past="true"] {
+  .landing .land-stage-item[data-active="false"][data-past="true"],
+  .landing .land-step[data-state="active"] .land-step-dot {
     transform: none;
-    filter: none;
   }
 }
 

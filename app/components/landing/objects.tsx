@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
-import { Check, Clock, History, MapPin, Building2, Target, Play } from "lucide-react";
+import Image from "next/image";
+import { ValdorLogo, CartonnerieLogo } from "@/app/components/landing/brands";
+import { Check, Clock, History, MapPin, Target, Play } from "lucide-react";
 
 // Les aperçus produit de la landing. Chacun reprend la STRUCTURE RÉELLE d'un
 // écran de Brief — mêmes sections, même ordre, même densité, même ton que les
@@ -41,9 +43,15 @@ function ContactCard({ compact = false }: { compact?: boolean }) {
   return (
     <div>
       <div className="flex items-start gap-3">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-land-accent-soft text-[12px] font-bold text-land-accent">
-          CM
-        </span>
+        {/* Portrait généré par IA (Higgsfield, 12/10/2026) : Claire Mercier est
+            un contact fictif, l'aperçu le dit en légende. */}
+        <Image
+          src="/landing/people/avatar-claire.jpg"
+          alt=""
+          width={36}
+          height={36}
+          className="h-9 w-9 shrink-0 rounded-full bg-land-accent-soft object-cover"
+        />
         <div className="min-w-0">
           <div className="text-[14px] font-semibold leading-snug text-land-ink">Claire Mercier</div>
           <div className="text-[12.5px] leading-snug text-land-muted">Directrice des opérations</div>
@@ -68,9 +76,7 @@ function ContactCard({ compact = false }: { compact?: boolean }) {
             </li>
           </ul>
           <div className="mt-3 flex items-center gap-2.5 border-t border-land-line pt-3">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-land-sunken">
-              <Building2 className="h-4 w-4 text-land-faint" aria-hidden />
-            </span>
+            <ValdorLogo size={32} />
             <div className="min-w-0">
               <div className="text-[12.5px] font-semibold text-land-ink">VALDOR EMBALLAGES</div>
               <div className="text-[12px] text-land-faint">Emballage · 140{NB}personnes</div>
@@ -106,7 +112,7 @@ export function BriefSheet() {
   // (HeroStage) : ne reste que ce qu'on relit deux minutes avant l'appel.
   return (
     <figure className="mx-auto w-full max-w-[1040px]">
-      <div data-hero-card className={`land-rise overflow-hidden text-left ${SHEET}`}>
+      <div data-hero-card className={`land-card-rise overflow-hidden text-left ${SHEET}`}>
         <MeetingHeader
           status={
             <span className="grid text-[13px] font-medium">
@@ -123,8 +129,11 @@ export function BriefSheet() {
         />
 
         <div className="px-5 pt-6 sm:px-7">
-          <div className="land-write text-[24px] font-semibold tracking-[-0.02em] text-land-ink sm:text-[28px]" style={d(0)}>
-            Présentation Valdor Emballages
+          <div className="flex items-center gap-3 sm:gap-4">
+            <ValdorLogo size={44} className="land-pop" />
+            <div className="land-write text-[24px] font-semibold tracking-[-0.02em] text-land-ink sm:text-[28px]" style={d(0)}>
+              Présentation Valdor Emballages
+            </div>
           </div>
           <div className="land-write mt-4 rounded-2xl bg-land-accent-soft px-5 py-4" style={d(1)}>
             <Label tone="accent">Accroche suggérée</Label>
@@ -257,7 +266,7 @@ export function BriefSheet() {
         </div>
       </div>
       {/* Posée sur l'aurore : texte clair. */}
-      <figcaption className="mt-4 text-center text-[13px] font-medium text-white/85">
+      <figcaption className="mt-4 text-center text-[13px] text-land-faint">
         Exemple au format réel. Entreprise et contact fictifs.
       </figcaption>
     </figure>
@@ -304,7 +313,10 @@ export function SourcesObject() {
         }
       />
       <div className="space-y-5 px-6 py-5 sm:px-7">
-        <div className="text-[19px] font-semibold tracking-[-0.02em] text-land-ink">Présentation Valdor Emballages</div>
+        <div className="flex items-center gap-3">
+          <ValdorLogo size={36} />
+          <div className="text-[19px] font-semibold tracking-[-0.02em] text-land-ink">Présentation Valdor Emballages</div>
+        </div>
 
         <div className="rounded-2xl bg-land-accent-soft px-4 py-3.5">
           <div className="flex items-center justify-between gap-3">
@@ -350,7 +362,10 @@ export function SourcesObject() {
         </section>
 
         <section className="land-step-row border-t border-land-line pt-4" style={d(4)}>
-          <div className="text-[15px] font-semibold text-land-ink">Cartonnerie du Val</div>
+          <div className="flex items-center gap-2.5">
+            <CartonnerieLogo size={28} />
+            <div className="text-[15px] font-semibold text-land-ink">Cartonnerie du Val</div>
+          </div>
           <p className="mt-0.5 text-[12.5px] leading-relaxed text-land-muted">
             Votre référence client la plus proche · même métier, même montée en charge d&apos;un deuxième site.
           </p>
@@ -400,8 +415,12 @@ export function ObjectionObject() {
 
       <div className="land-step-row mx-4 mb-4 mt-5 rounded-2xl border border-land-line bg-land-bg px-4 py-4 sm:mx-5 sm:px-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="text-[13px] font-medium text-land-ink">
-            Thomas · Valdor Emballages · <span className="tabular-nums">2{NB}oct.</span>
+          <span className="inline-flex items-center gap-2 text-[13px] font-medium text-land-ink">
+            {/* Commercial fictif, portrait généré par IA. */}
+            <Image src="/landing/people/avatar-thomas.jpg" alt="" width={24} height={24} className="h-6 w-6 rounded-full object-cover" />
+            <span>
+              Thomas · Valdor Emballages · <span className="tabular-nums">2{NB}oct.</span>
+            </span>
           </span>
           <span className="rounded-full bg-land-warn/12 px-2 py-0.5 text-[11.5px] font-semibold text-land-warn">
             Partiellement traitée

@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 
-// Menu de la landing sous `lg`. La barre de navigation desktop masque ses
+// Menu du site public sous `lg` (depuis le 12/10/2026 il mène aux pages
+// Produit, Accompagnement… et non plus à des ancres d'une page unique). La barre de navigation desktop masque ses
 // ancres en dessous de 1024 px : sans ce tiroir, un visiteur sur téléphone
 // n'avait aucun moyen d'atteindre FAQ, Intégrations, etc. autrement qu'en
 // faisant défiler toute la page. Seuil relevé de `md` à `lg` le 12/10/2026 :
@@ -43,13 +44,13 @@ export function MobileMenu({ links }: { links: { href: string; label: string }[]
           <ul className="divide-y divide-land-line">
             {links.map((l) => (
               <li key={l.href}>
-                <a
+                <Link
                   href={l.href}
                   onClick={() => setOpen(false)}
                   className="block py-3.5 text-[16px] font-medium text-land-ink"
                 >
                   {l.label}
-                </a>
+                </Link>
               </li>
             ))}
           </ul>
