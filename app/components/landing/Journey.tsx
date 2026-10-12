@@ -23,6 +23,15 @@ export type JourneyStep = {
 // première étape reste affichée et tout le texte reste lisible.
 // Ancre sans accent : « #preparer » plutôt que « #préparer », qui s'encode
 // en %C3%A9 dans la barre d'adresse.
+// Une couleur par moment, la même partout où il apparaît (titre, frise,
+// nappe derrière l'objet) : Préparer en bleu, Débriefer en corail,
+// Progresser en soleil.
+const TONES = [
+  { text: "text-land-accent", soft: "var(--land-accent-soft)", solid: "var(--land-accent)" },
+  { text: "text-land-coral-ink", soft: "var(--land-coral-soft)", solid: "var(--land-coral)" },
+  { text: "text-land-sun-ink", soft: "var(--land-sun-soft)", solid: "var(--land-sun)" },
+];
+
 const slug = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 export function Journey({ steps }: { steps: JourneyStep[] }) {
@@ -91,7 +100,7 @@ export function Journey({ steps }: { steps: JourneyStep[] }) {
             {/* Un seul titre en deux tons, le verbe en bleu : pas d'étiquette
                 posée au-dessus du titre. */}
             <h3 className="text-[28px] font-semibold leading-[1.12] tracking-[-0.03em] md:text-[36px]">
-              <span className="text-land-accent">{step.verb}.</span>{" "}
+              <span className={TONES[i % TONES.length].text}>{step.verb}.</span>{" "}
               <span className="text-land-ink">{step.title}</span>
             </h3>
             <p className="mt-4 max-w-[52ch] text-[16.5px] leading-relaxed text-land-muted">{step.body}</p>
@@ -104,7 +113,11 @@ export function Journey({ steps }: { steps: JourneyStep[] }) {
               ))}
             </ul>
             {/* Mobile et tablette : l'objet suit son texte. */}
-            <div className="mt-10 lg:hidden" data-active="true">
+            <div
+              className="mt-10 rounded-[28px] p-2.5 sm:p-4 lg:hidden"
+              style={{ backgroundColor: TONES[i % TONES.length].soft }}
+              data-active="true"
+            >
               {step.object}
             </div>
           </article>
@@ -121,9 +134,14 @@ export function Journey({ steps }: { steps: JourneyStep[] }) {
               par paliers d'étape là où le navigateur ne la gère pas. */}
           <div className="mb-6">
             <div className="h-0.5 overflow-hidden rounded-full bg-land-line" aria-hidden>
+              {/* Le dégradé porte une information : on traverse les trois
+                  moments, chacun dans sa couleur. */}
               <div
-                className="land-journey-fill h-full w-full rounded-full bg-land-accent"
-                style={{ transform: `scaleX(${(active + 1) / steps.length})` }}
+                className="land-journey-fill h-full w-full rounded-full"
+                style={{
+                  transform: `scaleX(${(active + 1) / steps.length})`,
+                  backgroundImage: `linear-gradient(90deg, ${TONES.map((t) => t.solid).join(", ")})`,
+                }}
               />
             </div>
             <ol className="mt-3 grid grid-cols-3 gap-3" aria-label="Étapes du rendez-vous">
@@ -133,7 +151,7 @@ export function Journey({ steps }: { steps: JourneyStep[] }) {
                     href={`#${slug(step.verb)}`}
                     aria-current={active === i ? "step" : undefined}
                     className={`block text-[13.5px] font-medium transition-colors duration-300 ${
-                      active === i ? "text-land-ink" : "text-land-faint hover:text-land-muted"
+                      active === i ? TONES[i % TONES.length].text : "text-land-faint hover:text-land-muted"
                     }`}
                   >
                     {step.verb}
@@ -143,19 +161,27 @@ export function Journey({ steps }: { steps: JourneyStep[] }) {
               ))}
             </ol>
           </div>
-          <div ref={stageRef} data-journey-stage className="grid" style={{ zoom }}>
-            {steps.map((step, i) => (
-              <div
-                key={step.verb}
-                className="land-stage-item [grid-area:1/1]"
-                data-active={active === i}
-                data-past={i < active}
-                aria-hidden={active !== i}
-                inert={active !== i}
-              >
-                {step.object}
-              </div>
-            ))}
+          <div className="relative isolate">
+            {/* Nappe de couleur du moment lu, derrière l'objet. */}
+            <div
+              aria-hidden
+              className="land-stage-glow absolute -inset-x-8 -bottom-8 top-16 -z-10 rounded-[40px]"
+              style={{ backgroundColor: TONES[active % TONES.length].soft }}
+            />
+            <div ref={stageRef} data-journey-stage className="grid" style={{ zoom }}>
+              {steps.map((step, i) => (
+                <div
+                  key={step.verb}
+                  className="land-stage-item [grid-area:1/1]"
+                  data-active={active === i}
+                  data-past={i < active}
+                  aria-hidden={active !== i}
+                  inert={active !== i}
+                >
+                  {step.object}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

@@ -164,8 +164,20 @@ function Hero() {
         </div>
       }
       sheet={
-        <div className="px-4 pb-20 pt-14 sm:px-6 md:pt-16 lg:pb-0">
-          <BriefSheet />
+        <div className="relative px-4 pb-20 pt-14 sm:px-6 md:pt-16 lg:pb-16">
+          {/* Plaque de couleur sur laquelle le brief vient se poser : elle
+              commence sous le haut de la carte et la déborde en bas. */}
+          <div
+            aria-hidden
+            className="land-hero-aurora land-aurora absolute inset-x-3 bottom-4 top-[calc(3.5rem+120px)] rounded-[32px] sm:inset-x-6 md:top-[calc(4rem+140px)] lg:inset-x-[max(1.5rem,calc(50%-620px))]"
+          >
+            <i />
+            <i />
+            <i />
+          </div>
+          <div className="relative">
+            <BriefSheet />
+          </div>
         </div>
       }
       bridge={
@@ -246,13 +258,22 @@ function ProblemSection() {
           </p>
         </figure>
 
-        <ul className="mt-16 grid grid-cols-1 gap-8 border-t border-land-line pt-10 md:grid-cols-3 lg:mt-20">
+        <ul className="mt-16 grid grid-cols-1 gap-4 md:grid-cols-3 lg:mt-20">
           {[
             ["Zéro rendez-vous mal préparé", "Un dossier complet sur le prospect, prêt à lire en 3 minutes, avant chaque rendez-vous."],
             ["Zéro call non débriefé", "Chaque visio est analysée et notée selon votre playbook, sans réécouter 40 minutes."],
             ["Zéro leçon perdue", "Les objections bien traitées profitent à toute l'équipe, pas seulement à celui qui les a vécues."],
-          ].map(([title, body]) => (
-            <li key={title}>
+          ].map(([title, body], i) => (
+            // Chaque promesse porte la couleur du moment qui la tient
+            // (Préparer, Débriefer, Progresser), comme dans la séquence.
+            <li
+              key={title}
+              className={`land-lift rounded-[20px] p-6 ${["bg-land-accent-soft", "bg-land-coral-soft", "bg-land-sun-soft"][i]}`}
+            >
+              <span
+                aria-hidden
+                className={`mb-4 block h-1.5 w-10 rounded-full ${["bg-land-accent", "bg-land-coral", "bg-land-sun"][i]}`}
+              />
               <div className="text-[19px] font-semibold tracking-tight text-land-ink">{title}</div>
               <div className="mt-2 text-[15px] leading-relaxed text-land-muted">{body}</div>
             </li>
@@ -548,7 +569,10 @@ function FinalCTA() {
     // Gouttière portée par l'enveloppe, comme toutes les autres sections : le
     // bloc s'aligne sur la grille au lieu de la déborder.
     <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6 lg:pb-28">
-      <div className="rounded-[28px] bg-land-accent px-6 py-16 text-center text-land-accent-ink sm:px-12 md:py-24">
+      <div className="land-aurora relative rounded-[28px] px-6 py-16 text-center text-white sm:px-12 md:py-24">
+        <i aria-hidden />
+        <i aria-hidden />
+        <i aria-hidden />
         <h2 className="mx-auto max-w-[14ch] text-[40px] font-semibold leading-[1.02] tracking-[-0.04em] md:text-[64px]">
           Prêt à closer plus ?
         </h2>

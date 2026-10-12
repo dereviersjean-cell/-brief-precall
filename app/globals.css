@@ -310,6 +310,19 @@ body {
   --land-accent-ink: oklch(1 0 0);
   --land-accent-soft: oklch(0.955 0.025 265);
   --land-warn: oklch(0.55 0.13 55);
+  /* Palette complète (12/10/2026, « plus de couleurs ») : une couleur par
+     moment de la méthode, autour du bleu de marque — Préparer en bleu,
+     Débriefer en corail, Progresser en soleil — plus un lilas d'appui pour
+     les fonds. Chaque teinte a sa version douce (fonds) et, pour le corail et
+     le soleil, une version « encre » lisible en petit texte sur blanc. */
+  --land-coral: oklch(0.7 0.18 38);
+  --land-coral-ink: oklch(0.54 0.17 36);
+  --land-coral-soft: oklch(0.955 0.03 40);
+  --land-sun: oklch(0.86 0.15 88);
+  --land-sun-ink: oklch(0.5 0.11 70);
+  --land-sun-soft: oklch(0.97 0.045 92);
+  --land-lilac: oklch(0.74 0.11 295);
+  --land-lilac-soft: oklch(0.955 0.025 295);
   --land-shadow: 0 1px 2px oklch(0.19 0.02 266 / 0.04), 0 24px 48px -24px oklch(0.19 0.02 266 / 0.18);
   --land-shadow-lg: 0 1px 2px oklch(0.19 0.02 266 / 0.04), 0 40px 80px -32px oklch(0.25 0.06 265 / 0.28);
   font-family: var(--font-land-sans), ui-sans-serif, system-ui, sans-serif;
@@ -331,6 +344,14 @@ body {
     --land-accent-ink: oklch(0.16 0.03 266);
     --land-accent-soft: oklch(0.27 0.05 265);
     --land-warn: oklch(0.78 0.12 65);
+    --land-coral: oklch(0.72 0.16 38);
+    --land-coral-ink: oklch(0.78 0.13 40);
+    --land-coral-soft: oklch(0.27 0.05 38);
+    --land-sun: oklch(0.84 0.14 88);
+    --land-sun-ink: oklch(0.85 0.12 88);
+    --land-sun-soft: oklch(0.27 0.04 88);
+    --land-lilac: oklch(0.72 0.1 295);
+    --land-lilac-soft: oklch(0.26 0.04 295);
     --land-shadow: 0 1px 2px oklch(0 0 0 / 0.3), 0 24px 48px -24px oklch(0 0 0 / 0.6);
     --land-shadow-lg: 0 1px 2px oklch(0 0 0 / 0.3), 0 40px 80px -32px oklch(0 0 0 / 0.7);
   }
@@ -348,6 +369,14 @@ body {
   --color-land-accent-ink: var(--land-accent-ink);
   --color-land-accent-soft: var(--land-accent-soft);
   --color-land-warn: var(--land-warn);
+  --color-land-coral: var(--land-coral);
+  --color-land-coral-ink: var(--land-coral-ink);
+  --color-land-coral-soft: var(--land-coral-soft);
+  --color-land-sun: var(--land-sun);
+  --color-land-sun-ink: var(--land-sun-ink);
+  --color-land-sun-soft: var(--land-sun-soft);
+  --color-land-lilac: var(--land-lilac);
+  --color-land-lilac-soft: var(--land-lilac-soft);
 }
 
 /* Mouvement de la landing. Un seul moment fort — la séquence « un deal, trois
@@ -469,6 +498,101 @@ body {
   }
 }
 
+/* ─── Couleur en mouvement ───────────────────────────────────────────────────
+   Aurore : un fond de couleur vive sous le brief du haut de page (bleu,
+   lilas, corail, soleil) dont les nappes dérivent lentement — l'équivalent,
+   en CSS, des grands visuels colorés de lemlist ou Clay. Les nappes sont des
+   dégradés radiaux FLOUS déplacés par transform : rien n'est redessiné à
+   chaque image. Mouvement réduit : immobile. */
+@keyframes land-drift-a {
+  50% { transform: translate(8%, 6%) scale(1.12); }
+}
+@keyframes land-drift-b {
+  50% { transform: translate(-10%, -4%) scale(0.92); }
+}
+@keyframes land-drift-c {
+  50% { transform: translate(6%, -8%) scale(1.08); }
+}
+/* La position (relative ou absolue) est donnée à l'usage. */
+.landing .land-aurora {
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--land-accent);
+}
+.landing .land-aurora > i {
+  position: absolute;
+  z-index: -1;
+  width: 70%;
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  filter: blur(60px);
+  opacity: 0.9;
+  will-change: transform;
+}
+.landing .land-aurora > i:nth-child(1) {
+  left: -15%; top: -30%;
+  background: var(--land-lilac);
+  animation: land-drift-a 18s ease-in-out infinite;
+}
+.landing .land-aurora > i:nth-child(2) {
+  right: -20%; top: -10%;
+  background: var(--land-coral);
+  animation: land-drift-b 22s ease-in-out infinite;
+}
+.landing .land-aurora > i:nth-child(3) {
+  left: 25%; bottom: -55%;
+  background: var(--land-sun);
+  opacity: 0.75;
+  animation: land-drift-c 26s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing .land-aurora > i { animation: none; }
+}
+
+/* Défilé continu (intégrations) : la piste contient deux fois la même
+   liste et glisse d'une demi-largeur, en boucle. S'arrête au survol pour
+   qu'on puisse lire. Mouvement réduit : liste statique, retour à la ligne. */
+@keyframes land-marquee {
+  to { transform: translateX(-50%); }
+}
+.landing .land-marquee {
+  display: flex;
+  width: max-content;
+  animation: land-marquee 38s linear infinite;
+}
+.landing .land-marquee[data-reverse] {
+  animation-direction: reverse;
+}
+.landing .land-marquee-mask:hover .land-marquee {
+  animation-play-state: paused;
+}
+.landing .land-marquee-mask {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing .land-marquee { animation: none; width: auto; flex-wrap: wrap; }
+  .landing .land-marquee > [aria-hidden] { display: none; }
+}
+
+/* Cartes qui répondent au survol (pointeur fin seulement : pas d'état
+   collant sur tactile). */
+@media (hover: hover) and (pointer: fine) {
+  .landing .land-lift {
+    transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .landing .land-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--land-shadow-lg);
+  }
+}
+
+/* Scène de la séquence : une nappe de couleur derrière l'objet, qui prend la
+   couleur du moment lu (bleu, corail, soleil). */
+.landing .land-stage-glow {
+  transition: background-color 700ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 /* Haut de page épinglé (HeroStage.tsx). Grand écran seulement, et seulement
    si le navigateur gère les timelines de défilement : la section est plus
    haute que l'écran, son contenu reste collé sous la barre, et le défilement
@@ -499,6 +623,9 @@ body {
 }
 @keyframes land-hero-bridge {
   from { opacity: 0; transform: translateY(32px); }
+}
+@keyframes land-hero-fade-out {
+  to { opacity: 0; transform: scale(0.96); }
 }
 @keyframes land-stage-in {
   from { opacity: 0; pointer-events: none; }
@@ -544,6 +671,13 @@ body {
         animation: land-hero-sheet linear both;
         animation-timeline: --hero;
         animation-range: contain 0% contain 100%;
+      }
+      /* L'aurore cède la place quand le brief se replie : la zone du relais
+         reste claire, comme la séquence qui prend la suite. */
+      .landing .land-hero-aurora {
+        animation: land-hero-fade-out linear both;
+        animation-timeline: --hero;
+        animation-range: contain 40% contain 62%;
       }
       .landing .land-hero-collapse {
         animation: land-hero-collapse linear both;

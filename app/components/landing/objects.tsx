@@ -256,7 +256,8 @@ export function BriefSheet() {
           </aside>
         </div>
       </div>
-      <figcaption className="mt-4 text-center text-[13px] text-land-faint">
+      {/* Posée sur l'aurore : texte clair. */}
+      <figcaption className="mt-4 text-center text-[13px] font-medium text-white/85">
         Exemple au format réel. Entreprise et contact fictifs.
       </figcaption>
     </figure>
