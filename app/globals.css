@@ -345,3 +345,47 @@ body {
   --color-land-accent-soft: var(--land-accent-soft);
   --color-land-warn: var(--land-warn);
 }
+
+/* Mouvement de la landing — volontairement rare (grille find-animation-
+   opportunities, 12/10/2026). Trois endroits seulement :
+   1. l'exemple de brief du hero s'assemble une fois au chargement (montrer
+      ce que contient un brief) — le texte du hero, lui, ne bouge pas : le
+      retarder retarderait aussi la lecture et le LCP ;
+   2. les réponses de la FAQ s'ouvrent au lieu d'apparaître d'un coup ;
+   3. le menu mobile descend de la barre (classes `starting:` dans
+      MobileMenu.tsx).
+   Mouvement réduit : fondu seul, plus court — pas zéro. */
+@keyframes land-enter {
+  from { opacity: 0; transform: translateY(10px); }
+}
+@keyframes land-fade {
+  from { opacity: 0; }
+}
+.landing .land-enter {
+  animation: land-enter 600ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  animation-delay: calc(var(--i, 0) * 80ms + 120ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing .land-enter {
+    animation: land-fade 250ms ease-out both;
+    animation-delay: 0ms;
+  }
+}
+@supports (interpolate-size: allow-keywords) {
+  .landing details {
+    interpolate-size: allow-keywords;
+  }
+  .landing details::details-content {
+    height: 0;
+    overflow: clip;
+    transition: height 260ms cubic-bezier(0.23, 1, 0.32, 1), content-visibility 260ms allow-discrete;
+  }
+  .landing details[open]::details-content {
+    height: auto;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .landing details::details-content {
+      transition: none;
+    }
+  }
+}

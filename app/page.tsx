@@ -147,7 +147,7 @@ function BriefSample() {
   // prospect. Entreprise et personne fictives.
   return (
     <figure className="w-full">
-      <div className="rounded-2xl border border-land-line bg-land-surface shadow-[var(--land-shadow)]">
+      <div className="land-enter rounded-2xl border border-land-line bg-land-surface shadow-[var(--land-shadow)]">
         <div className="flex items-center justify-between gap-3 px-5 pt-5 sm:px-6">
           <span className="text-[13px] font-medium text-land-accent">Brief pré-call</span>
           <span className="font-mono text-[12.5px] text-land-muted">jeu. 14:30</span>
@@ -162,7 +162,7 @@ function BriefSample() {
           </div>
         </div>
 
-        <dl className="grid grid-cols-3 border-y border-land-line">
+        <dl className="land-enter grid grid-cols-3 border-y border-land-line" style={{ "--i": 2 } as React.CSSProperties}>
           {[
             ["Effectifs", "140"],
             ["CA 2025", "21 M€"],
@@ -175,7 +175,7 @@ function BriefSample() {
           ))}
         </dl>
 
-        <div className="space-y-4 px-5 py-5 sm:px-6">
+        <div className="land-enter space-y-4 px-5 py-5 sm:px-6" style={{ "--i": 4 } as React.CSSProperties}>
           <div>
             <div className="text-[12px] font-medium text-land-muted">Actualité</div>
             <ul className="mt-1.5 space-y-1 text-[14px] leading-snug text-land-ink">

@@ -36,7 +36,7 @@ export function MobileMenu({ links }: { links: { href: string; label: string }[]
         <nav
           id="landing-mobile-menu"
           aria-label="Menu principal"
-          className="absolute inset-x-0 top-full border-b border-land-line bg-land-bg px-4 pb-6 pt-2 shadow-[var(--land-shadow)]"
+          className="absolute inset-x-0 top-full border-b border-land-line bg-land-bg px-4 pb-6 pt-2 shadow-[var(--land-shadow)] transition-[opacity,translate] duration-200 ease-out starting:opacity-0 starting:-translate-y-1.5 motion-reduce:starting:translate-y-0"
         >
           <ul className="divide-y divide-land-line">
             {links.map((l) => (
