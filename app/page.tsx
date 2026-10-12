@@ -108,7 +108,7 @@ const BTN_SECONDARY =
 
 function BrandMark() {
   return (
-    <Link href="/" className="inline-flex items-center gap-2" aria-label="Brief, accueil">
+    <Link href="/" className="inline-flex h-11 items-center gap-2" aria-label="Brief, accueil">
       <span className="grid h-7 w-7 place-items-center rounded-lg bg-land-ink text-[13px] font-semibold text-land-bg">
         B
       </span>
@@ -560,9 +560,9 @@ function ManagerSection() {
               ].map(([s, v]) => (
                 <div key={s}>
                   <dt className="text-[13px] opacity-60">{s}</dt>
-                  <dd className={`mt-1 font-mono text-[30px] font-medium tracking-tight ${s === "R2" ? "" : "opacity-55"}`}>
+                  <dd className={`mt-1 font-mono text-[30px] font-medium tracking-tight ${s === "R2" ? "" : "opacity-70"}`}>
                     {v}
-                    <span className="text-[15px] opacity-60"> %</span>
+                    <span className="text-[15px]"> %</span>
                   </dd>
                 </div>
               ))}
