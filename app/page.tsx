@@ -34,6 +34,12 @@ import {
 // la bibliothèque d'objections), pas des captures d'écran simulées : pas de
 // fausse fenêtre ni de fausse barre latérale. Les chiffres qu'ils portent sont
 // des exemples et sont présentés comme tels.
+//
+// Typographie française : les espaces avant « : ; ? ! » et à l'intérieur des
+// guillemets sont des espaces insécables (U+00A0), invisibles dans l'éditeur.
+// Sans elles, un « ? » ou un « : » tombait seul en début de ligne (vu aux
+// tests Playwright du 12/10/2026). Les chiffres sont en Geist à chasse fixe
+// (`tabular-nums`) ; Geist Mono est réservé aux horodatages.
 
 const sans = Geist({ subsets: ["latin"], variable: "--font-land-sans", display: "swap" });
 const mono = Geist_Mono({ subsets: ["latin"], variable: "--font-land-mono", display: "swap" });
@@ -102,7 +108,7 @@ const BTN_PRIMARY =
 // Variante de la barre de navigation : plus compacte sur desktop, mais 40 px
 // minimum au doigt.
 const BTN_NAV =
-  "inline-flex h-10 items-center justify-center whitespace-nowrap rounded-full bg-land-accent px-4 text-[14px] font-medium text-land-accent-ink transition-[filter,transform] hover:brightness-110 active:scale-[0.98] md:h-9";
+  "inline-flex h-10 items-center justify-center whitespace-nowrap rounded-full bg-land-accent px-4 text-[14px] font-medium text-land-accent-ink transition-[filter,transform] hover:brightness-110 active:scale-[0.98] lg:h-9";
 const BTN_SECONDARY =
   "inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-full border border-land-line bg-land-surface px-5 text-[15px] font-medium text-land-ink transition-[background-color,transform] hover:bg-land-sunken active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-land-accent";
 
@@ -122,7 +128,7 @@ function Nav() {
     <header className="sticky top-0 z-30 border-b border-land-line bg-land-bg/85 backdrop-blur-md">
       <div className="relative mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         <BrandMark />
-        <nav aria-label="Sections de la page" className="hidden md:flex items-center gap-7 text-[14px] text-land-muted">
+        <nav aria-label="Sections de la page" className="hidden lg:flex items-center gap-7 text-[14px] text-land-muted">
           {NAV_LINKS.map((l) => (
             <a key={l.href} href={l.href} className="hover:text-land-ink transition-colors">
               {l.label}
@@ -130,7 +136,7 @@ function Nav() {
           ))}
         </nav>
         <div className="flex items-center gap-2 sm:gap-4">
-          <Link href="/login" className="hidden md:inline-flex text-[14px] font-medium text-land-muted hover:text-land-ink transition-colors">
+          <Link href="/login" className="hidden lg:inline-flex text-[14px] font-medium text-land-muted hover:text-land-ink transition-colors">
             Se connecter
           </Link>
           <Link href="/login" className={BTN_NAV}>
@@ -169,12 +175,12 @@ function BriefSample() {
         <dl className="land-enter grid grid-cols-3 border-y border-land-line" style={{ "--i": 2 } as React.CSSProperties}>
           {[
             ["Effectifs", "140"],
-            ["CA 2025", "21 M€"],
+            ["CA 2025", "21 M€"],
             ["Fondée", "1998"],
           ].map(([k, v], i) => (
             <div key={k} className={`px-5 py-3.5 sm:px-6 ${i > 0 ? "border-l border-land-line" : ""}`}>
               <dt className="text-[12px] text-land-muted">{k}</dt>
-              <dd className="mt-0.5 font-mono text-[16px] font-medium text-land-ink">{v}</dd>
+              <dd className="mt-0.5 text-[16px] font-medium tabular-nums text-land-ink">{v}</dd>
             </div>
           ))}
         </dl>
@@ -190,7 +196,7 @@ function BriefSample() {
           <div>
             <div className="text-[12px] font-medium text-land-accent">Accroche suggérée</div>
             <p className="mt-1 text-[15px] font-medium leading-snug text-land-ink">
-              « Vous ouvrez une ligne à Angers : qui pilote la montée en charge côté approvisionnement ? »
+              « Vous ouvrez une ligne à Angers : qui pilote la montée en charge côté approvisionnement ? »
             </p>
           </div>
           <div>
@@ -243,10 +249,10 @@ function ContextStrip() {
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-4 py-8 sm:px-6 md:grid-cols-[1.2fr_1fr] md:gap-12">
         <p className="text-[15px] leading-relaxed text-land-ink">
           Brief se connecte à votre agenda Google ou Outlook et à votre messagerie. La veille de chaque rendez-vous,
-          le brief est prêt ; après chaque visio, le call est analysé.
+          le brief est prêt ; après chaque visio, le call est analysé.
         </p>
         <p className="text-[14px] leading-relaxed text-land-muted">
-          Conçu pour les PME et ETI françaises : éditeurs SaaS, cabinets de conseil, agences B2B, industrie et
+          Conçu pour les PME et ETI françaises : éditeurs SaaS, cabinets de conseil, agences B2B, industrie et
           services, recrutement spécialisé. Hébergement européen, édité par Oliverlist.
         </p>
       </div>
@@ -271,7 +277,7 @@ function ProblemSection() {
             Votre meilleur commercial close 2 à 3 fois plus que les autres.
           </h2>
           <p className="mt-5 max-w-[60ch] text-[16px] leading-relaxed text-land-muted">
-            Pas une question de talent : il arrive mieux préparé, il connaît déjà les objections, et il ajuste son
+            Pas une question de talent : il arrive mieux préparé, il connaît déjà les objections, et il ajuste son
             discours à chaque étape. Ça s&apos;apprend, à condition que ce soit visible.
           </p>
           <ul className="mt-8 divide-y divide-land-line border-t border-land-line">
@@ -298,8 +304,8 @@ function ProblemSection() {
               <div key={name}>
                 <div className="flex items-baseline justify-between">
                   <span className={`text-[14px] ${top ? "font-medium text-land-ink" : "text-land-muted"}`}>{name}</span>
-                  <span className={`font-mono text-[15px] ${top ? "font-medium text-land-accent" : "text-land-muted"}`}>
-                    {pct} %
+                  <span className={`text-[15px] tabular-nums ${top ? "font-medium text-land-accent" : "text-land-muted"}`}>
+                    {pct} %
                   </span>
                 </div>
                 <div
@@ -340,8 +346,8 @@ function ReferencePreview() {
       <div className="mt-3 text-[16px] font-medium text-land-ink">Éditeur SaaS RH, 220 personnes</div>
       <div className="mt-1 text-[14px] text-land-muted">Même taille, même CRM, même sujet d&apos;attribution.</div>
       <p className="mt-4 border-t border-land-line pt-4 text-[14.5px] leading-relaxed text-land-ink">
-        « Une équipe avec exactement votre stack et le même sujet d&apos;attribution : on lui a fait gagner un
-        trimestre. »
+        « Une équipe avec exactement votre stack et le même sujet d&apos;attribution : on lui a fait gagner un
+        trimestre. »
       </p>
     </div>
   );
@@ -369,8 +375,8 @@ function ScorecardPreview() {
             </span>
           ))}
         </div>
-        <span className="font-mono text-[15px] font-medium text-land-ink">
-          3,4<span className="text-land-muted"> / 5</span>
+        <span className="text-[15px] font-medium tabular-nums text-land-ink">
+          3,4<span className="text-land-muted"> / 5</span>
         </span>
       </div>
       <ul className="space-y-3.5 px-5 py-5 sm:px-6">
@@ -378,7 +384,7 @@ function ScorecardPreview() {
           <li key={label}>
             <div className="flex items-baseline justify-between text-[14px]">
               <span className="text-land-muted">{label}</span>
-              <span className="font-mono text-land-ink">{v.toFixed(1).replace(".", ",")}</span>
+              <span className="tabular-nums text-land-ink">{v.toFixed(1).replace(".", ",")}</span>
             </div>
             <div className="mt-1.5 h-1.5 rounded-full bg-land-ink/80" style={{ width: `${(v / 5) * 100}%` }} />
           </li>
@@ -389,7 +395,7 @@ function ScorecardPreview() {
           <AlertTriangle className="h-3.5 w-3.5" /> Objection à <span className="font-mono">21:04</span>
         </div>
         <p className="mt-1 text-[14.5px] leading-snug text-land-ink">
-          « Notre équipe est déjà surchargée, une nouvelle intégration me fait peur. »
+          « Notre équipe est déjà surchargée, une nouvelle intégration me fait peur. »
         </p>
       </div>
     </div>
@@ -398,9 +404,9 @@ function ScorecardPreview() {
 
 function ObjectionLibraryPreview() {
   const rows = [
-    { o: "« On est déjà engagés avec un concurrent »", n: 23, good: 61, partial: 24 },
-    { o: "« C'est trop cher pour notre taille »", n: 17, good: 47, partial: 29 },
-    { o: "« Il faut que j'en parle à mon associé »", n: 14, good: 38, partial: 21 },
+    { o: "« On est déjà engagés avec un concurrent »", n: 23, good: 61, partial: 24 },
+    { o: "« C'est trop cher pour notre taille »", n: 17, good: 47, partial: 29 },
+    { o: "« Il faut que j'en parle à mon associé »", n: 14, good: 38, partial: 21 },
   ];
   return (
     <div className="rounded-2xl border border-land-line bg-land-surface">
@@ -412,7 +418,7 @@ function ObjectionLibraryPreview() {
           <li key={r.o} className="py-4">
             <div className="flex items-start justify-between gap-3">
               <p className="text-[14.5px] font-medium leading-snug text-land-ink">{r.o}</p>
-              <span className="shrink-0 font-mono text-[13px] text-land-muted">×{r.n}</span>
+              <span className="shrink-0 text-[13px] tabular-nums text-land-muted">×{r.n}</span>
             </div>
             <div className="mt-2.5 flex h-1.5 gap-0.5 overflow-hidden rounded-full" aria-hidden>
               <span className="bg-land-accent" style={{ width: `${r.good}%` }} />
@@ -420,7 +426,7 @@ function ObjectionLibraryPreview() {
               <span className="bg-land-line" style={{ width: `${100 - r.good - r.partial}%` }} />
             </div>
             <div className="mt-1.5 text-[12.5px] text-land-muted">
-              <span className="font-mono text-land-accent">{r.good} %</span> bien traitées
+              <span className="font-medium tabular-nums text-land-accent">{r.good} %</span> bien traitées
             </div>
           </li>
         ))}
@@ -436,7 +442,7 @@ const PILLARS: Pillar[] = [
     title: "Arrivez en rendez-vous en connaissant votre prospect.",
     body: "La veille de chaque rendez-vous, Brief compile un dossier prêt à lire en 3 minutes. Fini les 20 minutes éparpillées entre LinkedIn, Pappers et le site du prospect.",
     items: [
-      { icon: Building2, title: "Fiche entreprise sourcée", body: "Effectifs, CA, dirigeants, financement : depuis Pappers, LinkedIn et le web." },
+      { icon: Building2, title: "Fiche entreprise sourcée", body: "Effectifs, CA, dirigeants, financement : depuis Pappers, LinkedIn et le web." },
       { icon: Newspaper, title: "Signaux récents", body: "Levées de fonds, recrutements clés, mentions presse des 60 derniers jours." },
       { icon: Target, title: "La bonne référence client", body: "Brief pioche dans vos cas clients celui qui ressemble le plus au prospect." },
     ],
@@ -445,11 +451,11 @@ const PILLARS: Pillar[] = [
   {
     verb: "Débriefer",
     title: "Chaque call noté selon votre méthode et son étape.",
-    body: "Le bot rejoint la visio, transcrit en français, puis l'IA note le call selon votre playbook. Un R1 de découverte n'est pas jugé comme un R3 de closing : Brief reconnaît l'étape depuis le titre du rendez-vous.",
+    body: "Le bot rejoint la visio, transcrit en français, puis l'IA note le call selon votre playbook. Un R1 de découverte n'est pas jugé comme un R3 de closing : Brief reconnaît l'étape depuis le titre du rendez-vous.",
     items: [
       { icon: BarChart3, title: "Scoring sur votre playbook", body: "Vos dimensions, vos critères, votre pondération, importés depuis Notion ou un document." },
-      { icon: ClipboardCheck, title: "Analyse par étape R1, R2, R3", body: "Découverte, présentation, closing : des consignes dédiées à chaque étape du cycle." },
-      { icon: AlertTriangle, title: "Objections et signaux", body: "Objections, concurrents cités, temps de parole : détectés automatiquement." },
+      { icon: ClipboardCheck, title: "Analyse par étape R1, R2, R3", body: "Découverte, présentation, closing : des consignes dédiées à chaque étape du cycle." },
+      { icon: AlertTriangle, title: "Objections et signaux", body: "Objections, concurrents cités, temps de parole : détectés automatiquement." },
     ],
     preview: <ScorecardPreview />,
   },
@@ -459,7 +465,7 @@ const PILLARS: Pillar[] = [
     body: "Chaque objection traitée nourrit une bibliothèque commune. Le commercial junior répond comme s'il avait dix ans de maison, et vous savez enfin où les deals se perdent.",
     items: [
       { icon: MessageSquare, title: "Bibliothèque d'objections vivante", body: "Face à une objection, Brief retrouve les cas similaires déjà traités par l'équipe, et ce qui a marché." },
-      { icon: TrendingUp, title: "Ce qui marche, chiffré", body: "Pour chaque objection : combien de fois elle revient, et à quel point l'équipe la traite bien." },
+      { icon: TrendingUp, title: "Ce qui marche, chiffré", body: "Pour chaque objection : combien de fois elle revient, et à quel point l'équipe la traite bien." },
       { icon: BookOpen, title: "Scores comparés dans le temps", body: "Les dimensions du playbook où chacun progresse, et celles qui restent à travailler." },
     ],
     preview: <ObjectionLibraryPreview />,
@@ -474,10 +480,10 @@ function MethodSection() {
         <div className="lg:sticky lg:top-28 lg:self-start">
           <p className="text-[14px] font-medium text-land-accent">La méthode</p>
           <h2 className="mt-3 text-[32px] font-semibold leading-[1.1] tracking-[-0.03em] text-land-ink md:text-[42px]">
-            Trois moments. Un seul objectif : le closing.
+            Trois moments. Un seul objectif : le closing.
           </h2>
           <p className="mt-5 max-w-[46ch] text-[16px] leading-relaxed text-land-muted">
-            Brief s&apos;organise exactement comme le travail d&apos;un commercial : préparer le rendez-vous, le
+            Brief s&apos;organise exactement comme le travail d&apos;un commercial : préparer le rendez-vous, le
             débriefer, et progresser d&apos;un call à l&apos;autre. Rien d&apos;autre.
           </p>
           <ol className="mt-8 hidden space-y-2 lg:block">
@@ -534,13 +540,13 @@ function ManagerSection() {
             </h2>
             <p className="mt-4 max-w-[58ch] text-[16px] leading-relaxed text-land-muted">
               Vous définissez le playbook et les étapes de votre cycle. Brief les applique à chaque call et vous
-              remonte ce qui compte : qui progresse, où les deals se perdent.
+              remonte ce qui compte : qui progresse, où les deals se perdent.
             </p>
             <ul className="mt-6 space-y-2.5 text-[15px] text-land-ink">
               {[
                 "Playbook de notation éditable, avec des consignes propres à chaque étape R1, R2, R3.",
                 "Objections les plus fréquentes, et la façon dont l'équipe les traite.",
-                "Bilan hebdomadaire : forces, axes de progrès, deals à surveiller.",
+                "Bilan hebdomadaire : forces, axes de progrès, deals à surveiller.",
               ].map((t) => (
                 <li key={t} className="flex gap-2.5">
                   <Check className="mt-1 h-4 w-4 shrink-0 text-land-accent" />
@@ -550,8 +556,11 @@ function ManagerSection() {
             </ul>
           </div>
 
-          <figure className="flex flex-col rounded-2xl bg-land-ink p-6 text-land-bg sm:p-8">
-            <figcaption className="text-[14px] font-medium opacity-70">Où se perdent les deals</figcaption>
+          {/* Carte claire : pas de fond sombre sur la landing hors bloc final
+              (décision de Jean, juillet 2026). L'étape qui concentre les
+              pertes porte l'accent, les autres restent en retrait. */}
+          <figure className="flex flex-col rounded-2xl border border-land-line bg-land-surface p-6 sm:p-8">
+            <figcaption className="text-[14px] font-medium text-land-muted">Où se perdent les deals</figcaption>
             <dl className="mt-6 grid grid-cols-3 gap-3">
               {[
                 ["R1", "12"],
@@ -559,16 +568,26 @@ function ManagerSection() {
                 ["R3", "9"],
               ].map(([s, v]) => (
                 <div key={s}>
-                  <dt className="text-[13px] opacity-60">{s}</dt>
-                  <dd className={`mt-1 font-mono text-[30px] font-medium tracking-tight ${s === "R2" ? "" : "opacity-70"}`}>
+                  <dt className="text-[13px] text-land-muted">{s}</dt>
+                  <dd
+                    className={`mt-1 text-[30px] font-semibold tabular-nums tracking-tight ${
+                      s === "R2" ? "text-land-accent" : "text-land-muted"
+                    }`}
+                  >
                     {v}
-                    <span className="text-[15px]"> %</span>
+                    <span className="text-[16px] font-medium">{" "}%</span>
                   </dd>
+                  <div className="mt-4 flex h-20 items-end" aria-hidden>
+                    <div
+                      className={`w-full rounded-md ${s === "R2" ? "bg-land-accent" : "bg-land-line"}`}
+                      style={{ height: `${(Number(v) / 31) * 100}%` }}
+                    />
+                  </div>
                 </div>
               ))}
             </dl>
-            <p className="mt-auto pt-8 text-[14px] leading-relaxed opacity-75">
-              Exemple : le R2 concentre les pertes, les démos manquent de décideurs. Sujet du prochain point
+            <p className="mt-auto pt-8 text-[14px] leading-relaxed text-land-muted">
+              Exemple : le R2 concentre les pertes, les démos manquent de décideurs. Sujet du prochain point
               d&apos;équipe.
             </p>
           </figure>
@@ -577,7 +596,7 @@ function ManagerSection() {
             <figcaption className="text-[14px] font-medium text-land-accent">Bilan de la semaine, exemple</figcaption>
             <blockquote className="mt-3 max-w-[70ch] text-[18px] leading-relaxed text-land-ink md:text-[20px]">
               Les deals qui avancent ont tous eu une démo dans les 5 jours suivant la découverte. L&apos;objection
-              « intégration Salesforce » revient sur 3 deals qui stagnent.
+              « intégration Salesforce » revient sur 3 deals qui stagnent.
             </blockquote>
           </figure>
         </div>
@@ -595,8 +614,8 @@ function Testimonial() {
     <section className="border-t border-land-line">
       <figure className="mx-auto max-w-5xl px-4 py-20 sm:px-6 lg:py-28">
         <blockquote className="text-[26px] font-medium leading-[1.3] tracking-[-0.02em] text-land-ink md:text-[34px]">
-          « On sait enfin pourquoi on gagne un deal, et pourquoi on en perd. Nos commerciaux arrivent préparés, et
-          les objections ne prennent plus personne de court. »
+          « On sait enfin pourquoi on gagne un deal, et pourquoi on en perd. Nos commerciaux arrivent préparés, et
+          les objections ne prennent plus personne de court. »
         </blockquote>
         <figcaption className="mt-8 flex items-center gap-3">
           <span className="grid h-10 w-10 place-items-center rounded-full bg-land-accent-soft text-[13px] font-semibold text-land-accent">
@@ -626,7 +645,7 @@ function Integrations() {
           Se branche sur votre stack.
         </h2>
         <p className="mt-5 max-w-[58ch] text-[16px] leading-relaxed text-land-muted">
-          Briefs et analyses arrivent là où vos commerciaux travaillent déjà : CRM, agenda, email. Pas un nouvel
+          Briefs et analyses arrivent là où vos commerciaux travaillent déjà : CRM, agenda, email. Pas un nouvel
           outil quotidien à imposer.
         </p>
         <div className="mt-12 grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-4">
@@ -660,24 +679,24 @@ function Integrations() {
 function Faq() {
   const qas = [
     {
-      q: "Comment Brief augmente concrètement le taux de closing ?",
-      a: "En travaillant trois leviers : arriver préparé, savoir ce qui a marché ou pas (un débrief noté, adapté à l'étape R1, R2 ou R3), et capitaliser en équipe grâce à la bibliothèque d'objections.",
+      q: "Comment Brief augmente concrètement le taux de closing ?",
+      a: "En travaillant trois leviers : arriver préparé, savoir ce qui a marché ou pas (un débrief noté, adapté à l'étape R1, R2 ou R3), et capitaliser en équipe grâce à la bibliothèque d'objections.",
     },
     {
-      q: "Comment Brief rejoint mes rendez-vous ?",
+      q: "Comment Brief rejoint mes rendez-vous ?",
       a: "Vous connectez votre agenda Google ou Outlook. Brief détecte les visios (Meet, Teams, Zoom) et envoie un bot pour enregistrer et transcrire. Vous pouvez exclure des rendez-vous manuellement.",
     },
     {
-      q: "Comment fonctionne l'analyse par étape R1, R2, R3 ?",
-      a: "Le manager configure une fois les motifs de titre de rendez-vous (« Rencontre X » pour la découverte, « Présentation X » pour la démo…) et les consignes propres à chaque étape. Brief évalue ensuite chaque call selon les critères de son étape, entièrement modifiables : un R1 n'est pas jugé comme un R3.",
+      q: "Comment fonctionne l'analyse par étape R1, R2, R3 ?",
+      a: "Le manager configure une fois les motifs de titre de rendez-vous (« Rencontre X » pour la découverte, « Présentation X » pour la démo…) et les consignes propres à chaque étape. Brief évalue ensuite chaque call selon les critères de son étape, entièrement modifiables : un R1 n'est pas jugé comme un R3.",
     },
     {
-      q: "Que deviennent les enregistrements ?",
+      q: "Que deviennent les enregistrements ?",
       a: "Hébergement européen, chiffrement au repos et en transit, suppression sur demande. Chaque participant est informé de l'enregistrement, conformément au RGPD.",
     },
     {
-      q: "Puis-je tester Brief ?",
-      a: `Oui. Créez votre compte avec Google ou Microsoft et préparez jusqu'à ${BRIEFS_ACCESS_DAILY_LIMIT} briefs par jour, sans carte bancaire. L'analyse des calls et le suivi d'équipe se mettent en place avec nous : prenez rendez-vous, on configure Brief pour votre équipe.`,
+      q: "Puis-je tester Brief ?",
+      a: `Oui. Créez votre compte avec Google ou Microsoft et préparez jusqu'à ${BRIEFS_ACCESS_DAILY_LIMIT} briefs par jour, sans carte bancaire. L'analyse des calls et le suivi d'équipe se mettent en place avec nous : prenez rendez-vous, on configure Brief pour votre équipe.`,
     },
   ];
   return (
@@ -704,10 +723,12 @@ function Faq() {
 
 function FinalCTA() {
   return (
-    <section className="px-4 pb-20 sm:px-6 lg:pb-28">
-      <div className="mx-auto max-w-6xl rounded-2xl bg-land-accent px-6 py-14 text-land-accent-ink sm:px-12 md:py-20">
+    // Gouttière portée par l'enveloppe, comme toutes les autres sections : le
+    // bloc s'aligne sur la grille au lieu de la déborder de 24 px.
+    <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6 lg:pb-28">
+      <div className="rounded-2xl bg-land-accent px-6 py-14 text-land-accent-ink sm:px-12 md:py-20">
         <h2 className="max-w-[18ch] text-[34px] font-semibold leading-[1.08] tracking-[-0.03em] md:text-[48px]">
-          Prêt à closer plus ?
+          Prêt à closer plus ?
         </h2>
         <p className="mt-5 max-w-[52ch] text-[17px] leading-relaxed opacity-85">
           Créez votre compte et préparez vos prochains rendez-vous dès aujourd&apos;hui. Pour l&apos;analyse des
@@ -734,16 +755,19 @@ function FinalCTA() {
   );
 }
 
+const FOOTER_LINK = "inline-flex min-h-10 items-center hover:text-land-ink transition-colors md:min-h-0";
+
 function Footer() {
   return (
     <footer className="border-t border-land-line">
       <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 text-[14px] text-land-muted sm:px-6 md:flex-row md:items-center md:justify-between">
         <BrandMark />
         <div>© {new Date().getFullYear()} Brief, édité par Oliverlist</div>
-        <nav aria-label="Liens légaux" className="flex flex-wrap gap-x-6 gap-y-2">
-          <Link href="/mentions-legales" className="hover:text-land-ink transition-colors">Mentions légales</Link>
-          <Link href="/confidentialite" className="hover:text-land-ink transition-colors">Confidentialité</Link>
-          <a href="mailto:hello@oliverlist.com" className="hover:text-land-ink transition-colors">Nous contacter</a>
+        {/* 40 px de haut au doigt, hauteur de ligne sur desktop. */}
+        <nav aria-label="Liens légaux" className="flex flex-wrap gap-x-6">
+          <Link href="/mentions-legales" className={FOOTER_LINK}>Mentions légales</Link>
+          <Link href="/confidentialite" className={FOOTER_LINK}>Confidentialité</Link>
+          <a href="mailto:hello@oliverlist.com" className={FOOTER_LINK}>Nous contacter</a>
         </nav>
       </div>
     </footer>

@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 
-// Menu de la landing sous `md`. La barre de navigation desktop masque ses
-// ancres en dessous de 768 px : sans ce tiroir, un visiteur sur téléphone
+// Menu de la landing sous `lg`. La barre de navigation desktop masque ses
+// ancres en dessous de 1024 px : sans ce tiroir, un visiteur sur téléphone
 // n'avait aucun moyen d'atteindre FAQ, Intégrations, etc. autrement qu'en
-// faisant défiler toute la page.
+// faisant défiler toute la page. Seuil relevé de `md` à `lg` le 12/10/2026 :
+// à 768 px, les cinq ancres + « Se connecter » ne tenaient pas sur une ligne
+// et passaient sur deux, collées au logo.
 export function MobileMenu({ links }: { links: { href: string; label: string }[] }) {
   const [open, setOpen] = useState(false);
 
@@ -21,7 +23,7 @@ export function MobileMenu({ links }: { links: { href: string; label: string }[]
   }, [open]);
 
   return (
-    <div className="md:hidden">
+    <div className="lg:hidden">
       <button
         type="button"
         aria-expanded={open}

@@ -42,3 +42,6 @@ next-env.d.ts
 
 # claude code
 .claude/
+
+# Captures et journaux du MCP Playwright
+/.playwright-mcp/
