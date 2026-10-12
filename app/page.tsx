@@ -5,7 +5,9 @@ import { APP_URL } from "@/lib/app-url";
 import { SALES_CONTACT, BRIEFS_ACCESS_DAILY_LIMIT } from "@/lib/sales-contact";
 import { MobileMenu } from "@/app/components/landing/MobileMenu";
 import { Journey, type JourneyStep } from "@/app/components/landing/Journey";
-import { ScoreGrid } from "@/app/components/landing/ScoreGrid";
+import { HeroStage } from "@/app/components/landing/HeroStage";
+import { AnalysisObject } from "@/app/components/landing/AnalysisObject";
+import { BriefSheet, SourcesObject, ObjectionObject, DigestObject } from "@/app/components/landing/objects";
 import { ArrowRight, ArrowUpRight, Check, ShieldCheck, Globe2, Mic, Plus } from "lucide-react";
 
 // Refonte d'octobre 2026, seconde passe (12/10/2026). Direction retenue par
@@ -75,11 +77,11 @@ const JSON_LD = {
   publisher: { "@type": "Organization", name: "Oliverlist", url: APP_URL },
 };
 
-// Libellés du menu inchangés (repères des visiteurs déjà venus, ancres
-// citées ailleurs).
+// Libellés et ancres inchangés (repères des visiteurs déjà venus, ancres
+// citées ailleurs) ; l'ordre suit celui de la page.
 const NAV_LINKS = [
-  { href: "#probleme", label: "Le problème" },
   { href: "#methode", label: "La méthode" },
+  { href: "#probleme", label: "Le problème" },
   { href: "#manager", label: "Managers" },
   { href: "#integrations", label: "Intégrations" },
   { href: "#faq", label: "FAQ" },
@@ -139,125 +141,39 @@ function Nav() {
 
 // ─── Haut de page ────────────────────────────────────────────────────────────
 
-function BriefSheet() {
-  // Le brief tel que l'app le produit, qui s'écrit sous les yeux : statut
-  // « Préparation » puis « Prêt », champs qui apparaissent comme de l'encre,
-  // curseur bleu sur l'accroche. Tout le texte est dans le DOM dès le rendu
-  // serveur : l'animation ne masque que visuellement. Entreprise et personne
-  // fictives, le titre du rendez-vous est celui que la grille R2 reconnaît
-  // plus bas.
-  const d = (i: number) => ({ "--i": i }) as React.CSSProperties;
-  return (
-    <figure className="land-settle mx-auto w-full max-w-5xl">
-      <div className="land-rise overflow-hidden rounded-[20px] border border-land-line bg-land-surface text-left shadow-[var(--land-shadow-lg)]">
-        <div className="flex items-center justify-between gap-3 border-b border-land-line px-5 py-3.5 sm:px-8">
-          <div className="flex items-center gap-2.5">
-            <span className="grid h-6 w-6 place-items-center rounded-md bg-land-accent text-[11px] font-semibold text-land-accent-ink">
-              B
-            </span>
-            <span className="grid text-[13px] font-medium">
-              <span className="land-status-busy inline-flex items-center gap-1.5 text-land-muted [grid-area:1/1]">
-                <span className="land-dot h-1.5 w-1.5 rounded-full bg-land-accent" aria-hidden />
-                Préparation du brief…
-              </span>
-              <span className="land-status-ready inline-flex items-center gap-1.5 text-land-ink [grid-area:1/1]">
-                <Check className="h-3.5 w-3.5 text-land-accent" aria-hidden />
-                Brief prêt<span className="hidden sm:inline">{"\u00a0"}· 3 min de lecture</span>
-              </span>
-            </span>
-          </div>
-          <span className="whitespace-nowrap text-[13px] tabular-nums text-land-muted">Jeu. 14:30</span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-          <div className="border-land-line px-5 py-6 sm:px-8 md:border-r md:py-8">
-            <div className="land-write text-[22px] font-semibold tracking-tight text-land-ink sm:text-[26px]" style={d(0)}>
-              Présentation Valdor Emballages
-            </div>
-            <div className="land-write mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5" style={d(1)}>
-              <span className="text-[15px] text-land-ink">Claire Mercier, directrice des opérations</span>
-              <span className="rounded-full bg-land-accent-soft px-2 py-0.5 text-[12px] font-semibold text-land-accent">
-                Décisionnaire
-              </span>
-            </div>
-            <dl className="land-write mt-6 grid grid-cols-3 gap-4 border-t border-land-line pt-5" style={d(2)}>
-              {[
-                ["Effectifs", "140"],
-                ["CA 2025", "21 M€"],
-                ["Fondée", "1998"],
-              ].map(([k, v]) => (
-                <div key={k}>
-                  <dt className="text-[12.5px] text-land-muted">{k}</dt>
-                  <dd className="mt-0.5 text-[20px] font-semibold tabular-nums tracking-tight text-land-ink">{v}</dd>
-                </div>
-              ))}
-            </dl>
-            <div className="land-write mt-6" style={d(3)}>
-              <div className="text-[12.5px] font-medium text-land-muted">Actualité</div>
-              <ul className="mt-1.5 space-y-1 text-[14.5px] leading-snug text-land-ink">
-                <li>Nouvelle ligne de production à Angers, annoncée le 2 octobre.</li>
-                <li>Recrutement d&apos;un responsable supply chain.</li>
-              </ul>
-            </div>
-          </div>
-          <div className="bg-land-sunken/60 px-5 py-6 sm:px-8 md:py-8">
-            <div className="land-write" style={d(4)}>
-              <div className="text-[12.5px] font-medium text-land-accent">Accroche suggérée</div>
-              <p className="mt-2 text-[18px] font-medium leading-snug tracking-tight text-land-ink sm:text-[20px]">
-                « Vous ouvrez une ligne à Angers : qui pilote la montée en charge côté approvisionnement ? »
-                <span className="land-caret-end">
-                  <span className="land-caret ml-0.5 inline-block h-[1.05em] w-[2px] translate-y-[3px] bg-land-accent" aria-hidden />
-                </span>
-              </p>
-            </div>
-            <div className="mt-7">
-              <div className="land-write text-[12.5px] font-medium text-land-muted" style={d(5)}>
-                Vocabulaire du secteur
-              </div>
-              <ul className="mt-2.5 flex flex-wrap gap-1.5">
-                {["carton ondulé", "taux de rebut", "PPWR", "mono-matériau", "palettisation"].map((w, i) => (
-                  <li
-                    key={w}
-                    className="land-pop rounded-full border border-land-line bg-land-surface px-2.5 py-1 text-[13px] text-land-ink"
-                    style={d(i)}
-                  >
-                    {w}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-      <figcaption className="mt-4 text-center text-[13px] text-land-faint">
-        Exemple de brief. Entreprise et contact fictifs.
-      </figcaption>
-    </figure>
-  );
-}
-
 function Hero() {
   return (
-    <section className="px-4 pb-20 pt-14 text-center sm:px-6 md:pt-20 lg:pb-28 lg:pt-24">
-      <h1 className="mx-auto max-w-[14ch] text-[46px] font-semibold leading-[1] tracking-[-0.04em] text-land-ink sm:text-[68px] lg:text-[96px]">
-        Augmentez votre taux de closing.
-      </h1>
-      <p className="mx-auto mt-6 max-w-[38rem] text-[18px] leading-relaxed text-land-muted sm:text-[20px]">
-        Brief prépare chaque rendez-vous de vos commerciaux, débriefe chaque call selon votre méthode et fait
-        circuler ce qui gagne dans l&apos;équipe.
-      </p>
-      <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-        <Link href="/login" className={BTN_PRIMARY}>
-          Essayer gratuitement <ArrowRight className="h-4 w-4" />
-        </Link>
-        <a href="#methode" className={BTN_SECONDARY}>
-          Voir la méthode <ArrowRight className="h-4 w-4 rotate-90" />
-        </a>
-      </div>
-      <div className="mt-14 md:mt-16">
-        <BriefSheet />
-      </div>
-    </section>
+    <HeroStage
+      copy={
+        <div className="px-4 pt-14 text-center sm:px-6 md:pt-20 lg:pt-16">
+          <h1 className="mx-auto max-w-[14ch] text-[46px] font-semibold leading-[1] tracking-[-0.04em] text-land-ink sm:text-[68px] lg:text-[96px]">
+            Augmentez votre taux de closing.
+          </h1>
+          <p className="mx-auto mt-6 max-w-[38rem] text-[18px] leading-relaxed text-land-muted sm:text-[20px]">
+            Brief prépare chaque rendez-vous de vos commerciaux, débriefe chaque call selon votre méthode et fait
+            circuler ce qui gagne dans l&apos;équipe.
+          </p>
+          <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+            <Link href="/login" className={BTN_PRIMARY}>
+              Essayer gratuitement <ArrowRight className="h-4 w-4" />
+            </Link>
+            <a href="#methode" className={BTN_SECONDARY}>
+              Voir la méthode <ArrowRight className="h-4 w-4 rotate-90" />
+            </a>
+          </div>
+        </div>
+      }
+      sheet={
+        <div className="px-4 pb-20 pt-14 sm:px-6 md:pt-16 lg:pb-0">
+          <BriefSheet />
+        </div>
+      }
+      bridge={
+        <div className="[&_h2]:text-[52px]">
+          <MethodIntro />
+        </div>
+      }
+    />
   );
 }
 
@@ -349,109 +265,6 @@ function ProblemSection() {
 
 // ─── La méthode : un deal, trois moments ─────────────────────────────────────
 
-const SHEET = "rounded-[20px] border border-land-line bg-land-surface shadow-[var(--land-shadow-lg)]";
-
-function CompileObject() {
-  // Préparer : ce que Brief va chercher, ligne par ligne, et la référence
-  // client qu'il en déduit. Mêmes faits que le brief du haut de page.
-  const rows: [string, string][] = [
-    ["Registre légal", "SAS, 140 salariés, CA 2025 de 21 M€"],
-    ["Presse et web", "Nouvelle ligne de production à Angers, le 2 octobre"],
-    ["Annuaire professionnel", "Claire Mercier, directrice des opérations, décisionnaire"],
-    ["Votre CRM", "Premier contact entrant en septembre, aucune affaire en cours"],
-  ];
-  return (
-    <div className={SHEET}>
-      <div className="flex items-center justify-between gap-3 px-6 pt-6 sm:px-7">
-        <div>
-          <div className="text-[13px] font-medium text-land-muted">La veille, 18:00</div>
-          <div className="mt-0.5 text-[17px] font-semibold tracking-tight text-land-ink">Valdor Emballages</div>
-        </div>
-        <span className="rounded-full bg-land-accent-soft px-2.5 py-1 text-[12px] font-semibold text-land-accent">
-          Brief prêt
-        </span>
-      </div>
-      <ul className="mt-5 divide-y divide-land-line border-y border-land-line">
-        {rows.map(([source, fact], i) => (
-          <li
-            key={source}
-            className="land-step-row grid grid-cols-[1.25rem_minmax(0,1fr)] gap-3 px-6 py-3.5 sm:px-7"
-            style={{ "--i": i } as React.CSSProperties}
-          >
-            <Check className="mt-0.5 h-4 w-4 text-land-accent" aria-hidden />
-            <div>
-              <div className="text-[12.5px] text-land-muted">{source}</div>
-              <div className="text-[14.5px] text-land-ink">{fact}</div>
-            </div>
-          </li>
-        ))}
-      </ul>
-      <div className="land-step-row px-6 py-5 sm:px-7" style={{ "--i": 4 } as React.CSSProperties}>
-        <div className="text-[12.5px] font-medium text-land-accent">Votre référence client la plus proche</div>
-        <div className="mt-1 text-[16px] font-medium text-land-ink">Cartonnerie du Val, 180 personnes</div>
-        <p className="mt-1 text-[14px] leading-relaxed text-land-muted">
-          Même métier, même montée en charge d&apos;un nouveau site. À citer dès la découverte.
-        </p>
-      </div>
-      <div className="border-t border-land-line px-6 py-3 text-[12px] text-land-faint sm:px-7">
-        Exemple. Entreprises et contact fictifs.
-      </div>
-    </div>
-  );
-}
-
-function LibraryObject() {
-  // Progresser : l'objection du call de Valdor arrive dans la bibliothèque
-  // commune, avec ce qui a déjà marché ailleurs dans l'équipe.
-  const rows = [
-    { o: "« On est déjà engagés avec un concurrent »", n: 23, good: 61, partial: 24 },
-    { o: "« C'est trop cher pour notre taille »", n: 17, good: 47, partial: 29 },
-  ];
-  return (
-    <div className={SHEET}>
-      <div className="px-6 pt-6 sm:px-7">
-        <div className="text-[13px] font-medium text-land-muted">Bibliothèque d&apos;objections de l&apos;équipe</div>
-      </div>
-      <div className="land-step-row mx-4 mt-4 rounded-2xl bg-land-accent-soft px-4 py-4 sm:mx-5 sm:px-5">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-[12px] font-semibold text-land-accent">Nouvelle occurrence · Valdor Emballages</span>
-          <span className="text-[13px] tabular-nums text-land-muted">×9</span>
-        </div>
-        <p className="mt-1.5 text-[15.5px] font-medium leading-snug text-land-ink">
-          « Notre équipe est déjà surchargée, une nouvelle intégration me fait peur. »
-        </p>
-        <div className="mt-3 border-t border-land-accent/15 pt-3">
-          <div className="text-[12.5px] text-land-muted">Ce qui a marché dans l&apos;équipe, réponse jugée bien traitée en mars</div>
-          <p className="mt-1 text-[14.5px] leading-snug text-land-ink">
-            « On branche l&apos;agenda et c&apos;est tout : votre équipe n&apos;a rien à installer ni à maintenir. »
-          </p>
-        </div>
-      </div>
-      <ul className="divide-y divide-land-line px-6 sm:px-7">
-        {rows.map((r, i) => (
-          <li key={r.o} className="land-step-row py-4" style={{ "--i": i + 1 } as React.CSSProperties}>
-            <div className="flex items-start justify-between gap-3">
-              <p className="text-[14.5px] font-medium leading-snug text-land-ink">{r.o}</p>
-              <span className="shrink-0 text-[13px] tabular-nums text-land-muted">×{r.n}</span>
-            </div>
-            <div className="mt-2.5 flex h-1.5 gap-0.5 overflow-hidden rounded-full" aria-hidden>
-              <span className="bg-land-accent" style={{ width: `${r.good}%` }} />
-              <span className="bg-land-accent/35" style={{ width: `${r.partial}%` }} />
-              <span className="bg-land-line" style={{ width: `${100 - r.good - r.partial}%` }} />
-            </div>
-            <div className="mt-1.5 text-[12.5px] text-land-muted">
-              <span className="font-medium tabular-nums text-land-accent">{r.good} %</span> bien traitées
-            </div>
-          </li>
-        ))}
-      </ul>
-      <div className="border-t border-land-line px-6 py-3 text-[12px] text-land-faint sm:px-7">
-        Exemple. Objections et chiffres fictifs.
-      </div>
-    </div>
-  );
-}
-
 const STEPS: JourneyStep[] = [
   {
     verb: "Préparer",
@@ -463,7 +276,7 @@ const STEPS: JourneyStep[] = [
       { title: "Signaux récents", body: "Levées de fonds, recrutements clés, mentions presse des 90 derniers jours." },
       { title: "La bonne référence client", body: "Brief pioche dans vos cas clients celui qui ressemble le plus au prospect." },
     ],
-    object: <CompileObject />,
+    object: <SourcesObject />,
   },
   {
     verb: "Débriefer",
@@ -475,7 +288,7 @@ const STEPS: JourneyStep[] = [
       { title: "Analyse par étape R1, R2, R3", body: "Découverte, présentation, closing : des consignes dédiées à chaque étape du cycle." },
       { title: "Objections et signaux", body: "Objections, concurrents cités, temps de parole : détectés automatiquement." },
     ],
-    object: <ScoreGrid />,
+    object: <AnalysisObject />,
   },
   {
     verb: "Progresser",
@@ -487,22 +300,33 @@ const STEPS: JourneyStep[] = [
       { title: "Ce qui marche, chiffré", body: "Pour chaque objection : combien de fois elle revient, et à quel point l'équipe la traite bien." },
       { title: "Scores comparés dans le temps", body: "Les dimensions du playbook où chacun progresse, et celles qui restent à travailler." },
     ],
-    object: <LibraryObject />,
+    object: <ObjectionObject />,
   },
 ];
 
+// Introduction de « La méthode ». Rendue deux fois, une seule visible : dans
+// la section (téléphone, tablette, mouvement réduit) ou, en mode épinglé, à
+// gauche du brief replié en fin de haut de page (cf. HeroStage).
+function MethodIntro() {
+  return (
+    <>
+      <h2 className={`${H2} max-w-[16ch]`}>
+        <span className="text-land-ink">Trois moments.</span>{" "}
+        <span className="text-land-faint">Un seul objectif : le closing.</span>
+      </h2>
+      <p className="mt-6 max-w-[54ch] text-[18px] leading-relaxed text-land-muted md:text-[20px]">
+        Suivez un rendez-vous, de la veille au point d&apos;équipe. Brief s&apos;organise exactement comme le
+        travail d&apos;un commercial, rien d&apos;autre.
+      </p>
+    </>
+  );
+}
+
 function MethodSection() {
   return (
-    <section id="methode" className="scroll-mt-20 border-t border-land-line">
-      <div className="mx-auto max-w-6xl px-4 pt-20 sm:px-6 lg:pt-32">
-        <h2 className={`${H2} max-w-[16ch]`}>
-          <span className="text-land-ink">Trois moments.</span>{" "}
-          <span className="text-land-faint">Un seul objectif : le closing.</span>
-        </h2>
-        <p className="mt-6 max-w-[54ch] text-[18px] leading-relaxed text-land-muted md:text-[20px]">
-          Suivez un rendez-vous, de la veille au point d&apos;équipe. Brief s&apos;organise exactement comme le
-          travail d&apos;un commercial, rien d&apos;autre.
-        </p>
+    <section id="methode" className="land-method scroll-mt-20 border-t border-land-line">
+      <div className="land-method-intro mx-auto max-w-6xl px-4 pt-20 sm:px-6 lg:pt-32">
+        <MethodIntro />
       </div>
       <div className="mx-auto max-w-6xl px-4 pb-16 sm:px-6 lg:pb-24">
         <Journey steps={STEPS} />
@@ -590,21 +414,11 @@ function ManagerSection() {
           </figure>
         </div>
 
-        {/* Le bilan arrive par email : il est montré comme un message, pas
-            comme une carte de plus. */}
-        <figure className="mt-16 overflow-hidden rounded-[20px] border border-land-line bg-land-bg lg:mt-24">
-          <figcaption className="flex flex-wrap items-center justify-between gap-2 border-b border-land-line px-6 py-3.5 text-[13px] sm:px-8">
-            <span className="font-medium text-land-ink">Bilan de la semaine</span>
-            <span className="text-land-muted">
-              Lundi <span className="tabular-nums">08:00</span> · exemple
-            </span>
-          </figcaption>
-          <blockquote className="px-6 py-8 text-[20px] font-medium leading-snug tracking-[-0.015em] text-land-ink sm:px-8 md:text-[26px]">
-            Julie a bien traité l&apos;objection prix chez Lumen Logistique. L&apos;objection « intégration Salesforce »
-            revient sur 3 calls cette semaine et n&apos;a été bien traitée qu&apos;une fois :{" "}
-            <span className="text-land-accent">sujet du prochain point d&apos;équipe.</span>
-          </blockquote>
-        </figure>
+        {/* Le bilan part chaque vendredi par email, avec les rubriques réelles
+            du bilan manager. */}
+        <div className="mt-16 lg:mt-24">
+          <DigestObject />
+        </div>
       </div>
     </section>
   );
@@ -791,12 +605,14 @@ export default function HomePage() {
       />
       <Nav />
       <main>
+        {/* « La méthode » suit directement le haut de page : le brief replié
+            au défilement y est repris par l'étape « Préparer ». */}
         <Hero />
-        <Statement />
-        <ProblemSection />
         <MethodSection />
+        <ProblemSection />
         <ManagerSection />
         <Testimonial />
+        <Statement />
         <Integrations />
         <Faq />
         <FinalCTA />

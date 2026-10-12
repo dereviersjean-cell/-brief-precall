@@ -28,6 +28,29 @@ const slug = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").t
 export function Journey({ steps }: { steps: JourneyStep[] }) {
   const [active, setActive] = useState(0);
   const refs = useRef<(HTMLElement | null)[]>([]);
+  const pinRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = useState(1);
+
+  // L'objet collant doit tenir dans l'écran, frise comprise : on MESURE la
+  // place disponible et la hauteur de l'objet le plus grand (l'analyse), et
+  // on réduit l'ensemble si besoin. `zoom` plutôt que `transform: scale` :
+  // il réduit aussi la place occupée, donc le centrage vertical reste juste.
+  useEffect(() => {
+    const pin = pinRef.current;
+    const stage = stageRef.current;
+    if (!pin || !stage) return;
+    const measure = () => {
+      const natural = stage.scrollHeight / (Number(stage.style.zoom) || 1);
+      const rail = (pin.firstElementChild as HTMLElement | null)?.offsetHeight ?? 0;
+      const room = pin.clientHeight - 64 - rail - 24;
+      setZoom(Math.min(1, Math.max(0.7, room / natural)));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(pin);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -52,6 +75,9 @@ export function Journey({ steps }: { steps: JourneyStep[] }) {
           dernière étape, sinon l'objet collant se décroche et remonte sous la
           barre de navigation pendant qu'on lit encore « Progresser ». */}
       <div className="[view-timeline:--journey_block] lg:pb-[22vh]">
+        {/* Cale du relais avec le haut de page (cf. globals.css) : masquée
+            hors du mode épinglé. */}
+        <div className="land-journey-spacer" aria-hidden />
         {steps.map((step, i) => (
           <article
             key={step.verb}
@@ -89,7 +115,7 @@ export function Journey({ steps }: { steps: JourneyStep[] }) {
           même cellule de grille, donc la scène prend la hauteur du plus grand
           et rien ne saute quand l'un remplace l'autre. */}
       <div className="hidden lg:block">
-        <div className="sticky top-16 flex h-[calc(100vh-4rem)] flex-col justify-center py-10">
+        <div ref={pinRef} data-journey-pin className="sticky top-16 flex h-[calc(100vh-4rem)] flex-col justify-center py-8">
           {/* Frise du rendez-vous : une seule piste qui se remplit avec le
               défilement de la séquence (timeline de défilement native), ou
               par paliers d'étape là où le navigateur ne la gère pas. */}
@@ -117,7 +143,7 @@ export function Journey({ steps }: { steps: JourneyStep[] }) {
               ))}
             </ol>
           </div>
-          <div className="grid">
+          <div ref={stageRef} data-journey-stage className="grid" style={{ zoom }}>
             {steps.map((step, i) => (
               <div
                 key={step.verb}

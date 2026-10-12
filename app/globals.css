@@ -469,6 +469,122 @@ body {
   }
 }
 
+/* Haut de page épinglé (HeroStage.tsx). Grand écran seulement, et seulement
+   si le navigateur gère les timelines de défilement : la section est plus
+   haute que l'écran, son contenu reste collé sous la barre, et le défilement
+   joue le produit — le titre s'efface (0–25 %), le brief se soulève et se lit
+   en entier (0–35 %, lecture jusqu'à 48 %), puis se replie (sections
+   secondaires refermées) en se posant à l'emplacement exact de l'objet de
+   l'étape « Préparer » (48–80 %), pendant que l'introduction de « La
+   méthode » apparaît à gauche ; enfin relais (98–100 %) : le brief s'efface,
+   la séquence — qui chevauche la fin du haut de page — apparaît au même
+   endroit, frise comprise.
+   Toutes les distances et échelles sont MESURÉES par HeroStage (--hero-tx,
+   --hero-ty, --hero-fit, --hero-dx, --hero-dy, --hero-dock), en partant du
+   coin haut gauche (transform-origin 0 0) — jamais posées en dur. */
+@keyframes land-hero-copy {
+  to { opacity: 0; transform: translateY(-56px) scale(0.97); }
+}
+@keyframes land-hero-sheet {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  35%, 48% { transform: translate(var(--hero-tx, 0px), var(--hero-ty, 0px)) scale(var(--hero-fit, 1)); }
+  80%, 100% { transform: translate(var(--hero-dx, 0px), var(--hero-dy, 0px)) scale(var(--hero-dock, 0.6)); }
+  98% { opacity: 1; }
+  100% { opacity: 0; }
+}
+/* Repli : les sections secondaires se REFERMENT (hauteur animée via la grille
+   0fr) au lieu de s'effacer en laissant des trous dans la carte. */
+@keyframes land-hero-collapse {
+  to { grid-template-rows: 0fr; opacity: 0; }
+}
+@keyframes land-hero-bridge {
+  from { opacity: 0; transform: translateY(32px); }
+}
+@keyframes land-stage-in {
+  from { opacity: 0; pointer-events: none; }
+  to { opacity: 1; pointer-events: auto; }
+}
+.landing .land-hero-collapse {
+  display: grid;
+  grid-template-rows: 1fr;
+}
+.landing .land-hero-collapse > * {
+  min-height: 0;
+  overflow: hidden;
+}
+.landing .land-hero-bridge,
+.landing .land-journey-spacer {
+  display: none;
+}
+@media (min-width: 1024px) {
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      /* La timeline du haut de page doit être visible de la séquence, qui
+         n'en descend pas. */
+      .landing main {
+        timeline-scope: --hero;
+      }
+      .landing .land-hero-track {
+        height: 190vh;
+        view-timeline: --hero block;
+      }
+      .landing .land-hero-pin {
+        position: sticky;
+        top: 4rem;
+        height: calc(100vh - 4rem);
+        overflow: clip;
+      }
+      .landing .land-hero-copy {
+        animation: land-hero-copy linear both;
+        animation-timeline: --hero;
+        animation-range: contain 0% contain 25%;
+      }
+      .landing .land-hero-sheet {
+        transform-origin: 0 0;
+        animation: land-hero-sheet linear both;
+        animation-timeline: --hero;
+        animation-range: contain 0% contain 100%;
+      }
+      .landing .land-hero-collapse {
+        animation: land-hero-collapse linear both;
+        animation-timeline: --hero;
+        animation-range: contain 48% contain 80%;
+      }
+      .landing .land-hero-bridge {
+        display: block;
+        animation: land-hero-bridge linear both;
+        animation-timeline: --hero;
+        /* Après que le brief a dégagé la colonne de gauche (mesuré : bord
+           gauche de la carte au-delà du titre vers 76 %). */
+        animation-range: contain 74% contain 90%;
+      }
+      /* Relais. « La méthode » remonte d'un écran pour chevaucher la fin du
+         haut de page : quand celui-ci se libère, la scène collante de la
+         séquence est déjà en place. Une cale d'un écran en tête de la colonne
+         de texte évite que les étapes ne passent par-dessus le haut de page ;
+         la scène, elle, reste invisible jusqu'au relais. */
+      .landing .land-method {
+        margin-top: calc(-100vh + 4rem);
+        border-top-color: transparent;
+      }
+      .landing .land-journey-spacer {
+        display: block;
+        height: calc(100vh - 4rem);
+      }
+      .landing [data-journey-pin] {
+        animation: land-stage-in linear both;
+        animation-timeline: --hero;
+        animation-range: contain 98% contain 100%;
+      }
+      /* Une seule introduction visible à la fois : celle du haut de page en
+         mode épinglé, celle de la section sinon. */
+      .landing .land-method-intro {
+        display: none;
+      }
+    }
+  }
+}
+
 /* Séquence « un deal, trois moments » : l'objet produit change d'état selon
    l'étape lue. Sortie : léger recul, flou, fondu ; entrée : remonte et se
    précise. Pas de glissement latéral, l'objet reste à sa place comme un
@@ -493,7 +609,9 @@ body {
   transition: opacity 400ms ease-out, transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
   transition-delay: calc(var(--i, 0) * 140ms + 250ms);
 }
-.landing [data-active="false"] .land-step-row {
+/* Seulement dans la scène collante : les objets placés sous leur texte
+   (téléphone, tablette) restent toujours visibles. */
+.landing .land-stage-item[data-active="false"] .land-step-row {
   opacity: 0;
   transform: translateY(8px);
   transition-delay: 0ms;
