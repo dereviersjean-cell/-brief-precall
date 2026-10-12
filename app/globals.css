@@ -292,25 +292,26 @@ body {
 }
 
 /* ─── Landing (refonte octobre 2026) ──────────────────────────────────────────
-   Palette propre à la page d'accueil, scopée sous `.landing` : neutres froids,
-   un seul accent vert émeraude (le « deal gagné »), plus aucun dégradé. L'app
-   connectée garde ses tokens bleus ci-dessus — rien ici ne la touche.
-   Mode sombre suivi sur la préférence du système. Les utilitaires
-   `bg-land-*`, `text-land-*`, `border-land-*` sont déclarés dans le @theme
-   juste après. */
+   Palette propre à la page d'accueil, scopée sous `.landing` : neutres froids
+   et un seul accent, le bleu de marque de l'app (#2A5CE0) — l'émeraude du
+   premier jet a été écartée par Jean le 12/10/2026. Le visiteur qui se
+   connecte ne change pas d'univers. Mode sombre suivi sur la préférence du
+   système. Les utilitaires `bg-land-*`, `text-land-*`, `border-land-*` sont
+   déclarés dans le @theme juste après. */
 .landing {
-  --land-bg: oklch(0.985 0.003 250);
-  --land-surface: oklch(0.997 0.001 250);
-  --land-sunken: oklch(0.965 0.004 250);
-  --land-ink: oklch(0.2 0.015 260);
-  --land-muted: oklch(0.47 0.015 260);
-  --land-line: oklch(0.905 0.006 260);
-  --land-accent: oklch(0.47 0.105 162);
-  --land-accent-ink: oklch(0.985 0.01 162);
-  --land-accent-soft: oklch(0.95 0.03 162);
+  --land-bg: oklch(0.987 0.002 265);
+  --land-surface: oklch(1 0 0);
+  --land-sunken: oklch(0.968 0.004 265);
+  --land-ink: oklch(0.19 0.02 266);
+  --land-muted: oklch(0.49 0.018 266);
+  --land-faint: oklch(0.55 0.014 266);
+  --land-line: oklch(0.912 0.006 266);
+  --land-accent: oklch(0.52 0.2 265);
+  --land-accent-ink: oklch(1 0 0);
+  --land-accent-soft: oklch(0.955 0.025 265);
   --land-warn: oklch(0.55 0.13 55);
-  --land-shadow: 0 1px 2px oklch(0.2 0.015 260 / 0.04), 0 12px 32px -12px oklch(0.2 0.015 260 / 0.14);
-  --font-mono: var(--font-land-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --land-shadow: 0 1px 2px oklch(0.19 0.02 266 / 0.04), 0 24px 48px -24px oklch(0.19 0.02 266 / 0.18);
+  --land-shadow-lg: 0 1px 2px oklch(0.19 0.02 266 / 0.04), 0 40px 80px -32px oklch(0.25 0.06 265 / 0.28);
   font-family: var(--font-land-sans), ui-sans-serif, system-ui, sans-serif;
   background: var(--land-bg);
   color: var(--land-ink);
@@ -319,17 +320,19 @@ body {
 }
 @media (prefers-color-scheme: dark) {
   .landing {
-    --land-bg: oklch(0.165 0.008 260);
-    --land-surface: oklch(0.205 0.009 260);
-    --land-sunken: oklch(0.185 0.008 260);
-    --land-ink: oklch(0.95 0.004 260);
-    --land-muted: oklch(0.72 0.01 260);
-    --land-line: oklch(0.3 0.01 260);
-    --land-accent: oklch(0.74 0.13 162);
-    --land-accent-ink: oklch(0.17 0.02 162);
-    --land-accent-soft: oklch(0.26 0.04 162);
+    --land-bg: oklch(0.165 0.01 266);
+    --land-surface: oklch(0.205 0.012 266);
+    --land-sunken: oklch(0.185 0.01 266);
+    --land-ink: oklch(0.96 0.004 266);
+    --land-muted: oklch(0.74 0.012 266);
+    --land-faint: oklch(0.6 0.012 266);
+    --land-line: oklch(0.3 0.012 266);
+    --land-accent: oklch(0.7 0.15 263);
+    --land-accent-ink: oklch(0.16 0.03 266);
+    --land-accent-soft: oklch(0.27 0.05 265);
     --land-warn: oklch(0.78 0.12 65);
-    --land-shadow: 0 1px 2px oklch(0 0 0 / 0.3), 0 12px 32px -12px oklch(0 0 0 / 0.5);
+    --land-shadow: 0 1px 2px oklch(0 0 0 / 0.3), 0 24px 48px -24px oklch(0 0 0 / 0.6);
+    --land-shadow-lg: 0 1px 2px oklch(0 0 0 / 0.3), 0 40px 80px -32px oklch(0 0 0 / 0.7);
   }
 }
 
@@ -339,6 +342,7 @@ body {
   --color-land-sunken: var(--land-sunken);
   --color-land-ink: var(--land-ink);
   --color-land-muted: var(--land-muted);
+  --color-land-faint: var(--land-faint);
   --color-land-line: var(--land-line);
   --color-land-accent: var(--land-accent);
   --color-land-accent-ink: var(--land-accent-ink);
@@ -346,31 +350,205 @@ body {
   --color-land-warn: var(--land-warn);
 }
 
-/* Mouvement de la landing — volontairement rare (grille find-animation-
-   opportunities, 12/10/2026). Trois endroits seulement :
-   1. l'exemple de brief du hero s'assemble une fois au chargement (montrer
-      ce que contient un brief) — le texte du hero, lui, ne bouge pas : le
-      retarder retarderait aussi la lecture et le LCP ;
-   2. les réponses de la FAQ s'ouvrent au lieu d'apparaître d'un coup ;
-   3. le menu mobile descend de la barre (classes `starting:` dans
-      MobileMenu.tsx).
-   Mouvement réduit : fondu seul, plus court — pas zéro. */
-@keyframes land-enter {
-  from { opacity: 0; transform: translateY(10px); }
+/* Mouvement de la landing. Un seul moment fort — la séquence « un deal, trois
+   moments » (Journey.tsx) — et trois gestes qui le préparent ou le
+   prolongent, chacun à sa place :
+   1. au chargement, le brief du haut de page s'écrit sous les yeux (encre qui
+      apparaît de gauche à droite, puis curseur bleu), son statut passe de
+      « Préparation » à « Prêt » ;
+   2. au défilement, les graphiques se tracent quand ils entrent dans l'écran
+      (animations liées au défilement, natives au navigateur, sans JS) ;
+   3. la FAQ s'ouvre au lieu d'apparaître d'un coup.
+   Les titres ne bougent jamais : retarder un titre retarde la lecture.
+   Sans prise en charge des animations liées au défilement, tout est affiché
+   à son état final. Mouvement réduit : fondus courts, aucun déplacement. */
+@keyframes land-rise {
+  from { opacity: 0; transform: translateY(48px) scale(0.985); }
 }
 @keyframes land-fade {
   from { opacity: 0; }
 }
-.landing .land-enter {
-  animation: land-enter 600ms cubic-bezier(0.23, 1, 0.32, 1) both;
-  animation-delay: calc(var(--i, 0) * 80ms + 120ms);
+@keyframes land-write {
+  from { mask-position: 100% 0; -webkit-mask-position: 100% 0; }
 }
-@media (prefers-reduced-motion: reduce) {
-  .landing .land-enter {
-    animation: land-fade 250ms ease-out both;
-    animation-delay: 0ms;
+@keyframes land-pop {
+  from { opacity: 0; transform: scale(0.85); }
+}
+@keyframes land-blink {
+  50% { opacity: 0; }
+}
+@keyframes land-pulse {
+  50% { opacity: 0.35; }
+}
+@keyframes land-out {
+  to { opacity: 0; visibility: hidden; }
+}
+@keyframes land-in {
+  from { opacity: 0; transform: translateY(4px); }
+}
+
+.landing .land-rise {
+  animation: land-rise 1100ms cubic-bezier(0.16, 1, 0.3, 1) 150ms both;
+}
+.landing .land-write {
+  -webkit-mask-image: linear-gradient(90deg, #000 45%, transparent 55%);
+  mask-image: linear-gradient(90deg, #000 45%, transparent 55%);
+  -webkit-mask-size: 220% 100%;
+  mask-size: 220% 100%;
+  -webkit-mask-position: 0 0;
+  mask-position: 0 0;
+  animation: land-write 900ms cubic-bezier(0.45, 0, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 160ms + 650ms);
+}
+.landing .land-pop {
+  animation: land-pop 420ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms + 2300ms);
+}
+.landing .land-caret {
+  animation: land-blink 1s step-end 2400ms 5 both;
+}
+.landing .land-caret-end {
+  animation: land-out 1ms linear 7400ms both;
+}
+.landing .land-status-busy {
+  animation: land-out 200ms ease-out 2600ms both;
+}
+.landing .land-status-busy .land-dot {
+  animation: land-pulse 900ms ease-in-out infinite;
+}
+.landing .land-status-ready {
+  animation: land-in 320ms cubic-bezier(0.16, 1, 0.3, 1) 2700ms both;
+}
+
+@keyframes land-grow-x {
+  from { transform: scaleX(0.02); }
+}
+@keyframes land-grow-y {
+  from { transform: scaleY(0.02); }
+}
+@keyframes land-settle {
+  from { transform: scale(0.94); }
+}
+.landing .land-grow-x { transform-origin: left center; }
+.landing .land-grow-y { transform-origin: center bottom; }
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .landing .land-grow-x {
+      animation: land-grow-x linear both;
+      animation-timeline: view();
+      animation-range: entry 20% cover 45%;
+    }
+    .landing .land-grow-y {
+      animation: land-grow-y linear both;
+      animation-timeline: view();
+      animation-range: entry 30% cover 50%;
+    }
+    .landing .land-settle {
+      animation: land-settle linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 30%;
+    }
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .landing .land-rise,
+  .landing .land-pop,
+  .landing .land-status-ready {
+    animation: land-fade 250ms ease-out both;
+  }
+  .landing .land-write {
+    -webkit-mask-image: none;
+    mask-image: none;
+    animation: land-fade 250ms ease-out both;
+  }
+  .landing .land-status-busy,
+  .landing .land-caret,
+  .landing .land-caret-end {
+    animation: land-out 1ms linear both;
+  }
+}
+
+/* Séquence « un deal, trois moments » : l'objet produit change d'état selon
+   l'étape lue. Sortie : léger recul, flou, fondu ; entrée : remonte et se
+   précise. Pas de glissement latéral, l'objet reste à sa place comme un
+   produit qu'on fait pivoter. */
+.landing .land-stage-item {
+  transition:
+    opacity 450ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 800ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 450ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.landing .land-stage-item[data-active="false"] {
+  opacity: 0;
+  transform: translateY(28px) scale(0.965);
+  filter: blur(8px);
+  pointer-events: none;
+}
+.landing .land-stage-item[data-active="false"][data-past="true"] {
+  transform: translateY(-28px) scale(0.965);
+}
+/* À l'intérieur de l'objet actif, les lignes se cochent l'une après l'autre. */
+.landing .land-step-row {
+  transition: opacity 400ms ease-out, transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: calc(var(--i, 0) * 140ms + 250ms);
+}
+.landing [data-active="false"] .land-step-row {
+  opacity: 0;
+  transform: translateY(8px);
+  transition-delay: 0ms;
+}
+/* Frise de la séquence : remplie par paliers d'étape (transition), ou en
+   continu par la timeline de défilement de la colonne de texte quand le
+   navigateur la gère — l'animation l'emporte alors sur le style en ligne. */
+/* Départ à 15 % : la piste n'est jamais vide pendant qu'on lit la première
+   étape (mesuré : ~1/6, 1/2 et 5/6 de la piste au milieu de chaque étape). */
+@keyframes land-fill {
+  from { transform: scaleX(0.15); }
+  to { transform: scaleX(1); }
+}
+.landing .land-journey-fill {
+  transform-origin: left center;
+  transition: transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .landing .land-journey-fill {
+      animation: land-fill linear both;
+      animation-timeline: --journey;
+      animation-range: contain 0% contain 100%;
+    }
+  }
+}
+
+/* Changement d'étape dans la grille : les libellés se remplacent par un
+   court fondu montant, échelonné ligne par ligne. */
+.landing .land-swap {
+  animation: land-in 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+.landing .land-bar {
+  transform-origin: left center;
+  transition: transform 650ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing .land-swap {
+    animation: land-fade 200ms ease-out both;
+  }
+  .landing .land-stage-item,
+  .landing .land-step-row,
+  .landing .land-bar {
+    transition-duration: 200ms;
+    transition-property: opacity;
+    transition-delay: 0ms;
+  }
+  .landing .land-stage-item[data-active="false"],
+  .landing .land-stage-item[data-active="false"][data-past="true"] {
+    transform: none;
+    filter: none;
+  }
+}
+
 @supports (interpolate-size: allow-keywords) {
   .landing details {
     interpolate-size: allow-keywords;
@@ -390,12 +568,15 @@ body {
   }
 }
 
-/* Surfaces du navigateur sur la landing : sélection, focus clavier, titres
-   équilibrés. Ce sont les détails qui restent aux couleurs du système quand
-   personne ne les règle. */
+/* Surfaces du navigateur sur la landing : sélection, curseur, focus clavier,
+   titres équilibrés. Ce sont les détails qui restent aux couleurs du système
+   quand personne ne les règle. */
 .landing ::selection {
   background: var(--land-accent-soft);
   color: var(--land-ink);
+}
+.landing {
+  caret-color: var(--land-accent);
 }
 .landing :focus-visible {
   outline: 2px solid var(--land-accent);

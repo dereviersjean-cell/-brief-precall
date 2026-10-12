@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-12T14:30:00+02:00",
+  "title": "Design System: Brief — landing",
+  "extensions": {
+    "scope": "Public landing page only (.landing class in app/globals.css, app/page.tsx, app/components/landing/*). The logged-in app uses a separate system (--violet/--lavender tokens, ui-bits.tsx, Inter Tight + Instrument Serif).",
+    "colorMeta": {
+      "accent": { "role": "primary", "displayName": "Brief Blue", "canonical": "oklch(0.52 0.2 265)", "brandHex": "#2A5CE0", "tonalRamp": ["oklch(0.15 0.08 265)", "oklch(0.26 0.13 265)", "oklch(0.38 0.17 265)", "oklch(0.52 0.2 265)", "oklch(0.64 0.16 265)", "oklch(0.76 0.1 265)", "oklch(0.87 0.05 265)", "oklch(0.95 0.025 265)"] },
+      "accent-soft": { "role": "primary", "displayName": "Blue Wash", "canonical": "oklch(0.955 0.025 265)", "tonalRamp": ["oklch(0.15 0.025 265)", "oklch(0.27 0.025 265)", "oklch(0.39 0.025 265)", "oklch(0.51 0.025 265)", "oklch(0.63 0.025 265)", "oklch(0.75 0.025 265)", "oklch(0.87 0.025 265)", "oklch(0.955 0.025 265)"] },
+      "accent-ink": { "role": "primary", "displayName": "On-Blue White", "canonical": "oklch(1 0 0)" },
+      "warn": { "role": "secondary", "displayName": "Objection Amber", "canonical": "oklch(0.55 0.13 55)", "tonalRamp": ["oklch(0.15 0.05 55)", "oklch(0.27 0.08 55)", "oklch(0.4 0.11 55)", "oklch(0.55 0.13 55)", "oklch(0.66 0.12 55)", "oklch(0.77 0.09 55)", "oklch(0.87 0.05 55)", "oklch(0.95 0.02 55)"] },
+      "ground": { "role": "neutral", "displayName": "Cool Paper", "canonical": "oklch(0.987 0.002 265)" },
+      "surface": { "role": "neutral", "displayName": "White Sheet", "canonical": "oklch(1 0 0)" },
+      "sunken": { "role": "neutral", "displayName": "Sunken Grey", "canonical": "oklch(0.968 0.004 265)" },
+      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "oklch(0.19 0.02 266)", "tonalRamp": ["oklch(0.15 0.02 266)", "oklch(0.19 0.02 266)", "oklch(0.32 0.019 266)", "oklch(0.49 0.018 266)", "oklch(0.55 0.014 266)", "oklch(0.7 0.01 266)", "oklch(0.912 0.006 266)", "oklch(0.968 0.004 265)"] },
+      "muted": { "role": "neutral", "displayName": "Muted Slate", "canonical": "oklch(0.49 0.018 266)" },
+      "faint": { "role": "neutral", "displayName": "Faint Slate", "canonical": "oklch(0.55 0.014 266)" },
+      "line": { "role": "neutral", "displayName": "Hairline", "canonical": "oklch(0.912 0.006 266)" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Hero statement only (46/68/96px); final CTA heading at 40/64px." },
+      "headline": { "displayName": "Headline", "purpose": "Section h2, two-tone (ink claim + faint continuation)." },
+      "title": { "displayName": "Title", "purpose": "Journey step h3, verb in blue." },
+      "lead": { "displayName": "Lead", "purpose": "Sublines under headlines." },
+      "body": { "displayName": "Body", "purpose": "Step bodies, point lists, FAQ answers." },
+      "document": { "displayName": "Document", "purpose": "Values inside product sheets." },
+      "label": { "displayName": "Label", "purpose": "Field labels inside sheets, figure captions; sentence case." },
+      "figure": { "displayName": "Figure", "purpose": "Key numbers and scores, tabular-nums, French decimal comma." }
+    },
+    "shadows": [
+      { "name": "sheet-lift", "value": "0 1px 2px oklch(0.19 0.02 266 / 0.04), 0 40px 80px -32px oklch(0.25 0.06 265 / 0.28)", "purpose": "Every product document sheet (--land-shadow-lg)." },
+      { "name": "panel-lift", "value": "0 1px 2px oklch(0.19 0.02 266 / 0.04), 0 24px 48px -24px oklch(0.19 0.02 266 / 0.18)", "purpose": "Mobile menu drawer (--land-shadow)." }
+    ],
+    "motion": [
+      { "name": "ease-land", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Entrances, stage swaps, bars, timeline fill." },
+      { "name": "ease-write", "value": "cubic-bezier(0.45, 0, 0.2, 1)", "purpose": "Ink-mask reveal of the hero brief fields (900ms, 160ms stagger)." },
+      { "name": "ease-pop", "value": "cubic-bezier(0.34, 1.4, 0.64, 1)", "purpose": "Sector-term chips popping in (420ms, 70ms stagger)." },
+      { "name": "ease-disclosure", "value": "cubic-bezier(0.23, 1, 0.32, 1)", "purpose": "FAQ details height, 260ms." },
+      { "name": "stage-swap", "value": "opacity 450ms, transform 800ms, filter 450ms; inactive = translateY(±28px) scale(0.965) blur(8px)", "purpose": "Journey pinned object state change." },
+      { "name": "reduced-motion", "value": "fade 200-250ms ease-out, no transform, no blur", "purpose": "Replacement for every movement under prefers-reduced-motion." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px", "note": "Nav links, mobile menu and Journey pinning switch here." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main action pill (Essayer gratuitement).",
+      "html": "<a class=\"ds-btn-primary\" href=\"#\">Essayer gratuitement <svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 12h14\"/><path d=\"m12 5 7 7-7 7\"/></svg></a>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; gap: 8px; height: 48px; padding: 0 24px; border-radius: 9999px; background: oklch(0.52 0.2 265); color: #fff; font-family: Geist, ui-sans-serif, system-ui, sans-serif; font-size: 16px; font-weight: 500; text-decoration: none; transition: filter .15s, transform .15s; } .ds-btn-primary:hover { filter: brightness(1.1); } .ds-btn-primary:active { transform: scale(0.98); } .ds-btn-primary:focus-visible { outline: 2px solid oklch(0.52 0.2 265); outline-offset: 3px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Text pill in blue, washed on hover (Voir la méthode).",
+      "html": "<a class=\"ds-btn-secondary\" href=\"#\">Voir la méthode</a>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; height: 48px; padding: 0 24px; border-radius: 9999px; background: transparent; color: oklch(0.52 0.2 265); font-family: Geist, ui-sans-serif, system-ui, sans-serif; font-size: 16px; font-weight: 500; text-decoration: none; transition: background-color .15s, transform .15s; } .ds-btn-secondary:hover { background: oklch(0.955 0.025 265); } .ds-btn-secondary:active { transform: scale(0.98); } .ds-btn-secondary:focus-visible { outline: 2px solid oklch(0.52 0.2 265); outline-offset: 3px; }"
+    },
+    {
+      "name": "Accent Chip",
+      "kind": "chip",
+      "refersTo": "chip-accent",
+      "description": "Status inside a document (Décisionnaire, Brief prêt).",
+      "html": "<span class=\"ds-chip-accent\">Décisionnaire</span>",
+      "css": ".ds-chip-accent { display: inline-block; padding: 2px 8px; border-radius: 9999px; background: oklch(0.955 0.025 265); color: oklch(0.52 0.2 265); font-family: Geist, ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: 600; }"
+    },
+    {
+      "name": "Term Chip",
+      "kind": "chip",
+      "refersTo": "chip-term",
+      "description": "Sector vocabulary term in the brief.",
+      "html": "<span class=\"ds-chip-term\">carton ondulé</span>",
+      "css": ".ds-chip-term { display: inline-block; padding: 4px 10px; border-radius: 9999px; border: 1px solid oklch(0.912 0.006 266); background: #fff; color: oklch(0.19 0.02 266); font-family: Geist, ui-sans-serif, system-ui, sans-serif; font-size: 13px; }"
+    },
+    {
+      "name": "Document Sheet",
+      "kind": "card",
+      "refersTo": "document-sheet",
+      "description": "Product excerpt drawn as a white sheet, labelled as an example.",
+      "html": "<div class=\"ds-sheet\"><div class=\"ds-sheet-head\"><div><div class=\"ds-sheet-label\">La veille, 18:00</div><div class=\"ds-sheet-title\">Valdor Emballages</div></div><span class=\"ds-chip-accent\">Brief prêt</span></div><div class=\"ds-sheet-row\"><div class=\"ds-sheet-label\">Registre légal</div><div class=\"ds-sheet-value\">SAS, 140 salariés, CA 2025 de 21 M€</div></div><div class=\"ds-sheet-foot\">Exemple. Entreprises et contact fictifs.</div></div>",
+      "css": ".ds-sheet { max-width: 460px; border-radius: 20px; border: 1px solid oklch(0.912 0.006 266); background: #fff; box-shadow: 0 1px 2px oklch(0.19 0.02 266 / 0.04), 0 40px 80px -32px oklch(0.25 0.06 265 / 0.28); font-family: Geist, ui-sans-serif, system-ui, sans-serif; color: oklch(0.19 0.02 266); overflow: hidden; } .ds-sheet-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 24px 28px 20px; } .ds-sheet-label { font-size: 12.5px; color: oklch(0.49 0.018 266); } .ds-sheet-title { margin-top: 2px; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; } .ds-sheet-value { font-size: 14.5px; } .ds-sheet-row { padding: 14px 28px; border-top: 1px solid oklch(0.912 0.006 266); border-bottom: 1px solid oklch(0.912 0.006 266); } .ds-sheet-foot { padding: 12px 28px; font-size: 12px; color: oklch(0.55 0.014 266); } .ds-chip-accent { padding: 4px 10px; border-radius: 9999px; background: oklch(0.955 0.025 265); color: oklch(0.52 0.2 265); font-size: 12px; font-weight: 600; }"
+    },
+    {
+      "name": "Segmented Control",
+      "kind": "custom",
+      "refersTo": "segmented-control",
+      "description": "R1/R2/R3 toggle that re-scores the same call; detected stage carries a blue dot.",
+      "html": "<div class=\"ds-seg\" role=\"group\"><button type=\"button\">R1 Découverte</button><button type=\"button\" aria-pressed=\"true\">R2 Présentation <i></i></button><button type=\"button\">R3 Closing</button></div>",
+      "css": ".ds-seg { display: inline-flex; padding: 4px; border-radius: 9999px; background: oklch(0.968 0.004 265); font-family: Geist, ui-sans-serif, system-ui, sans-serif; } .ds-seg button { height: 36px; padding: 0 14px; border: 0; border-radius: 9999px; background: transparent; color: oklch(0.49 0.018 266); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; transition: background-color .2s, color .2s, box-shadow .2s; } .ds-seg button:hover { color: oklch(0.19 0.02 266); } .ds-seg button[aria-pressed=true] { background: #fff; color: oklch(0.19 0.02 266); box-shadow: 0 1px 3px oklch(0.19 0.02 266 / 0.12); } .ds-seg i { display: inline-block; width: 6px; height: 6px; margin-left: 6px; border-radius: 50%; background: oklch(0.52 0.2 265); vertical-align: middle; } .ds-seg button:focus-visible { outline: 2px solid oklch(0.52 0.2 265); outline-offset: 3px; }"
+    },
+    {
+      "name": "Navigation Bar",
+      "kind": "nav",
+      "refersTo": "button-nav",
+      "description": "Sticky translucent bar: brand mark, section anchors, sign-in and nav pill.",
+      "html": "<header class=\"ds-nav\"><a class=\"ds-mark\" href=\"#\"><span>B</span>Brief</a><nav><a href=\"#\">Le problème</a><a href=\"#\">La méthode</a><a href=\"#\">Managers</a><a href=\"#\">FAQ</a></nav><a class=\"ds-nav-cta\" href=\"#\">Essayer gratuitement</a></header>",
+      "css": ".ds-nav { display: flex; align-items: center; justify-content: space-between; height: 64px; padding: 0 24px; background: oklch(0.987 0.002 265 / 0.8); backdrop-filter: blur(24px) saturate(1.5); border-bottom: 1px solid oklch(0.912 0.006 266 / 0.7); font-family: Geist, ui-sans-serif, system-ui, sans-serif; } .ds-mark { display: inline-flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 600; color: oklch(0.19 0.02 266); text-decoration: none; } .ds-mark span { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: oklch(0.52 0.2 265); color: #fff; font-size: 13px; } .ds-nav nav { display: flex; gap: 28px; } .ds-nav nav a { font-size: 14px; color: oklch(0.49 0.018 266); text-decoration: none; transition: color .15s; } .ds-nav nav a:hover { color: oklch(0.19 0.02 266); } .ds-nav-cta { display: inline-flex; align-items: center; height: 36px; padding: 0 16px; border-radius: 9999px; background: oklch(0.52 0.2 265); color: #fff; font-size: 14px; font-weight: 500; text-decoration: none; transition: filter .15s; } .ds-nav-cta:hover { filter: brightness(1.1); } .ds-nav a:focus-visible { outline: 2px solid oklch(0.52 0.2 265); outline-offset: 3px; border-radius: 6px; }"
+    },
+    {
+      "name": "Two-Tone Headline",
+      "kind": "custom",
+      "refersTo": "typography.headline",
+      "description": "Section h2: ink claim followed by faint continuation, no eyebrow.",
+      "html": "<h2 class=\"ds-h2\"><span>Coachez sur des faits.</span> <span class=\"ds-h2-cont\">Plus sur des impressions.</span></h2>",
+      "css": ".ds-h2 { max-width: 15ch; margin: 0; font-family: Geist, ui-sans-serif, system-ui, sans-serif; font-size: 52px; font-weight: 600; line-height: 1.06; letter-spacing: -0.035em; color: oklch(0.19 0.02 266); text-wrap: balance; } .ds-h2-cont { color: oklch(0.55 0.014 266); }"
+    },
+    {
+      "name": "Final CTA Block",
+      "kind": "card",
+      "refersTo": "cta-block",
+      "description": "The page's only colored ground: blue block with inverted primary and ghost pill.",
+      "html": "<div class=\"ds-cta\"><h2>Prêt à closer plus ?</h2><div class=\"ds-cta-row\"><a class=\"ds-cta-main\" href=\"#\">Essayer gratuitement</a><a class=\"ds-cta-ghost\" href=\"#\">Prendre rendez-vous</a></div></div>",
+      "css": ".ds-cta { padding: 64px 48px; border-radius: 28px; background: oklch(0.52 0.2 265); color: #fff; text-align: center; font-family: Geist, ui-sans-serif, system-ui, sans-serif; } .ds-cta h2 { margin: 0; font-size: 48px; font-weight: 600; line-height: 1.02; letter-spacing: -0.04em; } .ds-cta-row { display: flex; justify-content: center; gap: 12px; margin-top: 32px; flex-wrap: wrap; } .ds-cta-main, .ds-cta-ghost { display: inline-flex; align-items: center; height: 48px; padding: 0 24px; border-radius: 9999px; font-size: 16px; font-weight: 500; text-decoration: none; transition: background-color .15s, opacity .15s, transform .15s; } .ds-cta-main { background: #fff; color: oklch(0.52 0.2 265); } .ds-cta-main:hover { opacity: 0.95; } .ds-cta-ghost { color: #fff; border: 1px solid rgb(255 255 255 / 0.35); } .ds-cta-ghost:hover { background: rgb(0 0 0 / 0.1); } .ds-cta a:active { transform: scale(0.98); } .ds-cta a:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Product Page for One Deal",
+    "overview": "The landing reads like an Apple product page whose product is a single sales meeting. Huge, tight-tracked Geist statements sit on cool near-white grounds; the product appears as real documents (a brief, a scoring grid, an objection library) drawn as white sheets with a hairline border and one long, soft shadow. Nothing is a mock window or a fake sidebar: each sheet is an excerpt of what Brief actually produces, and each one says so in its footer (\"Exemple. … fictifs.\").\n\nDensity is low and deliberate: one idea per band, generous section padding, measured line lengths. Color is almost absent; the brand blue carries every job that needs attention (the primary action, the active step, the caret writing the brief, the team's weakest dimension, the decision-maker chip). Hierarchy comes from size and from a two-tone headline (claim in ink, continuation in faint grey), never from labels stacked above titles.\n\nMotion has one strong moment (the pinned \"un deal, trois moments\" sequence) and three supporting gestures (the hero brief writing itself, charts tracing as they enter, FAQ answers opening). Headlines never move.",
+    "keyCharacteristics": [
+      "Cool near-white grounds alternating with pure-white bands, separated by hairlines.",
+      "One chroma: brand blue, rendered `oklch(0.52 0.2 265)`.",
+      "Geist only, semibold display with negative tracking; figures in tabular numerals, no monospace face.",
+      "Product shown as white document sheets (20px corners, hairline, long soft shadow), always labelled as examples.",
+      "Pills for every action and chip; no gradients, no glass panels except the nav, no icon tiles.",
+      "French typography: non-breaking spaces before `: ; ? !` and inside « »."
+    ],
+    "rules": [
+      { "name": "The One Chroma Rule", "body": "Brief Blue is the only hue on the page that signals anything. A second hue exists only as a status inside a product document (Objection Amber), never on page chrome.", "section": "colors" },
+      { "name": "The Light Ground Rule", "body": "Grounds alternate between Cool Paper and White Sheet, separated by a hairline top border. The final CTA block is the one colored ground on the page.", "section": "colors" },
+      { "name": "The Two-Tone Headline Rule", "body": "A section headline is a claim in Ink followed by its continuation in Faint Slate. That is the only hierarchy above a section; there is no eyebrow or kicker.", "section": "typography" },
+      { "name": "The Tabular Figure Rule", "body": "Every number, time and score is set in Geist with `tabular-nums`; decimals use a French comma (\"3,8\"), and a non-breaking space separates a value from \"%\" or \"/ 5\".", "section": "typography" },
+      { "name": "The Paper Rule", "body": "Only product documents cast a shadow. Bands, cards of copy, the weekly-review email and the CTA block stay flat.", "section": "elevation" }
+    ],
+    "dos": [
+      "**Do** scope every new landing style under `.landing` and use the `land-*` utilities; never the app's `--violet` / `--lavender` tokens.",
+      "**Do** write section headlines as a two-tone pair: Ink claim, Faint continuation.",
+      "**Do** show the product as a white document sheet (20px corners, hairline, Sheet lift) with an example footer.",
+      "**Do** set figures in Geist `tabular-nums` with French decimal commas and non-breaking spaces before `%`, `:`, `;`, `?`, `!` and inside « ».",
+      "**Do** keep Brief Blue for jobs: the primary action, the active state, the one highlighted value.",
+      "**Do** give every motion a reduced-motion fade and leave headlines static."
+    ],
+    "donts": [
+      "**Don't** add eyebrows or kickers above headlines; the two-tone headline carries the hierarchy.",
+      "**Don't** introduce a dark or colored band other than the final CTA block.",
+      "**Don't** use gradients, glassmorphism beyond the nav bar, icon tiles, or a monospace face for numbers.",
+      "**Don't** add a second accent hue to page chrome; Objection Amber stays inside documents as a status.",
+      "**Don't** put shadows on bands or copy blocks; only product documents float.",
+      "**Don't** draw fake app windows or sidebars around product excerpts."
+    ]
+  }
+}

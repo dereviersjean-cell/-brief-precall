@@ -45,3 +45,7 @@ next-env.d.ts
 
 # Captures et journaux du MCP Playwright
 /.playwright-mcp/
+
+# Captures de revue et tirages du skill Impeccable (régénérables)
+/.impeccable/review/
+/.impeccable/questions/
