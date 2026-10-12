@@ -1,6 +1,16 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Pas de cache Turbopack persistant entre deux builds de production.
+  // Activé par défaut depuis Next 16.3, et Vercel restaure `.next/cache` d'un
+  // déploiement à l'autre : le 12/10/2026, le déploiement de la refonte du
+  // site a servi la feuille de styles de l'ANCIENNE version (tout le bloc
+  // `.landing` de globals.css manquait), alors qu'un build propre du même
+  // commit la produisait correctement. Un build un peu plus long vaut mieux
+  // qu'un déploiement qui ment sur son contenu.
+  experimental: {
+    turbopackFileSystemCacheForBuild: false,
+  },
   // Les polices du générateur de PDF sont lues à l'exécution via un chemin
   // construit (path.join(process.cwd(), …)). Le traçage de fichiers de Next
   // suit les imports, pas les chemins calculés : sans cette inclusion
