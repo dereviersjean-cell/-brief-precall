@@ -394,6 +394,8 @@ Ce que l'audit a refermé, pour ne pas rouvrir les mêmes portes :
 
 40. **L'app GitHub de Vercel se déconnecte en silence** (juillet 2026 — *retrouvé le 07/09/2026 dans un stash de documentation resté de côté, cette note n'avait jamais été reportée ici*) : les push arrivent bien sur GitHub, mais Vercel ne construit plus, **sans aucune erreur visible nulle part**. Ce n'est pas un webhook classique (rien dans Settings → Webhooks) mais l'app GitHub de Vercel (Settings → Installations) qui demande à être ré-autorisée. Diagnostic : `git commit --allow-empty -m "redéploiement"` puis `git push` — si le déploiement ne part pas, c'est ça. Le même commit vide sert aussi à embarquer une variable d'environnement ajoutée après le dernier déploiement (Resend, Apollo).
 
+41. **Un déploiement Vercel peut servir l'ANCIEN CSS avec le NOUVEAU HTML** (12/10/2026) : la refonte du site est partie en production avec la feuille de styles d'avant la refonte (tout le bloc `.landing` de `globals.css` absent : boutons sans couleur, autre police, illustrations mal cadrées), alors qu'un clone propre du même commit, `npm ci` puis build, produisait le bon fichier. Cause : Next 16.3 active par défaut `turbopackFileSystemCacheForBuild`, et Vercel restaure `.next/cache` d'un déploiement à l'autre. Fix : `experimental.turbopackFileSystemCacheForBuild: false` dans `next.config.ts`. **Après un déploiement qui touche aux styles, comparer le CSS servi en production au CSS du build local** (taille, ou `cmp` après téléchargement) : la page répond 200 et son contenu est le bon, rien d'autre ne signale le problème.
+
 ## Règles — NE JAMAIS faire
 
 - ❌ Utiliser le client Supabase anon côté serveur (toujours service_role)

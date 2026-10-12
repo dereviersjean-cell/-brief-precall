@@ -524,7 +524,11 @@ function StackOrbit() {
 
 export function Integrations({ showTitle = true }: { showTitle?: boolean }) {
   return (
-    <section id="integrations" className="scroll-mt-20 border-t border-land-line bg-land-surface">
+    // `overflow-x-clip` : en tournant, les anneaux de l'orbite (des carrés
+    // invisibles) dépassent de l'écran sur téléphone à certains angles et
+    // faisaient défiler la page de côté par intermittence. `clip` et non
+    // `hidden` : pas de conteneur de défilement créé.
+    <section id="integrations" className="scroll-mt-20 overflow-x-clip border-t border-land-line bg-land-surface">
       <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-32">
         {showTitle && (
           <h2 className={`${H2} max-w-[16ch]`}>
