@@ -16,18 +16,18 @@ export function CrmBadge({ provider }: { provider: string }) {
       ? "bg-orange-100 text-orange-700"
       : "bg-slate-100 text-slate-600";
   return (
-    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${color}`}>
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${color}`}>
       {label}
     </span>
   );
 }
 
 export function RoleBadge({ role }: { role: UserRole | null }) {
-  if (!role) return <span className="text-slate-300 text-xs">—</span>;
+  if (!role) return <span className="text-[12px] text-slate-300">—</span>;
   const label = role === "manager" ? "Manager" : "Commercial";
-  const color = role === "manager" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700";
+  const color = role === "manager" ? "bg-[color:var(--lavender)] text-[color:var(--violet)]" : "bg-slate-100 text-slate-600";
   return (
-    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${color}`}>
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${color}`}>
       {label}
     </span>
   );

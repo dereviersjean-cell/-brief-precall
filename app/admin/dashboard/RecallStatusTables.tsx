@@ -28,12 +28,12 @@ export function formatRecallDate(iso: string | null) {
 
 function BotScheduledBadge({ scheduled, reason }: { scheduled: boolean; reason: string | null }) {
   return scheduled ? (
-    <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
+    <span className="inline-flex items-center rounded-full bg-[color:var(--success-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-emerald-700">
       Bot programmé
     </span>
   ) : (
     <span
-      className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700"
+      className="inline-flex items-center rounded-full bg-[color:var(--warning-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-amber-700"
       title={reason ?? undefined}
     >
       Pas de bot
@@ -51,22 +51,22 @@ export function UpcomingMeetingsTable({
   const colSpan = showUserColumn ? 4 : 3;
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm text-left border-collapse">
+      <table className="w-full border-collapse text-left text-[13px]">
         <thead>
           <tr className="border-b border-border">
             {showUserColumn && (
-              <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Utilisateur</th>
+              <th className="py-3 pr-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500 whitespace-nowrap">Utilisateur</th>
             )}
-            <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Événement</th>
-            <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Date</th>
-            <th className="py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Bot</th>
+            <th className="py-3 pr-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Événement</th>
+            <th className="py-3 pr-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500 whitespace-nowrap">Date</th>
+            <th className="py-3 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500 whitespace-nowrap">Bot</th>
           </tr>
         </thead>
         <tbody>
           {meetings.map((m) => (
-            <tr key={m.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+            <tr key={m.id} className="border-b border-border transition-colors last:border-b-0 hover:bg-slate-50">
               {showUserColumn && (
-                <td className="py-3 pr-4 text-slate-800 font-medium max-w-[200px] truncate">{m.user_name || m.user_email}</td>
+                <td className="max-w-[200px] truncate py-3 pr-4 font-medium text-slate-900">{m.user_name || m.user_email}</td>
               )}
               <td className="py-3 pr-4 text-slate-700 max-w-[280px] truncate">{m.event_title}</td>
               <td className="py-3 pr-4 text-slate-500 whitespace-nowrap">{formatRecallDate(m.event_start_at)}</td>
@@ -77,7 +77,7 @@ export function UpcomingMeetingsTable({
           ))}
           {meetings.length === 0 && (
             <tr>
-              <td colSpan={colSpan} className="py-10 text-center text-slate-400 text-sm">
+              <td colSpan={colSpan} className="py-10 text-center text-[13px] text-slate-500">
                 Aucun rendez-vous à venir synchronisé.
               </td>
             </tr>
@@ -98,27 +98,27 @@ export function FailedRecordingsTable({
   const colSpan = showUserColumn ? 4 : 3;
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm text-left border-collapse">
+      <table className="w-full border-collapse text-left text-[13px]">
         <thead>
           <tr className="border-b border-border">
             {showUserColumn && (
-              <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Utilisateur</th>
+              <th className="py-3 pr-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500 whitespace-nowrap">Utilisateur</th>
             )}
-            <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Événement</th>
-            <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Date</th>
-            <th className="py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Statut</th>
+            <th className="py-3 pr-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Événement</th>
+            <th className="py-3 pr-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500 whitespace-nowrap">Date</th>
+            <th className="py-3 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500 whitespace-nowrap">Statut</th>
           </tr>
         </thead>
         <tbody>
           {recordings.map((r) => (
-            <tr key={r.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+            <tr key={r.id} className="border-b border-border transition-colors last:border-b-0 hover:bg-slate-50">
               {showUserColumn && (
-                <td className="py-3 pr-4 text-slate-800 font-medium max-w-[200px] truncate">{r.user_name || r.user_email}</td>
+                <td className="max-w-[200px] truncate py-3 pr-4 font-medium text-slate-900">{r.user_name || r.user_email}</td>
               )}
               <td className="py-3 pr-4 text-slate-700 max-w-[280px] truncate">{r.event_title}</td>
               <td className="py-3 pr-4 text-slate-500 whitespace-nowrap">{formatRecallDate(r.event_start_at)}</td>
               <td className="py-3">
-                <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">
+                <span className="inline-flex items-center rounded-full bg-[color:var(--danger-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-rose-700">
                   {r.status_label}
                 </span>
               </td>
@@ -126,7 +126,7 @@ export function FailedRecordingsTable({
           ))}
           {recordings.length === 0 && (
             <tr>
-              <td colSpan={colSpan} className="py-10 text-center text-slate-400 text-sm">
+              <td colSpan={colSpan} className="py-10 text-center text-[13px] text-slate-500">
                 Aucun rendez-vous sans enregistrement détecté sur les 7 derniers jours.
               </td>
             </tr>

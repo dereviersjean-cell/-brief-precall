@@ -152,7 +152,7 @@ export default function NotificationSettingsClient({
   }
 
   return (
-    <div className="max-w-3xl mx-auto w-full px-6 py-10">
+    <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
       {/* Hero header */}
       <FadeIn>
         <div className="mb-6">
@@ -171,11 +171,9 @@ export default function NotificationSettingsClient({
         </div>
       </FadeIn>
 
-      <div className="flex items-start gap-3 bg-[color:var(--lavender)] border border-[color:var(--lavender-strong)] rounded-2xl px-4 py-3.5 mb-8">
-        <span className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shrink-0 shadow-[var(--shadow-xs)]">
-          <Info className="w-4 h-4 text-[color:var(--violet)]" />
-        </span>
-        <p className="text-sm text-[color:var(--violet)] mt-0.5">
+      <div className="mb-8 flex items-start gap-2.5 rounded-2xl bg-[color:var(--lavender)] px-4 py-3">
+        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[color:var(--violet)]" />
+        <p className="text-[13px] leading-relaxed text-slate-600">
           Vous pouvez activer plusieurs canaux à la fois. Si aucun canal n&apos;est activé, aucune notification ne
           sera envoyée.
         </p>
@@ -185,10 +183,10 @@ export default function NotificationSettingsClient({
         {SECTIONS.map((section, index) => (
           <FadeIn key={section.eventType} delay={0.05 + index * 0.05}>
             <div>
-              <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[color:var(--violet)]">{section.title}</h2>
-              <p className="text-xs text-slate-400 mt-1 mb-3">{section.description}</p>
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">{section.title}</h2>
+              <p className="mb-3 mt-1 text-[12.5px] text-slate-500">{section.description}</p>
 
-              <Card padded={false} className="divide-y divide-slate-100">
+              <Card padded={false} className="divide-y divide-border">
                 {AVAILABLE_CHANNELS[section.eventType]
                   .filter((channel) => {
                     const required = CHANNEL_MODULE[channel];
@@ -207,24 +205,24 @@ export default function NotificationSettingsClient({
                   const showSlackWarning =
                     channel === "slack" && hasSlackConnection === false && (!disabled || enabled);
                   return (
-                    <div key={channel} className="px-4 py-3.5">
+                    <div key={channel} className="px-4 py-3.5 sm:px-5">
                       <div className="flex items-center justify-between gap-4">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-medium text-slate-900 text-sm">{meta.label}</p>
+                            <p className="text-[13.5px] font-medium text-slate-900">{meta.label}</p>
                             {disabled && (
-                              <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full">
+                              <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11.5px] font-semibold text-slate-500">
                                 Bientôt disponible
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-slate-500 mt-0.5">{meta.description}</p>
+                          <p className="mt-0.5 text-[12.5px] text-slate-500">{meta.description}</p>
                         </div>
                         <button
                           onClick={() => handleToggle(section.eventType, channel)}
                           disabled={disabled}
                           className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${
-                            enabled ? "brand-gradient shadow-[var(--shadow-glow)]" : "bg-slate-200"
+                            enabled ? "bg-[color:var(--primary)]" : "bg-slate-200"
                           }`}
                           aria-label={enabled ? "Désactiver" : "Activer"}
                         >
@@ -236,13 +234,13 @@ export default function NotificationSettingsClient({
                         </button>
                       </div>
                       {showCalendarWarning && (
-                        <div className="flex items-start gap-2 bg-[color:var(--warning-soft)] border border-[color:var(--warning)]/30 rounded-xl text-amber-900 text-sm p-3 mt-3">
-                          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <div className="mt-3 flex items-start gap-2 rounded-xl bg-[color:var(--warning-soft)] p-3 text-[13px] leading-relaxed text-amber-800">
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
                           <div className="flex-1 min-w-0">
                             <p>Ce canal nécessite une reconnexion à Google Calendar avec l&apos;autorisation d&apos;écriture.</p>
                             <Link
                               href="/settings/connexions"
-                              className="inline-block mt-2 text-xs font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 transition-colors px-2.5 py-1 rounded-lg"
+                              className="mt-2 inline-flex h-8 items-center rounded-lg bg-white px-3 text-[12px] font-semibold text-amber-800 transition-colors hover:bg-white/70"
                             >
                               Reconnecter Google Calendar
                             </Link>
@@ -250,13 +248,13 @@ export default function NotificationSettingsClient({
                         </div>
                       )}
                       {showHubspotWarning && (
-                        <div className="flex items-start gap-2 bg-[color:var(--warning-soft)] border border-[color:var(--warning)]/30 rounded-xl text-amber-900 text-sm p-3 mt-3">
-                          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <div className="mt-3 flex items-start gap-2 rounded-xl bg-[color:var(--warning-soft)] p-3 text-[13px] leading-relaxed text-amber-800">
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
                           <div className="flex-1 min-w-0">
                             <p>Ce canal nécessite une reconnexion à HubSpot avec l&apos;autorisation d&apos;écriture (notes, meetings).</p>
                             <a
                               href="/api/crm/hubspot/start"
-                              className="inline-block mt-2 text-xs font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 transition-colors px-2.5 py-1 rounded-lg"
+                              className="mt-2 inline-flex h-8 items-center rounded-lg bg-white px-3 text-[12px] font-semibold text-amber-800 transition-colors hover:bg-white/70"
                             >
                               Reconnecter HubSpot
                             </a>
@@ -264,13 +262,13 @@ export default function NotificationSettingsClient({
                         </div>
                       )}
                       {showPipedriveWarning && (
-                        <div className="flex items-start gap-2 bg-[color:var(--warning-soft)] border border-[color:var(--warning)]/30 rounded-xl text-amber-900 text-sm p-3 mt-3">
-                          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <div className="mt-3 flex items-start gap-2 rounded-xl bg-[color:var(--warning-soft)] p-3 text-[13px] leading-relaxed text-amber-800">
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
                           <div className="flex-1 min-w-0">
                             <p>Ce canal nécessite une reconnexion à Pipedrive avec l&apos;autorisation d&apos;écriture (deals, contacts, activités).</p>
                             <a
                               href="/api/crm/pipedrive/start"
-                              className="inline-block mt-2 text-xs font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 transition-colors px-2.5 py-1 rounded-lg"
+                              className="mt-2 inline-flex h-8 items-center rounded-lg bg-white px-3 text-[12px] font-semibold text-amber-800 transition-colors hover:bg-white/70"
                             >
                               Reconnecter Pipedrive
                             </a>
@@ -278,13 +276,13 @@ export default function NotificationSettingsClient({
                         </div>
                       )}
                       {showSlackWarning && (
-                        <div className="flex items-start gap-2 bg-[color:var(--warning-soft)] border border-[color:var(--warning)]/30 rounded-xl text-amber-900 text-sm p-3 mt-3">
-                          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <div className="mt-3 flex items-start gap-2 rounded-xl bg-[color:var(--warning-soft)] p-3 text-[13px] leading-relaxed text-amber-800">
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
                           <div className="flex-1 min-w-0">
                             <p>Ce canal nécessite de connecter votre compte Slack.</p>
                             <Link
                               href="/settings/connexions"
-                              className="inline-block mt-2 text-xs font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 transition-colors px-2.5 py-1 rounded-lg"
+                              className="mt-2 inline-flex h-8 items-center rounded-lg bg-white px-3 text-[12px] font-semibold text-amber-800 transition-colors hover:bg-white/70"
                             >
                               Connecter Slack
                             </Link>
@@ -303,21 +301,21 @@ export default function NotificationSettingsClient({
       {isModuleEnabled("weekly_digest") && (
       <FadeIn delay={0.15}>
         <div className="mt-8">
-          <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[color:var(--violet)]">Digest hebdomadaire</h2>
-          <p className="text-xs text-slate-400 mt-1 mb-3">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Digest hebdomadaire</h2>
+          <p className="mb-3 mt-1 text-[12.5px] text-slate-500">
             Un récap par email de votre semaine (ou, pour les managers, de celle de votre équipe).
           </p>
-          <Card padded={false} className="px-4 py-3.5">
+          <Card padded={false} className="px-4 py-3.5 sm:px-5">
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
-                <p className="font-medium text-slate-900 text-sm">Recevoir le digest</p>
-                <p className="text-xs text-slate-500 mt-0.5">Envoyé automatiquement par email chaque semaine.</p>
+                <p className="text-[13.5px] font-medium text-slate-900">Recevoir le digest</p>
+                <p className="mt-0.5 text-[12.5px] text-slate-500">Envoyé automatiquement par email chaque semaine.</p>
               </div>
               <button
                 onClick={() => saveDigestPreference(!digestEnabled, digestTiming)}
                 disabled={digestSaving}
                 className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${
-                  digestEnabled ? "brand-gradient shadow-[var(--shadow-glow)]" : "bg-slate-200"
+                  digestEnabled ? "bg-[color:var(--primary)]" : "bg-slate-200"
                 }`}
                 aria-label={digestEnabled ? "Désactiver" : "Activer"}
               >
@@ -329,16 +327,16 @@ export default function NotificationSettingsClient({
               </button>
             </div>
             {digestEnabled && (
-              <div className="flex items-center gap-2 mt-3">
+              <div className="mt-3 flex flex-wrap items-center gap-2">
                 {(Object.keys(DIGEST_TIMING_LABELS) as DigestTiming[]).map((timing) => (
                   <button
                     key={timing}
                     onClick={() => saveDigestPreference(digestEnabled, timing)}
                     disabled={digestSaving}
-                    className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                    className={`inline-flex h-8 items-center rounded-full border px-3 text-[12.5px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                       digestTiming === timing
-                        ? "bg-[color:var(--lavender)] border-[color:var(--lavender-strong)] text-[color:var(--violet)]"
-                        : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
+                        ? "border-[color:var(--lavender-strong)] bg-[color:var(--lavender)] text-[color:var(--violet)]"
+                        : "border-border bg-white text-slate-500 hover:text-slate-900"
                     }`}
                   >
                     {DIGEST_TIMING_LABELS[timing]}
@@ -346,20 +344,20 @@ export default function NotificationSettingsClient({
                 ))}
               </div>
             )}
-            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100">
+            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
               {(Object.keys(DIGEST_TIMING_LABELS) as DigestTiming[]).map((timing) => (
                 <button
                   key={timing}
                   onClick={() => sendDigestPreview(timing)}
                   disabled={digestPreviewSending !== null}
-                  className="text-xs font-medium px-3 py-1.5 rounded-full border border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="inline-flex h-8 items-center rounded-lg border border-border bg-white px-3 text-[12.5px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {digestPreviewSending === timing ? "Envoi…" : `Aperçu "${DIGEST_TIMING_LABELS[timing]}"`}
                 </button>
               ))}
             </div>
             {digestPreviewResult && (
-              <p className={`text-xs mt-2 ${digestPreviewResult.type === "success" ? "text-emerald-600" : "text-red-600"}`}>
+              <p className={`mt-2 text-[12.5px] ${digestPreviewResult.type === "success" ? "text-emerald-700" : "text-rose-700"}`}>
                 {digestPreviewResult.message}
               </p>
             )}

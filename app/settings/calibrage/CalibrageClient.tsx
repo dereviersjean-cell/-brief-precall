@@ -34,16 +34,16 @@ function pct(value: number | null): string {
 // mémoriser ce qu'est un « bon » rappel.
 function toneFor(value: number | null): string {
   if (value === null) return "text-slate-400";
-  if (value >= 0.85) return "text-emerald-600";
-  if (value >= 0.65) return "text-amber-600";
-  return "text-rose-600";
+  if (value >= 0.85) return "text-emerald-700";
+  if (value >= 0.65) return "text-amber-700";
+  return "text-rose-700";
 }
 
 function Metric({ label, value, help }: { label: string; value: number | null; help: string }) {
   return (
     <div className="px-5 py-4">
-      <p className={`text-[22px] font-semibold ${toneFor(value)}`}>{pct(value)}</p>
-      <p className="mt-0.5 text-[13px] font-medium text-slate-900">{label}</p>
+      <p className={`text-[26px] font-semibold leading-none tracking-tight tabular-nums ${toneFor(value)}`}>{pct(value)}</p>
+      <p className="mt-2 text-[13px] font-medium text-slate-900">{label}</p>
       <p className="mt-0.5 text-[12px] leading-snug text-slate-500">{help}</p>
     </div>
   );
@@ -88,7 +88,7 @@ export default function CalibrageClient({ calls }: { calls: ObjectionEvalAnnotat
       </div>
 
       <Card className="mb-6">
-        <p className="text-[13px] font-semibold text-slate-900">Comment faire</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Comment faire</p>
         <ol className="mt-2.5 space-y-1.5 text-[13px] leading-relaxed text-slate-600">
           <li>
             <strong>1.</strong> Ouvrez un call ci-dessous et lisez l&apos;échange.
@@ -109,7 +109,7 @@ export default function CalibrageClient({ calls }: { calls: ObjectionEvalAnnotat
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-[13px] text-slate-500">
-          <strong className="text-slate-900">{reviewed.length}</strong> call{reviewed.length > 1 ? "s" : ""} validé
+          <strong className="tabular-nums text-slate-900">{reviewed.length}</strong> call{reviewed.length > 1 ? "s" : ""} validé
           {reviewed.length > 1 ? "s" : ""} sur {calls.length}
         </p>
         <Button
@@ -122,12 +122,12 @@ export default function CalibrageClient({ calls }: { calls: ObjectionEvalAnnotat
         </Button>
       </div>
 
-      {error && <p className="mb-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">{error}</p>}
+      {error && <p className="mb-4 rounded-xl bg-[color:var(--danger-soft)] px-3.5 py-2.5 text-[13px] text-rose-700">{error}</p>}
 
       {run && (
         <div className="mb-6">
           <Card padded={false} className="overflow-hidden">
-            <div className="grid grid-cols-1 divide-y divide-slate-100 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+            <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
               <Metric
                 label="Objections retrouvées"
                 value={run.total.recall}
@@ -151,19 +151,19 @@ export default function CalibrageClient({ calls }: { calls: ObjectionEvalAnnotat
               <Card key={call.callId} className="p-5">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <p className="text-[13px] font-semibold text-slate-900">{call.label}</p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-[12px] text-slate-500 tabular-nums">
                     {call.expectedCount} attendue{call.expectedCount > 1 ? "s" : ""} · {call.detectedCount} détectée
                     {call.detectedCount > 1 ? "s" : ""}
                   </p>
                 </div>
 
                 {call.missed.length === 0 && call.spurious.length === 0 && call.misplaced.length === 0 ? (
-                  <p className="mt-2 text-[13px] text-emerald-600">Parfait sur ce call.</p>
+                  <p className="mt-2 text-[13px] font-medium text-emerald-700">Parfait sur ce call.</p>
                 ) : (
                   <div className="mt-3 space-y-2.5">
                     {call.missed.map((text, i) => (
                       <p key={`m${i}`} className="text-[13px] text-slate-700">
-                        <span className="mr-2 rounded bg-rose-100 px-1.5 py-0.5 text-[11px] font-semibold text-rose-700">
+                        <span className="mr-2 inline-flex items-center rounded-full bg-[color:var(--danger-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-rose-700">
                           RATÉE
                         </span>
                         {text}
@@ -171,7 +171,7 @@ export default function CalibrageClient({ calls }: { calls: ObjectionEvalAnnotat
                     ))}
                     {call.spurious.map((text, i) => (
                       <p key={`s${i}`} className="text-[13px] text-slate-700">
-                        <span className="mr-2 rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-700">
+                        <span className="mr-2 inline-flex items-center rounded-full bg-[color:var(--warning-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-amber-700">
                           EN TROP
                         </span>
                         {text}
@@ -179,11 +179,11 @@ export default function CalibrageClient({ calls }: { calls: ObjectionEvalAnnotat
                     ))}
                     {call.misplaced.map((item, i) => (
                       <p key={`x${i}`} className="text-[13px] text-slate-700">
-                        <span className="mr-2 rounded bg-slate-200 px-1.5 py-0.5 text-[11px] font-semibold text-slate-700">
+                        <span className="mr-2 inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11.5px] font-semibold text-slate-600">
                           MAL RANGÉE
                         </span>
                         {item.objection}
-                        <span className="mt-0.5 block text-xs text-slate-400">
+                        <span className="mt-0.5 block text-[12px] text-slate-500">
                           attendu «&nbsp;{item.expected ?? "non classée"}&nbsp;», obtenu «&nbsp;
                           {item.got ?? "non classée"}&nbsp;»
                         </span>
@@ -197,14 +197,14 @@ export default function CalibrageClient({ calls }: { calls: ObjectionEvalAnnotat
         </div>
       )}
 
-      <p className="mb-2 text-[13px] font-semibold text-slate-900">Les calls</p>
+      <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Les calls</p>
       <Card padded={false} className="overflow-hidden">
         {calls.length === 0 ? (
-          <p className="px-5 py-6 text-sm italic text-slate-400">
+          <p className="px-5 py-6 text-[13.5px] italic text-slate-400">
             Aucun call analysé pour l&apos;instant — ils apparaîtront ici au fur et à mesure.
           </p>
         ) : (
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-border">
             {calls.map((call) => (
               <li key={call.callId}>
                 <Link
@@ -213,7 +213,7 @@ export default function CalibrageClient({ calls }: { calls: ObjectionEvalAnnotat
                 >
                   <span className="flex min-w-0 items-center gap-3">
                     {call.reviewed ? (
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
                     ) : (
                       <Circle className="h-4 w-4 shrink-0 text-slate-300" />
                     )}
@@ -221,7 +221,7 @@ export default function CalibrageClient({ calls }: { calls: ObjectionEvalAnnotat
                       <span className="block truncate text-[13px] font-medium text-slate-900">
                         {call.companyName || call.contactEmail || "Call sans société renseignée"}
                       </span>
-                      <span className="block text-xs text-slate-400">
+                      <span className="block text-[12px] text-slate-500">
                         {new Date(call.occurredAt).toLocaleDateString("fr-FR", {
                           day: "numeric",
                           month: "long",

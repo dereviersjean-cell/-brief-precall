@@ -63,20 +63,20 @@ const FILTERS: { key: FilterKey; label: string }[] = [
 function OutcomeChip({ outcome }: { outcome: "won" | "lost" | null }) {
   if (outcome === "won") {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[color:var(--success-soft)] text-emerald-700">
+      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] font-semibold bg-[color:var(--success-soft)] text-emerald-700">
         <Trophy className="w-3 h-3" /> Gagné
       </span>
     );
   }
   if (outcome === "lost") {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[color:var(--danger-soft)] text-rose-700">
+      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] font-semibold bg-[color:var(--danger-soft)] text-rose-700">
         <XCircle className="w-3 h-3" /> Perdu
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-500">
+    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] font-semibold bg-slate-100 text-slate-500">
       <HelpCircle className="w-3 h-3" /> Issue inconnue
     </span>
   );
@@ -102,25 +102,25 @@ function ObjectionCard({
   similarity?: number;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5 hover:shadow-[var(--shadow-md)] hover:border-[color:var(--lavender-strong)] transition-all">
+    <div className="rounded-2xl border border-border bg-white p-4 sm:p-5">
       <div className="flex items-start gap-3">
-        <span className="w-8 h-8 rounded-lg bg-[color:var(--lavender)] text-[color:var(--violet)] flex items-center justify-center shrink-0 mt-0.5">
-          <MessagesSquare className="w-4 h-4" />
+        <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[color:var(--lavender)] text-[color:var(--violet)]">
+          <MessagesSquare className="h-3.5 w-3.5" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-slate-900 leading-snug">« {objection} »</p>
-          <div className="mt-2">
-            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Réponse apportée</p>
-            <p className="text-sm text-slate-600 leading-relaxed">{response}</p>
+          <p className="text-[14px] font-semibold leading-snug text-slate-900">« {objection} »</p>
+          <div className="mt-2.5">
+            <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Réponse apportée</p>
+            <p className="text-[13.5px] leading-relaxed text-slate-600">{response}</p>
           </div>
-          <div className="mt-3 flex items-center gap-2 flex-wrap text-xs text-slate-400">
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-[12px] text-slate-500">
             <OutcomeChip outcome={outcome} />
             {typeof similarity === "number" && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[color:var(--lavender)] text-[color:var(--violet)]">
+              <span className="inline-flex items-center rounded-full bg-[color:var(--lavender)] px-2 py-0.5 text-[11.5px] font-semibold text-[color:var(--violet)] tabular-nums">
                 {Math.round(similarity * 100)}% similaire
               </span>
             )}
-            <span className="truncate">{meta}</span>
+            <span className="min-w-0 truncate">{meta}</span>
             {callHref && (
               <Link
                 href={callHref}
@@ -242,11 +242,9 @@ export default function ObjectionsClient({
       {(uncoveredCalls > 0 || unknownOutcomeCount > 0) && (
         <div className="mt-4 space-y-2">
           {uncoveredCalls > 0 && (
-            <div className="flex items-start gap-3 bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3">
-              <span className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shrink-0 shadow-sm">
-                <AlertTriangle className="w-4 h-4 text-amber-500" />
-              </span>
-              <p className="text-sm text-amber-800">
+            <div className="flex items-start gap-2.5 rounded-2xl bg-[color:var(--warning-soft)] px-4 py-3">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-700" />
+              <p className="text-[13px] leading-relaxed text-amber-800">
                 {uncoveredCalls} call{uncoveredCalls > 1 ? "s" : ""} analysé{uncoveredCalls > 1 ? "s" : ""}{" "}
                 sans objection dans la bibliothèque — soit aucune objection n&apos;y a été soulevée, soit le call date
                 d&apos;avant la bibliothèque et n&apos;a pas encore été réindexé.
@@ -254,11 +252,9 @@ export default function ObjectionsClient({
             </div>
           )}
           {unknownOutcomeCount > 0 && (
-            <div className="flex items-start gap-3 bg-[color:var(--lavender)] border border-[color:var(--lavender-strong)] rounded-2xl px-4 py-3">
-              <span className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shrink-0 shadow-sm">
-                <HelpCircle className="w-4 h-4 text-[color:var(--violet)]" />
-              </span>
-              <p className="text-sm text-slate-700">
+            <div className="flex items-start gap-2.5 rounded-2xl bg-[color:var(--lavender)] px-4 py-3">
+              <HelpCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[color:var(--violet)]" />
+              <p className="text-[13px] leading-relaxed text-slate-600">
                 {unknownOutcomeCount} objection{unknownOutcomeCount > 1 ? "s" : ""}{" "}
                 sans issue connue — le
                 gagné/perdu vient des devis Brief acceptés/refusés et des deals fermés dans votre CRM connecté. Plus
@@ -269,8 +265,8 @@ export default function ObjectionsClient({
         </div>
       )}
 
-      <div className="mt-6 flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[240px] max-w-md">
+      <div className="mt-6 flex flex-wrap items-center gap-2">
+        <div className="relative w-full sm:w-auto sm:min-w-[240px] sm:max-w-md sm:flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
@@ -278,13 +274,13 @@ export default function ObjectionsClient({
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && runSearch()}
             placeholder="Décrivez une objection (ex. « c'est trop cher »)…"
-            className="pl-9 pr-3.5 py-2 border border-border rounded-lg text-sm text-slate-700 bg-white w-full focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+            className="h-9 w-full rounded-xl border border-border bg-white pl-9 pr-3.5 text-[13px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)]"
           />
         </div>
         <button
           onClick={runSearch}
           disabled={searching || !query.trim()}
-          className="inline-flex items-center gap-2 h-9 px-3.5 brand-gradient text-white rounded-lg text-sm font-medium shadow-[var(--shadow-sm)] hover:brightness-110 transition-all disabled:opacity-50"
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
           Recherche sémantique
@@ -292,19 +288,19 @@ export default function ObjectionsClient({
         {searchResults !== null && (
           <button
             onClick={clearSearch}
-            className="h-9 px-3.5 text-sm font-medium text-slate-600 border border-border rounded-lg bg-white hover:bg-slate-50 transition-colors"
+            className="inline-flex h-9 items-center rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
           >
             Réinitialiser
           </button>
         )}
         {searchResults === null && (
-          <div className="inline-flex items-center gap-1 bg-white rounded-xl border border-border shadow-[var(--shadow-xs)] p-1">
+          <div className="no-scrollbar inline-flex max-w-full overflow-x-auto rounded-full bg-slate-100 p-1">
             {FILTERS.map((f) => (
               <button
                 key={f.key}
                 onClick={() => setFilter(f.key)}
-                className={`h-8 px-3 rounded-lg text-[13px] font-medium transition-colors ${
-                  filter === f.key ? "brand-gradient text-white" : "text-slate-500 hover:text-slate-700"
+                className={`inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-full px-3 text-[12.5px] font-medium transition-[background-color,color,box-shadow] duration-200 ${
+                  filter === f.key ? "bg-white text-slate-900 shadow-[0_1px_3px_oklch(0.19_0.02_266/0.12)]" : "text-slate-500 hover:text-slate-900"
                 }`}
               >
                 {f.label}
@@ -314,12 +310,12 @@ export default function ObjectionsClient({
         )}
       </div>
 
-      {searchError && <p className="mt-3 text-sm text-red-600">{searchError}</p>}
+      {searchError && <p className="mt-3 rounded-xl bg-[color:var(--danger-soft)] px-3.5 py-2.5 text-[13px] text-rose-700">{searchError}</p>}
 
       <div className="mt-5 space-y-3">
         {searchResults !== null ? (
           searchResults.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-border p-8 text-center text-slate-400 text-sm">
+            <div className="rounded-2xl border border-dashed border-border bg-white px-6 py-10 text-center text-[13.5px] text-slate-500">
               Aucune objection similaire trouvée dans la bibliothèque.
             </div>
           ) : (
@@ -336,18 +332,18 @@ export default function ObjectionsClient({
             ))
           )
         ) : objections.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-border p-10 text-center">
-            <span className="w-12 h-12 rounded-xl bg-[color:var(--lavender)] text-[color:var(--violet)] flex items-center justify-center mx-auto mb-4">
-              <MessagesSquare className="w-6 h-6" />
+          <div className="rounded-2xl border border-border bg-white px-6 py-12 text-center">
+            <span className="mx-auto mb-4 grid h-11 w-11 place-items-center rounded-xl bg-[color:var(--lavender)] text-[color:var(--violet)]">
+              <MessagesSquare className="h-5 w-5" strokeWidth={1.75} />
             </span>
-            <p className="font-medium text-slate-900 text-sm">La bibliothèque se remplit toute seule</p>
-            <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">
+            <p className="text-[15px] font-semibold text-slate-900">La bibliothèque se remplit toute seule</p>
+            <p className="mx-auto mt-1 max-w-md text-[13.5px] text-slate-500">
               À chaque call analysé, Brief extrait les objections soulevées et la réponse apportée. Toute
               l&apos;équipe en bénéficie dès le premier call enregistré.
             </p>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-border p-8 text-center text-slate-400 text-sm">
+          <div className="rounded-2xl border border-dashed border-border bg-white px-6 py-10 text-center text-[13.5px] text-slate-500">
             Aucune objection pour ce filtre.
           </div>
         ) : (

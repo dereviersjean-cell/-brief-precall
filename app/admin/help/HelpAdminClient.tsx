@@ -78,7 +78,7 @@ function InlineText({
             setEditing(false);
           }
         }}
-        className={`w-full border border-slate-300 rounded-lg px-1.5 py-0.5 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-[color:var(--ring)] ${className ?? ""}`}
+        className={`w-full rounded-lg border border-border bg-white px-1.5 py-0.5 focus:border-[color:var(--violet)] focus:outline-none focus:ring-1 focus:ring-[color:var(--violet)] ${className ?? ""}`}
       />
     );
   }
@@ -124,16 +124,16 @@ function ArticleCard({
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-border p-5 shadow-[var(--shadow-sm)]">
+    <div className="rounded-2xl border border-border bg-white p-5">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <InlineText value={article.title} onSave={(v) => onUpdate({ title: v })} className="font-semibold text-slate-900 block" />
+          <InlineText value={article.title} onSave={(v) => onUpdate({ title: v })} className="block text-[14.5px] font-semibold text-slate-900" />
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={() => onMove("up")}
             disabled={index === 0}
-            className="h-7 w-7 flex items-center justify-center rounded-lg border border-border text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-200"
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-white text-slate-500 transition-colors duration-200 hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-30"
             aria-label="Monter"
           >
             <ArrowUp className="w-3.5 h-3.5" />
@@ -141,14 +141,14 @@ function ArticleCard({
           <button
             onClick={() => onMove("down")}
             disabled={index === total - 1}
-            className="h-7 w-7 flex items-center justify-center rounded-lg border border-border text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-200"
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-white text-slate-500 transition-colors duration-200 hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-30"
             aria-label="Descendre"
           >
             <ArrowDown className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={onDelete}
-            className="h-7 px-2.5 flex items-center gap-1 rounded-lg border border-border text-xs font-medium text-red-600 hover:bg-red-50 transition-colors duration-200 ml-1"
+            className="ml-1 flex h-7 items-center gap-1 rounded-lg border border-[color:var(--danger-soft)] bg-white px-2.5 text-[12px] font-medium text-rose-700 transition-colors duration-200 hover:bg-[color:var(--danger-soft)]"
           >
             <Trash2 className="w-3.5 h-3.5" />
             Supprimer
@@ -158,11 +158,11 @@ function ArticleCard({
 
       <div className="mt-2 flex flex-wrap gap-4">
         <div>
-          <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Visible par</label>
+          <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Visible par</label>
           <select
             value={article.visible_to}
             onChange={(e) => onUpdate({ visible_to: e.target.value as HelpArticleVisibility })}
-            className="h-8 px-2.5 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-[color:var(--ring)]"
+            className="h-8 px-2.5 rounded-xl border border-border bg-white text-[13px] text-slate-900 focus:border-[color:var(--violet)] focus:outline-none focus:ring-1 focus:ring-[color:var(--violet)]"
           >
             {(Object.keys(VISIBILITY_LABELS) as HelpArticleVisibility[]).map((v) => (
               <option key={v} value={v}>
@@ -175,11 +175,11 @@ function ArticleCard({
             qu'on ne pourrait pas enregistrer serait pire que pas de choix. */}
         {article.module !== undefined && (
           <div>
-            <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Module</label>
+            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Module</label>
             <ModuleSelect
               value={article.module}
               onChange={(next) => onUpdate({ module: next })}
-              className="h-8 px-2.5 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-[color:var(--ring)]"
+              className="h-8 px-2.5 rounded-xl border border-border bg-white text-[13px] text-slate-900 focus:border-[color:var(--violet)] focus:outline-none focus:ring-1 focus:ring-[color:var(--violet)]"
             />
           </div>
         )}
@@ -187,17 +187,17 @@ function ArticleCard({
 
       <div className="mt-4">
         <div className="flex items-center justify-between mb-1.5">
-          <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Contenu (markdown)</label>
+          <label className="block text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Contenu (markdown)</label>
           <button
             onClick={() => setPreview((p) => !p)}
-            className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700"
+            className="inline-flex items-center gap-1 text-[12px] font-medium text-slate-500 hover:text-slate-900"
           >
             {preview ? <Pencil className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
             {preview ? "Éditer" : "Aperçu"}
           </button>
         </div>
         {preview ? (
-          <div className="border border-border rounded-lg px-3.5 py-3 min-h-[200px]">
+          <div className="min-h-[200px] rounded-xl border border-border px-3.5 py-3">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
               {contentDraft}
             </ReactMarkdown>
@@ -207,22 +207,22 @@ function ArticleCard({
             value={contentDraft}
             onChange={(e) => setContentDraft(e.target.value)}
             rows={10}
-            className="w-full px-3.5 py-3 border border-border rounded-lg text-sm text-slate-900 font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-[color:var(--ring)] resize-y"
+            className="w-full resize-y rounded-xl border border-border bg-white px-3.5 py-3 font-mono text-[13px] leading-relaxed text-slate-900 focus:border-[color:var(--violet)] focus:outline-none focus:ring-1 focus:ring-[color:var(--violet)]"
           />
         )}
         <div className="flex items-center justify-end gap-2 mt-2">
-          {contentDirty && <span className="text-xs text-amber-600 mr-auto">Modifications non enregistrées</span>}
+          {contentDirty && <span className="mr-auto text-[12px] font-medium text-amber-700">Modifications non enregistrées</span>}
           <button
             onClick={() => setContentDraft(article.content)}
             disabled={!contentDirty}
-            className="h-8 px-3 text-sm font-medium text-slate-600 border border-border rounded-lg hover:bg-slate-50 transition-colors duration-200 disabled:opacity-40"
+            className="h-8 rounded-lg border border-border bg-white px-3 text-[12.5px] font-medium text-slate-700 transition-colors duration-200 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-40"
           >
             Annuler
           </button>
           <button
             onClick={handleSaveContent}
             disabled={!contentDirty || savingContent}
-            className="h-8 px-3 text-sm font-medium text-white brand-gradient rounded-lg hover:brightness-110 transition-colors duration-200 disabled:opacity-50"
+            className="h-8 rounded-lg bg-[color:var(--primary)] px-3 text-[12.5px] font-medium text-white transition-all duration-200 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {savingContent ? "Enregistrement…" : "Enregistrer"}
           </button>
@@ -261,22 +261,22 @@ function AddArticleModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 px-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4" onClick={onClose}>
       <div
-        className="bg-white rounded-2xl border border-border p-6 w-full max-w-lg shadow-xl max-h-[85vh] overflow-y-auto"
+        className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-white p-6 shadow-[var(--shadow-md)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="font-semibold text-slate-900 mb-4">Ajouter un article</h2>
+        <h2 className="mb-4 text-[16px] font-semibold tracking-tight text-slate-900">Ajouter un article</h2>
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Catégorie</label>
+            <label className="mb-1 block text-[12px] font-medium text-slate-700">Catégorie</label>
             <input
               autoFocus
               list="help-categories"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               placeholder="ex. Général, Objections, Facturation…"
-              className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-[color:var(--ring)]"
+              className="w-full px-3 py-2 rounded-xl border border-border bg-white text-[13px] text-slate-900 focus:border-[color:var(--violet)] focus:outline-none focus:ring-1 focus:ring-[color:var(--violet)]"
             />
             <datalist id="help-categories">
               {categories.map((c) => (
@@ -285,20 +285,20 @@ function AddArticleModal({
             </datalist>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Titre</label>
+            <label className="mb-1 block text-[12px] font-medium text-slate-700">Titre</label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="ex. Comprendre l'analyse d'un call"
-              className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-[color:var(--ring)]"
+              className="w-full px-3 py-2 rounded-xl border border-border bg-white text-[13px] text-slate-900 focus:border-[color:var(--violet)] focus:outline-none focus:ring-1 focus:ring-[color:var(--violet)]"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Visible par</label>
+            <label className="mb-1 block text-[12px] font-medium text-slate-700">Visible par</label>
             <select
               value={visibleTo}
               onChange={(e) => setVisibleTo(e.target.value as HelpArticleVisibility)}
-              className="w-full h-9 px-2.5 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-[color:var(--ring)]"
+              className="w-full h-9 px-2.5 rounded-xl border border-border bg-white text-[13px] text-slate-900 focus:border-[color:var(--violet)] focus:outline-none focus:ring-1 focus:ring-[color:var(--violet)]"
             >
               {(Object.keys(VISIBILITY_LABELS) as HelpArticleVisibility[]).map((v) => (
                 <option key={v} value={v}>
@@ -308,35 +308,35 @@ function AddArticleModal({
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Module</label>
+            <label className="mb-1 block text-[12px] font-medium text-slate-700">Module</label>
             <ModuleSelect
               value={module}
               onChange={setModule}
-              className="w-full h-9 px-2.5 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-[color:var(--ring)]"
+              className="w-full h-9 px-2.5 rounded-xl border border-border bg-white text-[13px] text-slate-900 focus:border-[color:var(--violet)] focus:outline-none focus:ring-1 focus:ring-[color:var(--violet)]"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Contenu (markdown)</label>
+            <label className="mb-1 block text-[12px] font-medium text-slate-700">Contenu (markdown)</label>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows={8}
               placeholder="## Sous-titre&#10;&#10;Texte de l'article…"
-              className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-[color:var(--ring)] resize-y"
+              className="w-full resize-y rounded-xl border border-border bg-white px-3 py-2 font-mono text-[13px] leading-relaxed text-slate-900 focus:border-[color:var(--violet)] focus:outline-none focus:ring-1 focus:ring-[color:var(--violet)]"
             />
           </div>
         </div>
         <div className="flex justify-end gap-2 mt-5">
           <button
             onClick={onClose}
-            className="h-8 px-4 text-sm font-medium text-slate-600 border border-border rounded-lg hover:bg-slate-50 transition-colors duration-200"
+            className="h-9 rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 transition-colors duration-200 hover:bg-slate-50 hover:text-slate-900"
           >
             Annuler
           </button>
           <button
             onClick={handleSubmit}
             disabled={!category.trim() || !title.trim() || !content.trim() || loading}
-            className="h-8 px-4 text-sm font-medium text-white brand-gradient rounded-lg hover:brightness-110 transition-colors duration-200 disabled:opacity-50"
+            className="h-9 rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all duration-200 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? "Création…" : "Ajouter"}
           </button>
@@ -460,7 +460,7 @@ export default function HelpAdminClient({ articles: initialArticles }: { article
         <div className="space-y-8">
           {Array.from(byCategory.entries()).map(([category, categoryArticles]) => (
             <div key={category}>
-              <h2 className="text-[15px] font-semibold tracking-tight text-slate-900 mb-3">{category}</h2>
+              <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">{category}</h2>
               <div className="space-y-4">
                 {categoryArticles.map((article, index) => (
                   <ArticleCard
@@ -478,15 +478,15 @@ export default function HelpAdminClient({ articles: initialArticles }: { article
           ))}
 
           {articles.length === 0 && (
-            <p className="text-slate-400 text-sm italic">Aucun article pour l&apos;instant.</p>
+            <p className="text-[13.5px] italic text-slate-500">Aucun article pour l&apos;instant.</p>
           )}
         </div>
 
         <button
           onClick={() => setShowAddModal(true)}
-          className="mt-6 h-9 px-3.5 inline-flex items-center gap-1.5 rounded-lg border border-border bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors duration-200"
+          className="mt-6 inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 transition-colors duration-200 hover:bg-slate-50 hover:text-slate-900"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="h-4 w-4" />
           Ajouter un article
         </button>
       </FadeIn>

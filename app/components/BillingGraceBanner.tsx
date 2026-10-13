@@ -29,14 +29,14 @@ export default function BillingGraceBanner() {
   if (!graceEndsAt) return null;
 
   return (
-    <div className="brief-ui sticky top-0 z-40 w-full bg-amber-500 text-white px-4 py-2 flex items-center justify-center gap-3 text-sm font-medium shadow-sm">
-      <AlertTriangle className="w-4 h-4 shrink-0" />
+    <div className="brief-ui sticky top-0 z-40 w-full border-b border-amber-200 bg-[color:var(--warning-soft)] text-amber-900 px-4 py-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[13px] font-medium">
+      <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
       <span>
         Le dernier paiement a échoué — accès suspendu dans {hoursUntil(graceEndsAt)}h
       </span>
       <Link
         href="/settings/billing"
-        className="shrink-0 px-3 py-1 rounded-md bg-white/20 hover:bg-white/30 transition-colors duration-200"
+        className="shrink-0 px-3 py-1 rounded-full border border-amber-200 bg-white text-[12px] font-semibold text-amber-800 hover:border-amber-300 hover:text-amber-900 transition-colors duration-200"
       >
         Régulariser
       </Link>

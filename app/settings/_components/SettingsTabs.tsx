@@ -47,7 +47,10 @@ export default function SettingsTabs() {
   );
 
   return (
-    <nav className="flex items-center gap-1 overflow-x-auto no-scrollbar border-b border-border">
+    // Même style que PerformanceTabs, et collée sous la TopBar (sticky top-14,
+    // z-index en dessous d'elle) pour ne pas perdre la navigation en
+    // faisant défiler un onglet long — cf. bug #26.
+    <nav className="sticky top-14 z-[9] flex items-center gap-1 overflow-x-auto no-scrollbar border-b border-border bg-[color:var(--background)]/80 backdrop-blur-xl">
       {items.map((item) => {
         const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
         const Icon = item.icon;
@@ -61,7 +64,7 @@ export default function SettingsTabs() {
           >
             <Icon className="h-3.5 w-3.5" strokeWidth={active ? 2.25 : 1.75} />
             {item.label}
-            {active && <span className="absolute inset-x-2 -bottom-px h-[2px] rounded-full brand-gradient" />}
+            {active && <span className="absolute inset-x-2 -bottom-px h-[2px] rounded-full bg-[color:var(--primary)]" />}
           </Link>
         );
       })}

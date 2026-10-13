@@ -40,8 +40,8 @@ function sortClients(clients: ClientOverview[]): ClientOverview[] {
 function AlertChip({ alert }: { alert: ClientAlert }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${
-        alert.severity === "danger" ? "border-red-200 bg-red-50 text-red-700" : "border-amber-200 bg-amber-50 text-amber-800"
+      className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${
+        alert.severity === "danger" ? "bg-[color:var(--danger-soft)] text-rose-700" : "bg-[color:var(--warning-soft)] text-amber-700"
       }`}
     >
       {alert.label}
@@ -51,12 +51,12 @@ function AlertChip({ alert }: { alert: ClientAlert }) {
 
 function Tile({ icon: Icon, label, value, tone = "default" }: { icon: typeof Building2; label: string; value: number; tone?: "default" | "danger" }) {
   return (
-    <div className="bg-white rounded-2xl border border-border p-5 shadow-[var(--shadow-sm)]">
+    <div className="rounded-2xl border border-border bg-white p-5">
       <div className="flex items-center justify-between">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{label}</p>
-        <Icon className={`w-4 h-4 ${tone === "danger" && value > 0 ? "text-red-500" : "text-slate-300"}`} />
+        <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">{label}</p>
+        <Icon className={`h-4 w-4 ${tone === "danger" && value > 0 ? "text-rose-600" : "text-slate-400"}`} />
       </div>
-      <p className={`mt-2 text-2xl font-semibold ${tone === "danger" && value > 0 ? "text-red-600" : "text-slate-900"}`}>{value}</p>
+      <p className={`mt-3 text-[28px] font-semibold leading-none tracking-tight tabular-nums ${tone === "danger" && value > 0 ? "text-rose-700" : "text-slate-900"}`}>{value}</p>
     </div>
   );
 }
@@ -91,9 +91,9 @@ function NewClientForm({ onCreated }: { onCreated: (id: string) => void }) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 px-4 py-2 brand-gradient text-white rounded-lg text-sm font-medium hover:brightness-110 transition-colors"
+        className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110"
       >
-        <Plus className="w-4 h-4" />
+        <Plus className="h-4 w-4" />
         Nouveau client
       </button>
     );
@@ -106,19 +106,19 @@ function NewClientForm({ onCreated }: { onCreated: (id: string) => void }) {
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="Nom de l'entreprise"
-        className="px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 w-56"
+        className="h-9 w-56 rounded-xl border border-border bg-white px-3 text-[13px] text-slate-900 placeholder:text-slate-400 focus:border-[color:var(--violet)] focus:outline-none focus:ring-1 focus:ring-[color:var(--violet)]"
       />
       <button
         type="submit"
         disabled={loading || !name.trim()}
-        className="px-4 py-2 brand-gradient text-white rounded-lg text-sm font-medium hover:brightness-110 transition-colors disabled:opacity-50"
+        className="inline-flex h-9 items-center rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {loading ? "Création…" : "Créer"}
       </button>
-      <button type="button" onClick={() => setOpen(false)} className="px-3 py-2 text-sm text-slate-500 hover:text-slate-700">
+      <button type="button" onClick={() => setOpen(false)} className="inline-flex h-9 items-center rounded-lg px-3 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900">
         Annuler
       </button>
-      {error && <p className="w-full text-xs text-red-600">{error}</p>}
+      {error && <p className="w-full text-[12px] text-rose-700">{error}</p>}
     </form>
   );
 }
@@ -127,27 +127,27 @@ function ParcoursCell({ client }: { client: ClientOverview }) {
   if (client.accessLevel === "briefs") {
     return (
       <div>
-        <p className="text-sm text-slate-700">Inscription libre</p>
-        <p className="text-xs text-slate-400 mt-0.5">Briefs uniquement · à passer en accès complet</p>
+        <p className="text-[13.5px] text-slate-700">Inscription libre</p>
+        <p className="mt-0.5 text-[12px] text-slate-500">Briefs uniquement · à passer en accès complet</p>
       </div>
     );
   }
   if (!client.inParcours) {
     return (
       <div>
-        <p className="text-sm text-slate-700">Hors parcours</p>
-        <p className="text-xs text-slate-400 mt-0.5">Tous les modules ouverts</p>
+        <p className="text-[13.5px] text-slate-700">Hors parcours</p>
+        <p className="mt-0.5 text-[12px] text-slate-500">Tous les modules ouverts</p>
       </div>
     );
   }
   const { week, finished, nextModule, late, openCount, totalCount } = client.parcours;
   return (
     <div>
-      <p className="text-sm text-slate-700">
+      <p className="text-[13.5px] text-slate-700">
         {week === null ? "Début non daté" : finished ? "Parcours terminé" : week === 0 ? "Semaine 0 · mise en route" : `Semaine ${week}`}
-        <span className="text-slate-400"> · {openCount}/{totalCount} modules</span>
+        <span className="tabular-nums text-slate-500"> · {openCount}/{totalCount} modules</span>
       </p>
-      <p className={`text-xs mt-0.5 ${late ? "text-red-600 font-medium" : "text-slate-400"}`}>
+      <p className={`mt-0.5 text-[12px] ${late ? "font-medium text-rose-700" : "text-slate-500"}`}>
         {nextModule ? `Prochain : ${nextModule.label} (semaine ${nextModule.week})` : "Parcours entièrement ouvert"}
       </p>
     </div>
@@ -180,20 +180,20 @@ export default function ClientsAdminClient({ clients, now: nowISO }: { clients: 
         actions={<NewClientForm onCreated={(id) => router.push(`/admin/clients/${id}`)} />}
       />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Tile icon={AlertTriangle} label="À surveiller" value={criticalClients} tone="danger" />
         <Tile icon={CalendarClock} label="Points sous 7 jours" value={reviewsThisWeek} />
         <Tile icon={Route} label="En parcours" value={inParcours} />
         <Tile icon={PhoneCall} label="Calls sur 7 jours" value={calls7d} />
       </div>
 
-      <div className="bg-white rounded-2xl border border-border overflow-hidden shadow-[var(--shadow-sm)]">
+      <div className="overflow-hidden rounded-2xl border border-border bg-white">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[900px]">
+          <table className="w-full min-w-[900px] text-[13.5px]">
             <thead>
               <tr className="border-b border-border bg-slate-50/60 text-left">
                 {["Client", "Parcours", "Prochain point", "Équipe", "7 derniers jours", "Alertes"].map((h) => (
-                  <th key={h} className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                  <th key={h} className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">
                     {h}
                   </th>
                 ))}
@@ -206,42 +206,42 @@ export default function ClientsAdminClient({ clients, now: nowISO }: { clients: 
                   <tr
                     key={client.id}
                     onClick={() => router.push(`/admin/clients/${client.id}`)}
-                    className="border-b border-slate-100 last:border-b-0 hover:bg-[color:var(--lavender)] cursor-pointer align-top"
+                    className="cursor-pointer border-b border-border align-top transition-colors last:border-b-0 hover:bg-slate-50"
                   >
                     <td className="px-4 py-4">
-                      <p className="font-medium text-slate-900">{client.name}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">
+                      <p className="font-semibold text-slate-900">{client.name}</p>
+                      <p className="mt-0.5 text-[12px] text-slate-500">
                         {client.accountManager ? `Suivi : ${client.accountManager}` : "Suivi non attribué"}
                       </p>
                     </td>
                     <td className="px-4 py-4">
                       <ParcoursCell client={client} />
                     </td>
-                    <td className={`px-4 py-4 whitespace-nowrap ${reviewOverdue ? "text-red-600 font-medium" : "text-slate-700"}`}>
+                    <td className={`whitespace-nowrap px-4 py-4 ${reviewOverdue ? "font-medium text-rose-700" : "text-slate-700"}`}>
                       {formatReview(client.nextReviewAt)}
                       <Link
                         href={`/admin/clients/${client.id}/point`}
                         onClick={(e) => e.stopPropagation()}
-                        className="mt-0.5 block text-xs font-medium text-[color:var(--violet)] hover:text-[color:var(--violet)]"
+                        className="mt-0.5 block text-[12px] font-medium text-[color:var(--violet)] hover:underline"
                       >
                         Préparer le point →
                       </Link>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
-                      <p className="text-slate-700">
+                      <p className="tabular-nums text-slate-700">
                         {client.members.total} membre{client.members.total > 1 ? "s" : ""}
                       </p>
                       {client.members.pendingInvites > 0 && (
-                        <p className="text-xs text-slate-400 mt-0.5">dont {client.members.pendingInvites} invité{client.members.pendingInvites > 1 ? "s" : ""}</p>
+                        <p className="mt-0.5 text-[12px] tabular-nums text-slate-500">dont {client.members.pendingInvites} invité{client.members.pendingInvites > 1 ? "s" : ""}</p>
                       )}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-slate-700">
+                    <td className="whitespace-nowrap px-4 py-4 tabular-nums text-slate-700">
                       {client.activity7d.calls} call{client.activity7d.calls > 1 ? "s" : ""}
-                      <span className="text-slate-400"> · {client.activity7d.briefs} brief{client.activity7d.briefs > 1 ? "s" : ""}</span>
+                      <span className="text-slate-500"> · {client.activity7d.briefs} brief{client.activity7d.briefs > 1 ? "s" : ""}</span>
                     </td>
                     <td className="px-4 py-4">
                       {client.alerts.length === 0 ? (
-                        <span className="text-xs font-medium text-emerald-600">Rien à signaler</span>
+                        <span className="text-[12px] font-medium text-emerald-700">Rien à signaler</span>
                       ) : (
                         <div className="flex flex-wrap gap-1.5">
                           {client.alerts.map((alert) => (
@@ -255,7 +255,7 @@ export default function ClientsAdminClient({ clients, now: nowISO }: { clients: 
               })}
               {sorted.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-slate-400">
+                  <td colSpan={6} className="px-4 py-10 text-center text-[13.5px] text-slate-500">
                     Aucun client pour l&apos;instant.
                   </td>
                 </tr>

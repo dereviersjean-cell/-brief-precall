@@ -25,18 +25,18 @@ function EmailDisplay({ email }: { email: { subject: string; body: string } }) {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-border p-5 shadow-[var(--shadow-sm)]">
+    <div className="rounded-2xl border border-border bg-white p-5">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Email généré</h2>
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Email généré</h2>
         <button
           onClick={handleCopy}
-          className="text-xs font-medium text-[color:var(--violet)] hover:text-[color:var(--violet)] transition-colors px-2.5 py-1 rounded-lg border border-[color:var(--lavender-strong)] hover:bg-[color:var(--lavender)]"
+          className="rounded-lg border border-border bg-white px-2.5 py-1 text-[12px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
         >
           {copied ? "Copié !" : "Copier"}
         </button>
       </div>
-      <p className="text-sm font-semibold text-slate-800 mb-3">{email.subject}</p>
-      <pre className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed bg-gray-50 rounded-xl px-4 py-3 font-sans">
+      <p className="mb-3 text-[14px] font-semibold text-slate-900">{email.subject}</p>
+      <pre className="whitespace-pre-wrap rounded-xl bg-slate-50 px-4 py-3 font-sans text-[13px] leading-relaxed text-slate-600">
         {email.body}
       </pre>
     </div>
@@ -47,12 +47,12 @@ function EmailDisplay({ email }: { email: { subject: string; body: string } }) {
 
 function PromptViewer({ prompt }: { prompt: string }) {
   return (
-    <div className="bg-white rounded-2xl border border-border p-5 shadow-[var(--shadow-sm)]">
+    <div className="rounded-2xl border border-border bg-white p-5">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Prompt utilisé</h2>
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Prompt utilisé</h2>
         <a
           href="/admin/prompts"
-          className="text-xs font-medium text-[color:var(--violet)] hover:text-[color:var(--violet)] underline underline-offset-2"
+          className="text-[12px] font-medium text-[color:var(--violet)] underline underline-offset-2"
         >
           Modifier ce prompt →
         </a>
@@ -61,7 +61,7 @@ function PromptViewer({ prompt }: { prompt: string }) {
         readOnly
         value={prompt}
         rows={8}
-        className="w-full px-3.5 py-3 border border-slate-100 rounded-lg text-xs text-slate-500 font-mono leading-relaxed bg-slate-50 resize-y focus:outline-none"
+        className="w-full resize-y rounded-xl border border-border bg-slate-50 px-3.5 py-3 font-mono text-[12px] leading-relaxed text-slate-500 focus:outline-none"
       />
     </div>
   );
@@ -125,9 +125,9 @@ export default function TestEmailAdminClient() {
 
       <div className="space-y-6">
         {/* Form */}
-        <form onSubmit={handleGenerate} className="bg-white rounded-2xl border border-border p-6 space-y-5 shadow-[var(--shadow-sm)]">
+        <form onSubmit={handleGenerate} className="rounded-2xl border border-border bg-white p-6 space-y-5">
           <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+            <label className="block text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500 mb-1.5">
               Transcription *
             </label>
             <textarea
@@ -136,25 +136,25 @@ export default function TestEmailAdminClient() {
               rows={15}
               required
               placeholder={"[00:00] Commercial : Bonjour...\n[00:20] Prospect : ..."}
-              className="w-full px-3.5 py-3 border border-border rounded-lg text-sm text-slate-800 font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-transparent resize-y"
+              className="w-full px-3.5 py-3 rounded-xl border border-border bg-white text-[13px] text-slate-800 font-mono leading-relaxed focus:border-[color:var(--violet)] focus:outline-none focus:ring-1 focus:ring-[color:var(--violet)] resize-y"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-              Prochaines étapes <span className="font-normal text-slate-400 normal-case">(une par ligne)</span>
+            <label className="block text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500 mb-1.5">
+              Prochaines étapes <span className="font-normal normal-case tracking-normal text-slate-400">(une par ligne)</span>
             </label>
             <textarea
               value={nextStepsRaw}
               onChange={(e) => setNextStepsRaw(e.target.value)}
               rows={3}
               placeholder={"Envoyer une proposition commerciale\nPlanifier une démo technique"}
-              className="w-full px-3.5 py-3 border border-border rounded-lg text-sm text-slate-800 leading-relaxed focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-transparent resize-y"
+              className="w-full px-3.5 py-3 rounded-xl border border-border bg-white text-[13px] text-slate-800 leading-relaxed focus:border-[color:var(--violet)] focus:outline-none focus:ring-1 focus:ring-[color:var(--violet)] resize-y"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+            <label className="block text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500 mb-1.5">
               Email du destinataire
             </label>
             <input
@@ -162,7 +162,7 @@ export default function TestEmailAdminClient() {
               value={contactEmail}
               onChange={(e) => setContactEmail(e.target.value)}
               placeholder="prospect@entreprise.com"
-              className="w-full px-3.5 py-2.5 border border-border rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-transparent"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-white text-[13px] text-slate-800 focus:border-[color:var(--violet)] focus:outline-none focus:ring-1 focus:ring-[color:var(--violet)]"
             />
           </div>
 
@@ -170,7 +170,7 @@ export default function TestEmailAdminClient() {
             <button
               type="submit"
               disabled={generating || !transcript.trim()}
-              className="flex items-center gap-2 px-5 py-2.5 brand-gradient text-white rounded-lg text-sm font-semibold hover:brightness-110 transition-colors disabled:opacity-50"
+              className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-[color:var(--primary)] px-4 text-[13.5px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {generating && <Spinner />}
               {generating ? "Génération en cours…" : "Générer l'email"}
@@ -180,7 +180,7 @@ export default function TestEmailAdminClient() {
 
         {/* Error */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
+          <div className="rounded-xl bg-[color:var(--danger-soft)] p-4 text-[13px] text-rose-700">
             {error}
           </div>
         )}

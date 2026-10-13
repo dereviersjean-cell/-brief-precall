@@ -76,37 +76,37 @@ function SuiviPanel({ detail }: { detail: ClientDetail }) {
     }
   }
 
-  const input = "w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 disabled:bg-slate-50";
+  const input = "w-full rounded-xl border border-border bg-white px-3 py-2 text-[13px] text-slate-900 placeholder:text-slate-400 focus:border-[color:var(--violet)] focus:outline-none focus:ring-1 focus:ring-[color:var(--violet)] disabled:bg-slate-50";
   const disabled = !detail.followUpAvailable || saving;
 
   return (
-    <section className="bg-white rounded-2xl border border-border p-6 shadow-[var(--shadow-sm)]">
-      <h2 className="text-[15px] font-semibold tracking-tight text-slate-900 mb-4">Suivi</h2>
+    <section className="rounded-2xl border border-border bg-white p-6">
+      <h2 className="mb-4 text-[15px] font-semibold tracking-tight text-slate-900">Suivi</h2>
       {!detail.followUpAvailable && (
-        <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <p className="mb-4 rounded-xl bg-[color:var(--warning-soft)] px-3.5 py-2.5 text-[12.5px] text-amber-800">
           La migration 020 n&apos;est pas passée : ces champs ne peuvent pas encore être enregistrés.
         </p>
       )}
       <div className="space-y-3">
         <label className="block">
-          <span className="text-xs font-medium text-slate-600">Account manager</span>
+          <span className="text-[12px] font-medium text-slate-700">Account manager</span>
           <input value={accountManager} onChange={(e) => setAccountManager(e.target.value)} placeholder="Qui suit ce client ?" disabled={disabled} className={`${input} mt-1`} />
         </label>
         <label className="block">
-          <span className="text-xs font-medium text-slate-600">Prochain point</span>
+          <span className="text-[12px] font-medium text-slate-700">Prochain point</span>
           <input type="datetime-local" value={nextReview} onChange={(e) => setNextReview(e.target.value)} disabled={disabled} className={`${input} mt-1`} />
         </label>
         <label className="block">
-          <span className="text-xs font-medium text-slate-600">Début du parcours</span>
+          <span className="text-[12px] font-medium text-slate-700">Début du parcours</span>
           <input type="date" value={startedAt} onChange={(e) => setStartedAt(e.target.value)} disabled={disabled} className={`${input} mt-1`} />
-          <span className="text-[11px] text-slate-400">La semaine en cours s&apos;en déduit.</span>
+          <span className="mt-1 block text-[11.5px] text-slate-500">La semaine en cours s&apos;en déduit.</span>
         </label>
       </div>
       <div className="mt-4 flex items-center gap-3">
-        <button onClick={() => void save()} disabled={disabled} className="px-4 py-2 brand-gradient text-white rounded-lg text-sm font-medium hover:brightness-110 disabled:opacity-50">
+        <button onClick={() => void save()} disabled={disabled} className="inline-flex h-9 items-center rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50">
           {saving ? "Enregistrement…" : "Enregistrer"}
         </button>
-        {message && <span className={`text-xs ${message.tone === "ok" ? "text-emerald-600" : "text-red-600"}`}>{message.text}</span>}
+        {message && <span className={`text-[12px] font-medium ${message.tone === "ok" ? "text-emerald-700" : "text-rose-700"}`}>{message.text}</span>}
       </div>
     </section>
   );
@@ -130,7 +130,7 @@ function RenameButton({ organizationId, name }: { organizationId: string; name: 
     router.refresh();
   }
   return (
-    <button onClick={() => void rename()} className="px-3 py-2 border border-border rounded-lg text-sm text-slate-600 hover:bg-slate-50">
+    <button onClick={() => void rename()} className="inline-flex h-9 items-center rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900">
       Renommer
     </button>
   );
@@ -154,18 +154,18 @@ function DangerZone({ organizationId, name, memberCount }: { organizationId: str
     router.push("/admin/clients");
   }
   return (
-    <section className="bg-white rounded-2xl border border-border p-6 shadow-[var(--shadow-sm)]">
-      <h2 className="text-[15px] font-semibold tracking-tight text-slate-900 mb-1">Zone dangereuse</h2>
-      <p className="text-xs text-slate-400 mb-4">La suppression est définitive, et impossible tant que le client a des membres.</p>
+    <section className="rounded-2xl border border-border bg-white p-6">
+      <h2 className="mb-1 text-[15px] font-semibold tracking-tight text-slate-900">Zone dangereuse</h2>
+      <p className="mb-4 text-[12.5px] text-slate-500">La suppression est définitive, et impossible tant que le client a des membres.</p>
       <button
         onClick={() => void remove()}
         disabled={memberCount > 0 || pending}
         title={memberCount > 0 ? "Retirez d'abord tous les membres." : undefined}
-        className="px-4 py-2 border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+        className="inline-flex h-9 items-center rounded-lg border border-[color:var(--danger-soft)] bg-white px-3.5 text-[13px] font-medium text-rose-700 transition-colors hover:bg-[color:var(--danger-soft)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
       >
         Supprimer le client
       </button>
-      {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+      {error && <p className="mt-2 text-[12px] text-rose-700">{error}</p>}
     </section>
   );
 }
@@ -193,8 +193,8 @@ export default function ClientDetailClient({
 
   return (
     <AdminPageShell>
-      <Link href="/admin/clients" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-[color:var(--violet)] transition-colors mb-4">
-        <ArrowLeft className="w-4 h-4" />
+      <Link href="/admin/clients" className="mb-4 inline-flex items-center gap-1.5 text-[13px] font-medium text-slate-500 transition-colors hover:text-slate-900">
+        <ArrowLeft className="h-4 w-4" />
         Clients
       </Link>
 
@@ -213,7 +213,7 @@ export default function ClientDetailClient({
             <RenameButton organizationId={overview.id} name={overview.name} />
             <Link
               href={`/admin/clients/${overview.id}/point`}
-              className="px-4 py-2 brand-gradient text-white rounded-lg text-sm font-medium hover:brightness-110"
+              className="inline-flex h-9 items-center rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110"
             >
               Préparer le point
             </Link>
@@ -226,8 +226,8 @@ export default function ClientDetailClient({
           {overview.alerts.map((alert) => (
             <span
               key={alert.kind}
-              className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${
-                alert.severity === "danger" ? "border-red-200 bg-red-50 text-red-700" : "border-amber-200 bg-amber-50 text-amber-800"
+              className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11.5px] font-semibold ${
+                alert.severity === "danger" ? "bg-[color:var(--danger-soft)] text-rose-700" : "bg-[color:var(--warning-soft)] text-amber-700"
               }`}
             >
               {alert.label}

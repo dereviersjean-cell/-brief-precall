@@ -29,13 +29,13 @@ function RoleFilterBar({
   counts: Record<RoleFilter, number>;
 }) {
   return (
-    <div className="flex items-center gap-1.5 mb-4">
+    <div className="mb-4 flex flex-wrap items-center gap-1.5">
       {ROLE_FILTERS.map((f) => (
         <button
           key={f.value}
           onClick={() => onChange(f.value)}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-            value === f.value ? "brand-gradient text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+          className={`inline-flex h-8 items-center rounded-full px-3 text-[12.5px] font-medium tabular-nums transition-colors ${
+            value === f.value ? "bg-[color:var(--primary)] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900"
           }`}
         >
           {f.label} ({counts[f.value]})
@@ -48,7 +48,7 @@ function RoleFilterBar({
 function DisabledBadge({ disabled }: { disabled: boolean }) {
   if (!disabled) return null;
   return (
-    <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-slate-200 text-slate-600">
+    <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11.5px] font-semibold text-slate-500">
       Désactivé
     </span>
   );
@@ -113,19 +113,19 @@ function UserActionsMenu({ user, onChanged }: { user: UserDashboardStat; onChang
     <div className="relative inline-block text-left" onClick={(e) => e.stopPropagation()}>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="px-2 py-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+        className="rounded-lg px-2 py-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
       >
         ⋯
       </button>
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 mt-1 w-56 bg-white border border-border rounded-lg shadow-lg z-20 py-1">
+          <div className="absolute right-0 z-20 mt-1 w-56 rounded-xl border border-border bg-white p-1 shadow-[var(--shadow-md)]">
             {user.disabled_at ? (
               <button
                 onClick={handleRestore}
                 disabled={loading}
-                className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                className="w-full rounded-lg px-3 py-2 text-left text-[13px] text-slate-700 hover:bg-slate-50 disabled:opacity-50"
               >
                 Réactiver
               </button>
@@ -133,7 +133,7 @@ function UserActionsMenu({ user, onChanged }: { user: UserDashboardStat; onChang
               <button
                 onClick={handleDisable}
                 disabled={loading}
-                className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                className="w-full rounded-lg px-3 py-2 text-left text-[13px] text-slate-700 hover:bg-slate-50 disabled:opacity-50"
               >
                 Désactiver
               </button>
@@ -142,7 +142,7 @@ function UserActionsMenu({ user, onChanged }: { user: UserDashboardStat; onChang
               <button
                 onClick={handleResendInvitation}
                 disabled={loading}
-                className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                className="w-full rounded-lg px-3 py-2 text-left text-[13px] text-slate-700 hover:bg-slate-50 disabled:opacity-50"
               >
                 Renvoyer l&apos;invitation
               </button>
@@ -150,11 +150,11 @@ function UserActionsMenu({ user, onChanged }: { user: UserDashboardStat; onChang
             <button
               onClick={handleHardDelete}
               disabled={loading}
-              className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+              className="w-full rounded-lg px-3 py-2 text-left text-[13px] text-rose-700 hover:bg-[color:var(--danger-soft)] disabled:opacity-50"
             >
               Supprimer définitivement
             </button>
-            {error && <p className="px-3 py-1.5 text-xs text-red-600">{error}</p>}
+            {error && <p className="px-3 py-1.5 text-[12px] text-rose-700">{error}</p>}
           </div>
         </>
       )}
@@ -172,19 +172,19 @@ function DashboardTable({ stats, onChanged }: { stats: UserDashboardStat[]; onCh
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm text-left border-collapse">
+      <table className="w-full border-collapse text-left text-[13px]">
         <thead>
           <tr className="border-b border-border">
-            <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Email</th>
-            <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Rôle</th>
-            <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Inscrit le</th>
-            <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Briefs</th>
-            <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Appels</th>
-            <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Emails</th>
-            <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Dernière activité</th>
-            <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Recall</th>
-            <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">CRM</th>
-            <th className="py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right"></th>
+            <th className="py-3 pr-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500 whitespace-nowrap">Email</th>
+            <th className="py-3 pr-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500 whitespace-nowrap">Rôle</th>
+            <th className="py-3 pr-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500 whitespace-nowrap">Inscrit le</th>
+            <th className="py-3 pr-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500 text-right">Briefs</th>
+            <th className="py-3 pr-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500 text-right">Appels</th>
+            <th className="py-3 pr-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500 text-right">Emails</th>
+            <th className="py-3 pr-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500 whitespace-nowrap">Dernière activité</th>
+            <th className="py-3 pr-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Recall</th>
+            <th className="py-3 pr-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">CRM</th>
+            <th className="py-3 text-right text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500"></th>
           </tr>
         </thead>
         <tbody>
@@ -192,9 +192,9 @@ function DashboardTable({ stats, onChanged }: { stats: UserDashboardStat[]; onCh
             <tr
               key={u.id}
               onClick={() => router.push(`/admin/dashboard/users/${u.id}`)}
-              className="border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer"
+              className="cursor-pointer border-b border-border transition-colors last:border-b-0 hover:bg-slate-50"
             >
-              <td className="py-3 pr-4 text-slate-800 font-medium max-w-[200px] truncate">{u.email}</td>
+              <td className="max-w-[200px] truncate py-3 pr-4 font-medium text-slate-900">{u.email}</td>
               <td className="py-3 pr-4">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <RoleBadge role={u.role} />
@@ -202,15 +202,15 @@ function DashboardTable({ stats, onChanged }: { stats: UserDashboardStat[]; onCh
                 </div>
               </td>
               <td className="py-3 pr-4 text-slate-500 whitespace-nowrap">{formatAdminDate(u.created_at)}</td>
-              <td className="py-3 pr-4 text-slate-700 text-right font-mono">{u.briefs_count}</td>
-              <td className="py-3 pr-4 text-slate-700 text-right font-mono">{u.calls_count}</td>
-              <td className="py-3 pr-4 text-slate-700 text-right font-mono">{u.emails_sent_count}</td>
+              <td className="py-3 pr-4 text-slate-700 text-right tabular-nums">{u.briefs_count}</td>
+              <td className="py-3 pr-4 text-slate-700 text-right tabular-nums">{u.calls_count}</td>
+              <td className="py-3 pr-4 text-slate-700 text-right tabular-nums">{u.emails_sent_count}</td>
               <td className="py-3 pr-4 text-slate-500 whitespace-nowrap">{formatAdminDate(u.last_activity_at)}</td>
               <td className="py-3 pr-4">
                 {u.recall_connected ? (
-                  <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-[color:var(--lavender-strong)] text-[color:var(--violet)]">Connecté</span>
+                  <span className="inline-flex items-center rounded-full bg-[color:var(--lavender)] px-2 py-0.5 text-[11.5px] font-semibold text-[color:var(--violet)]">Connecté</span>
                 ) : (
-                  <span className="text-slate-300 text-xs">—</span>
+                  <span className="text-[12px] text-slate-300">—</span>
                 )}
               </td>
               <td className="py-3 pr-4">
@@ -221,7 +221,7 @@ function DashboardTable({ stats, onChanged }: { stats: UserDashboardStat[]; onCh
                     ))}
                   </div>
                 ) : (
-                  <span className="text-slate-300 text-xs">—</span>
+                  <span className="text-[12px] text-slate-300">—</span>
                 )}
               </td>
               <td className="py-3 text-right">
@@ -231,7 +231,7 @@ function DashboardTable({ stats, onChanged }: { stats: UserDashboardStat[]; onCh
           ))}
           {sorted.length === 0 && (
             <tr>
-              <td colSpan={10} className="py-12 text-center text-slate-400 text-sm">
+              <td colSpan={10} className="py-12 text-center text-[13px] text-slate-500">
                 Aucun utilisateur
               </td>
             </tr>
@@ -298,23 +298,23 @@ export default function DashboardAdminClient() {
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-border rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {refreshing ? <Spinner /> : <RefreshCw className="w-4 h-4" />}
+              {refreshing ? <Spinner /> : <RefreshCw className="h-4 w-4" />}
               Actualiser
             </button>
           }
         />
       </FadeIn>
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatTile label="Briefs générés" value={totalBriefs} icon={<FileText className="w-4 h-4" />} accent="indigo" index={0} />
         <StatTile label="Appels analysés" value={totalCalls} icon={<PhoneCall className="w-4 h-4" />} accent="violet" index={1} />
         <StatTile label="Emails envoyés" value={totalEmails} icon={<Mail className="w-4 h-4" />} accent="emerald" index={2} />
       </div>
 
       <FadeIn delay={0.1}>
-        <div className="bg-white rounded-2xl border border-border p-6 mb-6 shadow-[var(--shadow-sm)]">
+        <div className="mb-6 rounded-2xl border border-border bg-white p-6">
           <RoleFilterBar value={roleFilter} onChange={setRoleFilter} counts={roleCounts} />
           <DashboardTable stats={filteredStats} onChanged={fetchStats} />
         </div>

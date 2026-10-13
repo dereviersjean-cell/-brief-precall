@@ -54,7 +54,7 @@ export default function InstallHint() {
   }
 
   return (
-    <div className="mx-4 mt-4 flex items-start gap-3 rounded-xl border border-[color:var(--lavender-strong)] bg-[color:var(--lavender)] px-4 py-3 lg:hidden">
+    <div className="mx-4 mt-4 flex items-start gap-3 rounded-2xl bg-[color:var(--lavender)] px-4 py-3 lg:hidden">
       <Share className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--violet)]" />
       <p className="flex-1 text-[13px] leading-relaxed text-slate-700">
         <span className="font-semibold text-slate-900">Installez Brief sur votre écran d&apos;accueil.</span>{" "}

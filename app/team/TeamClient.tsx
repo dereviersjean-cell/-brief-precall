@@ -42,11 +42,11 @@ function SortHeader({
 }) {
   const active = currentSort === sortKey;
   return (
-    <th className={`px-4 py-3 text-${align === "right" ? "right" : "left"}`}>
+    <th className={`px-4 py-2.5 text-${align === "right" ? "right" : "left"}`}>
       <button
         onClick={() => onSort(sortKey)}
-        className={`inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide transition-colors ${
-          active ? "text-[color:var(--violet)]" : "text-slate-400 hover:text-slate-600"
+        className={`inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.07em] transition-colors ${
+          active ? "text-[color:var(--violet)]" : "text-slate-500 hover:text-slate-900"
         } ${align === "right" ? "flex-row-reverse" : ""}`}
       >
         {label}
@@ -152,107 +152,97 @@ export default function TeamClient({
   }, [overview, query, sortKey, sortDirection]);
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-10">
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
       {/* Hero header */}
       <FadeIn>
-        <div className="relative overflow-hidden rounded-3xl border border-border shadow-[var(--shadow-sm)] bg-white p-8 mb-6">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-[color:var(--lavender-strong)]/60 via-[color:var(--lavender)]/40 to-transparent blur-3xl"
-          />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-gradient-to-tr from-emerald-100/40 to-transparent blur-3xl"
-          />
-          <div className="relative flex items-start justify-between gap-4 flex-wrap">
-            <div>
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[color:var(--violet)] bg-[color:var(--lavender)] px-2.5 py-1 rounded-full mb-3">
-                <Users className="w-3 h-3" />
-                Pilotage d&apos;équipe
-              </span>
-              <h1 className="text-2xl font-bold text-slate-900">Équipe</h1>
-              <p className="text-slate-500 text-sm mt-1">
-                Gérez les {overview.length} {overview.length === 1 ? "commercial" : "commerciaux"} de votre équipe — pour la performance, direction l&apos;onglet Performance.
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => setShowInviteModal(true)}
-                disabled={!hasOrganization}
-                title={
-                  hasOrganization
-                    ? undefined
-                    : "Vous devez être rattaché à une organisation pour inviter un collaborateur."
-                }
-                className="inline-flex items-center gap-2 h-9 px-3.5 bg-white border border-border text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 hover:text-slate-900 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
-              >
-                <UserPlus className="w-4 h-4" />
-                Inviter un collaborateur
-              </button>
-              <button
-                onClick={() => setShowManageModal(true)}
-                className="inline-flex items-center gap-2 h-9 px-3.5 brand-gradient text-white rounded-lg text-sm font-medium shadow-[var(--shadow-sm)] hover:brightness-110 hover:shadow-[var(--shadow-md)] transition-all duration-200"
-              >
-                <Settings2 className="w-4 h-4" />
-                Gérer mon équipe
-              </button>
-            </div>
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+          <div className="min-w-0">
+            <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.08em] text-[color:var(--violet)]">
+              <Users className="h-3.5 w-3.5" />
+              Pilotage d&apos;équipe
+            </span>
+            <h1 className="mt-1.5 text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] text-slate-900">Équipe</h1>
+            <p className="mt-2 text-[15px] leading-relaxed text-slate-500">
+              Gérez les {overview.length} {overview.length === 1 ? "commercial" : "commerciaux"} de votre équipe — pour la performance, direction l&apos;onglet Performance.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:shrink-0">
+            <button
+              onClick={() => setShowInviteModal(true)}
+              disabled={!hasOrganization}
+              title={
+                hasOrganization
+                  ? undefined
+                  : "Vous devez être rattaché à une organisation pour inviter un collaborateur."
+              }
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
+            >
+              <UserPlus className="h-4 w-4" />
+              Inviter un collaborateur
+            </button>
+            <button
+              onClick={() => setShowManageModal(true)}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110"
+            >
+              <Settings2 className="h-4 w-4" />
+              Gérer mon équipe
+            </button>
           </div>
         </div>
       </FadeIn>
 
       {/* Commercials table */}
       {overview.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-12 text-center">
-          <div className="w-12 h-12 bg-[color:var(--lavender)] rounded-xl flex items-center justify-center mx-auto mb-4">
-            <Users className="w-6 h-6 text-[color:var(--violet)]" strokeWidth={1.5} />
+        <div className="rounded-2xl border border-border bg-white px-6 py-12 text-center">
+          <div className="mx-auto mb-4 grid h-11 w-11 place-items-center rounded-xl bg-[color:var(--lavender)]">
+            <Users className="h-5 w-5 text-[color:var(--violet)]" strokeWidth={1.75} />
           </div>
-          <p className="text-slate-700 font-medium">Aucun commercial rattaché à votre équipe pour l&apos;instant</p>
+          <p className="text-[14px] font-semibold text-slate-900">Aucun commercial rattaché à votre équipe pour l&apos;instant</p>
         </div>
       ) : (
         <>
-          <div className="relative mb-4 w-72">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <div className="relative mb-4 w-full sm:w-72">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Rechercher un commercial…"
-              className="pl-9 pr-3.5 py-2 border border-border rounded-lg text-sm text-slate-700 bg-white w-full focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+              className="w-full rounded-xl border border-border bg-white py-2 pl-9 pr-3.5 text-[13px] text-slate-700 placeholder:text-slate-400 focus:border-[color:var(--violet)] focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20"
             />
           </div>
 
           {filteredOverview.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-12 text-center">
-              <p className="text-slate-500 text-sm">Aucun résultat pour « {query} ».</p>
+            <div className="rounded-2xl border border-border bg-white px-6 py-12 text-center">
+              <p className="text-[13px] text-slate-500">Aucun résultat pour « {query} ».</p>
             </div>
           ) : (
             <FadeIn delay={0.1}>
               {actionMessage && (
                 <div
-                  className={`mb-3 rounded-lg border px-4 py-2.5 text-sm ${
+                  className={`mb-3 rounded-xl px-4 py-2.5 text-[13px] ${
                     actionMessage.kind === "ok"
-                      ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                      : "bg-red-50 border-red-200 text-red-700"
+                      ? "bg-[color:var(--success-soft)] text-emerald-700"
+                      : "bg-[color:var(--danger-soft)] text-rose-700"
                   }`}
                 >
                   {actionMessage.text}
                 </div>
               )}
-              <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] overflow-hidden">
+              <div className="overflow-hidden rounded-2xl border border-border bg-white">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm border-collapse stacked-table sm:min-w-[520px]">
+                  <table className="w-full text-[13px] border-collapse stacked-table sm:min-w-[520px]">
                     <thead>
-                      <tr className="border-b border-border bg-slate-50/60">
+                      <tr className="border-b border-border">
                         <SortHeader label="Nom" sortKey="name" currentSort={sortKey} currentDirection={sortDirection} onSort={handleSort} />
                         <SortHeader label="Dernière activité" sortKey="activity" currentSort={sortKey} currentDirection={sortDirection} onSort={handleSort} />
                         {/* Distincte de l'activité : un commercial peut se connecter
                             sans générer ni brief ni call (migration 018). */}
-                        <th className="px-4 py-3 text-left">
-                          <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Dernière connexion</span>
+                        <th className="px-4 py-2.5 text-left">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Dernière connexion</span>
                         </th>
-                        <th className="px-4 py-3 text-right">
-                          <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Performance</span>
+                        <th className="px-4 py-2.5 text-right">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Performance</span>
                         </th>
                       </tr>
                     </thead>
@@ -261,28 +251,28 @@ export default function TeamClient({
                         <tr
                           key={c.user_id}
                           onClick={isPending(c) ? undefined : () => router.push(`/team/${c.user_id}`)}
-                          className={`border-b border-slate-100 last:border-b-0 transition-colors group ${
+                          className={`border-b border-border last:border-b-0 transition-colors group ${
                             isPending(c)
                               ? ""
-                              : "hover:bg-[color:var(--lavender)]/50 cursor-pointer"
+                              : "hover:bg-slate-50 cursor-pointer"
                           }`}
                         >
-                          <td className="px-4 py-3.5 max-w-[280px]">
+                          <td className="px-4 py-3 max-w-[280px]">
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-gradient-to-br brand-gradient flex items-center justify-center shrink-0">
-                                <span className="text-xs font-bold text-white">
+                              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[color:var(--lavender)]">
+                                <span className="text-[12px] font-semibold text-[color:var(--violet)]">
                                   {(c.name ?? c.email).charAt(0).toUpperCase()}
                                 </span>
                               </div>
                               <div className="min-w-0">
-                                <p className="font-medium text-slate-900 text-sm truncate group-hover:text-[color:var(--violet)] transition-colors">
+                                <p className="truncate text-[13px] font-medium text-slate-900 transition-colors group-hover:text-[color:var(--violet)]">
                                   {c.name || "—"}
                                 </p>
-                                <p className="text-slate-400 text-xs truncate">{c.email}</p>
+                                <p className="mt-0.5 truncate text-[11.5px] text-slate-500">{c.email}</p>
                                 {c.calendar_disconnected && (
                                   <span
                                     title="Plus aucune réunion n'est enregistrée tant que l'agenda n'est pas reconnecté (Paramètres > Connexions)."
-                                    className="mt-1 inline-flex items-center rounded-full bg-red-50 border border-red-200 px-2 py-0.5 text-[11px] font-medium text-red-700"
+                                    className="mt-1 inline-flex items-center rounded-full bg-[color:var(--danger-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-rose-700"
                                   >
                                     Agenda déconnecté
                                     {c.calendar_disconnected_at ? ` depuis le ${formatDate(c.calendar_disconnected_at)}` : ""}
@@ -291,19 +281,19 @@ export default function TeamClient({
                               </div>
                             </div>
                           </td>
-                          <td data-label="Dernière activité" className="px-4 py-3.5 whitespace-nowrap text-slate-500">
+                          <td data-label="Dernière activité" className="px-4 py-3 whitespace-nowrap tabular-nums text-slate-600">
                             {isPending(c) ? (
-                              <span className="inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs font-medium text-amber-700">
+                              <span className="inline-flex items-center rounded-full bg-[color:var(--warning-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-amber-700">
                                 Invitation en attente
                               </span>
                             ) : (
                               formatDate(c.last_activity_at)
                             )}
                           </td>
-                          <td data-label="Dernière connexion" className="px-4 py-3.5 whitespace-nowrap text-slate-500">
+                          <td data-label="Dernière connexion" className="px-4 py-3 whitespace-nowrap tabular-nums text-slate-600">
                             {isPending(c) ? "—" : formatDate(c.last_seen_at)}
                           </td>
-                          <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                          <td className="px-4 py-3 text-right whitespace-nowrap">
                             {isPending(c) ? (
                               <div className="inline-flex items-center gap-3">
                                 <button
@@ -312,7 +302,7 @@ export default function TeamClient({
                                     void resendInvitation(c.user_id, c.email);
                                   }}
                                   disabled={busyId === c.user_id}
-                                  className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--violet)] hover:underline disabled:opacity-50 disabled:no-underline"
+                                  className="inline-flex items-center gap-1 text-[12px] font-medium text-[color:var(--violet)] hover:underline disabled:opacity-50 disabled:no-underline"
                                 >
                                   <Send className="w-3 h-3" /> Renvoyer l&apos;invitation
                                 </button>
@@ -322,7 +312,7 @@ export default function TeamClient({
                                     void cancelInvitation(c.user_id, c.email);
                                   }}
                                   disabled={busyId === c.user_id}
-                                  className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-red-600 disabled:opacity-50"
+                                  className="inline-flex items-center gap-1 text-[12px] font-medium text-slate-500 hover:text-rose-700 disabled:opacity-50"
                                 >
                                   <X className="w-3 h-3" /> Annuler
                                 </button>
@@ -331,7 +321,7 @@ export default function TeamClient({
                               <Link
                                 href={`/dashboard?commercial=${c.user_id}`}
                                 onClick={(e) => e.stopPropagation()}
-                                className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--violet)] hover:underline"
+                                className="inline-flex items-center gap-1 text-[12px] font-medium text-[color:var(--violet)] hover:underline"
                               >
                                 Voir la performance <ArrowUpRight className="w-3 h-3" />
                               </Link>

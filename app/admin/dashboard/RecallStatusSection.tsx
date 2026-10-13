@@ -43,15 +43,15 @@ export default function RecallStatusSection() {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-border p-6 space-y-8 shadow-[var(--shadow-sm)]">
+    <div className="space-y-8 rounded-2xl border border-border bg-white p-6">
       <div className="flex items-center justify-between">
         <h2 className="text-[15px] font-semibold tracking-tight text-slate-900">Statut Recall</h2>
         <button
           onClick={handleRefresh}
           disabled={refreshing || state === "loading"}
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-border rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {refreshing ? <Spinner /> : <RefreshCw className="w-4 h-4" />}
+          {refreshing ? <Spinner /> : <RefreshCw className="h-4 w-4" />}
           Actualiser
         </button>
       </div>
@@ -63,7 +63,7 @@ export default function RecallStatusSection() {
       )}
 
       {state === "error" && (
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+        <p className="rounded-xl bg-[color:var(--danger-soft)] px-4 py-3 text-[13px] text-rose-700">
           Impossible de charger le statut Recall.
         </p>
       )}
@@ -71,17 +71,17 @@ export default function RecallStatusSection() {
       {state === "ready" && data && (
         <>
           <div>
-            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
+            <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">
               Prochains rendez-vous ({data.upcomingMeetings.length})
             </h3>
             <UpcomingMeetingsTable meetings={data.upcomingMeetings} />
           </div>
 
           <div>
-            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
+            <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">
               Rendez-vous sans enregistrement récupéré ({data.failedRecordings.length})
             </h3>
-            <p className="text-xs text-slate-400 -mt-2 mb-3">
+            <p className="-mt-2 mb-3 text-[12px] text-slate-500">
               Bot programmé sur les 7 derniers jours mais enregistrement jamais récupéré — transcript manquant ou refus/no-show.
             </p>
             <FailedRecordingsTable recordings={data.failedRecordings} />

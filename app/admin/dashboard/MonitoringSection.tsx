@@ -42,20 +42,20 @@ export default function MonitoringSection() {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-border p-6 shadow-[var(--shadow-sm)]">
-      <h2 className="text-[15px] font-semibold tracking-tight text-slate-900 mb-4">Monitoring (Sentry)</h2>
+    <div className="rounded-2xl border border-border bg-white p-6">
+      <h2 className="mb-4 text-[15px] font-semibold tracking-tight text-slate-900">Monitoring (Sentry)</h2>
 
       {status === null ? (
-        <p className="text-sm text-slate-400">Vérification…</p>
+        <p className="text-[13px] text-slate-500">Vérification…</p>
       ) : status.configured ? (
-        <p className="flex items-center gap-2 text-sm text-emerald-700">
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
+        <p className="flex items-center gap-2 text-[13px] text-emerald-700">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
           DSN configurée sur l&apos;environnement <strong>{status.environment}</strong>
-          {status.hint && <span className="text-slate-400 font-mono text-xs">({status.hint})</span>}
+          {status.hint && <span className="font-mono text-[12px] text-slate-400">({status.hint})</span>}
         </p>
       ) : (
-        <p className="flex items-start gap-2 text-sm text-amber-700">
-          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+        <p className="flex items-start gap-2 rounded-xl bg-[color:var(--warning-soft)] px-3.5 py-2.5 text-[13px] text-amber-800">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
             Aucune <code>SENTRY_DSN</code> sur cet environnement ({status.environment}) — les échecs des webhooks et des
             crons ne remontent nulle part. Ajoutez la variable dans Vercel puis redéployez.
@@ -63,7 +63,7 @@ export default function MonitoringSection() {
         </p>
       )}
 
-      <p className="mt-3 text-xs text-slate-500 max-w-2xl">
+      <p className="mt-3 max-w-2xl text-[12.5px] leading-relaxed text-slate-500">
         Sentry ne surveille pas les erreurs qui plantent — celles-là sont déjà visibles. Il surveille celles qui NE
         plantent pas : les étapes non bloquantes des webhooks et des crons, qui échouent en silence faute
         d&apos;utilisateur devant l&apos;écran.
@@ -72,19 +72,19 @@ export default function MonitoringSection() {
       <button
         onClick={sendTest}
         disabled={sending || !status?.configured}
-        className="mt-4 inline-flex items-center gap-2 h-9 px-3.5 rounded-lg brand-gradient text-white text-sm font-medium hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="mt-4 inline-flex h-9 items-center gap-1.5 rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        <Send className="w-3.5 h-3.5" />
+        <Send className="h-3.5 w-3.5" />
         {sending ? "Envoi…" : "Envoyer une erreur de test"}
       </button>
 
       {result && (
-        <p className="mt-3 text-sm text-emerald-700">
+        <p className="mt-3 text-[13px] text-emerald-700">
           {result} Si elle n&apos;apparaît pas d&apos;ici une minute, la DSN est invalide ou le projet Sentry n&apos;est
           pas le bon.
         </p>
       )}
-      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-3 text-[13px] text-rose-700">{error}</p>}
     </div>
   );
 }

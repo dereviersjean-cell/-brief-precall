@@ -137,14 +137,14 @@ export default function TaskEmailModal({
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 px-4" onClick={onClose}>
       <div
-        className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto"
+        className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl border border-border bg-white p-5 shadow-[var(--shadow-md)] sm:p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-slate-900">{taskTitle}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+          <h2 className="text-[16px] font-semibold tracking-[-0.01em] text-slate-900">{taskTitle}</h2>
+          <button onClick={onClose} className="rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -156,7 +156,7 @@ export default function TaskEmailModal({
             n'offre aucun choix. */}
         {templates.length > 0 && (
         <div className="flex items-center gap-2 mb-4">
-          <label htmlFor="task-email-template" className="text-xs text-slate-400 shrink-0">
+          <label htmlFor="task-email-template" className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">
             Type de call
           </label>
           <select
@@ -164,7 +164,7 @@ export default function TaskEmailModal({
             value={selectedTemplateId}
             onChange={(e) => setSelectedTemplateId(e.target.value)}
             disabled={loadingTemplates}
-            className="flex-1 px-2.5 py-1.5 border border-border rounded-lg text-xs text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] disabled:opacity-50"
+            className="min-w-0 flex-1 rounded-xl border border-border bg-white px-3 py-1.5 text-[12.5px] text-slate-700 outline-none transition-colors focus:border-[color:var(--violet)] disabled:opacity-50"
           >
             <option value={DEFAULT_PROMPT_VALUE}>Prompt par défaut</option>
             {templates.map((t) => (
@@ -177,7 +177,7 @@ export default function TaskEmailModal({
             <button
               onClick={() => setShowPromptSettings(true)}
               title="Personnaliser le prompt pour vos futures générations"
-              className="shrink-0 text-slate-400 hover:text-slate-600 transition-colors p-1"
+              className="shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
             >
               <Settings className="w-4 h-4" />
             </button>
@@ -188,17 +188,17 @@ export default function TaskEmailModal({
         {!hasGenerated ? (
           <div className="flex flex-col items-center justify-center gap-3 py-12">
             {generating ? (
-              <div className="flex items-center gap-2 text-slate-500 text-sm">
+              <div className="flex items-center gap-2 text-[13px] text-slate-500">
                 <Spinner />
                 Rédaction de l&apos;email par l&apos;IA…
               </div>
             ) : (
               <>
-                <p className="text-sm text-slate-400">Sélectionnez un type puis cliquez sur Générer</p>
+                <p className="text-[13px] text-slate-500">Sélectionnez un type puis cliquez sur Générer</p>
                 <button
                   onClick={() => generate(selectedTemplateId)}
                   disabled={loadingTemplates}
-                  className="flex items-center gap-2 text-sm font-medium text-white brand-gradient px-4 py-2 rounded-lg hover:brightness-110 transition-colors disabled:opacity-50"
+                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   ✨ Générer avec IA
                 </button>
@@ -208,40 +208,40 @@ export default function TaskEmailModal({
         ) : (
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Destinataire</label>
+              <label className="mb-1 block text-[12px] font-medium text-slate-700">Destinataire</label>
               <input
                 type="text"
                 value={contactEmail}
                 readOnly
-                className="w-full px-3 py-2 border border-border bg-slate-50 rounded-lg text-sm text-slate-500"
+                className="w-full rounded-xl border border-border bg-slate-50 px-3.5 py-2 text-[13.5px] text-slate-500 outline-none"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Sujet</label>
+              <label className="mb-1 block text-[12px] font-medium text-slate-700">Sujet</label>
               <input
                 type="text"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+                className="w-full rounded-xl border border-border bg-white px-3.5 py-2 text-[13.5px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-1 focus:ring-[color:var(--violet)]"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Corps de l&apos;email</label>
+              <label className="mb-1 block text-[12px] font-medium text-slate-700">Corps de l&apos;email</label>
               <textarea
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 rows={10}
-                className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] resize-y"
+                className="w-full rounded-xl border border-border bg-white px-3.5 py-2 text-[13.5px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-1 focus:ring-[color:var(--violet)] resize-y leading-relaxed"
               />
             </div>
           </div>
         )}
 
         {error && (
-          <div className="mt-3">
-            <p className="text-sm text-red-600">{error}</p>
+          <div className="mt-3 rounded-xl bg-[color:var(--danger-soft)] px-3.5 py-2.5">
+            <p className="text-[13px] text-rose-700">{error}</p>
             {gmailNotConnected && (
-              <Link href="/settings" className="text-sm text-[color:var(--violet)] hover:text-[color:var(--violet)] font-medium underline">
+              <Link href="/settings" className="mt-1 inline-block text-[13px] font-medium text-[color:var(--violet)] underline underline-offset-2">
                 Connecter Gmail dans les paramètres
               </Link>
             )}
@@ -253,7 +253,7 @@ export default function TaskEmailModal({
             <button
               onClick={() => generate(selectedTemplateId)}
               disabled={generating || sending}
-              className="text-sm font-medium text-[color:var(--violet)] hover:text-[color:var(--violet)] disabled:opacity-50"
+              className="inline-flex h-9 items-center rounded-lg px-2 text-[13px] font-medium text-[color:var(--violet)] transition-colors hover:bg-[color:var(--lavender)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {generating ? "Régénération…" : "✨ Régénérer avec IA"}
             </button>
@@ -264,14 +264,14 @@ export default function TaskEmailModal({
             <button
               onClick={onClose}
               disabled={sending}
-              className="text-sm font-medium text-slate-600 border border-border px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
+              className="inline-flex h-9 items-center rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Annuler
             </button>
             <button
               onClick={handleSubmitSend}
               disabled={!hasGenerated || sending || !subject.trim() || !body.trim()}
-              className="flex items-center gap-2 text-sm font-medium text-white brand-gradient px-4 py-2 rounded-lg hover:brightness-110 transition-colors disabled:opacity-50"
+              className="inline-flex h-9 items-center gap-2 rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {sending && <Spinner />}
               {sending ? "Envoi…" : "Envoyer"}

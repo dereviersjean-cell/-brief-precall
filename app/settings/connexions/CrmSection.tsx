@@ -53,34 +53,34 @@ export default function CrmSection({
   return (
     <div>
       {toast && (
-        <div className={`mb-6 rounded-xl border px-4 py-3 flex items-center justify-between gap-4 ${
-          toast.type === "success" ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"
+        <div className={`mb-6 flex items-center justify-between gap-4 rounded-xl px-4 py-3 ${
+          toast.type === "success" ? "bg-[color:var(--success-soft)]" : "bg-[color:var(--danger-soft)]"
         }`}>
-          <p className={`text-sm font-medium ${toast.type === "success" ? "text-emerald-700" : "text-red-700"}`}>
+          <p className={`text-[13px] font-medium ${toast.type === "success" ? "text-emerald-700" : "text-rose-700"}`}>
             {toast.message}
           </p>
           <button
             onClick={() => setToast(null)}
-            className={`shrink-0 text-lg leading-none ${toast.type === "success" ? "text-emerald-400 hover:text-emerald-600" : "text-red-400 hover:text-red-600"}`}
+            className={`shrink-0 text-lg leading-none ${toast.type === "success" ? "text-emerald-700/60 hover:text-emerald-700" : "text-rose-700/60 hover:text-rose-700"}`}
           >
             ×
           </button>
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)]">
-        <div className="px-6 py-5 space-y-5 divide-y divide-slate-100">
+      <div className="rounded-2xl border border-border bg-white">
+        <div className="divide-y divide-border px-5 sm:px-6">
           {/* Pipedrive */}
-          <div>
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[color:var(--violet)] mb-3">Pipedrive</p>
+          <div className="py-5">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Pipedrive</p>
             {pipedriveConnected ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full">
-                    <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <div className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-[color:var(--success-soft)] px-2.5 py-1">
+                    <svg className="h-3.5 w-3.5 shrink-0 text-emerald-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <span className="text-sm font-medium text-emerald-700">Pipedrive connecté</span>
+                    <span className="min-w-0 truncate text-[12px] font-semibold text-emerald-700">Pipedrive connecté</span>
                   </div>
                   <button
                     disabled={pipedriveImporting}
@@ -101,7 +101,7 @@ export default function CrmSection({
                         setPipedriveImporting(false);
                       }
                     }}
-                    className="inline-flex items-center gap-2 brand-gradient text-white text-sm font-semibold px-5 py-2 rounded-lg hover:brightness-110 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex h-9 items-center gap-2 rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {pipedriveImporting ? (
                       <>
@@ -126,16 +126,16 @@ export default function CrmSection({
                         setPipedriveDisconnecting(false);
                       }
                     }}
-                    className="text-sm text-slate-400 hover:text-red-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="text-[13px] text-slate-500 transition-colors hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {pipedriveDisconnecting ? "Déconnexion…" : "Déconnecter"}
                   </button>
                 </div>
                 {pipedriveImportResult && (
                   "error" in pipedriveImportResult ? (
-                    <p className="text-sm text-red-600">{pipedriveImportResult.error}</p>
+                    <p className="text-[13px] text-rose-700">{pipedriveImportResult.error}</p>
                   ) : (
-                    <p className="text-sm text-emerald-600 font-medium">
+                    <p className="text-[13px] font-medium text-emerald-700">
                       {pipedriveImportResult.count} référence{pipedriveImportResult.count !== 1 ? "s" : ""} importée{pipedriveImportResult.count !== 1 ? "s" : ""} depuis Pipedrive.
                     </p>
                   )
@@ -144,7 +144,7 @@ export default function CrmSection({
             ) : (
               <a
                 href="/api/crm/pipedrive/start"
-                className="inline-flex items-center gap-2 brand-gradient text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:brightness-110 transition-colors"
+                className="inline-flex h-9 items-center gap-2 rounded-lg bg-[color:var(--primary)] px-4 text-[13px] font-medium text-white transition-all hover:brightness-110"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm1 14.5v-9l6 4.5-6 4.5z" fillOpacity=".9"/>
@@ -155,16 +155,16 @@ export default function CrmSection({
           </div>
 
           {/* HubSpot */}
-          <div className="pt-5">
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[color:var(--violet)] mb-3">HubSpot</p>
+          <div className="py-5">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">HubSpot</p>
             {hubspotConnected ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full">
-                    <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <div className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-[color:var(--success-soft)] px-2.5 py-1">
+                    <svg className="h-3.5 w-3.5 shrink-0 text-emerald-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <span className="text-sm font-medium text-emerald-700">HubSpot connecté</span>
+                    <span className="min-w-0 truncate text-[12px] font-semibold text-emerald-700">HubSpot connecté</span>
                   </div>
                   <button
                     disabled={hubspotImporting}
@@ -185,7 +185,7 @@ export default function CrmSection({
                         setHubspotImporting(false);
                       }
                     }}
-                    className="inline-flex items-center gap-2 brand-gradient text-white text-sm font-semibold px-5 py-2 rounded-lg hover:brightness-110 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex h-9 items-center gap-2 rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {hubspotImporting ? (
                       <>
@@ -210,16 +210,16 @@ export default function CrmSection({
                         setHubspotDisconnecting(false);
                       }
                     }}
-                    className="text-sm text-slate-400 hover:text-red-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="text-[13px] text-slate-500 transition-colors hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {hubspotDisconnecting ? "Déconnexion…" : "Déconnecter"}
                   </button>
                 </div>
                 {hubspotImportResult && (
                   "error" in hubspotImportResult ? (
-                    <p className="text-sm text-red-600">{hubspotImportResult.error}</p>
+                    <p className="text-[13px] text-rose-700">{hubspotImportResult.error}</p>
                   ) : (
-                    <p className="text-sm text-emerald-600 font-medium">
+                    <p className="text-[13px] font-medium text-emerald-700">
                       {hubspotImportResult.count} référence{hubspotImportResult.count !== 1 ? "s" : ""} importée{hubspotImportResult.count !== 1 ? "s" : ""} depuis HubSpot.
                     </p>
                   )
@@ -228,7 +228,7 @@ export default function CrmSection({
             ) : (
               <a
                 href="/api/crm/hubspot/start"
-                className="inline-flex items-center gap-2 bg-[#ff7a59] text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-[#ff6641] transition-colors"
+                className="inline-flex h-9 items-center gap-2 rounded-lg bg-[#ff7a59] px-4 text-[13px] font-medium text-white transition-colors hover:bg-[#ff6641]"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M18.164 7.931V5.085a1.747 1.747 0 0 0 1.008-1.573V3.49a1.748 1.748 0 0 0-3.496 0v.022a1.747 1.747 0 0 0 1.008 1.573v2.846a4.966 4.966 0 0 0-2.373 1.041L7.103 4.042a1.943 1.943 0 1 0-.948 1.306l7.013 4.773a4.984 4.984 0 0 0-.67 2.49 4.998 4.998 0 0 0 2.124 4.1l-1.553 2.69a1.647 1.647 0 1 0 1.35.779l1.553-2.69a4.994 4.994 0 1 0 2.192-8.559z" fillOpacity=".9"/>

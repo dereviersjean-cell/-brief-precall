@@ -11,30 +11,36 @@
 // L'habillage (sidebar, TopBar, bannières) vit dans le layout de chaque
 // section : il reste à l'écran, seul le contenu est remplacé par ce squelette.
 export default function PageSkeleton({ rows = 4 }: { rows?: number }) {
+  // Mêmes formes que les écrans réels : en-tête de page, cartes d'indicateurs
+  // (rounded-2xl, bordure, sans ombre) puis lignes de liste. Le squelette qui
+  // ressemble à la page évite un saut de mise en page à l'arrivée du contenu.
   return (
-    <div className="max-w-6xl mx-auto px-6 py-10 animate-pulse" aria-hidden>
-      <div className="h-3 w-24 rounded bg-slate-200" />
-      <div className="mt-4 h-8 w-72 max-w-full rounded bg-slate-200" />
+    <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 sm:py-10 animate-pulse" aria-hidden>
+      <div className="h-3 w-24 rounded-full bg-slate-200" />
+      <div className="mt-3 h-8 w-72 max-w-full rounded-lg bg-slate-200" />
+      <div className="mt-3 h-3.5 w-96 max-w-full rounded-full bg-slate-100" />
 
-      <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="h-24 rounded-2xl border border-slate-100 bg-white">
-            <div className="p-5">
-              <div className="h-2.5 w-20 rounded bg-slate-100" />
-              <div className="mt-4 h-6 w-12 rounded bg-slate-200" />
+          <div key={i} className="rounded-2xl border border-border bg-white p-5">
+            <div className="flex items-center justify-between">
+              <div className="h-2.5 w-20 rounded-full bg-slate-100" />
+              <div className="h-8 w-8 rounded-lg bg-slate-100" />
             </div>
+            <div className="mt-3 h-7 w-14 rounded-md bg-slate-200" />
+            <div className="mt-2.5 h-2.5 w-24 rounded-full bg-slate-100" />
           </div>
         ))}
       </div>
 
-      <div className="mt-8 space-y-3">
+      <div className="mt-8 space-y-2">
         {Array.from({ length: rows }).map((_, i) => (
-          <div key={i} className="h-20 rounded-2xl border border-slate-100 bg-white">
-            <div className="flex items-center gap-4 p-5">
-              <div className="h-9 w-9 shrink-0 rounded-xl bg-slate-100" />
+          <div key={i} className="rounded-2xl border border-border bg-white px-4 py-3.5 sm:px-5">
+            <div className="flex items-center gap-3.5">
+              <div className="h-10 w-10 shrink-0 rounded-xl bg-slate-100" />
               <div className="min-w-0 flex-1">
-                <div className="h-3.5 w-48 max-w-full rounded bg-slate-200" />
-                <div className="mt-2.5 h-2.5 w-32 max-w-full rounded bg-slate-100" />
+                <div className="h-3.5 w-48 max-w-full rounded-full bg-slate-200" />
+                <div className="mt-2.5 h-2.5 w-32 max-w-full rounded-full bg-slate-100" />
               </div>
               <div className="hidden sm:block h-8 w-24 shrink-0 rounded-lg bg-slate-100" />
             </div>

@@ -38,9 +38,9 @@ const EMPTY_FORM: ReferenceFormData = {
 
 const SOURCE_META: Record<string, { label: string; className: string }> = {
   upload: { label: "Fichier", className: "bg-slate-100 text-slate-600" },
-  manual: { label: "Manuel", className: "bg-violet-50 text-violet-600" },
-  pipedrive: { label: "Pipedrive", className: "bg-emerald-50 text-emerald-600" },
-  hubspot: { label: "HubSpot", className: "bg-orange-50 text-orange-600" },
+  manual: { label: "Manuel", className: "bg-[color:var(--lavender)] text-[color:var(--violet)]" },
+  pipedrive: { label: "Pipedrive", className: "bg-emerald-50 text-emerald-700" },
+  hubspot: { label: "HubSpot", className: "bg-orange-50 text-orange-700" },
 };
 
 function sourceMeta(source: string | null) {
@@ -84,7 +84,7 @@ function CompletenessGauge({ reference }: { reference: ClientReferenceRow }) {
       {KEY_FIELDS.map((f) => (
         <span
           key={f.key}
-          className={`h-1.5 w-3 rounded-full ${reference[f.key] ? "bg-emerald-400" : "bg-slate-200"}`}
+          className={`h-1.5 w-3 rounded-full ${reference[f.key] ? "bg-[color:var(--success)]" : "bg-slate-200"}`}
         />
       ))}
     </span>
@@ -110,12 +110,12 @@ function ReferenceFormFields({ value, onChange }: { value: ReferenceFormData; on
   }
 
   const inputClass =
-    "w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]";
+    "w-full rounded-xl border border-border bg-white px-3.5 py-2 text-[13.5px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)]";
 
   return (
     <div className="space-y-3">
       <div>
-        <label className="block text-xs font-medium text-slate-600 mb-1">Nom du client</label>
+        <label className="mb-1 block text-[12px] font-medium text-slate-700">Nom du client</label>
         <input
           value={value.client_name}
           onChange={(e) => set("client_name", e.target.value)}
@@ -123,13 +123,13 @@ function ReferenceFormFields({ value, onChange }: { value: ReferenceFormData; on
           className={inputClass}
         />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">Secteur</label>
+          <label className="mb-1 block text-[12px] font-medium text-slate-700">Secteur</label>
           <input value={value.sector} onChange={(e) => set("sector", e.target.value)} placeholder="ex. SaaS" className={inputClass} />
         </div>
         <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">Taille d&apos;entreprise</label>
+          <label className="mb-1 block text-[12px] font-medium text-slate-700">Taille d&apos;entreprise</label>
           <input
             value={value.company_size}
             onChange={(e) => set("company_size", e.target.value)}
@@ -139,15 +139,15 @@ function ReferenceFormFields({ value, onChange }: { value: ReferenceFormData; on
         </div>
       </div>
       <div>
-        <label className="block text-xs font-medium text-slate-600 mb-1">Problématique</label>
+        <label className="mb-1 block text-[12px] font-medium text-slate-700">Problématique</label>
         <textarea value={value.problem} onChange={(e) => set("problem", e.target.value)} rows={2} className={`${inputClass} resize-y`} />
       </div>
       <div>
-        <label className="block text-xs font-medium text-slate-600 mb-1">Solution</label>
+        <label className="mb-1 block text-[12px] font-medium text-slate-700">Solution</label>
         <textarea value={value.solution} onChange={(e) => set("solution", e.target.value)} rows={2} className={`${inputClass} resize-y`} />
       </div>
       <div>
-        <label className="block text-xs font-medium text-slate-600 mb-1">Résultat chiffré</label>
+        <label className="mb-1 block text-[12px] font-medium text-slate-700">Résultat chiffré</label>
         <textarea value={value.result} onChange={(e) => set("result", e.target.value)} rows={2} className={`${inputClass} resize-y`} />
       </div>
     </div>
@@ -179,25 +179,25 @@ function AddReferenceModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 px-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-white rounded-2xl border border-border p-6 w-full max-w-lg shadow-xl max-h-[85vh] overflow-y-auto"
+        className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-white p-5 shadow-[var(--shadow-md)] sm:p-6"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="font-semibold text-slate-900 mb-4">Ajouter une référence client</h2>
+        <h2 className="mb-4 text-[16px] font-semibold text-slate-900">Ajouter une référence client</h2>
         <ReferenceFormFields value={form} onChange={setForm} />
-        {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
+        {error && <p className="mt-3 rounded-xl bg-[color:var(--danger-soft)] px-3.5 py-2.5 text-[13px] text-rose-700">{error}</p>}
         <div className="flex justify-end gap-2 mt-5">
           <button
             onClick={onClose}
-            className="h-9 px-4 text-sm font-medium text-slate-600 border border-border rounded-lg hover:bg-slate-50 transition-colors"
+            className="inline-flex h-9 items-center rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
           >
             Annuler
           </button>
           <button
             onClick={handleSubmit}
             disabled={!form.client_name.trim() || loading}
-            className="h-9 px-4 text-sm font-medium text-white brand-gradient rounded-lg hover:brightness-110 transition-colors disabled:opacity-50"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? "Création…" : "Ajouter"}
           </button>
@@ -295,7 +295,7 @@ export default function ClientReferencesTable({ version }: { version: number }) 
     return (
       <div className="mt-6 space-y-2 animate-pulse">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-14 bg-white rounded-2xl border border-border" />
+          <div key={i} className="h-14 rounded-2xl border border-border bg-white" />
         ))}
       </div>
     );
@@ -338,11 +338,9 @@ export default function ClientReferencesTable({ version }: { version: number }) 
       )}
 
       {missingEmbeddingCount > 0 && (
-        <div className="flex items-start gap-3 bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 mb-4">
-          <span className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shrink-0 shadow-sm">
-            <AlertTriangle className="w-4 h-4 text-amber-500" />
-          </span>
-          <p className="text-sm text-amber-800">
+        <div className="mb-4 flex items-start gap-2.5 rounded-2xl bg-[color:var(--warning-soft)] px-4 py-3">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-700" />
+          <p className="text-[13px] leading-relaxed text-amber-800">
             {missingEmbeddingCount} référence{missingEmbeddingCount > 1 ? "s" : ""} sans empreinte vectorielle —{" "}
             {missingEmbeddingCount > 1 ? "elles ne seront jamais proposées" : "elle ne sera jamais proposée"} dans les
             briefs. Ouvrez-{missingEmbeddingCount > 1 ? "les" : "la"} et cliquez sur Enregistrer pour relancer le calcul.
@@ -351,11 +349,9 @@ export default function ClientReferencesTable({ version }: { version: number }) 
       )}
 
       {incompleteCount > 0 && (
-        <div className="flex items-start gap-3 bg-[color:var(--lavender)] border border-[color:var(--lavender-strong)] rounded-2xl px-4 py-3 mb-4">
-          <span className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shrink-0 shadow-sm">
-            <Pencil className="w-4 h-4 text-[color:var(--violet)]" />
-          </span>
-          <p className="text-sm text-slate-700">
+        <div className="mb-4 flex items-start gap-2.5 rounded-2xl bg-[color:var(--lavender)] px-4 py-3">
+          <Pencil className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[color:var(--violet)]" />
+          <p className="text-[13px] leading-relaxed text-slate-600">
             {incompleteCount} profil{incompleteCount > 1 ? "s" : ""} incomplet{incompleteCount > 1 ? "s" : ""}
             {topMissingLabel && ` (le plus souvent : ${topMissingLabel} manquant)`} — une référence incomplète est
             moins bien rapprochée des prospects et donc moins souvent citée dans vos briefs. La jauge de chaque ligne
@@ -364,20 +360,20 @@ export default function ClientReferencesTable({ version }: { version: number }) 
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-        <div className="relative w-72">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="relative w-full sm:w-72">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Rechercher un client, un secteur…"
-            className="pl-9 pr-3.5 py-2 border border-border rounded-lg text-sm text-slate-700 bg-white w-full focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+            className="h-9 w-full rounded-xl border border-border bg-white pl-9 pr-3.5 text-[13px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)]"
           />
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="inline-flex items-center gap-2 h-9 px-3.5 brand-gradient text-white rounded-lg text-sm font-medium shadow-[var(--shadow-sm)] hover:brightness-110 hover:shadow-[var(--shadow-md)] transition-all duration-200"
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Plus className="w-4 h-4" />
           Ajouter une référence
@@ -385,17 +381,17 @@ export default function ClientReferencesTable({ version }: { version: number }) 
       </div>
 
       {!hasAny ? (
-        <div className="bg-white rounded-2xl border border-border p-8 text-center">
-          <p className="text-slate-500 text-sm">
+        <div className="rounded-2xl border border-dashed border-border bg-white px-6 py-10 text-center">
+          <p className="text-[13.5px] text-slate-500">
             Aucune référence pour l&apos;instant. Importez un fichier ci-dessus ou ajoutez-en une manuellement.
           </p>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-border p-8 text-center text-slate-400 text-sm">
+        <div className="rounded-2xl border border-dashed border-border bg-white px-6 py-10 text-center text-[13.5px] text-slate-500">
           Aucun résultat pour « {query} ».
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-border divide-y divide-slate-100 overflow-hidden">
+        <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-white">
           {filtered.map((ref) => {
             const meta = sourceMeta(ref.source);
             const expanded = expandedId === ref.id;
@@ -411,23 +407,23 @@ export default function ClientReferencesTable({ version }: { version: number }) 
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-medium text-slate-900 text-sm truncate">{ref.client_name || "Sans nom"}</p>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${meta.className}`}>
+                      <p className="truncate text-[13.5px] font-semibold text-slate-900">{ref.client_name || "Sans nom"}</p>
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${meta.className}`}>
                         {meta.label}
                       </span>
                       {!ref.has_embedding && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-600">
+                        <span className="inline-flex items-center rounded-full bg-[color:var(--warning-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-amber-700">
                           Sans embedding
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-slate-400 mt-0.5 truncate">
+                    <p className="mt-0.5 truncate text-[12px] text-slate-500">
                       {[ref.sector, ref.company_size].filter(Boolean).join(" · ") || "Secteur et taille non renseignés"}
                       {" · "}
                       {formatDate(ref.created_at)}
                     </p>
                   </div>
-                  {complete ? <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> : <CompletenessGauge reference={ref} />}
+                  {complete ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" /> : <CompletenessGauge reference={ref} />}
                   <button
                     type="button"
                     onClick={(e) => {
@@ -435,7 +431,7 @@ export default function ClientReferencesTable({ version }: { version: number }) 
                       if (editing) cancelEdit();
                       else startEdit(ref);
                     }}
-                    className="shrink-0 h-7 w-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-[color:var(--violet)] hover:bg-[color:var(--lavender)] transition-colors"
+                    className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
                     aria-label={editing ? "Annuler la modification" : "Modifier"}
                   >
                     {editing ? <X className="w-3.5 h-3.5" /> : <Pencil className="w-3.5 h-3.5" />}
@@ -447,29 +443,29 @@ export default function ClientReferencesTable({ version }: { version: number }) 
                       handleDelete(ref);
                     }}
                     disabled={deletingId === ref.id}
-                    className="shrink-0 h-7 w-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-red-600 hover:bg-red-50 transition-colors"
+                    className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-[color:var(--danger-soft)] hover:text-rose-600"
                     aria-label="Supprimer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
-                  <ChevronDown className={`w-4 h-4 text-slate-300 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`} />
+                  <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${expanded ? "rotate-180" : ""}`} />
                 </div>
                 {expanded && (
-                  <div className="px-4 pb-4 pt-1 bg-slate-50/60">
+                  <div className="border-t border-border bg-slate-50 px-4 py-4">
                     {editing ? (
                       <div>
                         <ReferenceFormFields value={editDraft} onChange={setEditDraft} />
                         <div className="flex justify-end gap-2 mt-3">
                           <button
                             onClick={cancelEdit}
-                            className="h-8 px-3.5 text-sm font-medium text-slate-600 border border-border rounded-lg hover:bg-slate-100 transition-colors bg-white"
+                            className="inline-flex h-8 items-center rounded-lg border border-border bg-white px-3 text-[12.5px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
                           >
                             Annuler
                           </button>
                           <button
                             onClick={() => saveEdit(ref.id)}
                             disabled={savingEdit || !editDraft.client_name.trim()}
-                            className="h-8 px-3.5 text-sm font-medium text-white brand-gradient rounded-lg hover:brightness-110 transition-colors disabled:opacity-50"
+                            className="inline-flex h-8 items-center rounded-lg bg-[color:var(--primary)] px-3 text-[12.5px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             {savingEdit ? "Enregistrement…" : "Enregistrer"}
                           </button>
@@ -479,30 +475,30 @@ export default function ClientReferencesTable({ version }: { version: number }) 
                       <div className="space-y-3">
                         {ref.problem && (
                           <div>
-                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Problématique</p>
-                            <p className="text-sm text-slate-600 leading-relaxed">{ref.problem}</p>
+                            <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Problématique</p>
+                            <p className="text-[13.5px] leading-relaxed text-slate-600">{ref.problem}</p>
                           </div>
                         )}
                         {ref.solution && (
                           <div>
-                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Solution</p>
-                            <p className="text-sm text-slate-600 leading-relaxed">{ref.solution}</p>
+                            <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Solution</p>
+                            <p className="text-[13.5px] leading-relaxed text-slate-600">{ref.solution}</p>
                           </div>
                         )}
                         {ref.result && (
                           <div>
-                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Résultat</p>
-                            <p className="text-sm text-slate-600 leading-relaxed">{ref.result}</p>
+                            <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Résultat</p>
+                            <p className="text-[13.5px] leading-relaxed text-slate-600">{ref.result}</p>
                           </div>
                         )}
                         {!ref.problem && !ref.solution && !ref.result && ref.raw_text && (
                           <div>
-                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Texte brut</p>
-                            <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{ref.raw_text}</p>
+                            <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Texte brut</p>
+                            <p className="text-[13.5px] leading-relaxed text-slate-600 whitespace-pre-wrap">{ref.raw_text}</p>
                           </div>
                         )}
                         {!hasDetail && (
-                          <p className="text-sm text-slate-400 italic">
+                          <p className="text-[13px] italic text-slate-500">
                             Aucun détail pour cette référence — cliquez sur{" "}
                             <Pencil className="w-3 h-3 inline -mt-0.5" /> pour la compléter.
                           </p>

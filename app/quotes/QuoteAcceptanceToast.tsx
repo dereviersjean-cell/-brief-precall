@@ -35,19 +35,20 @@ export default function QuoteAcceptanceToast() {
   if (notifications.length === 0) return null;
 
   return (
-    <div className="brief-ui fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
+    <div className="brief-ui fixed top-4 right-4 left-4 z-50 flex flex-col gap-2 sm:left-auto sm:max-w-sm">
       {notifications.map((n) => (
         <div
           key={n.quote_id}
-          className="bg-white border border-emerald-200 shadow-sm rounded-md px-4 py-3 flex items-start gap-3"
+          className="flex items-start gap-3 rounded-xl border border-border bg-white px-4 py-3 shadow-[var(--shadow-md)]"
         >
-          <p className="text-sm text-slate-700 flex-1">
-            🎉 <span className="font-semibold">{n.client_name}</span> a accepté votre devis{" "}
-            <span className="font-semibold">{n.quote_number}</span> ({formatCurrency(n.total_ttc)})
+          <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[color:var(--success)]" aria-hidden />
+          <p className="flex-1 text-[13px] leading-relaxed text-slate-700">
+            🎉 <span className="font-semibold text-slate-900">{n.client_name}</span> a accepté votre devis{" "}
+            <span className="font-semibold text-slate-900">{n.quote_number}</span> (<span className="tabular-nums">{formatCurrency(n.total_ttc)}</span>)
           </p>
           <button
             onClick={() => handleClose(n.quote_id)}
-            className="shrink-0 text-slate-400 hover:text-slate-600 transition-colors duration-200"
+            className="shrink-0 rounded-md px-1 text-[16px] leading-none text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
             aria-label="Fermer"
           >
             ×

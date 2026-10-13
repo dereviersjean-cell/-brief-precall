@@ -115,30 +115,30 @@ export default function WelcomeClient({
   const allDone = remaining.length === 0;
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-12">
-      <p className="text-[13px] font-semibold uppercase tracking-widest text-[color:var(--violet)]">Bienvenue</p>
-      <h1 className="mt-2 text-3xl font-bold text-slate-900">
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
+      <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[color:var(--violet)]">Bienvenue</p>
+      <h1 className="mt-1.5 text-[30px] leading-[1.1] font-semibold tracking-[-0.03em] text-slate-900">
         {firstName ? `Bonjour ${firstName},` : "Bonjour,"} voici comment Brief fonctionne
       </h1>
-      <p className="mt-3 text-[15px] leading-relaxed text-slate-600">
+      <p className="mt-3 text-[15px] leading-relaxed text-slate-500">
         Brief a un seul objectif : augmenter votre taux de closing. Il prépare vos rendez-vous, les débriefe à votre
         place, et vous montre ce qui fait la différence entre un rendez-vous gagné et un rendez-vous perdu.
       </p>
-      <p className="mt-2 text-[15px] leading-relaxed text-slate-600">
+      <p className="mt-2 text-[15px] leading-relaxed text-slate-500">
         La plupart du temps, <strong className="text-slate-900">vous n&apos;aurez pas à ouvrir Brief</strong> : les
         briefs et les comptes-rendus arrivent dans votre boîte mail{modules.includes("crm") ? ", votre agenda et votre CRM" : " et votre agenda"}.
       </p>
 
-      <div className="mt-10 space-y-4">
+      <div className="mt-8 space-y-3">
         {pillars.map((pillar) => (
-          <div key={pillar.title} className="rounded-2xl border border-border bg-white p-6 shadow-[var(--shadow-sm)]">
+          <div key={pillar.title} className="rounded-2xl border border-border bg-white p-5 sm:p-6">
             <div className="flex items-start gap-4">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[color:var(--lavender)] text-[color:var(--violet)]">
                 <pillar.icon className="h-4.5 w-4.5" />
               </span>
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Étape {pillar.step}</p>
-                <h2 className="mt-0.5 text-[17px] font-semibold text-slate-900">{pillar.title}</h2>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Étape {pillar.step}</p>
+                <h2 className="mt-1 text-[17px] font-semibold tracking-[-0.01em] text-slate-900">{pillar.title}</h2>
                 <p className="mt-1 text-[14px] font-medium text-slate-700">{pillar.lead}</p>
                 <p className="mt-2 text-[13.5px] leading-relaxed text-slate-500">{pillar.detail}</p>
               </div>
@@ -147,12 +147,12 @@ export default function WelcomeClient({
         ))}
       </div>
 
-      <div className="mt-10 rounded-2xl border border-border bg-white p-6 shadow-[var(--shadow-sm)]">
+      <div className="mt-8 rounded-2xl border border-border bg-white p-5 sm:p-6">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-[17px] font-semibold text-slate-900">
+          <h2 className="text-[17px] font-semibold tracking-[-0.01em] text-slate-900">
             {allDone ? "Votre compte est prêt" : "Ce qu'il reste à faire"}
           </h2>
-          <p className="text-[13px] text-slate-400">
+          <p className="text-[13px] font-medium tabular-nums text-slate-500">
             {activation.completed} sur {activation.total}
           </p>
         </div>
@@ -162,7 +162,7 @@ export default function WelcomeClient({
             continue ou si on referme l'onglet. */}
         <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
           <div
-            className="h-full rounded-full brand-gradient transition-all"
+            className="h-full rounded-full bg-[color:var(--primary)] transition-all"
             style={{ width: `${(100 * activation.completed) / activation.total}%` }}
           />
         </div>
@@ -173,7 +173,7 @@ export default function WelcomeClient({
             return (
               <li key={step.key} className="flex items-start gap-3">
                 {step.done ? (
-                  <CheckCircle2 className="mt-0.5 h-4.5 w-4.5 shrink-0 text-emerald-500" />
+                  <CheckCircle2 className="mt-0.5 h-4.5 w-4.5 shrink-0 text-[color:var(--success)]" />
                 ) : (
                   <Circle className="mt-0.5 h-4.5 w-4.5 shrink-0 text-slate-300" />
                 )}
@@ -202,14 +202,14 @@ export default function WelcomeClient({
       <div className="mt-8 flex flex-wrap items-center gap-3">
         <Link
           href="/demo/dashboard?tour=1"
-          className="inline-flex h-10 items-center gap-2 rounded-lg brand-gradient px-4 text-[14px] font-medium text-white transition-all hover:brightness-110"
+          className="inline-flex h-10 items-center gap-2 rounded-lg bg-[color:var(--primary)] px-4 text-[14px] font-medium text-white transition hover:brightness-110"
         >
           <Compass className="h-4 w-4" />
           Faire le tour de l&apos;interface
         </Link>
         <Link
           href="/brief"
-          className="inline-flex h-10 items-center gap-2 rounded-lg border border-border bg-white px-4 text-[14px] font-medium text-slate-700 hover:bg-slate-50"
+          className="inline-flex h-10 items-center gap-2 rounded-lg border border-border bg-white px-4 text-[14px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
         >
           <Calendar className="h-4 w-4" />
           Aller directement à Brief
@@ -219,7 +219,7 @@ export default function WelcomeClient({
         </Link>
       </div>
 
-      <p className="mt-6 text-xs text-slate-400">
+      <p className="mt-6 text-[12px] text-slate-500">
         Cette page et la visite guidée restent accessibles depuis l&apos;aide — revenez-y quand vous voulez.
       </p>
     </div>

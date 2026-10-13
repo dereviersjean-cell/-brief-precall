@@ -31,7 +31,7 @@ type GroupedTasks = {
 const GROUP_META: { key: keyof GroupedTasks; label: string; dotColor: string; textColor: string }[] = [
   { key: "overdue", label: "En retard", dotColor: "bg-[color:var(--danger)]", textColor: "text-rose-700" },
   { key: "today", label: "Aujourd'hui", dotColor: "bg-[color:var(--violet)]", textColor: "text-[color:var(--violet)]" },
-  { key: "this_week", label: "Cette semaine", dotColor: "bg-blue-500", textColor: "text-blue-700" },
+  { key: "this_week", label: "Cette semaine", dotColor: "bg-[color:var(--violet)]/40", textColor: "text-slate-700" },
   { key: "later", label: "Plus tard", dotColor: "bg-slate-400", textColor: "text-slate-500" },
 ];
 
@@ -86,23 +86,23 @@ function TaskCard({
   const SourceIcon = meta.icon;
 
   return (
-    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-4 flex items-start gap-4 hover:shadow-[var(--shadow-md)] hover:border-[color:var(--lavender-strong)] transition-all">
+    <div className="flex flex-wrap items-start gap-3 rounded-2xl border border-border bg-white p-4 transition-colors hover:border-slate-300 sm:flex-nowrap sm:gap-4">
       <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${meta.bg} ${meta.text}`}>
         <SourceIcon className="w-4 h-4" />
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap mb-1">
-          <p className="font-medium text-slate-900">{task.title}</p>
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
+          <p className="text-[14px] font-semibold text-slate-900">{task.title}</p>
+          <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11.5px] font-semibold text-slate-600">
             {meta.label}
           </span>
         </div>
-        {task.description && <p className="text-sm text-slate-500 mb-1.5">{task.description}</p>}
-        <p className="text-xs text-slate-400">
+        {task.description && <p className="mb-1.5 text-[13px] leading-relaxed text-slate-500">{task.description}</p>}
+        <p className="text-[12px] text-slate-500">
           {formatContactDisplayName(task.contact_name, task.contact_email)} · {formatDueDate(task.due_at)}
         </p>
       </div>
-      <div className="flex flex-col items-end gap-2 shrink-0">
+      <div className="flex basis-full items-center justify-end gap-3 sm:basis-auto sm:shrink-0 sm:flex-col sm:items-end sm:gap-2">
         {task.action_type === "open_gmail_draft" ? (
           <Button variant="primary" size="sm" icon={<Mail className="w-3.5 h-3.5" />} onClick={() => onOpenDraft(task)} className="whitespace-nowrap">
             Rédiger l&apos;email
@@ -112,7 +112,7 @@ function TaskCard({
             Marquer comme fait
           </Button>
         )}
-        <button onClick={() => onDismiss(task)} className="text-xs text-slate-400 hover:text-rose-600 transition-colors">
+        <button onClick={() => onDismiss(task)} className="text-[12px] font-medium text-slate-500 transition-colors hover:text-rose-700">
           Rejeter
         </button>
       </div>
@@ -183,7 +183,7 @@ export default function TasksListClient({ initialGrouped }: { initialGrouped: Gr
     grouped.overdue.length + grouped.today.length + grouped.this_week.length + grouped.later.length;
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-10">
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
       {/* Hero header */}
       <FadeIn>
         <div className="mb-6">
@@ -198,7 +198,7 @@ export default function TasksListClient({ initialGrouped }: { initialGrouped: Gr
             actions={
               <Link
                 href="/tasks/settings"
-                className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-lg text-[13px] font-medium bg-white border border-border text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-[var(--shadow-xs)] transition-all"
+                className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-lg text-[13px] font-medium bg-white border border-border text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors"
               >
                 <Settings className="w-4 h-4" />
                 Paramètres
@@ -209,26 +209,26 @@ export default function TasksListClient({ initialGrouped }: { initialGrouped: Gr
       </FadeIn>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
         <StatTile index={0} accent="indigo" label="À faire" value={totalPending} icon={<ListChecks className="w-3.5 h-3.5" />} />
         <StatTile index={1} accent="rose" label="En retard" value={grouped.overdue.length} icon={<AlertTriangle className="w-3.5 h-3.5" />} />
         <StatTile index={2} accent="violet" label="Aujourd'hui" value={grouped.today.length} icon={<CheckCircle2 className="w-3.5 h-3.5" />} />
       </div>
 
       {/* Tabs */}
-      <div className="inline-flex items-center gap-1 bg-white rounded-xl border border-border shadow-[var(--shadow-xs)] p-1 mb-5">
+      <div className="mb-5 inline-flex items-center gap-1 rounded-full bg-slate-100 p-1">
         <button
           onClick={() => setTab("pending")}
-          className={`px-3.5 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 ${
-            tab === "pending" ? "brand-gradient text-white shadow-[var(--shadow-glow)]" : "text-slate-500 hover:text-slate-700"
+          className={`inline-flex h-8 items-center whitespace-nowrap rounded-full px-3.5 text-[12.5px] font-medium transition-[background-color,color,box-shadow] duration-200 ${
+            tab === "pending" ? "bg-white text-slate-900 shadow-[0_1px_3px_oklch(0.19_0.02_266/0.12)]" : "text-slate-500 hover:text-slate-900"
           }`}
         >
           À faire
         </button>
         <button
           onClick={handleSwitchToHistory}
-          className={`px-3.5 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 ${
-            tab === "history" ? "brand-gradient text-white shadow-[var(--shadow-glow)]" : "text-slate-500 hover:text-slate-700"
+          className={`inline-flex h-8 items-center whitespace-nowrap rounded-full px-3.5 text-[12.5px] font-medium transition-[background-color,color,box-shadow] duration-200 ${
+            tab === "history" ? "bg-white text-slate-900 shadow-[0_1px_3px_oklch(0.19_0.02_266/0.12)]" : "text-slate-500 hover:text-slate-900"
           }`}
         >
           Historique
@@ -237,25 +237,26 @@ export default function TasksListClient({ initialGrouped }: { initialGrouped: Gr
 
       {tab === "pending" ? (
         totalPending === 0 ? (
-          <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-12 text-center">
-            <div className="w-12 h-12 bg-[color:var(--success-soft)] rounded-xl flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 className="w-6 h-6 text-emerald-600" strokeWidth={1.5} />
+          <div className="rounded-2xl border border-border bg-white px-6 py-12 text-center">
+            <div className="mx-auto mb-4 grid h-11 w-11 place-items-center rounded-xl bg-[color:var(--success-soft)]">
+              <CheckCircle2 className="h-5 w-5 text-emerald-700" strokeWidth={1.75} />
             </div>
-            <p className="text-slate-700 font-medium">Aucune task en attente</p>
-            <p className="text-slate-400 text-sm mt-1">Vous êtes à jour.</p>
+            <p className="text-[15px] font-semibold text-slate-900">Aucune task en attente</p>
+            <p className="mt-1 text-[13.5px] text-slate-500">Vous êtes à jour.</p>
           </div>
         ) : (
           <FadeIn delay={0.1}>
-            <div className="space-y-8">
+            <div className="space-y-7">
               {GROUP_META.map((meta) => {
                 const list = grouped[meta.key];
                 if (list.length === 0) return null;
                 return (
                   <div key={meta.key}>
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className={`w-2 h-2 rounded-full ${meta.dotColor}`} />
-                      <h2 className={`text-sm font-semibold ${meta.textColor}`}>{meta.label}</h2>
-                      <span className="text-xs text-slate-400">({list.length})</span>
+                    <div className="mb-2.5 flex items-center gap-2">
+                      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${meta.dotColor}`} />
+                      <h2 className={`text-[11px] font-semibold uppercase tracking-[0.07em] ${meta.textColor}`}>{meta.label}</h2>
+                      <span className="text-[11.5px] tabular-nums text-slate-400">({list.length})</span>
+                      <div className="h-px flex-1 bg-border" />
                     </div>
                     <div className="space-y-2">
                       {list.map((task) => (
@@ -275,25 +276,25 @@ export default function TasksListClient({ initialGrouped }: { initialGrouped: Gr
           </FadeIn>
         )
       ) : historyLoading ? (
-        <div className="flex items-center justify-center py-16 text-slate-400 text-sm">Chargement…</div>
+        <div className="flex items-center justify-center py-16 text-[13px] text-slate-500">Chargement…</div>
       ) : history && history.length > 0 ? (
         <div className="space-y-2">
           {history.map((task) => {
             const meta = sourceMeta(task.source_type);
             const SourceIcon = meta.icon;
             return (
-              <div key={task.id} className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-4 flex items-start gap-4 opacity-70">
+              <div key={task.id} className="flex items-start gap-3 rounded-2xl border border-border bg-white p-4 opacity-70 sm:gap-4">
                 <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${meta.bg} ${meta.text}`}>
                   <SourceIcon className="w-4 h-4" />
                 </span>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <p className="font-medium text-slate-700 line-through">{task.title}</p>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-500">
+                    <p className="text-[14px] font-medium text-slate-700 line-through">{task.title}</p>
+                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11.5px] font-semibold text-slate-500">
                       {meta.label}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-[12px] text-slate-500">
                     {formatContactDisplayName(task.contact_name, task.contact_email)} · Fait le{" "}
                     {task.completed_at
                       ? new Date(task.completed_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" })
@@ -305,7 +306,7 @@ export default function TasksListClient({ initialGrouped }: { initialGrouped: Gr
           })}
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-12 text-center text-slate-400 text-sm">
+        <div className="rounded-2xl border border-border bg-white px-6 py-12 text-center text-[13px] text-slate-500">
           Aucune task complétée pour l&apos;instant.
         </div>
       )}

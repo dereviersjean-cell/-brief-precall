@@ -1,9 +1,9 @@
 export default function QuoteNotFound() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
-      <div className="text-center">
-        <p className="text-2xl font-bold text-slate-900 mb-2">Devis introuvable</p>
-        <p className="text-slate-500 text-sm">Ce lien est invalide ou a expiré.</p>
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="w-full max-w-sm rounded-2xl border border-border bg-white px-6 py-10 text-center">
+        <p className="mb-1.5 text-[20px] font-semibold tracking-[-0.02em] text-slate-900">Devis introuvable</p>
+        <p className="text-[13.5px] text-slate-500">Ce lien est invalide ou a expiré.</p>
       </div>
     </div>
   );

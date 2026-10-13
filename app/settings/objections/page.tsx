@@ -18,7 +18,7 @@ export default async function ObjectionsSettingsPage() {
 
   if (!organizationId) {
     return (
-      <p className="text-sm text-slate-500">
+      <p className="rounded-2xl border border-border bg-white p-6 text-[13.5px] text-slate-500">
         Votre compte n&apos;est rattaché à aucune organisation — la bibliothèque d&apos;objections est partagée au
         niveau de l&apos;équipe. Contactez votre administrateur.
       </p>

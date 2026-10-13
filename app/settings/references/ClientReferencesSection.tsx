@@ -108,10 +108,10 @@ export default function ClientReferencesSection() {
 
   return (
     <div>
-      <div className="bg-white rounded-2xl border border-border shadow-sm">
-        <div className="px-6 py-5">
-          <h2 className="text-sm font-semibold text-slate-900 mb-1">Base de données commerciale</h2>
-          <p className="text-sm text-slate-500 mb-4">
+      <div className="rounded-2xl border border-border bg-white">
+        <div className="px-5 py-5 sm:px-6">
+          <h2 className="mb-1 text-[14px] font-semibold text-slate-900">Base de données commerciale</h2>
+          <p className="mb-4 text-[13px] leading-relaxed text-slate-500">
             Importées depuis un fichier ou un CRM connecté — Brief s&apos;en sert pour enrichir vos briefs avec des
             cas clients similaires.
           </p>
@@ -131,34 +131,34 @@ export default function ClientReferencesSection() {
           {existingRefCount !== null && existingRefCount > 0 && refStatus === "idle" && !showUpload ? (
             /* Résumé — des références existent déjà */
             <div>
-              <div className="flex items-center justify-between py-1">
+              <div className="flex flex-wrap items-center justify-between gap-3 py-1">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
-                    <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--success-soft)]">
+                    <svg className="h-4 w-4 text-emerald-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
-                  <p className="text-sm text-slate-700">
-                    <span className="font-semibold text-slate-900">{existingRefCount}</span>{" "}
+                  <p className="text-[13.5px] text-slate-700">
+                    <span className="font-semibold tabular-nums text-slate-900">{existingRefCount}</span>{" "}
                     référence{existingRefCount !== 1 ? "s" : ""} client{existingRefCount !== 1 ? "s" : ""} importée{existingRefCount !== 1 ? "s" : ""}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowUpload(true)}
-                  className="text-sm text-[color:var(--violet)] hover:text-[color:var(--violet)] font-medium"
+                  className="text-[13px] font-medium text-[color:var(--violet)] hover:underline"
                 >
                   Importer un nouveau fichier
                 </button>
               </div>
-              <div className="bg-[color:var(--lavender)] rounded-lg p-3 mt-3">
-                <p className="text-sm text-slate-600">
+              <div className="mt-3 rounded-xl bg-[color:var(--lavender)] px-4 py-3">
+                <p className="text-[13px] leading-relaxed text-slate-600">
                   💡 Pour de meilleurs résultats, utilisez notre template avec les colonnes : problématique, solution et résultats chiffrés.
                 </p>
                 <a
                   href="/Template references clients.xlsx"
                   download
-                  className="text-sm text-[color:var(--violet)] font-medium hover:underline mt-1 inline-block"
+                  className="mt-1 inline-block text-[13px] font-medium text-[color:var(--violet)] hover:underline"
                 >
                   📥 Télécharger le template
                 </a>
@@ -167,13 +167,13 @@ export default function ClientReferencesSection() {
           ) : (
             /* Zone d'upload */
             <>
-              <p className="text-sm text-slate-500 mb-1">
+              <p className="mb-1 text-[13px] leading-relaxed text-slate-500">
                 Brief analyse votre fichier et extrait automatiquement les références les plus complètes. Pour de meilleurs résultats, incluez pour chaque client : la problématique, la solution mise en place et les résultats chiffrés.
               </p>
               <a
                 href="/Template references clients.xlsx"
                 download
-                className="inline-block text-sm text-[color:var(--violet)] hover:underline mb-4"
+                className="mb-4 inline-block text-[13px] font-medium text-[color:var(--violet)] hover:underline"
               >
                 📥 Télécharger le template
               </a>
@@ -181,15 +181,15 @@ export default function ClientReferencesSection() {
               {/* File zone — hidden while polling or done */}
               {refStatus !== "polling" && refStatus !== "done" && (
                 refFile ? (
-                  <div className="flex items-center gap-3 px-4 py-3 bg-[color:var(--lavender)] border border-[color:var(--lavender-strong)] rounded-lg mb-4">
+                  <div className="mb-4 flex items-center gap-3 rounded-xl bg-[color:var(--lavender)] px-4 py-3">
                     <svg className="w-4 h-4 text-[color:var(--violet)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <p className="text-sm text-[color:var(--violet)] font-medium flex-1 truncate">{refFile.name}</p>
+                    <p className="min-w-0 flex-1 truncate text-[13px] font-medium text-[color:var(--violet)]">{refFile.name}</p>
                     <button
                       type="button"
                       onClick={() => { setRefFile(null); setRefStatus("idle"); setRefError(null); }}
-                      className="text-xs text-[color:var(--violet)] hover:text-[color:var(--violet)]"
+                      className="text-[12px] font-medium text-[color:var(--violet)] hover:underline"
                     >
                       Changer
                     </button>
@@ -198,9 +198,9 @@ export default function ClientReferencesSection() {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full flex flex-col items-center gap-2 px-4 py-6 border-2 border-dashed border-border rounded-xl hover:border-[color:var(--lavender-strong)] hover:bg-[color:var(--lavender)] transition-all text-slate-500 text-sm mb-4"
+                    className="mb-4 flex w-full flex-col items-center gap-2 rounded-xl border border-dashed border-border px-4 py-8 text-[13px] font-medium text-slate-500 transition-colors hover:border-[color:var(--violet)] hover:text-[color:var(--violet)]"
                   >
-                    <svg className="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
                     </svg>
                     Cliquez pour sélectionner un fichier
@@ -208,20 +208,20 @@ export default function ClientReferencesSection() {
                 )
               )}
 
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   {refStatus === "done" && (
-                    <p className="text-sm text-emerald-600 font-medium">
+                    <p className="text-[13px] font-medium text-emerald-700">
                       {refProcessedCount} référence{refProcessedCount !== 1 ? "s" : ""} importée{refProcessedCount !== 1 ? "s" : ""} avec succès.
                     </p>
                   )}
                   {refError && (
-                    <p className="text-sm text-red-600">{refError}</p>
+                    <p className="text-[13px] text-rose-700">{refError}</p>
                   )}
                 </div>
 
                 {refStatus === "polling" ? (
-                  <div className="flex items-center gap-2 text-sm text-slate-500 py-2.5">
+                  <div className="flex items-center gap-2 py-2 text-[13px] text-slate-500 tabular-nums">
                     <svg className="w-4 h-4 animate-spin text-[color:var(--violet)] shrink-0" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -234,7 +234,7 @@ export default function ClientReferencesSection() {
                   <button
                     type="button"
                     onClick={() => { setRefStatus("idle"); setRefProcessedCount(0); }}
-                    className="text-sm text-[color:var(--violet)] hover:text-[color:var(--violet)] font-medium"
+                    className="text-[13px] font-medium text-[color:var(--violet)] hover:underline"
                   >
                     Importer un autre fichier
                   </button>
@@ -242,7 +242,7 @@ export default function ClientReferencesSection() {
                   <button
                     onClick={handleImport}
                     disabled={!refFile || refStatus === "uploading"}
-                    className="flex items-center gap-2 brand-gradient text-white text-sm font-semibold px-6 py-2.5 rounded-lg hover:brightness-110 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[color:var(--primary)] px-4 text-[13px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {refStatus === "uploading" ? (
                       <>

@@ -129,14 +129,14 @@ function Segmented<T extends string>({
   return (
     <div>
       <p className="mb-2 text-[13px] font-medium text-slate-700">{label}</p>
-      <div className="flex rounded-lg border border-border bg-slate-50 p-0.5">
+      <div className="flex rounded-lg bg-slate-100 p-0.5">
         {options.map((o) => (
           <button
             key={o.value}
             type="button"
             onClick={() => onChange(o.value)}
             className={`flex-1 rounded-md px-2 py-1.5 text-[12.5px] font-medium transition-all ${
-              value === o.value ? "bg-white text-[color:var(--violet)] shadow-[var(--shadow-sm)]" : "text-slate-500 hover:text-slate-800"
+              value === o.value ? "bg-white text-[color:var(--violet)] shadow-[var(--shadow-xs)]" : "text-slate-500 hover:text-slate-800"
             }`}
           >
             {o.label}
@@ -164,15 +164,15 @@ function ConfigSummary({ config, seconds }: { config: AdminConfig; seconds?: num
 // juge ici, c'est ce qu'il lira.
 
 function SectionLabel({ children }: { children: ReactNode }) {
-  return <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-slate-400">{children}</p>;
+  return <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">{children}</p>;
 }
 
 function BriefDisplay({ brief }: { brief: BriefResult }) {
   return (
     <div className="space-y-6 text-[13.5px]">
       {brief.accroche && (
-        <div className="rounded-xl border border-[color:var(--lavender-strong)] bg-[color:var(--lavender)] p-4">
-          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-[color:var(--violet)]">Accroche</p>
+        <div className="rounded-2xl bg-[color:var(--lavender)] p-4">
+          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-[color:var(--violet)]">Accroche</p>
           <p className="font-medium leading-relaxed text-slate-900">« {brief.accroche} »</p>
         </div>
       )}
@@ -220,7 +220,7 @@ function BriefDisplay({ brief }: { brief: BriefResult }) {
           <SectionLabel>Vocabulaire du métier</SectionLabel>
           <div className="flex flex-wrap gap-1.5">
             {brief.vocabulaire.map((kw) => (
-              <span key={kw} className="rounded-full border border-border bg-slate-50 px-2.5 py-1 text-[12px] font-medium text-slate-700">
+              <span key={kw} className="rounded-full bg-slate-100 px-2.5 py-1 text-[12px] font-medium text-slate-700">
                 {kw}
               </span>
             ))}
@@ -253,11 +253,11 @@ function BriefDisplay({ brief }: { brief: BriefResult }) {
 
 function HistoryItem({ entry, isOpen, onToggle }: { entry: HistoryEntry; isOpen: boolean; onToggle: () => void }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-[var(--shadow-xs)]">
+    <div className="overflow-hidden rounded-2xl border border-border bg-white">
       <button onClick={onToggle} className="flex w-full items-center justify-between gap-3 px-5 py-3.5 text-left transition-colors hover:bg-slate-50">
         <div className="min-w-0">
           <p className="text-[13.5px] font-semibold text-slate-900">{entry.company}</p>
-          <p className="mt-0.5 text-[12px] text-slate-400">
+          <p className="mt-0.5 text-[12px] text-slate-500">
             {formatDate(entry.testedAt)} · {MODEL_LABELS[entry.config.model] ?? entry.config.model}
           </p>
         </div>
@@ -409,11 +409,11 @@ function AdminPanel({ initialConfig }: { initialConfig: AdminConfig }) {
           actions={
             <>
               {saveStatus === "ok" && (
-                <span className="flex items-center gap-1.5 text-[13px] font-medium text-emerald-600">
+                <span className="flex items-center gap-1.5 text-[13px] font-medium text-emerald-700">
                   <Check className="h-4 w-4" strokeWidth={2.5} /> Enregistré
                 </span>
               )}
-              {saveStatus === "error" && <span className="text-[13px] text-rose-600">Échec de l&apos;enregistrement.</span>}
+              {saveStatus === "error" && <span className="text-[13px] text-rose-700">Échec de l&apos;enregistrement.</span>}
               {dirty && saveStatus === "idle" && (
                 <span className="flex items-center gap-1.5 text-[12.5px] font-medium text-amber-700">
                   <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--warning)]" /> Modifications non enregistrées
@@ -535,7 +535,7 @@ function AdminPanel({ initialConfig }: { initialConfig: AdminConfig }) {
                 type="button"
                 onClick={() => void handleTest()}
                 disabled={testLoading || !testCompany.trim()}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg brand-gradient px-4 text-[13px] font-medium text-white shadow-[var(--shadow-glow)] transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[color:var(--primary)] px-4 text-[13px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {testLoading ? <Spinner /> : <Sparkles className="h-4 w-4" />}
                 {testLoading ? "Génération…" : "Générer"}
@@ -604,7 +604,7 @@ function AdminPanel({ initialConfig }: { initialConfig: AdminConfig }) {
             )}
 
             {testError && !testLoading && (
-              <div className="mt-5 rounded-xl border border-[color:var(--danger-soft)] bg-[color:var(--danger-soft)] p-4 text-[13px] text-rose-700">
+              <div className="mt-5 rounded-xl bg-[color:var(--danger-soft)] p-4 text-[13px] text-rose-700">
                 {testError}
               </div>
             )}
@@ -622,7 +622,7 @@ function AdminPanel({ initialConfig }: { initialConfig: AdminConfig }) {
             )}
 
             {!displayEntry && !testLoading && !testError && (
-              <p className="mt-5 rounded-xl border border-dashed border-border py-10 text-center text-[13px] text-slate-400">
+              <p className="mt-5 rounded-2xl border border-dashed border-border py-10 text-center text-[13px] text-slate-500">
                 Le brief de test s&apos;affichera ici.
               </p>
             )}
@@ -630,7 +630,7 @@ function AdminPanel({ initialConfig }: { initialConfig: AdminConfig }) {
 
           {previousEntries.length > 0 && (
             <div className="space-y-2.5">
-              <p className="px-1 text-[11px] font-medium uppercase tracking-wider text-slate-400">Tests précédents</p>
+              <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Tests précédents</p>
               {previousEntries.map((entry) => (
                 <HistoryItem
                   key={entry.id}

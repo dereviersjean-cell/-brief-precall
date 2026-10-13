@@ -9,10 +9,10 @@ import type { OrganizationBilling } from "@/lib/db";
 
 const BILLING_STATUS_META: Record<string, { label: string; className: string }> = {
   none: { label: "Aucun abonnement", className: "bg-slate-100 text-slate-600" },
-  trialing: { label: "Essai gratuit", className: "bg-[color:var(--lavender-strong)] text-[color:var(--violet)]" },
-  active: { label: "Actif", className: "bg-emerald-100 text-emerald-700" },
-  grace_period: { label: "Paiement en échec", className: "bg-amber-100 text-amber-700" },
-  blocked: { label: "Accès suspendu", className: "bg-red-100 text-red-700" },
+  trialing: { label: "Essai gratuit", className: "bg-[color:var(--lavender)] text-[color:var(--violet)]" },
+  active: { label: "Actif", className: "bg-[color:var(--success-soft)] text-emerald-700" },
+  grace_period: { label: "Paiement en échec", className: "bg-[color:var(--warning-soft)] text-amber-700" },
+  blocked: { label: "Accès suspendu", className: "bg-[color:var(--danger-soft)] text-rose-700" },
   canceled: { label: "Résilié", className: "bg-slate-100 text-slate-600" },
 };
 
@@ -59,9 +59,9 @@ function BillingOverrideActions({
   }
 
   return (
-    <div className="mt-5 pt-5 border-t border-slate-100">
-      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Override support</p>
-      <p className="text-xs text-slate-400 mb-3">
+    <div className="mt-5 border-t border-border pt-5">
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Override support</p>
+      <p className="mb-3 text-[12.5px] text-slate-500">
         N&apos;agit que sur l&apos;accès Brief — ne modifie pas l&apos;abonnement Stripe. À utiliser pour un cas de
         support (paiement par virement, litige en cours).
       </p>
@@ -70,7 +70,7 @@ function BillingOverrideActions({
           <button
             onClick={() => runAction("unblock")}
             disabled={pending}
-            className="px-3 py-1.5 bg-white border border-border rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+            className="inline-flex h-8 items-center rounded-lg border border-border bg-white px-3 text-[12px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Débloquer manuellement
           </button>
@@ -79,13 +79,13 @@ function BillingOverrideActions({
           <button
             onClick={() => runAction("extend_grace")}
             disabled={pending}
-            className="px-3 py-1.5 bg-white border border-border rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+            className="inline-flex h-8 items-center rounded-lg border border-border bg-white px-3 text-[12px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Prolonger la grâce de 48h
           </button>
         )}
       </div>
-      {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+      {error && <p className="mt-2 text-[12px] text-rose-700">{error}</p>}
     </div>
   );
 }
@@ -93,45 +93,45 @@ function BillingOverrideActions({
 export default function BillingPanel({ organizationId, billing }: { organizationId: string; billing: OrganizationBilling | null }) {
   const router = useRouter();
   return (
-    <div className="bg-white rounded-2xl border border-border p-6 shadow-[var(--shadow-sm)]">
-      <div className="flex items-center justify-between mb-4">
+    <div className="rounded-2xl border border-border bg-white p-6">
+      <div className="mb-4 flex items-center justify-between">
         <h2 className="text-[15px] font-semibold tracking-tight text-slate-900">Facturation</h2>
         {(() => {
           const meta = BILLING_STATUS_META[billing?.billing_status ?? "none"] ?? BILLING_STATUS_META.none;
           return (
-            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${meta.className}`}>
+            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${meta.className}`}>
               {meta.label}
             </span>
           );
         })()}
       </div>
       {!billing || billing.billing_status === "none" ? (
-        <p className="text-sm text-slate-400">Cette organisation n&apos;a pas encore souscrit d&apos;abonnement.</p>
+        <p className="text-[13.5px] text-slate-500">Cette organisation n&apos;a pas encore souscrit d&apos;abonnement.</p>
       ) : (
-        <table className="w-full text-sm text-left border-collapse">
+        <table className="w-full border-collapse text-left text-[13px]">
           <tbody>
-            <tr className="border-b border-slate-100">
-              <td className="py-2 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Stripe Customer</td>
-              <td className="py-2 font-mono text-xs text-slate-700">{billing.stripe_customer_id ?? "—"}</td>
+            <tr className="border-b border-border">
+              <td className="py-2.5 pr-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Stripe Customer</td>
+              <td className="py-2.5 font-mono text-[12px] text-slate-700">{billing.stripe_customer_id ?? "—"}</td>
             </tr>
-            <tr className="border-b border-slate-100">
-              <td className="py-2 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Stripe Subscription</td>
-              <td className="py-2 font-mono text-xs text-slate-700">{billing.stripe_subscription_id ?? "—"}</td>
+            <tr className="border-b border-border">
+              <td className="py-2.5 pr-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Stripe Subscription</td>
+              <td className="py-2.5 font-mono text-[12px] text-slate-700">{billing.stripe_subscription_id ?? "—"}</td>
             </tr>
-            <tr className="border-b border-slate-100">
-              <td className="py-2 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Essai jusqu&apos;au</td>
-              <td className="py-2 text-slate-700">{formatBillingDate(billing.trial_ends_at)}</td>
+            <tr className="border-b border-border">
+              <td className="py-2.5 pr-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Essai jusqu&apos;au</td>
+              <td className="py-2.5 tabular-nums text-slate-700">{formatBillingDate(billing.trial_ends_at)}</td>
             </tr>
-            <tr className="border-b border-slate-100">
-              <td className="py-2 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Période en cours</td>
-              <td className="py-2 text-slate-700">
+            <tr className="border-b border-border">
+              <td className="py-2.5 pr-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Période en cours</td>
+              <td className="py-2.5 tabular-nums text-slate-700">
                 {formatBillingDate(billing.current_period_start)} → {formatBillingDate(billing.current_period_end)}
               </td>
             </tr>
             {billing.grace_period_ends_at && (
-              <tr className="border-b border-slate-100">
-                <td className="py-2 pr-4 text-xs font-semibold text-amber-600 uppercase tracking-wide">Grâce jusqu&apos;au</td>
-                <td className="py-2 text-amber-700 font-medium">{formatBillingDate(billing.grace_period_ends_at)}</td>
+              <tr className="border-b border-border">
+                <td className="py-2.5 pr-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-amber-700">Grâce jusqu&apos;au</td>
+                <td className="py-2.5 font-medium tabular-nums text-amber-700">{formatBillingDate(billing.grace_period_ends_at)}</td>
               </tr>
             )}
           </tbody>

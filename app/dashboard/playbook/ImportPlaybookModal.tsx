@@ -165,31 +165,31 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
     (inputMode === "notion" && !!notionSelectedPageId);
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 px-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-white rounded-2xl border border-border w-full max-w-2xl shadow-xl max-h-[85vh] flex flex-col"
+        className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl border border-border bg-white shadow-[var(--shadow-md)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
-          <h2 className="font-semibold text-slate-900">Importer depuis un document</h2>
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-5 py-4 sm:px-6">
+          <h2 className="text-[15px] font-semibold tracking-tight text-slate-900">Importer depuis un document</h2>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 transition-colors duration-200"
+            className="text-slate-400 transition-colors hover:text-slate-600"
             aria-label="Fermer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="px-6 py-5 overflow-y-auto flex-1">
+        <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-6">
           {step === "paste" ? (
             <div>
-              <div className="inline-flex items-center gap-1 bg-slate-100 rounded-lg p-1 mb-4">
+              <div className="no-scrollbar mb-4 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1">
                 <button
                   type="button"
                   onClick={() => selectInputMode("paste")}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors duration-200 ${
-                    inputMode === "paste" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                  className={`shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors ${
+                    inputMode === "paste" ? "bg-white text-slate-900 shadow-[var(--shadow-xs)]" : "text-slate-500 hover:text-slate-900"
                   }`}
                 >
                   Coller le texte
@@ -197,8 +197,8 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
                 <button
                   type="button"
                   onClick={() => selectInputMode("file")}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors duration-200 ${
-                    inputMode === "file" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                  className={`shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors ${
+                    inputMode === "file" ? "bg-white text-slate-900 shadow-[var(--shadow-xs)]" : "text-slate-500 hover:text-slate-900"
                   }`}
                 >
                   Importer un fichier
@@ -206,8 +206,8 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
                 <button
                   type="button"
                   onClick={() => selectInputMode("notion")}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors duration-200 ${
-                    inputMode === "notion" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                  className={`shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors ${
+                    inputMode === "notion" ? "bg-white text-slate-900 shadow-[var(--shadow-xs)]" : "text-slate-500 hover:text-slate-900"
                   }`}
                 >
                   Depuis Notion
@@ -216,7 +216,7 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
 
               {inputMode === "paste" ? (
                 <>
-                  <p className="text-sm text-slate-500 mb-3">
+                  <p className="mb-3 text-[13.5px] leading-relaxed text-slate-500">
                     Collez ici le contenu de votre playbook — Google Docs, Word, ou texte brut.
                   </p>
                   <textarea
@@ -225,12 +225,12 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
                     autoFocus
                     rows={16}
                     placeholder="Collez ici votre playbook"
-                    className="w-full px-3.5 py-3 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)] resize-y"
+                    className="w-full resize-y rounded-xl border border-border px-3.5 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[color:var(--violet)] focus:outline-none focus:ring-1 focus:ring-[color:var(--violet)]"
                   />
                 </>
               ) : inputMode === "file" ? (
                 <div>
-                  <p className="text-sm text-slate-500 mb-3">Formats acceptés : PDF, Word (.doc, .docx).</p>
+                  <p className="mb-3 text-[13.5px] text-slate-500">Formats acceptés : PDF, Word (.doc, .docx).</p>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -239,13 +239,13 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
                     onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                   />
                   {file ? (
-                    <div className="flex items-center gap-3 px-4 py-3 bg-[color:var(--lavender)] border border-[color:var(--lavender-strong)] rounded-lg">
-                      <Upload className="w-4 h-4 text-[color:var(--violet)] shrink-0" />
-                      <p className="text-sm text-slate-700 font-medium flex-1 truncate">{file.name}</p>
+                    <div className="flex items-center gap-3 rounded-xl bg-[color:var(--lavender)] px-4 py-3">
+                      <Upload className="h-4 w-4 shrink-0 text-[color:var(--violet)]" />
+                      <p className="flex-1 truncate text-sm font-medium text-slate-700">{file.name}</p>
                       <button
                         type="button"
                         onClick={() => setFile(null)}
-                        className="text-xs text-slate-400 hover:text-slate-600"
+                        className="text-[12px] font-medium text-[color:var(--violet)] hover:underline"
                       >
                         Changer
                       </button>
@@ -275,13 +275,13 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
                         setError(null);
                         setFile(dropped);
                       }}
-                      className={`w-full flex flex-col items-center gap-2 px-4 py-10 border-2 border-dashed rounded-xl transition-all text-sm ${
+                      className={`flex w-full flex-col items-center gap-2 rounded-xl border border-dashed px-4 py-10 text-sm transition-colors ${
                         dragActive
                           ? "border-[color:var(--violet)] bg-[color:var(--lavender)] text-[color:var(--violet)]"
-                          : "border-border hover:border-[color:var(--lavender-strong)] hover:bg-[color:var(--lavender)] text-slate-500"
+                          : "border-border text-slate-500 hover:border-[color:var(--violet)] hover:text-[color:var(--violet)]"
                       }`}
                     >
-                      <Upload className={`w-6 h-6 ${dragActive ? "text-[color:var(--violet)]" : "text-slate-400"}`} />
+                      <Upload className={`h-5 w-5 ${dragActive ? "text-[color:var(--violet)]" : "text-slate-400"}`} />
                       {dragActive ? "Déposez le fichier ici" : "Glissez-déposez un fichier ou cliquez pour en sélectionner un"}
                     </button>
                   )}
@@ -289,10 +289,10 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
               ) : (
                 <div>
                   {notionConnected === null ? (
-                    <p className="text-sm text-slate-400">Chargement…</p>
+                    <p className="text-[13.5px] text-slate-500">Chargement…</p>
                   ) : !notionConnected ? (
                     <div>
-                      <p className="text-sm text-slate-500 mb-1">
+                      <p className="mb-1 text-[13.5px] leading-relaxed text-slate-500">
                         Créez une <strong>intégration interne</strong> dans Notion (Settings → Connections →
                         Develop or manage integrations), partagez votre page playbook avec elle (bouton{" "}
                         <strong>Share</strong> sur la page → recherchez le nom de votre intégration), puis collez
@@ -302,72 +302,72 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
                         href="https://www.notion.so/profile/integrations"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm text-[color:var(--violet)] hover:underline"
+                        className="text-[13px] font-medium text-[color:var(--violet)] hover:underline"
                       >
                         Ouvrir mes intégrations Notion ↗
                       </a>
-                      <div className="flex items-center gap-2 mt-3">
+                      <div className="mt-3 flex items-center gap-2">
                         <input
                           type="password"
                           value={notionToken}
                           onChange={(e) => setNotionToken(e.target.value)}
                           placeholder="secret_..."
-                          className="flex-1 px-3.5 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
+                          className="min-w-0 flex-1 rounded-xl border border-border px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[color:var(--violet)] focus:outline-none focus:ring-1 focus:ring-[color:var(--violet)]"
                         />
                         <button
                           type="button"
                           onClick={handleNotionConnect}
                           disabled={!notionToken.trim() || notionConnecting}
-                          className="h-9 px-4 text-sm font-medium text-white brand-gradient rounded-lg hover:brightness-110 transition-colors duration-200 disabled:opacity-50 shrink-0"
+                          className="inline-flex h-9 shrink-0 items-center rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {notionConnecting ? "Connexion…" : "Connecter"}
                         </button>
                       </div>
                     </div>
                   ) : notionLoadingPages ? (
-                    <p className="text-sm text-slate-400">Recherche de votre page playbook…</p>
+                    <p className="text-[13.5px] text-slate-500">Recherche de votre page playbook…</p>
                   ) : notionPages === null ? (
                     <button
                       type="button"
                       onClick={handleNotionFetchPages}
-                      className="h-9 px-4 text-sm font-medium text-white brand-gradient rounded-lg hover:brightness-110 transition-colors duration-200"
+                      className="inline-flex h-9 items-center rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110"
                     >
                       Ajouter mon playbook depuis Notion
                     </button>
                   ) : notionPages.length === 0 ? (
                     <div>
-                      <p className="text-sm text-slate-700 font-medium mb-1">Aucune page partagée trouvée.</p>
-                      <p className="text-sm text-slate-500">
+                      <p className="mb-1 text-[13.5px] font-semibold text-slate-900">Aucune page partagée trouvée.</p>
+                      <p className="text-[13.5px] leading-relaxed text-slate-500">
                         Dans Notion, ouvrez votre page playbook → <strong>Share</strong> → recherchez et ajoutez
                         votre intégration, puis réessayez.
                       </p>
                       <button
                         type="button"
                         onClick={handleNotionFetchPages}
-                        className="text-sm text-[color:var(--violet)] hover:underline mt-2"
+                        className="mt-2 text-[13px] font-medium text-[color:var(--violet)] hover:underline"
                       >
                         Réessayer
                       </button>
                     </div>
                   ) : notionPages.length === 1 ? (
                     <div>
-                      <p className="text-sm text-slate-700 mb-3">
+                      <p className="mb-3 text-[13.5px] text-slate-700">
                         Est-ce bien cette page ? <strong>{notionPages[0].title}</strong>
                       </p>
-                      <div className="flex items-center gap-2 px-4 py-3 bg-[color:var(--lavender)] border border-[color:var(--lavender-strong)] rounded-lg">
-                        <span className="text-sm text-slate-700 font-medium flex-1 truncate">{notionPages[0].title}</span>
+                      <div className="flex items-center gap-2 rounded-xl bg-[color:var(--lavender)] px-4 py-3">
+                        <span className="flex-1 truncate text-sm font-medium text-slate-700">{notionPages[0].title}</span>
                       </div>
                     </div>
                   ) : (
                     <div>
-                      <p className="text-sm text-slate-500 mb-3">Plusieurs pages partagées trouvées — laquelle est votre playbook ?</p>
+                      <p className="mb-3 text-[13.5px] text-slate-500">Plusieurs pages partagées trouvées — laquelle est votre playbook ?</p>
                       <div className="space-y-1.5">
                         {notionPages.map((page) => (
                           <button
                             key={page.id}
                             type="button"
                             onClick={() => setNotionSelectedPageId(page.id)}
-                            className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg text-sm text-left border transition-colors duration-200 ${
+                            className={`flex w-full items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-left text-sm transition-colors ${
                               notionSelectedPageId === page.id
                                 ? "border-[color:var(--violet)] bg-[color:var(--lavender)] text-slate-900 font-medium"
                                 : "border-border text-slate-600 hover:bg-slate-50"
@@ -383,30 +383,30 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
               )}
             </div>
           ) : dimensions && dimensions.length === 0 ? (
-            <div className="text-center py-10">
-              <p className="text-slate-700 font-medium mb-1">
+            <div className="py-10 text-center">
+              <p className="mb-1 text-[14px] font-semibold text-slate-900">
                 Brief n&apos;a pas pu extraire de structure claire de ce document.
               </p>
-              <p className="text-sm text-slate-500">Réessayez avec un texte plus détaillé, ou saisissez manuellement.</p>
+              <p className="text-[13px] text-slate-500">Réessayez avec un texte plus détaillé, ou saisissez manuellement.</p>
             </div>
           ) : (
             <div>
-              <p className="text-sm text-slate-500 mb-4">
+              <p className="mb-4 text-[13.5px] leading-relaxed text-slate-500">
                 Voici ce que Brief a extrait de votre document. Vous pourrez affiner ensuite chaque élément.
               </p>
               <div className="space-y-3">
                 {(dimensions ?? []).map((dim, i) => (
-                  <div key={i} className="bg-slate-50 rounded-lg border border-border p-4">
+                  <div key={i} className="rounded-xl border border-border p-4">
                     <div className="flex items-start justify-between gap-3">
-                      <h3 className="font-semibold text-slate-900">{dim.label}</h3>
-                      <span className="text-xs text-slate-500 shrink-0">Poids : {dim.weight}</span>
+                      <h3 className="text-[14px] font-semibold text-slate-900">{dim.label}</h3>
+                      <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11.5px] font-semibold tabular-nums text-slate-600">Poids : {dim.weight}</span>
                     </div>
-                    {dim.description && <p className="text-sm text-slate-500 mt-1">{dim.description}</p>}
+                    {dim.description && <p className="mt-0.5 text-[12.5px] text-slate-500">{dim.description}</p>}
                     {dim.criteria.length > 0 && (
                       <ul className="mt-3 space-y-1">
                         {dim.criteria.map((q, qi) => (
-                          <li key={qi} className="text-sm text-slate-700 flex items-start gap-2">
-                            <span className="text-slate-300 shrink-0">•</span>
+                          <li key={qi} className="flex items-start gap-2 text-[13px] text-slate-900">
+                            <span className="shrink-0 text-slate-400">•</span>
                             {q}
                           </li>
                         ))}
@@ -418,22 +418,22 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
             </div>
           )}
 
-          {error && <p className="text-sm text-red-600 mt-4">{error}</p>}
+          {error && <p className="mt-4 rounded-xl bg-[color:var(--danger-soft)] px-3.5 py-2.5 text-[13px] text-rose-700">{error}</p>}
         </div>
 
-        <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-slate-100 shrink-0">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4 sm:px-6">
           {step === "paste" ? (
             <>
               <button
                 onClick={onClose}
-                className="h-8 px-4 text-sm font-medium text-slate-600 border border-border rounded-lg hover:bg-slate-50 transition-colors duration-200"
+                className="inline-flex h-9 items-center rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
               >
                 Annuler
               </button>
               <button
                 onClick={handleExtract}
                 disabled={!canExtract || extracting}
-                className="h-8 px-4 inline-flex items-center gap-1.5 text-sm font-medium text-white brand-gradient rounded-lg hover:brightness-110 transition-colors duration-200 disabled:opacity-50"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 {extracting ? "Extraction en cours…" : "Extraire avec Brief"}
@@ -443,15 +443,15 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
             <>
               <button
                 onClick={() => setStep("paste")}
-                className="h-8 px-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 border border-border rounded-lg hover:bg-slate-50 transition-colors duration-200"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 Modifier le texte
               </button>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={onClose}
-                  className="h-8 px-4 text-sm font-medium text-slate-600 border border-border rounded-lg hover:bg-slate-50 transition-colors duration-200"
+                  className="inline-flex h-9 items-center rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
                 >
                   Annuler
                 </button>
@@ -459,7 +459,7 @@ export default function ImportPlaybookModal({ onClose }: { onClose: () => void }
                   <button
                     onClick={handleApply}
                     disabled={applying}
-                    className="h-8 px-4 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors duration-200 disabled:opacity-50"
+                    className="inline-flex h-9 items-center rounded-lg border border-[color:var(--danger-soft)] bg-white px-3.5 text-[13px] font-medium text-rose-700 transition-colors hover:bg-[color:var(--danger-soft)] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {applying ? "Application…" : "Remplacer mon playbook actuel"}
                   </button>

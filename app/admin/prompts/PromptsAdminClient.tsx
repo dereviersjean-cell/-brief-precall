@@ -151,10 +151,10 @@ function PromptSection({
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-border p-6 space-y-4 shadow-[var(--shadow-sm)]">
+    <div className="space-y-4 rounded-2xl border border-border bg-white p-6">
       <div>
-        <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-        <p className="text-sm text-slate-500 mt-0.5">{description}</p>
+        <h2 className="text-[15px] font-semibold tracking-tight text-slate-900">{title}</h2>
+        <p className="mt-1 text-[13px] leading-relaxed text-slate-500">{description}</p>
       </div>
       <textarea
         value={value}
@@ -163,27 +163,27 @@ function PromptSection({
           if (saveState === "saved" || saveState === "error") setSaveState("idle");
         }}
         rows={12}
-        className="w-full px-3.5 py-3 border border-border rounded-lg text-sm text-slate-800 font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-transparent resize-y"
+        className="w-full resize-y rounded-xl border border-border bg-white px-3.5 py-3 font-mono text-[13px] leading-relaxed text-slate-800 focus:border-[color:var(--violet)] focus:outline-none focus:ring-1 focus:ring-[color:var(--violet)]"
       />
       <div className="flex items-center justify-between gap-3">
         <button
           onClick={handleReset}
           disabled={value === defaultValue}
-          className="text-sm text-slate-500 hover:text-slate-700 underline underline-offset-2 disabled:opacity-30 disabled:no-underline transition-colors"
+          className="text-[13px] text-slate-500 underline underline-offset-2 transition-colors hover:text-slate-900 disabled:no-underline disabled:opacity-30"
         >
           Restaurer les valeurs par défaut
         </button>
         <div className="flex items-center gap-3">
           {saveState === "saved" && (
-            <span className="text-sm text-green-600 font-medium">Sauvegardé</span>
+            <span className="text-[13px] font-medium text-emerald-700">Sauvegardé</span>
           )}
           {saveState === "error" && errorMsg && (
-            <span className="text-sm text-red-600">{errorMsg}</span>
+            <span className="text-[13px] text-rose-700">{errorMsg}</span>
           )}
           <button
             onClick={handleSave}
             disabled={saveState === "saving" || !value.trim()}
-            className="flex items-center gap-2 px-4 py-2 brand-gradient text-white rounded-lg text-sm font-semibold hover:brightness-110 transition-colors disabled:opacity-50"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saveState === "saving" && <Spinner />}
             {saveState === "saving" ? "Sauvegarde…" : "Sauvegarder"}
@@ -191,7 +191,7 @@ function PromptSection({
         </div>
       </div>
       {isDirty && saveState === "idle" && (
-        <p className="text-xs text-amber-600">Modifications non sauvegardées</p>
+        <p className="text-[12px] font-medium text-amber-700">Modifications non sauvegardées</p>
       )}
     </div>
   );
@@ -209,20 +209,20 @@ function PromptTabs({
   dirtyKeys: Set<PromptKey>;
 }) {
   return (
-    <div className="inline-flex items-center gap-1 bg-white rounded-xl border border-border p-1 flex-wrap">
+    <div className="inline-flex flex-wrap items-center gap-1 rounded-xl bg-slate-100 p-1">
       {PROMPT_META.map(({ key, tabLabel }) => {
         const active = key === activeKey;
         return (
           <button
             key={key}
             onClick={() => onSelect(key)}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
-              active ? "brand-gradient text-white" : "text-slate-500 hover:text-slate-700"
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors duration-200 ${
+              active ? "bg-white text-slate-900 shadow-[var(--shadow-xs)]" : "text-slate-500 hover:text-slate-900"
             }`}
           >
             {tabLabel}
             {dirtyKeys.has(key) && (
-              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${active ? "bg-white" : "bg-amber-500"}`} />
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--warning)]" />
             )}
           </button>
         );

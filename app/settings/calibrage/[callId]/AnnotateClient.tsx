@@ -99,7 +99,7 @@ export default function AnnotateClient({
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card padded={false} className="flex max-h-[70vh] flex-col overflow-hidden">
-          <p className="shrink-0 border-b border-slate-100 px-5 py-3 text-[13px] font-semibold text-slate-900">
+          <p className="shrink-0 border-b border-border px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">
             L&apos;échange
           </p>
           <div className="flex-1 space-y-2.5 overflow-y-auto px-5 py-4">
@@ -116,7 +116,7 @@ export default function AnnotateClient({
           <div className="mb-3 flex items-center justify-between gap-3">
             <p className="text-[13px] font-semibold text-slate-900">
               Les vraies objections de ce call
-              <span className="ml-2 font-normal text-slate-400">
+              <span className="ml-2 font-normal tabular-nums text-slate-500">
                 {expected.length} retenue{expected.length > 1 ? "s" : ""}
               </span>
             </p>
@@ -129,17 +129,17 @@ export default function AnnotateClient({
             </Button>
           </div>
 
-          <Card className="mb-4 border-[color:var(--lavender-strong)] bg-[color:var(--lavender)] py-3">
-            <p className="text-[12.5px] leading-relaxed text-slate-700">
+          <div className="mb-4 rounded-2xl bg-[color:var(--lavender)] px-4 py-3">
+            <p className="text-[12.5px] leading-relaxed text-slate-600">
               <strong>Une objection</strong> = une réticence qui freine la vente, qu&apos;on peut reformuler en «&nbsp;oui
               mais…&nbsp;». Une simple question du prospect («&nbsp;vos équipes sont où&nbsp;?&nbsp;») n&apos;en est pas
               une, même si le commercial y répond longuement.
             </p>
-          </Card>
+          </div>
 
           <div className="space-y-3">
             {expected.length === 0 && (
-              <p className="text-sm italic text-slate-400">
+              <p className="text-[13.5px] italic text-slate-400">
                 Aucune objection retenue pour ce call. C&apos;est une réponse valable si l&apos;échange n&apos;en
                 contenait aucune.
               </p>
@@ -153,7 +153,7 @@ export default function AnnotateClient({
                     onChange={(e) => update(index, { objection: e.target.value })}
                     rows={2}
                     placeholder="Formulez l'objection en une phrase, du point de vue du prospect"
-                    className="min-w-0 flex-1 resize-y rounded-lg border border-border px-3 py-2 text-[13px] text-slate-900 focus:border-[color:var(--violet)] focus:outline-none focus:ring-1 focus:ring-[color:var(--violet)]"
+                    className="min-w-0 flex-1 resize-y rounded-xl border border-border bg-white px-3.5 py-2 text-[13.5px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)]"
                   />
                   <button
                     type="button"
@@ -178,8 +178,8 @@ export default function AnnotateClient({
             ))}
           </div>
 
-          {error && <p className="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">{error}</p>}
-          {savedNote && <p className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{savedNote}</p>}
+          {error && <p className="mt-4 rounded-xl bg-[color:var(--danger-soft)] px-3.5 py-2.5 text-[13px] text-rose-700">{error}</p>}
+          {savedNote && <p className="mt-4 rounded-xl bg-[color:var(--success-soft)] px-3.5 py-2.5 text-[13px] text-emerald-700">{savedNote}</p>}
 
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <Button variant="primary" icon={<Check className="h-4 w-4" />} onClick={() => save(true)} disabled={saving}>
@@ -189,7 +189,7 @@ export default function AnnotateClient({
               Enregistrer sans valider
             </Button>
           </div>
-          <p className="mt-2.5 flex items-start gap-1.5 text-xs text-slate-400">
+          <p className="mt-2.5 flex items-start gap-1.5 text-[12px] text-slate-500">
             <Sparkles className="mt-0.5 h-3 w-3 shrink-0" />
             Tant qu&apos;un call n&apos;est pas validé, il n&apos;entre pas dans la mesure — sans quoi on comparerait
             l&apos;IA à sa propre copie.

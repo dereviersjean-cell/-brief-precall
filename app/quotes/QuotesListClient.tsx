@@ -26,9 +26,9 @@ import SendQuoteModal from "./SendQuoteModal";
 
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
   draft: { label: "Brouillon", className: "bg-slate-100 text-slate-600" },
-  sent: { label: "Envoyé", className: "bg-blue-50 text-blue-700" },
-  accepted: { label: "Accepté", className: "bg-emerald-50 text-emerald-700" },
-  rejected: { label: "Refusé", className: "bg-red-50 text-red-700" },
+  sent: { label: "Envoyé", className: "bg-[color:var(--lavender)] text-[color:var(--violet)]" },
+  accepted: { label: "Accepté", className: "bg-[color:var(--success-soft)] text-emerald-700" },
+  rejected: { label: "Refusé", className: "bg-[color:var(--danger-soft)] text-rose-700" },
 };
 
 // "Ouvert" isn't a real status value — status stays "sent", viewed_at is a
@@ -36,15 +36,15 @@ const STATUS_STYLES: Record<string, { label: string; className: string }> = {
 function StatusBadge({ status, viewedAt }: { status: string; viewedAt: string | null }) {
   if (status === "sent" && viewedAt) {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0" />
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--lavender)] px-2 py-0.5 text-[11.5px] font-semibold text-[color:var(--violet)]">
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--warning)]" />
         Ouvert
       </span>
     );
   }
   const s = STATUS_STYLES[status] ?? { label: status, className: "bg-slate-100 text-slate-600" };
   return (
-    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${s.className}`}>
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${s.className}`}>
       {s.label}
     </span>
   );
@@ -67,16 +67,15 @@ function AmountTile({ label, amount, index }: { label: string; amount: number; i
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.07, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      whileHover={{ y: -3, boxShadow: "0 8px 24px -8px rgba(15, 23, 42, 0.12)" }}
-      className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5"
+      className="bg-white rounded-2xl border border-border p-5"
     >
       <div className="flex items-center justify-between mb-3">
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{label}</p>
+        <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-[0.07em]">{label}</p>
         <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 bg-[color:var(--warning-soft)] text-amber-700">
           <Euro className="w-3.5 h-3.5" />
         </span>
       </div>
-      <p className="text-3xl font-bold text-slate-900 tabular-nums">{formatCurrency(amount)}</p>
+      <p className="text-[26px] lg:text-[30px] font-semibold leading-none tracking-tight text-slate-900 tabular-nums">{formatCurrency(amount)}</p>
     </motion.div>
   );
 }
@@ -101,11 +100,11 @@ function SortHeader({
 }) {
   const active = currentSort === sortKey;
   return (
-    <th className={`px-4 py-3 text-${align === "right" ? "right" : "left"}`}>
+    <th className={`px-4 py-2.5 text-${align === "right" ? "right" : "left"}`}>
       <button
         onClick={() => onSort(sortKey)}
-        className={`inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide transition-colors ${
-          active ? "text-[color:var(--violet)]" : "text-slate-400 hover:text-slate-600"
+        className={`inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.07em] transition-colors ${
+          active ? "text-[color:var(--violet)]" : "text-slate-500 hover:text-slate-900"
         } ${align === "right" ? "flex-row-reverse" : ""}`}
       >
         {label}
@@ -215,71 +214,61 @@ export default function QuotesListClient({
   const acceptanceRate = decidedCount > 0 ? Math.round((acceptedCount / decidedCount) * 100) : null;
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-10">
-      {/* Hero header */}
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
+      {/* En-tête */}
       <FadeIn>
-        <div className="relative overflow-hidden rounded-3xl border border-border shadow-[var(--shadow-sm)] bg-white p-8 mb-6">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-[color:var(--lavender-strong)]/60 via-[color:var(--lavender)]/40 to-transparent blur-3xl"
-          />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-gradient-to-tr from-amber-100/40 to-transparent blur-3xl"
-          />
-          <div className="relative flex items-start justify-between gap-4 flex-wrap">
-            <div>
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[color:var(--violet)] bg-[color:var(--lavender)] px-2.5 py-1 rounded-full mb-3">
-                <FileText className="w-3 h-3" />
-                Devis commerciaux
-              </span>
-              <h1 className="text-2xl font-bold text-slate-900">Devis</h1>
-              <p className="text-slate-500 text-sm mt-1">
-                {quotes.length} {quotes.length === 1 ? "devis créé" : "devis créés"}
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Link
-                href="/quotes/settings"
-                className="inline-flex items-center gap-2 h-9 px-3.5 bg-white border border-border text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 hover:text-slate-900 transition-colors duration-200"
-              >
-                <Settings className="w-4 h-4" />
-                Paramètres
-              </Link>
-              <Link
-                href="/quotes/new"
-                className="inline-flex items-center gap-2 h-9 px-3.5 brand-gradient text-white rounded-lg text-sm font-medium shadow-[var(--shadow-sm)] hover:brightness-110 hover:shadow-[var(--shadow-md)] transition-all duration-200"
-              >
-                <Plus className="w-4 h-4" />
-                Nouveau devis
-              </Link>
-            </div>
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+          <div className="min-w-0">
+            <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.08em] text-[color:var(--violet)]">
+              <FileText className="h-3.5 w-3.5" />
+              Devis commerciaux
+            </span>
+            <h1 className="mt-1.5 text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] text-slate-900">Devis</h1>
+            <p className="mt-2 text-[15px] leading-relaxed text-slate-500">
+              {quotes.length} {quotes.length === 1 ? "devis créé" : "devis créés"}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:flex-nowrap">
+            <Link
+              href="/quotes/settings"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+            >
+              <Settings className="w-4 h-4" />
+              Paramètres
+            </Link>
+            <Link
+              href="/quotes/new"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110"
+            >
+              <Plus className="w-4 h-4" />
+              Nouveau devis
+            </Link>
           </div>
         </div>
       </FadeIn>
 
       {missingCompanyInfo && (
-        <div className="mb-6 rounded-2xl border border-[color:var(--warning)]/30 bg-[color:var(--warning-soft)] px-4 py-3">
-          <p className="text-sm font-medium text-amber-800">
+        <div className="mb-6 rounded-2xl bg-[color:var(--warning-soft)] px-4 py-3">
+          <p className="text-[13px] font-medium text-amber-800">
             Configurez d&apos;abord la raison sociale de votre entreprise dans les paramètres avant de créer un devis.
           </p>
         </div>
       )}
 
       {quotes.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-12 text-center">
-          <div className="w-12 h-12 bg-[color:var(--lavender)] rounded-xl flex items-center justify-center mx-auto mb-4">
+        <div className="rounded-2xl border border-border bg-white px-6 py-12 text-center">
+          <div className="mx-auto mb-4 grid h-11 w-11 place-items-center rounded-xl bg-[color:var(--lavender)]">
             <svg className="w-6 h-6 text-[color:var(--violet)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 14.25l6-6m4.5-3.493V21.75l-3.75-1.5-3.75 1.5-3.75-1.5-3.75 1.5V4.757c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0c1.1.128 1.907 1.077 1.907 2.185z" />
             </svg>
           </div>
-          <p className="text-slate-700 font-medium">Aucun devis pour l&apos;instant</p>
-          <p className="text-slate-400 text-sm mt-1">Configurez d&apos;abord vos paramètres, puis créez votre premier devis.</p>
+          <p className="text-[14px] font-semibold text-slate-900">Aucun devis pour l&apos;instant</p>
+          <p className="mt-1 text-[13px] text-slate-500">Configurez d&apos;abord vos paramètres, puis créez votre premier devis.</p>
         </div>
       ) : (
         <>
           {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
             <StatTile index={0} accent="indigo" label="Devis émis" value={quotes.length} icon={<FileText className="w-3.5 h-3.5" />} />
             <AmountTile index={1} label="Montant total TTC" amount={totalAmount} />
             <StatTile
@@ -293,37 +282,37 @@ export default function QuotesListClient({
           </div>
 
           {/* Search */}
-          <div className="relative mb-4 w-72">
+          <div className="relative mb-4 w-full sm:w-72">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Rechercher un devis, un contact…"
-              className="pl-9 pr-3.5 py-2 border border-border rounded-lg text-sm text-slate-700 bg-white w-full focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+              className="h-9 w-full rounded-xl border border-border bg-white pl-9 pr-3.5 text-[13px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)]"
             />
           </div>
 
           {filteredQuotes.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-12 text-center">
-              <p className="text-slate-500 text-sm">Aucun résultat pour « {query} ».</p>
+            <div className="rounded-2xl border border-border bg-white px-6 py-12 text-center">
+              <p className="text-[13px] text-slate-500">Aucun résultat pour « {query} ».</p>
             </div>
           ) : (
             <FadeIn delay={0.1}>
-              <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] overflow-hidden">
+              <div className="overflow-hidden rounded-2xl border border-border bg-white">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm border-collapse stacked-table sm:min-w-[820px]">
+                  <table className="w-full text-[13px] border-collapse stacked-table sm:min-w-[820px]">
                     <thead>
-                      <tr className="border-b border-border bg-slate-50/60">
+                      <tr className="border-b border-border">
                         <SortHeader label="Numéro" sortKey="number" currentSort={sortKey} currentDirection={sortDirection} onSort={handleSort} />
                         <SortHeader label="Contact" sortKey="contact" currentSort={sortKey} currentDirection={sortDirection} onSort={handleSort} />
                         <SortHeader label="Montant TTC" sortKey="amount" currentSort={sortKey} currentDirection={sortDirection} onSort={handleSort} align="right" />
-                        <th className="px-4 py-3 text-left">
-                          <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Statut</span>
+                        <th className="px-4 py-2.5 text-left">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Statut</span>
                         </th>
                         <SortHeader label="Date" sortKey="date" currentSort={sortKey} currentDirection={sortDirection} onSort={handleSort} />
-                        <th className="px-4 py-3 text-right">
-                          <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Actions</span>
+                        <th className="px-4 py-2.5 text-right">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Actions</span>
                         </th>
                       </tr>
                     </thead>
@@ -332,21 +321,21 @@ export default function QuotesListClient({
                         <tr
                           key={quote.id}
                           onClick={() => router.push(`/quotes/${quote.id}`)}
-                          className={`border-b border-slate-100 last:border-b-0 hover:bg-[color:var(--lavender)]/50 cursor-pointer transition-colors group ${
+                          className={`group cursor-pointer border-b border-border transition-colors last:border-b-0 hover:bg-slate-50 ${
                             deletingId === quote.id ? "opacity-40" : ""
                           }`}
                         >
-                          <td className="px-4 py-3.5 whitespace-nowrap font-medium text-slate-800">{quote.quote_number}</td>
-                          <td data-label="Contact" className="px-4 py-3.5 max-w-[220px]">
-                            <p className="text-slate-700 truncate group-hover:text-[color:var(--violet)] transition-colors">{quote.client_name}</p>
-                            {quote.client_email && <p className="text-slate-400 text-xs truncate">{quote.client_email}</p>}
+                          <td className="whitespace-nowrap px-4 py-3 text-[13px] font-semibold tabular-nums text-slate-900">{quote.quote_number}</td>
+                          <td data-label="Contact" className="max-w-[220px] px-4 py-3">
+                            <p className="truncate text-[13px] font-medium text-slate-900 transition-colors group-hover:text-[color:var(--violet)]">{quote.client_name}</p>
+                            {quote.client_email && <p className="mt-0.5 truncate text-[11.5px] text-slate-500">{quote.client_email}</p>}
                           </td>
-                          <td data-label="Montant TTC" className="px-4 py-3.5 text-right font-mono text-slate-700 whitespace-nowrap">{formatCurrency(quote.total_ttc)}</td>
-                          <td data-label="Statut" className="px-4 py-3.5 whitespace-nowrap">
+                          <td data-label="Montant TTC" className="whitespace-nowrap px-4 py-3 text-right text-[13px] font-semibold tabular-nums text-slate-900">{formatCurrency(quote.total_ttc)}</td>
+                          <td data-label="Statut" className="whitespace-nowrap px-4 py-3">
                             <StatusBadge status={quote.status} viewedAt={quote.viewed_at} />
                           </td>
-                          <td data-label="Date" className="px-4 py-3.5 whitespace-nowrap text-slate-500">{formatDate(quote.issued_at ?? quote.created_at)}</td>
-                          <td className="px-4 py-3.5 text-right relative">
+                          <td data-label="Date" className="whitespace-nowrap px-4 py-3 text-[13px] tabular-nums text-slate-600">{formatDate(quote.issued_at ?? quote.created_at)}</td>
+                          <td className="relative px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-2">
                               {quote.status === "draft" && (
                                 <button
@@ -354,7 +343,7 @@ export default function QuotesListClient({
                                     e.stopPropagation();
                                     handleSend(quote);
                                   }}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 brand-gradient text-white text-xs font-medium rounded-lg hover:brightness-110 transition-colors"
+                                  className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[color:var(--primary)] px-3 text-[12px] font-medium text-white transition-all hover:brightness-110"
                                 >
                                   <Send className="w-3.5 h-3.5" />
                                   Envoyer
@@ -365,7 +354,7 @@ export default function QuotesListClient({
                                   e.stopPropagation();
                                   setOpenMenuId(openMenuId === quote.id ? null : quote.id);
                                 }}
-                                className="border border-border hover:bg-slate-50 rounded-lg p-1.5 text-slate-500 transition-colors"
+                                className="grid h-8 w-8 place-items-center rounded-lg border border-border bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900"
                               >
                                 <MoreHorizontal className="w-4 h-4" />
                               </button>
@@ -379,10 +368,10 @@ export default function QuotesListClient({
                                     setOpenMenuId(null);
                                   }}
                                 />
-                                <div className="absolute right-4 top-11 z-20 w-48 bg-white border border-border rounded-xl shadow-lg py-1 text-left">
+                                <div className="absolute right-4 top-11 z-20 w-48 rounded-xl border border-border bg-white py-1 text-left shadow-[var(--shadow-md)]">
                                   <Link
                                     href={`/quotes/${quote.id}`}
-                                    className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                                    className="flex items-center gap-2 px-4 py-2 text-[13px] text-slate-700 hover:bg-slate-50"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setOpenMenuId(null);
@@ -395,7 +384,7 @@ export default function QuotesListClient({
                                     href={`/api/quotes/${quote.id}/pdf`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                                    className="flex items-center gap-2 px-4 py-2 text-[13px] text-slate-700 hover:bg-slate-50"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setOpenMenuId(null);
@@ -410,7 +399,7 @@ export default function QuotesListClient({
                                         e.stopPropagation();
                                         handleDelete(quote);
                                       }}
-                                      className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                      className="flex w-full items-center gap-2 px-4 py-2 text-left text-[13px] text-rose-700 hover:bg-[color:var(--danger-soft)]"
                                     >
                                       <Trash2 className="w-3.5 h-3.5" />
                                       Supprimer

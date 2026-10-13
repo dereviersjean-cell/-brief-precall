@@ -123,31 +123,31 @@ export default function GlobalSearch() {
         onKeyDown={onInputKeyDown}
         placeholder="Rechercher un contact, un call…"
         aria-label="Recherche globale"
-        className="h-9 w-[280px] rounded-lg border border-border bg-white/60 pl-8 pr-10 text-[12.5px] text-slate-900 outline-none transition-colors focus:border-[color:var(--violet)] focus:bg-white"
+        className="h-9 w-[280px] rounded-xl border border-border bg-white pl-8 pr-10 text-[12.5px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)]"
       />
-      <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-border bg-white/80 px-1.5 py-0.5 font-mono text-[10px] text-slate-400">
+      <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md border border-border bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] text-slate-500">
         ⌘K
       </kbd>
 
       {showPanel && (
-        <div className="absolute right-0 top-[calc(100%+6px)] z-20 w-[380px] overflow-hidden rounded-xl border border-border bg-white shadow-[var(--shadow-md)]">
+        <div className="absolute right-0 top-[calc(100%+6px)] z-20 w-[380px] overflow-hidden rounded-2xl border border-border bg-white shadow-[var(--shadow-md)]">
           {loading ? (
-            <p className="px-4 py-3 text-[12.5px] text-slate-400">Recherche…</p>
+            <p className="px-4 py-3 text-[12.5px] text-slate-500">Recherche…</p>
           ) : visibleResults.length === 0 ? (
-            <p className="px-4 py-3 text-[12.5px] text-slate-400">Aucun résultat pour «&nbsp;{trimmed}&nbsp;»</p>
+            <p className="px-4 py-3 text-[12.5px] text-slate-500">Aucun résultat pour «&nbsp;{trimmed}&nbsp;»</p>
           ) : (
-            <ul className="max-h-80 overflow-y-auto p-1">
+            <ul className="max-h-80 overflow-y-auto p-1.5">
               {visibleResults.map((result, index) => (
                 <li key={`${result.type}-${result.id}`}>
                   <button
                     type="button"
                     onClick={() => go(result)}
                     onMouseEnter={() => setHighlighted(index)}
-                    className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors ${
+                    className={`flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors ${
                       index === highlighted ? "bg-[color:var(--lavender)]" : "hover:bg-slate-50"
                     }`}
                   >
-                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500">
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-border bg-white text-slate-500">
                       {result.type === "contact" ? (
                         <Building2 className="h-3.5 w-3.5" />
                       ) : (
@@ -156,7 +156,7 @@ export default function GlobalSearch() {
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[13px] font-medium text-slate-900">{result.title}</span>
-                      <span className="block truncate text-[11.5px] text-slate-400">
+                      <span className="block truncate text-[11.5px] text-slate-500">
                         {result.type === "contact" ? "Contact" : "Call"}
                         {result.subtitle ? ` · ${result.subtitle}` : ""}
                         {result.ownerName ? ` · ${result.ownerName}` : ""}

@@ -17,11 +17,11 @@ function formatDay(iso: string | null): string {
 }
 
 function AgendaBadge({ member }: { member: ClientMember }) {
-  if (member.status === "invited") return <span className="text-xs text-slate-400">—</span>;
+  if (member.status === "invited") return <span className="text-[12px] text-slate-400">—</span>;
   const styles = {
-    connected: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    disconnected: "border-red-200 bg-red-50 text-red-700",
-    missing: "border-amber-200 bg-amber-50 text-amber-800",
+    connected: "bg-[color:var(--success-soft)] text-emerald-700",
+    disconnected: "bg-[color:var(--danger-soft)] text-rose-700",
+    missing: "bg-[color:var(--warning-soft)] text-amber-700",
   } as const;
   const labels = {
     connected: "Branché",
@@ -29,7 +29,7 @@ function AgendaBadge({ member }: { member: ClientMember }) {
     missing: "Non branché",
   } as const;
   return (
-    <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${styles[member.agenda]}`}>
+    <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${styles[member.agenda]}`}>
       {labels[member.agenda]}
     </span>
   );
@@ -63,7 +63,7 @@ function MemberMenu({
   onDelete: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const item = "w-full text-left px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-50";
+  const item = "w-full rounded-lg px-3 py-2 text-left text-[13px] hover:bg-slate-50 disabled:opacity-50";
   const pick = (action: () => void) => () => {
     setOpen(false);
     action();
@@ -74,14 +74,14 @@ function MemberMenu({
         onClick={() => setOpen((o) => !o)}
         disabled={disabled}
         aria-label={`Autres actions pour ${member.name || member.email}`}
-        className="px-2 py-0.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg disabled:opacity-50"
+        className="rounded-lg px-2 py-0.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
       >
         ⋯
       </button>
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 mt-1 w-56 bg-white border border-border rounded-lg shadow-lg z-20 py-1">
+          <div className="absolute right-0 z-20 mt-1 w-56 rounded-xl border border-border bg-white p-1 shadow-[var(--shadow-md)]">
             {member.status === "disabled" ? (
               <button onClick={pick(onRestore)} className={`${item} text-slate-700`}>
                 Réactiver le compte
@@ -94,7 +94,7 @@ function MemberMenu({
             <button onClick={pick(onRemove)} className={`${item} text-slate-700`}>
               Retirer du client
             </button>
-            <button onClick={pick(onDelete)} className={`${item} text-red-600 hover:bg-red-50`}>
+            <button onClick={pick(onDelete)} className={`${item} text-rose-700 hover:bg-[color:var(--danger-soft)]`}>
               Supprimer définitivement
             </button>
           </div>
@@ -227,13 +227,13 @@ export default function TeamPanel({
     });
   }
 
-  const input = "px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20";
+  const input = "rounded-xl border border-border bg-white px-3 py-2 text-[13px] text-slate-900 placeholder:text-slate-400 focus:border-[color:var(--violet)] focus:outline-none focus:ring-1 focus:ring-[color:var(--violet)]";
 
   return (
-    <section className="bg-white rounded-2xl border border-border p-6 shadow-[var(--shadow-sm)]">
-      <div className="flex items-baseline justify-between gap-4 mb-4">
+    <section className="rounded-2xl border border-border bg-white p-6">
+      <div className="mb-4 flex items-baseline justify-between gap-4">
         <h2 className="text-[15px] font-semibold tracking-tight text-slate-900">Équipe</h2>
-        <span className="text-xs text-slate-400">{members.length} membre{members.length > 1 ? "s" : ""}</span>
+        <span className="text-[12px] tabular-nums text-slate-500">{members.length} membre{members.length > 1 ? "s" : ""}</span>
       </div>
 
       {/* Pas de largeur minimale ni de défilement horizontal : la colonne
@@ -241,7 +241,7 @@ export default function TeamPanel({
           fiche (constaté le 29/09/2026). Connexion et activité partagent une
           colonne, les actions s'empilent. */}
       <div className="-mx-6">
-        <table className="w-full text-sm table-fixed">
+        <table className="w-full table-fixed text-[13px]">
           <colgroup>
             <col />
             <col className="w-[120px]" />
@@ -250,9 +250,9 @@ export default function TeamPanel({
             <col className="w-[120px]" />
           </colgroup>
           <thead>
-            <tr className="border-y border-slate-100 bg-slate-50/60 text-left">
+            <tr className="border-y border-border bg-slate-50/60 text-left">
               {["Membre", "Rôle", "Activité", "Agenda", ""].map((h, i) => (
-                <th key={i} className={`py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400 ${i === 0 ? "pl-6 pr-3" : "px-3"}`}>
+                <th key={i} className={`py-2.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500 ${i === 0 ? "pl-6 pr-3" : "px-3"}`}>
                   {h}
                 </th>
               ))}
@@ -260,21 +260,21 @@ export default function TeamPanel({
           </thead>
           <tbody>
             {members.map((m) => (
-              <tr key={m.id} className="border-b border-slate-100 last:border-b-0 align-top">
+              <tr key={m.id} className="border-b border-border align-top last:border-b-0">
                 <td className="pl-6 pr-3 py-3 min-w-0">
-                  <p className="font-medium text-slate-900 truncate">{m.name || "—"}</p>
-                  <p className="text-xs text-slate-400 truncate" title={m.email}>
+                  <p className="truncate font-semibold text-slate-900">{m.name || "—"}</p>
+                  <p className="truncate text-[12px] text-slate-500" title={m.email}>
                     {m.email}
                   </p>
-                  {m.status === "invited" && <p className="text-[11px] font-medium text-amber-700 mt-0.5">Invitation en attente</p>}
-                  {m.status === "disabled" && <p className="text-[11px] font-medium text-slate-500 mt-0.5">Compte désactivé</p>}
+                  {m.status === "invited" && <p className="mt-0.5 text-[11.5px] font-medium text-amber-700">Invitation en attente</p>}
+                  {m.status === "disabled" && <p className="mt-0.5 text-[11.5px] font-medium text-slate-500">Compte désactivé</p>}
                 </td>
                 <td className="px-3 py-3">
                   <select
                     value={m.role ?? ""}
                     disabled={busyId !== null}
                     onChange={(e) => changeRole(m, e.target.value as UserRole)}
-                    className="w-full px-2 py-1 border border-border rounded-lg text-xs bg-white disabled:opacity-50"
+                    className="w-full rounded-lg border border-border bg-white px-2 py-1 text-[12px] text-slate-700 focus:border-[color:var(--violet)] focus:outline-none disabled:opacity-50"
                   >
                     <option value="commercial">Commercial</option>
                     <option value="manager">Manager</option>
@@ -282,11 +282,11 @@ export default function TeamPanel({
                 </td>
                 <td className="px-3 py-3">
                   {m.status === "invited" ? (
-                    <p className="text-xs text-slate-400">—</p>
+                    <p className="text-[12px] text-slate-400">—</p>
                   ) : (
                     <>
                       <p className="text-slate-700">{m.lastSeenAt ? `Vu le ${formatDay(m.lastSeenAt)}` : "Pas vu récemment"}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">
+                      <p className="mt-0.5 text-[12px] tabular-nums text-slate-500">
                         {m.calls7d} call{m.calls7d > 1 ? "s" : ""} · {m.briefs7d} brief{m.briefs7d > 1 ? "s" : ""} sur 7 j
                       </p>
                     </>
@@ -298,12 +298,12 @@ export default function TeamPanel({
                 <td className="px-3 pr-6 py-3 text-right">
                   <div className="flex flex-col items-end gap-1.5">
                     {m.status === "invited" && (
-                      <button onClick={() => resendInvitation(m)} disabled={busyId !== null} className="text-xs font-medium text-[color:var(--violet)] hover:underline disabled:opacity-50">
+                      <button onClick={() => resendInvitation(m)} disabled={busyId !== null} className="text-[12px] font-medium text-[color:var(--violet)] hover:underline disabled:opacity-50">
                         Renvoyer l&apos;invitation
                       </button>
                     )}
                     {m.status === "active" && (
-                      <button onClick={() => void openAccount(m)} disabled={busyId !== null} className="text-xs font-medium text-[color:var(--violet)] hover:underline disabled:opacity-50">
+                      <button onClick={() => void openAccount(m)} disabled={busyId !== null} className="text-[12px] font-medium text-[color:var(--violet)] hover:underline disabled:opacity-50">
                         Ouvrir le compte
                       </button>
                     )}
@@ -321,7 +321,7 @@ export default function TeamPanel({
             ))}
             {members.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-sm text-slate-400">
+                <td colSpan={5} className="px-6 py-8 text-center text-[13px] text-slate-500">
                   Aucun membre : invitez le premier ci-dessous.
                 </td>
               </tr>
@@ -330,11 +330,11 @@ export default function TeamPanel({
         </table>
       </div>
 
-      {message && <p className={`mt-4 text-xs ${message.tone === "ok" ? "text-emerald-600" : "text-red-600"}`}>{message.text}</p>}
+      {message && <p className={`mt-4 text-[12px] font-medium ${message.tone === "ok" ? "text-emerald-700" : "text-rose-700"}`}>{message.text}</p>}
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-2 border-t border-slate-100 pt-5">
+      <div className="mt-5 grid gap-4 border-t border-border pt-5 lg:grid-cols-2">
         <div>
-          <p className="text-xs font-semibold text-slate-700 mb-2">Inviter un membre</p>
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Inviter un membre</p>
           <div className="flex flex-wrap gap-2">
             <input value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="Email" className={`${input} flex-1 min-w-[180px]`} />
             <input value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="Nom (facultatif)" className={`${input} flex-1 min-w-[140px]`} />
@@ -342,14 +342,14 @@ export default function TeamPanel({
               <option value="commercial">Commercial</option>
               <option value="manager">Manager</option>
             </select>
-            <button onClick={invite} disabled={busyId !== null || !inviteEmail.trim()} className="px-4 py-2 brand-gradient text-white rounded-lg text-sm font-medium hover:brightness-110 disabled:opacity-50">
+            <button onClick={invite} disabled={busyId !== null || !inviteEmail.trim()} className="inline-flex h-9 items-center rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50">
               Inviter
             </button>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1.5">Un email d&apos;invitation part aussitôt.</p>
+          <p className="mt-1.5 text-[11.5px] text-slate-500">Un email d&apos;invitation part aussitôt.</p>
         </div>
         <div>
-          <p className="text-xs font-semibold text-slate-700 mb-2">Rattacher un compte existant</p>
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Rattacher un compte existant</p>
           <div className="flex flex-wrap gap-2">
             <select value={attachId} onChange={(e) => setAttachId(e.target.value)} className={`${input} flex-1 min-w-[220px]`}>
               <option value="">{availableUsers.length ? "Choisir un utilisateur sans client…" : "Aucun utilisateur sans client"}</option>
@@ -363,7 +363,7 @@ export default function TeamPanel({
               <option value="commercial">Commercial</option>
               <option value="manager">Manager</option>
             </select>
-            <button onClick={attach} disabled={busyId !== null || !attachId} className="px-4 py-2 border border-border text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 disabled:opacity-50">
+            <button onClick={attach} disabled={busyId !== null || !attachId} className="inline-flex h-9 items-center rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50">
               Rattacher
             </button>
           </div>

@@ -87,14 +87,14 @@ export default function SendQuoteModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 px-4" onClick={onClose}>
       <div
-        className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto"
+        className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl border border-border bg-white p-5 shadow-[var(--shadow-md)] sm:p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-slate-900">Envoyer le devis {quoteNumber}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+          <h2 className="text-[16px] font-semibold tracking-[-0.01em] text-slate-900">Envoyer le devis {quoteNumber}</h2>
+          <button onClick={onClose} className="rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -102,57 +102,59 @@ export default function SendQuoteModal({
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center gap-2 py-12 text-slate-500 text-sm">
+          <div className="flex items-center justify-center gap-2 py-12 text-[13px] text-slate-500">
             <Spinner />
             Rédaction de l&apos;email par l&apos;IA…
           </div>
         ) : (
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Destinataire</label>
+              <label className="mb-1 block text-[12px] font-medium text-slate-700">Destinataire</label>
               <input
                 type="text"
                 value={clientEmail}
                 readOnly
-                className="w-full px-3 py-2 border border-border bg-slate-50 rounded-lg text-sm text-slate-500"
+                className="w-full rounded-xl border border-border bg-slate-50 px-3.5 py-2 text-[13.5px] text-slate-500 outline-none"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Sujet</label>
+              <label className="mb-1 block text-[12px] font-medium text-slate-700">Sujet</label>
               <input
                 type="text"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+                className="w-full rounded-xl border border-border bg-white px-3.5 py-2 text-[13.5px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-1 focus:ring-[color:var(--violet)]"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Corps de l&apos;email</label>
+              <label className="mb-1 block text-[12px] font-medium text-slate-700">Corps de l&apos;email</label>
               <textarea
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 rows={10}
-                className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] resize-y"
+                className="w-full rounded-xl border border-border bg-white px-3.5 py-2 text-[13.5px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-1 focus:ring-[color:var(--violet)] resize-y leading-relaxed"
               />
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="mt-1.5 text-[12px] text-slate-500">
                 Un lien de consultation et de signature sera automatiquement ajouté au bas de l&apos;email lors de
                 l&apos;envoi.
               </p>
             </div>
-            <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg border border-border">
-              <span className="text-sm text-slate-600">📎 {quoteNumber}.pdf</span>
-              <span className="text-xs text-slate-400">(joint automatiquement)</span>
+            <div className="flex flex-wrap items-center gap-2 rounded-xl bg-[color:var(--lavender)] px-3.5 py-2.5">
+              <span className="text-[13px] font-medium text-slate-700">📎 {quoteNumber}.pdf</span>
+              <span className="text-[12px] text-slate-500">(joint automatiquement)</span>
             </div>
           </div>
         )}
 
-        {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
+        {error && (
+          <p className="mt-3 rounded-xl bg-[color:var(--danger-soft)] px-3.5 py-2.5 text-[13px] text-rose-700">{error}</p>
+        )}
 
         <div className="flex items-center justify-between mt-5 gap-3 flex-wrap">
           <button
             onClick={handleRegenerate}
             disabled={loading || regenerating || sending}
-            className="text-sm font-medium text-[color:var(--violet)] hover:text-[color:var(--violet)] disabled:opacity-50"
+            className="inline-flex h-9 items-center rounded-lg px-2 text-[13px] font-medium text-[color:var(--violet)] transition-colors hover:bg-[color:var(--lavender)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {regenerating ? "Régénération…" : "✨ Régénérer avec IA"}
           </button>
@@ -160,14 +162,14 @@ export default function SendQuoteModal({
             <button
               onClick={onClose}
               disabled={sending}
-              className="text-sm font-medium text-slate-600 border border-border px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
+              className="inline-flex h-9 items-center rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Annuler
             </button>
             <button
               onClick={handleSubmitSend}
               disabled={loading || sending || !subject.trim() || !body.trim()}
-              className="flex items-center gap-2 text-sm font-medium text-white brand-gradient px-4 py-2 rounded-lg hover:brightness-110 transition-colors disabled:opacity-50"
+              className="inline-flex h-9 items-center gap-2 rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {sending && <Spinner />}
               {sending ? "Envoi…" : "Envoyer"}

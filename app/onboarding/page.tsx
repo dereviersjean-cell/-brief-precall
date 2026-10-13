@@ -82,12 +82,12 @@ function promiseFor(step: number, followUp: boolean, objections: boolean): strin
 
 function ProgressBar({ current, total }: { current: number; total: number }) {
   return (
-    <div className="flex items-center gap-2 mb-8">
+    <div className="flex items-center gap-1.5 mb-8">
       {Array.from({ length: total }).map((_, i) => (
         <div
           key={i}
-          className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
-            i < current ? "brand-gradient" : "bg-slate-200"
+          className={`h-1 flex-1 rounded-full transition-colors duration-300 ${
+            i < current ? "bg-[color:var(--primary)]" : "bg-slate-200"
           }`}
         />
       ))}
@@ -294,20 +294,20 @@ export default function OnboardingPage() {
   const promise = promiseFor(step, isEnabled("follow_up"), isEnabled("objections"));
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-slate-100">
-        <div className="max-w-4xl mx-auto px-6 h-14 flex items-center justify-between">
+      <header>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 brand-gradient rounded-lg flex items-center justify-center">
-              <span className="text-white text-xs font-bold">B</span>
-            </div>
-            <span className="font-semibold text-slate-900">Brief</span>
+            <span className="grid h-7 w-7 place-items-center rounded-lg bg-[color:var(--primary)] text-[13px] font-semibold text-white">
+              B
+            </span>
+            <span className="text-[16px] font-semibold tracking-tight text-slate-900">Brief</span>
           </div>
           {!account.needsCompany && (
             <button
               onClick={() => handleFinish(true)}
-              className="text-sm text-slate-400 hover:text-slate-600 transition-colors"
+              className="text-[13px] text-slate-500 hover:text-slate-900 transition-colors"
             >
               Ignorer l&apos;onboarding
             </button>
@@ -315,7 +315,7 @@ export default function OnboardingPage() {
         </div>
       </header>
 
-      <main className="flex-1 flex items-center justify-center px-4 py-12">
+      <main className="flex-1 flex items-center justify-center px-4 py-8 sm:py-12">
         {!accountLoaded ? null : showWelcome ? (
           <WelcomeStep firstName={firstName} onStart={() => setWelcomeDone(true)} />
         ) : (
@@ -324,20 +324,20 @@ export default function OnboardingPage() {
           <ProgressBar current={step} total={totalSteps} />
 
           {/* Step indicator */}
-          <p className="text-xs font-semibold text-[color:var(--violet)] uppercase tracking-wider mb-2">
+          <p className="text-[12px] font-semibold text-[color:var(--violet)] uppercase tracking-[0.08em] mb-3">
             {pillar} · étape {step} sur {totalSteps}
           </p>
 
           <div className={showPreview ? "grid gap-6 lg:grid-cols-[1fr_320px] lg:items-start" : ""}>
           {/* Card */}
-          <div className="bg-white rounded-2xl border border-border shadow-sm p-8">
+          <div className="bg-white rounded-2xl border border-border p-5 sm:p-8">
             {/* La promesse AVANT la question : on explique ce que Brief fera,
                 puis on demande ce dont il a besoin pour le faire. */}
-            <p className="mb-5 rounded-xl bg-[color:var(--lavender)] px-4 py-3 text-[13px] leading-relaxed text-slate-700">
+            <p className="mb-6 rounded-2xl bg-[color:var(--lavender)] px-4 py-3 text-[13.5px] leading-relaxed text-slate-700">
               {promise}
             </p>
-            <h1 className="text-xl font-bold text-slate-900 mb-1">{title}</h1>
-            <p className="text-sm text-slate-500 mb-6">{subtitle}</p>
+            <h1 className="text-[24px] sm:text-[28px] leading-[1.15] font-semibold tracking-[-0.03em] text-slate-900 mb-1.5">{title}</h1>
+            <p className="text-[14.5px] leading-relaxed text-slate-500 mb-6">{subtitle}</p>
 
             {/* ── Step 1 ── */}
             {step === 1 && (
@@ -347,7 +347,7 @@ export default function OnboardingPage() {
                 autoFocus
                 rows={4}
                 placeholder="Ex : Un logiciel de gestion de devis pour les artisans du bâtiment"
-                className="w-full px-3.5 py-3 border border-border rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] resize-none leading-relaxed"
+                className="w-full px-3.5 py-3 bg-white border border-border rounded-xl text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-2 focus:ring-[color:var(--violet)]/15 resize-none leading-relaxed"
               />
             )}
 
@@ -355,7 +355,7 @@ export default function OnboardingPage() {
             {step === 2 && (
               <div className="space-y-5">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
                     Votre client idéal
                   </label>
                   <input
@@ -364,12 +364,12 @@ export default function OnboardingPage() {
                     onChange={(e) => setIcp(e.target.value)}
                     autoFocus
                     placeholder="Ex : Directeurs commerciaux de PME de 10 à 50 personnes dans l'industrie"
-                    className="w-full px-3.5 py-2.5 border border-border rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+                    className="w-full px-3.5 py-2.5 bg-white border border-border rounded-xl text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-2 focus:ring-[color:var(--violet)]/15"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-[13px] font-medium text-slate-700 mb-2">
                     Secteur
                   </label>
                   <div className="flex flex-wrap gap-2">
@@ -378,10 +378,10 @@ export default function OnboardingPage() {
                         key={s}
                         type="button"
                         onClick={() => setSector(s === sector ? "" : s)}
-                        className={`text-sm px-3.5 py-1.5 rounded-full border font-medium transition-all ${
+                        className={`text-[13px] px-3.5 py-1.5 rounded-full border font-medium transition-colors ${
                           sector === s
-                            ? "brand-gradient text-white border-[color:var(--violet)]"
-                            : "bg-white text-slate-600 border-border hover:border-[color:var(--lavender-strong)] hover:text-[color:var(--violet)]"
+                            ? "bg-[color:var(--primary)] text-white border-[color:var(--primary)]"
+                            : "bg-white text-slate-600 border-border hover:border-slate-300 hover:text-slate-900"
                         }`}
                       >
                         {s}
@@ -396,7 +396,7 @@ export default function OnboardingPage() {
             {step === 3 && (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
                     {account.needsCompany ? "Nom de votre entreprise" : "Nom commercial"}
                   </label>
                   <input
@@ -407,15 +407,15 @@ export default function OnboardingPage() {
                     required={account.needsCompany}
                     maxLength={200}
                     placeholder="Ex : Acme Solutions"
-                    className="w-full px-3.5 py-2.5 border border-border rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+                    className="w-full px-3.5 py-2.5 bg-white border border-border rounded-xl text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-2 focus:ring-[color:var(--violet)]/15"
                   />
                   {account.needsCompany && (
-                    <p className="mt-1.5 text-xs text-slate-400">Obligatoire : votre compte Brief est rattaché à cette entreprise.</p>
+                    <p className="mt-1.5 text-[12px] text-slate-500">Obligatoire : votre compte Brief est rattaché à cette entreprise.</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
                     Votre proposition de valeur en une phrase
                   </label>
                   <input
@@ -423,7 +423,7 @@ export default function OnboardingPage() {
                     value={valueProposition}
                     onChange={(e) => setValueProposition(e.target.value)}
                     placeholder="Ex : Nous aidons les artisans à créer des devis professionnels en 2 minutes"
-                    className="w-full px-3.5 py-2.5 border border-border rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+                    className="w-full px-3.5 py-2.5 bg-white border border-border rounded-xl text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-2 focus:ring-[color:var(--violet)]/15"
                   />
                 </div>
               </div>
@@ -433,7 +433,7 @@ export default function OnboardingPage() {
             {step === 4 && (
               <div className="space-y-4">
                 {calendarConnected ? (
-                  <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                  <p className="rounded-2xl bg-[color:var(--success-soft)] px-4 py-3 text-[13.5px] leading-relaxed text-emerald-800">
                     Agenda connecté. Vos prochains rendez-vous en visio seront enregistrés et analysés
                     automatiquement.
                   </p>
@@ -447,19 +447,19 @@ export default function OnboardingPage() {
                       <a
                         href="/api/recall/google-oauth/start?return=/onboarding%3Fstep%3D4"
                         onClick={connectCalendar}
-                        className="inline-flex items-center gap-2 brand-gradient text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:brightness-110 transition-all"
+                        className="inline-flex h-11 w-full sm:w-auto items-center justify-center gap-2 rounded-full border border-border bg-white px-5 text-[14px] font-medium text-slate-900 hover:border-slate-900 transition-colors"
                       >
                         Connecter Google Agenda
                       </a>
                       <a
                         href="/api/recall/microsoft-oauth/start?return=/onboarding%3Fstep%3D4"
                         onClick={connectCalendar}
-                        className="inline-flex items-center gap-2 bg-slate-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-slate-800 transition-colors"
+                        className="inline-flex h-11 w-full sm:w-auto items-center justify-center gap-2 rounded-full border border-border bg-white px-5 text-[14px] font-medium text-slate-900 hover:border-slate-900 transition-colors"
                       >
                         Connecter Outlook
                       </a>
                     </div>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-[12.5px] leading-relaxed text-slate-500">
                       Brief lit uniquement vos rendez-vous à venir pour savoir quand se joindre. Vous pourrez le
                       déconnecter à tout moment.
                     </p>
@@ -475,37 +475,37 @@ export default function OnboardingPage() {
                   <button
                     type="button"
                     onClick={() => { setRefMode("upload"); setRefFile(null); }}
-                    className={`flex flex-col items-start gap-1.5 p-4 rounded-xl border-2 text-left transition-all ${
+                    className={`flex flex-col items-start gap-1.5 p-4 rounded-2xl border text-left transition-colors ${
                       refMode === "upload"
-                        ? "border-[color:var(--violet)] bg-[color:var(--lavender)]"
+                        ? "border-[color:var(--violet)] bg-[color:var(--lavender)] ring-1 ring-[color:var(--violet)]"
                         : "border-border hover:border-slate-300 bg-white"
                     }`}
                   >
-                    <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
+                    <div className="w-8 h-8 bg-white border border-border rounded-lg flex items-center justify-center">
                       <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                       </svg>
                     </div>
-                    <p className="text-sm font-semibold text-slate-800">Importer un fichier</p>
-                    <p className="text-xs text-slate-400">PDF, Word, Excel</p>
+                    <p className="text-[13.5px] font-semibold text-slate-900">Importer un fichier</p>
+                    <p className="text-[12px] text-slate-500">PDF, Word, Excel</p>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => { setRefMode("text"); setRefFile(null); }}
-                    className={`flex flex-col items-start gap-1.5 p-4 rounded-xl border-2 text-left transition-all ${
+                    className={`flex flex-col items-start gap-1.5 p-4 rounded-2xl border text-left transition-colors ${
                       refMode === "text"
-                        ? "border-[color:var(--violet)] bg-[color:var(--lavender)]"
+                        ? "border-[color:var(--violet)] bg-[color:var(--lavender)] ring-1 ring-[color:var(--violet)]"
                         : "border-border hover:border-slate-300 bg-white"
                     }`}
                   >
-                    <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
+                    <div className="w-8 h-8 bg-white border border-border rounded-lg flex items-center justify-center">
                       <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                     </div>
-                    <p className="text-sm font-semibold text-slate-800">Saisie libre</p>
-                    <p className="text-xs text-slate-400">Copier-coller du texte</p>
+                    <p className="text-[13.5px] font-semibold text-slate-900">Saisie libre</p>
+                    <p className="text-[12px] text-slate-500">Copier-coller du texte</p>
                   </button>
                 </div>
 
@@ -519,7 +519,7 @@ export default function OnboardingPage() {
                       onChange={(e) => setRefFile(e.target.files?.[0] ?? null)}
                     />
                     {refFile ? (
-                      <div className="flex items-center gap-3 px-4 py-3 bg-[color:var(--lavender)] border border-[color:var(--lavender-strong)] rounded-lg">
+                      <div className="flex items-center gap-3 px-4 py-3 bg-[color:var(--lavender)] rounded-xl">
                         <svg className="w-4 h-4 text-[color:var(--violet)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -527,7 +527,7 @@ export default function OnboardingPage() {
                         <button
                           type="button"
                           onClick={() => setRefFile(null)}
-                          className="text-xs text-[color:var(--violet)] hover:text-[color:var(--violet)]"
+                          className="text-[12.5px] font-medium text-[color:var(--violet)] hover:underline"
                         >
                           Changer
                         </button>
@@ -536,7 +536,7 @@ export default function OnboardingPage() {
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="w-full flex flex-col items-center gap-2 px-4 py-6 border-2 border-dashed border-border rounded-xl hover:border-[color:var(--lavender-strong)] hover:bg-[color:var(--lavender)] transition-all text-slate-500 text-sm"
+                        className="w-full flex flex-col items-center gap-2 px-4 py-7 border border-dashed border-slate-300 rounded-2xl bg-white hover:border-[color:var(--violet)] hover:bg-[color:var(--lavender)] transition-colors text-slate-500 text-[13.5px]"
                       >
                         <svg className="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
@@ -554,14 +554,14 @@ export default function OnboardingPage() {
                     autoFocus
                     rows={5}
                     placeholder="Collez ici vos références clients : nom du client, secteur, problème résolu, résultats obtenus..."
-                    className="w-full px-3.5 py-3 border border-border rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] resize-none leading-relaxed"
+                    className="w-full px-3.5 py-3 bg-white border border-border rounded-xl text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-2 focus:ring-[color:var(--violet)]/15 resize-none leading-relaxed"
                   />
                 )}
               </div>
             )}
 
             {/* ── Navigation ── */}
-            <div className="flex items-center justify-between mt-8">
+            <div className="flex items-center justify-between gap-3 mt-8">
               {!isLast ? (
                 <>
                   {companyMissing ? (
@@ -569,7 +569,7 @@ export default function OnboardingPage() {
                   ) : (
                     <button
                       onClick={advance}
-                      className="text-sm text-slate-400 hover:text-slate-600 transition-colors"
+                      className="text-[13px] text-slate-500 hover:text-slate-900 transition-colors"
                     >
                       Passer
                     </button>
@@ -577,7 +577,7 @@ export default function OnboardingPage() {
                   <button
                     onClick={advance}
                     disabled={companyMissing}
-                    className="flex items-center gap-2 brand-gradient text-white text-sm font-semibold px-6 py-2.5 rounded-lg hover:brightness-110 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex h-10 items-center gap-2 rounded-lg bg-[color:var(--primary)] px-5 text-[14px] font-medium text-white hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Continuer
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -586,7 +586,7 @@ export default function OnboardingPage() {
                   </button>
                 </>
               ) : (
-                <div className="flex items-center justify-between w-full">
+                <div className="flex items-center justify-between gap-3 w-full">
                   {/* Dernière étape. Références : « Terminer » tant que rien
                       n'est choisi — le bouton n'est plus grisé sans raison
                       apparente —, « Importer et terminer » dès qu'un fichier
@@ -596,7 +596,7 @@ export default function OnboardingPage() {
                     <button
                       onClick={() => handleFinish(false)}
                       disabled={saving || refLoading}
-                      className="text-sm text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
+                      className="text-[13px] text-slate-500 hover:text-slate-900 transition-colors disabled:opacity-50"
                     >
                       Passer cette étape
                     </button>
@@ -606,14 +606,14 @@ export default function OnboardingPage() {
                   <button
                     onClick={step === 5 && hasRefContent ? handleImport : () => handleFinish(false)}
                     disabled={saving || refLoading || companyMissing}
-                    className="flex items-center gap-2 brand-gradient text-white text-sm font-semibold px-7 py-2.5 rounded-lg hover:brightness-110 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex h-10 items-center gap-2 rounded-lg bg-[color:var(--primary)] px-5 text-[14px] font-medium text-white hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {refLoading ? "Import en cours…" : step === 5 && hasRefContent ? "Importer et terminer →" : "Terminer →"}
                   </button>
                 </div>
               )}
             </div>
-            {saveError && <p className="mt-3 text-sm text-red-600">{saveError}</p>}
+            {saveError && <p className="mt-3 text-[13px] text-rose-700">{saveError}</p>}
           </div>
 
           {/* L'aperçu n'accompagne que les étapes de profil : sur l'agenda et
@@ -639,7 +639,7 @@ export default function OnboardingPage() {
               <div
                 key={s.step}
                 className={`w-1.5 h-1.5 rounded-full transition-all ${
-                  s.step === step ? "brand-gradient w-4" : "bg-slate-300"
+                  s.step === step ? "bg-[color:var(--primary)] w-4" : "bg-slate-300"
                 }`}
               />
             ))}

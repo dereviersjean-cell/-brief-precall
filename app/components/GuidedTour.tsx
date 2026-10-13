@@ -468,7 +468,7 @@ export default function GuidedTour() {
 
       <div
         ref={bubbleRef}
-        className={`pointer-events-auto absolute flex w-[340px] flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-2xl transition-opacity ${
+        className={`pointer-events-auto absolute flex w-[340px] flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-[var(--shadow-md)] transition-opacity ${
           // Bulle contrainte de recouvrir du contenu : elle s'efface au survol
           // pour qu'on puisse relire ce qui est dessous, plutôt que d'obliger à
           // fermer la visite.
@@ -508,7 +508,7 @@ export default function GuidedTour() {
           type="button"
           onClick={close}
           aria-label="Fermer la visite"
-          className="absolute right-3 top-3 z-10 text-slate-300 transition-colors hover:text-slate-500"
+          className="absolute right-3 top-3 z-10 grid h-7 w-7 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
         >
           <X className="h-4 w-4" />
         </button>
@@ -519,7 +519,7 @@ export default function GuidedTour() {
         <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-5">
           <Header step={step} />
         </div>
-        <div className="shrink-0 border-t border-slate-100 px-5 pb-5 pt-3">
+        <div className="shrink-0 border-t border-border px-5 pb-5 pt-3.5">
           <Footer index={index} total={steps.length} isLast={isLast} onClose={close} onNext={next} />
         </div>
       </div>
@@ -535,10 +535,10 @@ function Header({ step }: { step: TourStep }) {
   return (
     <>
       <div className="flex flex-wrap items-center gap-2 pr-5">
-        <span className="rounded-full bg-[color:var(--lavender)] px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider text-[color:var(--violet)]">
+        <span className="rounded-full bg-[color:var(--lavender)] px-2 py-0.5 text-[11.5px] font-semibold text-[color:var(--violet)]">
           {step.phase}
         </span>
-        <span className="text-[10.5px] font-medium uppercase tracking-wider text-slate-400">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">
           {KIND_LABEL[step.kind]}
         </span>
       </div>
@@ -546,11 +546,11 @@ function Header({ step }: { step: TourStep }) {
       {/* Où retrouver cet écran une fois la visite finie. Sans ce repère, on
           comprend ce qu'on regarde sans savoir y revenir. */}
       <p className="mt-2 flex items-center gap-1.5 text-[11.5px] font-medium text-slate-500">
-        <MapPin className="h-3 w-3 shrink-0 text-slate-300" />
+        <MapPin className="h-3 w-3 shrink-0 text-slate-400" />
         {step.where}
       </p>
 
-      <h3 className="mt-2.5 pr-5 text-[15px] font-semibold text-slate-900">{step.title}</h3>
+      <h3 className="mt-2.5 pr-5 text-[16px] font-semibold tracking-[-0.01em] text-slate-900">{step.title}</h3>
       <p className="mt-1.5 text-[13px] leading-relaxed text-slate-600">{step.body}</p>
     </>
   );
@@ -583,18 +583,18 @@ function Footer({
           />
         ))}
       </div>
-      <p className="mt-1.5 text-[11px] text-slate-400">
+      <p className="mt-1.5 text-[11px] tabular-nums text-slate-500">
         Étape {index + 1} sur {total}
       </p>
 
       <div className="mt-4 flex items-center justify-between gap-3">
-        <button type="button" onClick={onClose} className="text-[12.5px] text-slate-400 hover:text-slate-600">
+        <button type="button" onClick={onClose} className="text-[12.5px] text-slate-500 transition-colors hover:text-slate-900">
           Passer la visite
         </button>
         <button
           type="button"
           onClick={onNext}
-          className="inline-flex h-8 items-center gap-1.5 rounded-lg brand-gradient px-3 text-[12.5px] font-medium text-white transition-all hover:brightness-110"
+          className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[color:var(--primary)] px-3 text-[12.5px] font-medium text-white transition hover:brightness-110"
         >
           {isLast ? "Terminer" : "Suivant"}
           {!isLast && <ArrowRight className="h-3.5 w-3.5" />}

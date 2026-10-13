@@ -36,7 +36,7 @@ export default function TeamTabs() {
 
   return (
     // Collée sous la TopBar, comme PerformanceTabs — voir le commentaire là-bas.
-    <nav className="sticky top-14 z-[9] flex items-center gap-1 overflow-x-auto no-scrollbar border-b border-border bg-white/70 px-4 backdrop-blur-xl lg:px-10">
+    <nav className="sticky top-14 z-[9] flex items-center gap-1 overflow-x-auto no-scrollbar border-b border-border bg-[color:var(--background)]/80 px-4 backdrop-blur-xl lg:px-10">
       {tabs.map((tab) => {
         const active = tab.href === "/team" ? pathname === "/team" : pathname.startsWith(tab.href);
         const Icon = tab.icon;
@@ -50,7 +50,7 @@ export default function TeamTabs() {
           >
             <Icon className="h-3.5 w-3.5" strokeWidth={active ? 2.25 : 1.75} />
             {tab.label}
-            {active && <span className="absolute inset-x-2 -bottom-px h-[2px] rounded-full brand-gradient" />}
+            {active && <span className="absolute inset-x-2 -bottom-px h-[2px] rounded-full bg-[color:var(--primary)]" />}
           </Link>
         );
       })}

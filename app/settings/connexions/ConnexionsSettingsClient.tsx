@@ -99,15 +99,15 @@ export default function ConnexionsSettingsClient({
   return (
     <div>
       {toast && (
-        <div className={`mb-6 rounded-xl border px-4 py-3 flex items-center justify-between gap-4 ${
-          toast.type === "success" ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"
+        <div className={`mb-6 flex items-center justify-between gap-4 rounded-xl px-4 py-3 ${
+          toast.type === "success" ? "bg-[color:var(--success-soft)]" : "bg-[color:var(--danger-soft)]"
         }`}>
-          <p className={`text-sm font-medium ${toast.type === "success" ? "text-emerald-700" : "text-red-700"}`}>
+          <p className={`text-[13px] font-medium ${toast.type === "success" ? "text-emerald-700" : "text-rose-700"}`}>
             {toast.message}
           </p>
           <button
             onClick={() => setToast(null)}
-            className={`shrink-0 text-lg leading-none ${toast.type === "success" ? "text-emerald-400 hover:text-emerald-600" : "text-red-400 hover:text-red-600"}`}
+            className={`shrink-0 text-lg leading-none ${toast.type === "success" ? "text-emerald-700/60 hover:text-emerald-700" : "text-rose-700/60 hover:text-rose-700"}`}
           >
             ×
           </button>
@@ -129,19 +129,19 @@ export default function ConnexionsSettingsClient({
         est à demander, et aucun appel n&apos;est enregistré ni analysé.
       </HowItWorksCard>
 
-      <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)]">
-        <div className="px-6 py-5">
-          <h2 className="text-sm font-semibold text-slate-900 mb-1">Calendrier Recall</h2>
-          <p className="text-sm text-slate-500 mb-4">
+      <div className="rounded-2xl border border-border bg-white">
+        <div className="px-5 py-5 sm:px-6">
+          <h2 className="mb-1 text-[14px] font-semibold text-slate-900">Calendrier Recall</h2>
+          <p className="mb-4 text-[13px] leading-relaxed text-slate-500">
             Permet l&apos;enregistrement et l&apos;analyse automatique de vos appels avec des prospects.
           </p>
           {recallConnected && recallDisconnected ? (
             // Reconnecter crée un nouvel agenda chez Recall ; l'ancien, coupé,
             // est supprimé au retour (saveReconnectedCalendar).
-            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl bg-[color:var(--danger-soft)] px-4 py-3">
               <div>
-                <p className="text-sm font-medium text-red-700">Agenda déconnecté</p>
-                <p className="text-sm text-red-600 mt-0.5">
+                <p className="text-[13px] font-semibold text-rose-700">Agenda déconnecté</p>
+                <p className="mt-0.5 text-[13px] text-rose-700">
                   L&apos;accès à votre agenda a expiré
                   {recallDisconnectedSince
                     ? ` le ${new Date(recallDisconnectedSince).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}`
@@ -151,18 +151,18 @@ export default function ConnexionsSettingsClient({
               </div>
               <a
                 href={recallPlatform === "microsoft_outlook" ? "/api/recall/microsoft-oauth/start" : "/api/recall/google-oauth/start"}
-                className="inline-flex items-center gap-2 brand-gradient text-white text-sm font-semibold px-4 py-2 rounded-lg hover:brightness-110 transition-colors shrink-0"
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110"
               >
                 Reconnecter mon agenda
               </a>
             </div>
           ) : recallConnected ? (
-            <div className="flex items-center gap-3">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full">
-                <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-[color:var(--success-soft)] px-2.5 py-1">
+                <svg className="h-3.5 w-3.5 shrink-0 text-emerald-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className="text-sm font-medium text-emerald-700">Calendrier connecté</span>
+                <span className="min-w-0 truncate text-[12px] font-semibold text-emerald-700">Calendrier connecté</span>
               </div>
               <button
                 disabled={disconnecting}
@@ -176,7 +176,7 @@ export default function ConnexionsSettingsClient({
                     setDisconnecting(false);
                   }
                 }}
-                className="text-sm text-slate-400 hover:text-red-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-[13px] text-slate-500 transition-colors hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {disconnecting ? "Déconnexion…" : "Déconnecter"}
               </button>
@@ -185,7 +185,7 @@ export default function ConnexionsSettingsClient({
             <div className="flex items-center gap-3 flex-wrap">
               <a
                 href="/api/recall/google-oauth/start"
-                className="inline-flex items-center gap-2 brand-gradient text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:brightness-110 transition-colors"
+                className="inline-flex h-9 items-center gap-2 rounded-lg bg-[color:var(--primary)] px-4 text-[13px] font-medium text-white transition-all hover:brightness-110"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#fff" opacity=".9"/>
@@ -197,7 +197,7 @@ export default function ConnexionsSettingsClient({
               </a>
               <a
                 href="/api/recall/microsoft-oauth/start"
-                className="inline-flex items-center gap-2 bg-slate-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-slate-800 transition-colors"
+                className="inline-flex h-9 items-center gap-2 rounded-lg bg-slate-900 px-4 text-[13px] font-medium text-white transition-colors hover:bg-slate-800"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M11.4 0H0v11.4h11.4V0z" fill="#fff" opacity=".9"/>
@@ -219,10 +219,10 @@ export default function ConnexionsSettingsClient({
           Distribution Flexible sous-étape B) — /api/recall/google-oauth/start
           above wouldn't touch this at all, it's a different credential. */}
       {!hasCalendarWriteAccess && (
-        <div className="flex items-start gap-2.5 bg-[color:var(--warning-soft)] border border-[color:var(--warning)]/30 rounded-lg px-4 py-3 mt-6">
-          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+        <div className="mt-6 flex items-start gap-2.5 rounded-xl bg-[color:var(--warning-soft)] px-4 py-3">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm text-amber-900">
+            <p className="text-[13px] leading-relaxed text-amber-800">
               Reconnectez-vous à Google Calendar pour bénéficier des nouvelles fonctionnalités (écriture de briefs
               dans les événements).
             </p>
@@ -243,7 +243,7 @@ export default function ConnexionsSettingsClient({
                   { prompt: "consent" }
                 );
               }}
-              className="inline-block mt-2 text-xs font-semibold text-amber-900 bg-amber-100/70 hover:bg-amber-100 transition-colors px-2.5 py-1 rounded-md disabled:opacity-50"
+              className="mt-2 inline-flex h-8 items-center rounded-lg bg-white px-3 text-[12px] font-semibold text-amber-800 transition-colors hover:bg-white/70 disabled:opacity-50"
             >
               {reconnecting ? "Redirection…" : "Se reconnecter avec Google"}
             </button>
@@ -256,28 +256,28 @@ export default function ConnexionsSettingsClient({
           connect/disconnect action here (that's the sidebar's "Déconnexion").
           Google sends through Gmail (gmail.send), Microsoft through Outlook
           (Mail.Send, since 28/09/2026) — send-only on both sides. */}
-      <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] mt-6">
-        <div className="px-6 py-5">
-          <h2 className="text-sm font-semibold text-slate-900 mb-1">Compte Mail</h2>
-          <p className="text-sm text-slate-500 mb-4">
+      <div className="rounded-2xl border border-border bg-white mt-6">
+        <div className="px-5 py-5 sm:px-6">
+          <h2 className="mb-1 text-[14px] font-semibold text-slate-900">Compte Mail</h2>
+          <p className="mb-4 text-[13px] leading-relaxed text-slate-500">
             Le compte utilisé pour vous connecter à Brief — envoi des emails de suivi en votre nom. Brief ne lit pas votre messagerie.
           </p>
           {mailProvider ? (
             <div className="flex items-center gap-3 flex-wrap">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full">
-                <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <div className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-[color:var(--success-soft)] px-2.5 py-1">
+                <svg className="h-3.5 w-3.5 shrink-0 text-emerald-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className="text-sm font-medium text-emerald-700">
+                <span className="min-w-0 truncate text-[12px] font-semibold text-emerald-700">
                   {mailProvider} — {session?.user?.email}
                 </span>
               </div>
-              <span className="text-xs text-slate-400">
+              <span className="text-[12px] text-slate-500">
                 Envoi via {session?.provider === "azure-ad" ? "Outlook" : "Gmail"}
               </span>
             </div>
           ) : (
-            <p className="text-sm text-slate-400">Chargement…</p>
+            <p className="text-[13px] text-slate-400">Chargement…</p>
           )}
         </div>
       </div>
@@ -287,19 +287,19 @@ export default function ConnexionsSettingsClient({
           server-side (page.tsx, via hasSlackConnection) so there's no
           loading flash. */}
       {slackEnabled && (
-      <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] mt-6">
-        <div className="px-6 py-5">
-          <h2 className="text-sm font-semibold text-slate-900 mb-1">Compte Slack</h2>
-          <p className="text-sm text-slate-500 mb-4">
+      <div className="rounded-2xl border border-border bg-white mt-6">
+        <div className="px-5 py-5 sm:px-6">
+          <h2 className="mb-1 text-[14px] font-semibold text-slate-900">Compte Slack</h2>
+          <p className="mb-4 text-[13px] leading-relaxed text-slate-500">
             Permet l&apos;envoi de vos briefs, analyses et digests en message privé sur Slack.
           </p>
           {slackConnected ? (
-            <div className="flex items-center gap-3">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full">
-                <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-[color:var(--success-soft)] px-2.5 py-1">
+                <svg className="h-3.5 w-3.5 shrink-0 text-emerald-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className="text-sm font-medium text-emerald-700">Slack connecté</span>
+                <span className="min-w-0 truncate text-[12px] font-semibold text-emerald-700">Slack connecté</span>
               </div>
               <button
                 disabled={slackDisconnecting}
@@ -313,7 +313,7 @@ export default function ConnexionsSettingsClient({
                     setSlackDisconnecting(false);
                   }
                 }}
-                className="text-sm text-slate-400 hover:text-red-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-[13px] text-slate-500 transition-colors hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {slackDisconnecting ? "Déconnexion…" : "Déconnecter"}
               </button>
@@ -321,7 +321,7 @@ export default function ConnexionsSettingsClient({
           ) : (
             <a
               href="/api/slack/start"
-              className="inline-flex items-center gap-2 bg-[#4A154B] text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-[#3d1140] transition-colors"
+              className="inline-flex h-9 items-center gap-2 rounded-lg bg-[#4A154B] px-4 text-[13px] font-medium text-white transition-colors hover:bg-[#3d1140]"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M8.845 14.522a2.528 2.528 0 0 1-2.521 2.521A2.528 2.528 0 0 1 3.803 14.522a2.528 2.528 0 0 1 2.521-2.521h2.521v2.521ZM10.108 14.522a2.528 2.528 0 0 1 2.521-2.521 2.528 2.528 0 0 1 2.521 2.521v6.31A2.528 2.528 0 0 1 12.629 23.35a2.528 2.528 0 0 1-2.521-2.521v-6.307ZM12.629 8.845a2.528 2.528 0 0 1-2.521-2.521A2.528 2.528 0 0 1 12.629 3.8a2.528 2.528 0 0 1 2.521 2.521v2.521h-2.521ZM12.629 10.108a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521h-6.31a2.528 2.528 0 0 1-2.52-2.521 2.528 2.528 0 0 1 2.52-2.521h6.307ZM18.306 12.629a2.528 2.528 0 0 1 2.521-2.521 2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521h-2.521v-2.521ZM17.043 12.629a2.528 2.528 0 0 1-2.521 2.521 2.528 2.528 0 0 1-2.521-2.521v-6.31a2.528 2.528 0 0 1 2.521-2.52 2.528 2.528 0 0 1 2.521 2.52v6.31Z" fillOpacity=".9"/>

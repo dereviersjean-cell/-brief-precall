@@ -12,7 +12,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
       <div className="flex-1 ml-0 lg:ml-60 min-w-0 bg-background">
         <BillingGraceBanner />
         <TopBar />
-        <div className="max-w-4xl mx-auto px-10 py-10">
+        <div className="max-w-4xl mx-auto px-4 py-8 sm:px-6 sm:py-10 lg:px-10">
           <PageHeader eyebrow="Compte" title="Paramètres" subtitle="Configurez votre profil commercial, vos intégrations et votre abonnement." />
           <div className="mt-6">
             <SettingsTabs />

@@ -48,11 +48,11 @@ export default function TeamInsightsClient({
   const hasAnything = totalOccurrences > 0 || (teamScores?.calls_analyzed_count ?? 0) > 0;
 
   return (
-    <div className="max-w-5xl mx-auto w-full px-6 py-8 space-y-6">
+    <div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-8 sm:px-6 sm:py-10">
       <FadeIn>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Ce que l&apos;équipe maîtrise, ce qu&apos;elle rate</h1>
-          <p className="text-slate-500 text-sm mt-1">
+          <h1 className="text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] text-slate-900">Ce que l&apos;équipe maîtrise, ce qu&apos;elle rate</h1>
+          <p className="mt-2 text-[15px] leading-relaxed text-slate-500">
             Lecture des objections rencontrées en rendez-vous et de la façon dont elles ont été traitées.
           </p>
         </div>
@@ -60,9 +60,9 @@ export default function TeamInsightsClient({
 
       {!hasAnything ? (
         <FadeIn>
-          <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-10 text-center">
-            <p className="text-slate-700 font-medium">Pas encore de calls analysés.</p>
-            <p className="text-slate-400 text-sm mt-1">
+          <div className="rounded-2xl border border-border bg-white px-6 py-12 text-center">
+            <p className="text-[14px] font-semibold text-slate-900">Pas encore de calls analysés.</p>
+            <p className="mt-1 text-[13px] text-slate-500">
               Cette page se remplit dès que les premiers rendez-vous de l&apos;équipe sont analysés.
             </p>
           </div>
@@ -74,7 +74,7 @@ export default function TeamInsightsClient({
               d'écart avec les chiffres affichés juste en dessous. */}
           {totalOccurrences > 0 && (
             <FadeIn>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <SummaryTile
                   icon={<Target className="w-4 h-4" />}
                   value={String(totalOccurrences)}
@@ -99,17 +99,17 @@ export default function TeamInsightsClient({
 
           {blockers.length > 0 && (
             <FadeIn>
-              <section className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
+              <section className="rounded-2xl border border-border bg-white p-5 sm:p-6">
                 <header className="mb-1">
-                  <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  <h2 className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">
                     Ce qui bloque le plus
                   </h2>
-                  <p className="text-sm text-slate-500 mt-1">
+                  <p className="mt-1 text-[13px] leading-relaxed text-slate-500">
                     Classé par nombre d&apos;occasions ratées — ni le volume seul, ni le taux d&apos;échec seul
                     ne disent où se trouve le vrai coût.
                   </p>
                 </header>
-                <div className="divide-y divide-slate-100">
+                <div className="divide-y divide-border">
                   {blockers.slice(0, 6).map((stat) => (
                     <ObjectionRow key={stat.categoryId ?? stat.label} stat={stat} />
                   ))}
@@ -120,12 +120,12 @@ export default function TeamInsightsClient({
 
           {mastered.length > 0 && (
             <FadeIn>
-              <section className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
+              <section className="rounded-2xl border border-border bg-white p-5 sm:p-6">
                 <header className="mb-3">
-                  <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  <h2 className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">
                     Ce que l&apos;équipe maîtrise
                   </h2>
-                  <p className="text-sm text-slate-500 mt-1">
+                  <p className="mt-1 text-[13px] leading-relaxed text-slate-500">
                     Objections systématiquement traitées — la réponse existe déjà quelque part dans
                     l&apos;équipe, elle mérite d&apos;être écrite dans le playbook.
                   </p>
@@ -134,11 +134,11 @@ export default function TeamInsightsClient({
                   {mastered.slice(0, 8).map((stat) => (
                     <span
                       key={stat.categoryId ?? stat.label}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--success-soft)] px-3 py-1 text-[12.5px] font-medium text-emerald-700"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--success-soft)] px-2.5 py-0.5 text-[11.5px] font-semibold text-emerald-700"
                     >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <CheckCircle2 className="h-3 w-3" />
                       {stat.label}
-                      <span className="text-emerald-600/70">×{stat.wellHandled}</span>
+                      <span className="tabular-nums text-emerald-700/70">×{stat.wellHandled}</span>
                     </span>
                   ))}
                 </div>
@@ -148,13 +148,13 @@ export default function TeamInsightsClient({
 
           {teamScores && teamScores.dimensions.length > 0 && (
             <FadeIn>
-              <section className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
+              <section className="rounded-2xl border border-border bg-white p-5 sm:p-6">
                 <header className="mb-4 flex items-start justify-between gap-4 flex-wrap">
                   <div>
-                    <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    <h2 className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">
                       Scores du playbook
                     </h2>
-                    <p className="text-sm text-slate-500 mt-1">
+                    <p className="mt-1 text-[13px] leading-relaxed text-slate-500">
                       Moyennes de l&apos;équipe sur {teamScores.calls_analyzed_count} call
                       {teamScores.calls_analyzed_count > 1 ? "s" : ""} analysé
                       {teamScores.calls_analyzed_count > 1 ? "s" : ""}.
@@ -171,12 +171,12 @@ export default function TeamInsightsClient({
                   {teamScores.dimensions.map((dim) => (
                     <div key={dim.key}>
                       <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-sm text-slate-600">{dim.label}</span>
-                        <span className="text-sm font-semibold text-slate-800 tabular-nums">
+                        <span className="text-[13px] text-slate-600">{dim.label}</span>
+                        <span className="text-[13px] font-semibold tabular-nums text-slate-900">
                           {dim.average !== null ? (
                             <>
                               {dim.average.toFixed(1)}
-                              <span className="text-slate-300 font-normal"> / 5</span>
+                              <span className="font-normal text-slate-400"> / 5</span>
                             </>
                           ) : (
                             "—"
@@ -192,7 +192,7 @@ export default function TeamInsightsClient({
                           />
                         ))}
                         <div
-                          className="absolute inset-y-0 left-0 rounded-full brand-gradient"
+                          className="absolute inset-y-0 left-0 rounded-full bg-[color:var(--primary)]"
                           style={{ width: `${dim.average !== null ? (dim.average / 5) * 100 : 0}%` }}
                         />
                       </div>
@@ -205,24 +205,24 @@ export default function TeamInsightsClient({
 
           {trainingStats.length > 0 && (
             <FadeIn>
-              <section className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
-                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+              <section className="rounded-2xl border border-border bg-white p-5 sm:p-6">
+                <h2 className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500 mb-1">
                   Entraînement
                 </h2>
                 {/* Volontairement limité à un agrégat : le contenu des
                     sessions est un espace sûr, jamais exposé au manager
                     (décision produit du 24/07/2026). */}
-                <p className="text-sm text-slate-500 mb-3">
+                <p className="mb-3 text-[13px] leading-relaxed text-slate-500">
                   Compteurs seuls — le contenu des sessions reste privé.
                 </p>
-                <div className="divide-y divide-slate-100">
+                <div className="divide-y divide-border">
                   {trainingStats.map((s) => (
-                    <div key={s.userId} className="flex items-center justify-between py-2.5">
-                      <span className="text-sm text-slate-700 flex items-center gap-2">
-                        <Dumbbell className="w-3.5 h-3.5 text-slate-300" />
+                    <div key={s.userId} className="flex items-center justify-between gap-3 py-2.5">
+                      <span className="flex min-w-0 items-center gap-2 text-[13px] text-slate-700">
+                        <Dumbbell className="h-3.5 w-3.5 shrink-0 text-slate-400" />
                         {s.name ?? s.email}
                       </span>
-                      <span className="text-xs text-slate-500 tabular-nums">
+                      <span className="shrink-0 text-[12px] font-semibold tabular-nums text-slate-600">
                         {s.sessionsCount} session{s.sessionsCount > 1 ? "s" : ""}
                         {s.avgScore != null && ` · ${s.avgScore.toFixed(1)}/5`}
                       </span>
@@ -250,16 +250,16 @@ function SummaryTile({
   tone: "neutral" | "success" | "danger";
 }) {
   const toneCls = {
-    neutral: "text-slate-500 bg-slate-100",
+    neutral: "text-slate-600 bg-slate-100",
     success: "text-emerald-700 bg-[color:var(--success-soft)]",
     danger: "text-rose-700 bg-[color:var(--danger-soft)]",
   }[tone];
   return (
-    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-4 flex items-center gap-3">
-      <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${toneCls}`}>{icon}</span>
+    <div className="flex items-center gap-3 rounded-2xl border border-border bg-white p-5">
+      <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${toneCls}`}>{icon}</span>
       <div className="min-w-0">
-        <p className="text-xl font-bold text-slate-900 leading-none tabular-nums">{value}</p>
-        <p className="text-xs text-slate-500 mt-1 truncate">{label}</p>
+        <p className="text-[24px] font-semibold leading-none tracking-tight tabular-nums text-slate-900">{value}</p>
+        <p className="mt-1.5 truncate text-[12px] text-slate-500">{label}</p>
       </div>
     </div>
   );
@@ -274,8 +274,8 @@ function ObjectionRow({ stat }: { stat: ObjectionCategoryStat }) {
     <div className="py-3.5">
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="min-w-0">
-          <p className="text-sm font-medium text-slate-800">{stat.label}</p>
-          <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2 flex-wrap">
+          <p className="text-[13.5px] font-semibold text-slate-900">{stat.label}</p>
+          <p className="mt-0.5 flex flex-wrap items-center gap-2 text-[12px] text-slate-500">
             <span>
               {total} occurrence{total > 1 ? "s" : ""}
             </span>
@@ -287,19 +287,19 @@ function ObjectionRow({ stat }: { stat: ObjectionCategoryStat }) {
                 cause d'échec sur laquelle le manager peut agir directement —
                 elle vaut d'être signalée ici plutôt que découverte ailleurs. */}
             {!stat.handlingGuidance?.trim() && (
-              <span className="text-amber-600">aucune réponse définie dans le playbook</span>
+              <span className="font-medium text-amber-700">aucune réponse définie dans le playbook</span>
             )}
           </p>
         </div>
-        <span className="shrink-0 rounded-full bg-[color:var(--danger-soft)] px-2.5 py-0.5 text-[11.5px] font-semibold text-rose-700 tabular-nums">
+        <span className="shrink-0 rounded-full bg-[color:var(--danger-soft)] px-2 py-0.5 text-[11.5px] font-semibold tabular-nums text-rose-700">
           {stat.notHandled} sans réponse
           {rate !== null && ` · ${Math.round(rate * 100)} %`}
         </span>
       </div>
-      <div className="flex h-2 rounded-full overflow-hidden bg-slate-100">
-        <div className="bg-emerald-400" style={{ width: `${pct(stat.wellHandled)}%` }} />
-        <div className="bg-amber-300" style={{ width: `${pct(stat.partiallyHandled)}%` }} />
-        <div className="bg-rose-400" style={{ width: `${pct(stat.notHandled)}%` }} />
+      <div className="flex h-2.5 overflow-hidden rounded-full bg-slate-100">
+        <div className="bg-[color:var(--success)]" style={{ width: `${pct(stat.wellHandled)}%` }} />
+        <div className="bg-[color:var(--warning)]" style={{ width: `${pct(stat.partiallyHandled)}%` }} />
+        <div className="bg-[color:var(--danger)]" style={{ width: `${pct(stat.notHandled)}%` }} />
       </div>
     </div>
   );

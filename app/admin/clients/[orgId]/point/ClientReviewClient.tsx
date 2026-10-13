@@ -31,20 +31,20 @@ function formatScore(score: number | null): string {
 function Delta({ now, before, decimals = 0 }: { now: number | null; before: number | null; decimals?: number }) {
   if (now === null || before === null) return null;
   const diff = now - before;
-  if (Math.abs(diff) < (decimals ? 0.05 : 1)) return <span className="text-xs text-slate-400">stable</span>;
+  if (Math.abs(diff) < (decimals ? 0.05 : 1)) return <span className="text-[11.5px] text-slate-400">stable</span>;
   const text = `${diff > 0 ? "+" : ""}${diff.toFixed(decimals).replace(".", ",")}`;
-  return <span className={`text-xs font-medium ${diff > 0 ? "text-emerald-600" : "text-red-600"}`}>{text}</span>;
+  return <span className={`text-[11.5px] font-semibold tabular-nums ${diff > 0 ? "text-emerald-700" : "text-rose-700"}`}>{text}</span>;
 }
 
 function Section({ step, title, duration, children }: { step?: number; title: string; duration?: string; children: ReactNode }) {
   return (
-    <section className="bg-white rounded-2xl border border-border p-6 shadow-[var(--shadow-sm)]">
-      <div className="flex items-baseline justify-between gap-3 mb-4">
+    <section className="rounded-2xl border border-border bg-white p-6">
+      <div className="mb-4 flex items-baseline justify-between gap-3">
         <h2 className="text-[15px] font-semibold tracking-tight text-slate-900">
-          {step !== undefined && <span className="mr-2 text-[color:var(--violet)]">{step}.</span>}
+          {step !== undefined && <span className="mr-2 tabular-nums text-[color:var(--violet)]">{step}.</span>}
           {title}
         </h2>
-        {duration && <span className="text-xs text-slate-400">{duration}</span>}
+        {duration && <span className="text-[12px] tabular-nums text-slate-500">{duration}</span>}
       </div>
       {children}
     </section>
@@ -54,21 +54,21 @@ function Section({ step, title, duration, children }: { step?: number; title: st
 function CriterionBox({ label, criterion, result }: { label: string; criterion: string; result: CriterionResult }) {
   const tone =
     result.status === "met"
-      ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+      ? "bg-[color:var(--success-soft)] text-emerald-900"
       : result.status === "unmet"
-      ? "border-amber-200 bg-amber-50 text-amber-900"
-      : "border-border bg-slate-50 text-slate-700";
+      ? "bg-[color:var(--warning-soft)] text-amber-900"
+      : "bg-slate-50 text-slate-700";
   const Icon = result.status === "met" ? CheckCircle2 : result.status === "unmet" ? AlertTriangle : CircleDashed;
   return (
-    <div className={`rounded-xl border px-4 py-3 ${tone}`}>
-      <p className="flex items-start gap-2 text-sm">
+    <div className={`rounded-xl px-4 py-3 ${tone}`}>
+      <p className="flex items-start gap-2 text-[13.5px] leading-relaxed">
         <Icon className="mt-0.5 h-4 w-4 shrink-0" />
         <span>
           <span className="font-medium">{label} :</span> {criterion} <span className="opacity-80">— {result.detail}</span>
         </span>
       </p>
       {result.missing.length > 0 && (
-        <ul className="mt-2 ml-6 list-disc space-y-0.5 text-sm">
+        <ul className="ml-6 mt-2 list-disc space-y-0.5 text-[13px]">
           {result.missing.map((m) => (
             <li key={m}>{m}</li>
           ))}
@@ -122,7 +122,7 @@ function OpenModuleButton({
 
   if (open) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
+      <span className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[color:var(--success-soft)] px-3.5 text-[13px] font-medium text-emerald-700">
         <CheckCircle2 className="h-4 w-4" /> {label} ouvert
       </span>
     );
@@ -132,11 +132,11 @@ function OpenModuleButton({
       <button
         onClick={() => void openModule()}
         disabled={pending}
-        className="px-4 py-2 brand-gradient text-white rounded-lg text-sm font-medium hover:brightness-110 disabled:opacity-50"
+        className="inline-flex h-9 items-center rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {pending ? "Ouverture…" : `Ouvrir ${label}`}
       </button>
-      {error && <span className="text-xs text-red-600">{error}</span>}
+      {error && <span className="text-[12px] text-rose-700">{error}</span>}
     </span>
   );
 }
@@ -170,30 +170,30 @@ function CallCard({ label, call }: { label: string; call: ReviewCall }) {
 
   return (
     <div className="rounded-xl border border-border p-4">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">{label}</p>
       <div className="mt-1 flex items-baseline justify-between gap-3">
-        <p className="font-medium text-slate-900">{call.title}</p>
-        <p className="shrink-0 text-sm font-semibold text-slate-900">{formatScore(call.score)}/5</p>
+        <p className="text-[14px] font-semibold text-slate-900">{call.title}</p>
+        <p className="shrink-0 text-[14px] font-semibold tabular-nums text-slate-900">{formatScore(call.score)}/5</p>
       </div>
-      <p className="text-xs text-slate-500">
+      <p className="text-[12px] text-slate-500">
         {call.userLabel} · {formatDay(call.createdAt)}
       </p>
-      {call.summary && <p className="mt-2 text-sm text-slate-600 line-clamp-3">{call.summary}</p>}
+      {call.summary && <p className="mt-2 line-clamp-3 text-[13px] leading-relaxed text-slate-600">{call.summary}</p>}
       {(call.strength || call.weakness) && (
-        <ul className="mt-2 space-y-1 text-sm">
+        <ul className="mt-2 space-y-1 text-[13px]">
           {call.strength && <li className="text-emerald-700">+ {call.strength}</li>}
-          {call.weakness && <li className="text-orange-700">△ {call.weakness}</li>}
+          {call.weakness && <li className="text-amber-700">△ {call.weakness}</li>}
         </ul>
       )}
       <button
         onClick={() => void openAsUser()}
         disabled={pending}
-        className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-[color:var(--violet)] hover:text-[color:var(--violet)] disabled:opacity-50"
+        className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-[color:var(--violet)] hover:underline disabled:opacity-50"
       >
         <Play className="h-3.5 w-3.5" />
         {pending ? "Ouverture…" : `Ouvrir dans le compte de ${call.userLabel}`}
       </button>
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-[12px] text-rose-700">{error}</p>}
     </div>
   );
 }
@@ -218,9 +218,9 @@ export default function ClientReviewClient({ review }: { review: ClientReview })
     <AdminPageShell maxWidth="max-w-5xl">
       <Link
         href={`/admin/clients/${overview.id}`}
-        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-[color:var(--violet)] transition-colors mb-4"
+        className="mb-4 inline-flex items-center gap-1.5 text-[13px] font-medium text-slate-500 transition-colors hover:text-slate-900"
       >
-        <ArrowLeft className="w-4 h-4" />
+        <ArrowLeft className="h-4 w-4" />
         Fiche client
       </Link>
 
@@ -236,7 +236,7 @@ export default function ClientReviewClient({ review }: { review: ClientReview })
         }
       />
 
-      <p className="-mt-2 mb-6 text-xs text-slate-400">
+      <p className="-mt-2 mb-6 text-[12px] text-slate-500">
         Chiffres des 7 derniers jours, comparés aux 7 précédents. Calculé le {formatReview(review.generatedAt)}.
       </p>
 
@@ -251,10 +251,10 @@ export default function ClientReviewClient({ review }: { review: ClientReview })
           },
           { label: "RDV dans les 7 jours", value: String(totals.upcomingMeetings), delta: null },
         ].map((tile) => (
-          <div key={tile.label} className="bg-white rounded-2xl border border-border px-4 py-3 shadow-[var(--shadow-sm)]">
-            <p className="text-xs text-slate-500">{tile.label}</p>
-            <p className="mt-1 flex items-baseline gap-2">
-              <span className="text-xl font-semibold text-slate-900">{tile.value}</span>
+          <div key={tile.label} className="rounded-2xl border border-border bg-white p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">{tile.label}</p>
+            <p className="mt-2.5 flex items-baseline gap-2">
+              <span className="text-[24px] font-semibold leading-none tracking-tight tabular-nums text-slate-900">{tile.value}</span>
               {tile.delta}
             </p>
           </div>
@@ -264,18 +264,18 @@ export default function ClientReviewClient({ review }: { review: ClientReview })
       <div className="space-y-6">
         <Section step={1} title="Le constat de la semaine" duration="10 min">
           {review.findings.length === 0 ? (
-            <p className="text-sm text-slate-500">
+            <p className="text-[13.5px] text-slate-500">
               Pas assez de calls analysés cette semaine pour un constat chiffré. Appuyez-vous sur les chiffres ci-dessus
               ou sur un call à montrer.
             </p>
           ) : (
             <>
-              <p className="mb-3 text-xs text-slate-400">Choisissez-en un seul : c&apos;est lui qui ouvre le point.</p>
+              <p className="mb-3 text-[12px] text-slate-500">Choisissez-en un seul : c&apos;est lui qui ouvre le point.</p>
               <ul className="space-y-3">
                 {review.findings.map((f) => (
                   <li key={f.text} className="rounded-xl border border-border px-4 py-3">
-                    <p className="text-sm font-medium text-slate-900">« {f.text} »</p>
-                    <p className="mt-0.5 text-xs text-slate-400">{f.source}</p>
+                    <p className="text-[13.5px] font-medium text-slate-900">« {f.text} »</p>
+                    <p className="mt-0.5 text-[12px] text-slate-500">{f.source}</p>
                   </li>
                 ))}
               </ul>
@@ -285,7 +285,7 @@ export default function ClientReviewClient({ review }: { review: ClientReview })
 
         <Section step={2} title="Le module de la semaine" duration="10 min">
           {!step ? (
-            <p className="text-sm text-slate-500">
+            <p className="text-[13.5px] text-slate-500">
               {overview.inParcours
                 ? "Le parcours n'a pas de date de début : renseignez-la dans le panneau Suivi de la fiche client."
                 : "Client hors parcours : tous les modules sont ouverts. Le point sert au constat et aux blocages."}
@@ -293,14 +293,14 @@ export default function ClientReviewClient({ review }: { review: ClientReview })
           ) : (
             <div className="space-y-4">
               <div>
-                <p className="text-base font-semibold text-slate-900">
+                <p className="text-[15px] font-semibold tracking-tight text-slate-900">
                   Semaine {step.present.week} — {step.present.title}
                 </p>
-                <p className="mt-1 text-sm text-slate-600">
+                <p className="mt-1 text-[13.5px] leading-relaxed text-slate-600">
                   <span className="font-medium text-slate-900">Ce qu&apos;on montre :</span> {step.present.show}
                 </p>
                 {step.readiness.length > 0 && (
-                  <ul className="mt-2 space-y-0.5 text-sm text-slate-600">
+                  <ul className="mt-2 space-y-0.5 text-[13.5px] text-slate-600">
                     {step.readiness.map((r) => (
                       <li key={r}>· {r}</li>
                     ))}
@@ -312,7 +312,7 @@ export default function ClientReviewClient({ review }: { review: ClientReview })
                 <>
                   <CriterionBox label={`Critère de la semaine ${step.gate.week}`} criterion={step.gate.criterion} result={step.gateResult} />
                   {step.gateResult.status === "unmet" && step.toOpen.length > 0 && (
-                    <p className="text-sm text-amber-800">
+                    <p className="text-[13px] text-amber-800">
                       Règle du parcours : un module ne s&apos;ouvre que si le précédent sert. Cette semaine sert plutôt à
                       débloquer ce qui précède.
                     </p>
@@ -321,7 +321,7 @@ export default function ClientReviewClient({ review }: { review: ClientReview })
               )}
 
               {step.present.modules.length === 0 ? (
-                <p className="text-sm text-slate-500">Socle : rien à activer, à présenter sur ses propres données.</p>
+                <p className="text-[13.5px] text-slate-500">Socle : rien à activer, à présenter sur ses propres données.</p>
               ) : (
                 <div className="flex flex-wrap gap-3">
                   {step.present.modules.map((key) => (
@@ -349,11 +349,11 @@ export default function ClientReviewClient({ review }: { review: ClientReview })
 
         <Section step={3} title="L'action pour la semaine suivante" duration="5 min">
           {!step ? (
-            <p className="text-sm text-slate-500">Une seule action, décidée avec le client à partir du constat.</p>
+            <p className="text-[13.5px] text-slate-500">Une seule action, décidée avec le client à partir du constat.</p>
           ) : (
             <div className="space-y-3">
               <CriterionBox label={`Critère de la semaine ${step.present.week}`} criterion={step.present.criterion} result={step.presentResult} />
-              <p className="text-sm text-slate-500">
+              <p className="text-[13.5px] text-slate-500">
                 {step.presentResult.status === "met"
                   ? "Critère déjà atteint : proposez de passer à l'étape suivante au prochain point."
                   : step.presentResult.status === "unmet"
@@ -366,12 +366,12 @@ export default function ClientReviewClient({ review }: { review: ClientReview })
 
         <Section step={4} title="Les blocages" duration="5 min">
           {review.blockers.length === 0 ? (
-            <p className="text-sm text-slate-500">Aucun blocage : agendas branchés, invitations acceptées, équipe active.</p>
+            <p className="text-[13.5px] text-slate-500">Aucun blocage : agendas branchés, invitations acceptées, équipe active.</p>
           ) : (
             <ul className="space-y-2">
               {review.blockers.map((b) => (
-                <li key={b.text} className="flex items-start gap-2 text-sm">
-                  <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${b.severity === "danger" ? "bg-red-500" : "bg-amber-400"}`} />
+                <li key={b.text} className="flex items-start gap-2 text-[13.5px]">
+                  <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${b.severity === "danger" ? "bg-[color:var(--danger)]" : "bg-[color:var(--warning)]"}`} />
                   <span className="text-slate-700">{b.text}</span>
                 </li>
               ))}
@@ -381,12 +381,12 @@ export default function ClientReviewClient({ review }: { review: ClientReview })
 
         <Section title="Par commercial">
           {review.members.length === 0 ? (
-            <p className="text-sm text-slate-500">Aucun membre.</p>
+            <p className="text-[13.5px] text-slate-500">Aucun membre.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-[13px]">
                 <thead>
-                  <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
+                  <tr className="border-b border-border text-left text-[11px] uppercase tracking-[0.07em] text-slate-500">
                     <th className="py-2 pr-4 font-medium">Membre</th>
                     <th className="py-2 pr-4 font-medium">Calls</th>
                     <th className="py-2 pr-4 font-medium">Score moyen</th>
@@ -396,20 +396,20 @@ export default function ClientReviewClient({ review }: { review: ClientReview })
                 </thead>
                 <tbody>
                   {review.members.map((m) => (
-                    <tr key={m.id} className="border-b border-slate-50 last:border-0">
-                      <td className="py-2.5 pr-4">
+                    <tr key={m.id} className="border-b border-border last:border-0">
+                      <td className="py-2.5 pr-4 tabular-nums">
                         <span className="font-medium text-slate-900">{m.label}</span>
-                        <span className="ml-2 text-xs text-slate-400">
+                        <span className="ml-2 text-[12px] text-slate-500">
                           {m.status === "invited" ? "invité" : m.role === "manager" ? "manager" : "commercial"}
                         </span>
                       </td>
-                      <td className="py-2.5 pr-4">
+                      <td className="py-2.5 pr-4 tabular-nums">
                         {m.calls} <Delta now={m.calls} before={m.callsPrev} />
                       </td>
-                      <td className="py-2.5 pr-4">
+                      <td className="py-2.5 pr-4 tabular-nums">
                         {formatScore(m.avgScore)} <Delta now={m.avgScore} before={m.avgScorePrev} decimals={1} />
                       </td>
-                      <td className="py-2.5 pr-4">{m.briefs}</td>
+                      <td className="py-2.5 pr-4 tabular-nums">{m.briefs}</td>
                       <td className="py-2.5 text-slate-500">{m.lastSeenAt ? formatDay(m.lastSeenAt) : "—"}</td>
                     </tr>
                   ))}
@@ -421,24 +421,24 @@ export default function ClientReviewClient({ review }: { review: ClientReview })
 
         <Section title="Objections de la semaine">
           {objectionsClosed && review.objections.length > 0 && (
-            <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <p className="mb-3 rounded-xl bg-[color:var(--warning-soft)] px-3.5 py-2.5 text-[12.5px] text-amber-800">
               Module Objections fermé chez ce client : à garder pour sa semaine, ne pas les montrer avant.
             </p>
           )}
           {review.objections.length === 0 ? (
-            <p className="text-sm text-slate-500">Aucune objection repérée ces 7 derniers jours.</p>
+            <p className="text-[13.5px] text-slate-500">Aucune objection repérée ces 7 derniers jours.</p>
           ) : (
-            <ul className="divide-y divide-slate-100">
+            <ul className="divide-y divide-border">
               {review.objections.map((o) => (
-                <li key={o.label} className="flex items-center justify-between gap-3 py-2 text-sm">
+                <li key={o.label} className="flex items-center justify-between gap-3 py-2.5 text-[13.5px]">
                   <span className="text-slate-800">
                     {o.label}
-                    {o.isNew && <span className="ml-2 rounded-full bg-[color:var(--lavender)] px-2 py-0.5 text-xs font-medium text-[color:var(--violet)]">nouvelle</span>}
+                    {o.isNew && <span className="ml-2 rounded-full bg-[color:var(--lavender)] px-2 py-0.5 text-[11.5px] font-semibold text-[color:var(--violet)]">nouvelle</span>}
                     {!o.isNew && o.thisWeek > o.prevWeek && (
-                      <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">en hausse</span>
+                      <span className="ml-2 rounded-full bg-[color:var(--warning-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-amber-700">en hausse</span>
                     )}
                   </span>
-                  <span className="shrink-0 text-slate-500">
+                  <span className="shrink-0 tabular-nums text-slate-500">
                     {o.thisWeek} cette semaine · {o.prevWeek} la précédente
                   </span>
                 </li>
@@ -454,7 +454,7 @@ export default function ClientReviewClient({ review }: { review: ClientReview })
                 const Icon = result.status === "met" ? CheckCircle2 : result.status === "manual" ? CircleDashed : reached ? XCircle : CircleDashed;
                 const color = result.status === "met" ? "text-emerald-600" : reached && result.status === "unmet" ? "text-amber-500" : "text-slate-300";
                 return (
-                  <li key={s.week} className={`flex items-start gap-2 text-sm ${reached ? "" : "opacity-60"}`}>
+                  <li key={s.week} className={`flex items-start gap-2 text-[13.5px] ${reached ? "" : "opacity-60"}`}>
                     <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${color}`} />
                     <span>
                       <span className="font-medium text-slate-900">
@@ -472,10 +472,10 @@ export default function ClientReviewClient({ review }: { review: ClientReview })
 
         {overview.inParcours && closedModules.length > 0 && (
           <Section title="Pas encore ouverts">
-            <ul className="space-y-1.5 text-sm">
+            <ul className="space-y-1.5 text-[13.5px]">
               {closedModules.map((m) => (
                 <li key={m.key} className="flex items-baseline gap-2">
-                  <span className="w-24 shrink-0 text-xs text-slate-400">{m.week === null ? "À la demande" : `Semaine ${m.week}`}</span>
+                  <span className="w-24 shrink-0 text-[12px] text-slate-500">{m.week === null ? "À la demande" : `Semaine ${m.week}`}</span>
                   <span>
                     <span className="font-medium text-slate-900">{m.label}</span>
                     <span className="text-slate-500"> — {m.description}</span>

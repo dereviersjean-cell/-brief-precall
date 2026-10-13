@@ -92,9 +92,9 @@ function formatDateTime(iso: string | null): string {
 
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
   draft: { label: "Brouillon", className: "bg-slate-100 text-slate-600" },
-  sent: { label: "Envoyé", className: "bg-blue-50 text-blue-700" },
-  accepted: { label: "Accepté", className: "bg-emerald-50 text-emerald-700" },
-  rejected: { label: "Refusé", className: "bg-red-50 text-red-700" },
+  sent: { label: "Envoyé", className: "bg-[color:var(--lavender)] text-[color:var(--violet)]" },
+  accepted: { label: "Accepté", className: "bg-[color:var(--success-soft)] text-emerald-700" },
+  rejected: { label: "Refusé", className: "bg-[color:var(--danger-soft)] text-rose-700" },
 };
 
 // "Ouvert" isn't a real status value — status stays "sent", viewed_at is a
@@ -102,15 +102,15 @@ const STATUS_STYLES: Record<string, { label: string; className: string }> = {
 function StatusBadge({ status, viewedAt }: { status: string; viewedAt: string | null }) {
   if (status === "sent" && viewedAt) {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0" />
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--lavender)] px-2 py-0.5 text-[11.5px] font-semibold text-[color:var(--violet)]">
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--warning)]" />
         Ouvert
       </span>
     );
   }
   const s = STATUS_STYLES[status] ?? { label: status, className: "bg-slate-100 text-slate-600" };
   return (
-    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${s.className}`}>
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${s.className}`}>
       {s.label}
     </span>
   );
@@ -129,12 +129,12 @@ function TextField({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-slate-700 mb-1.5">{label}</label>
+      <label className="mb-1.5 block text-[12px] font-medium text-slate-700">{label}</label>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+        className="w-full rounded-xl border border-border bg-white px-3.5 py-2.5 text-[13.5px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-1 focus:ring-[color:var(--violet)] disabled:bg-slate-50 disabled:text-slate-500"
       />
     </div>
   );
@@ -370,51 +370,54 @@ export default function QuoteEditor({
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="max-w-4xl mx-auto px-6 py-10">
-        <div className="mb-8 flex items-center gap-3">
-          <Link href="/quotes" className="text-slate-400 hover:text-slate-600 transition-colors">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
+        <div className="mb-8 flex items-start gap-3">
+          <Link
+            href="/quotes"
+            className="mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-border bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
             </svg>
           </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">
+          <div className="min-w-0">
+            <h1 className="text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] text-slate-900">
               {mode === "create" ? "Nouveau devis" : `Devis ${quote?.quote_number ?? ""}`}
             </h1>
-            <p className="text-slate-500 mt-1 text-sm">
+            <p className="mt-2 text-[15px] leading-relaxed text-slate-500">
               {isReadOnly ? "Devis envoyé — lecture seule." : "Brouillon — modifiable tant qu'il n'est pas envoyé."}
             </p>
           </div>
         </div>
 
         {isReadOnly && quote && (
-          <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] px-6 py-5 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-slate-900">Statut</h2>
+          <div className="mb-6 rounded-2xl border border-border bg-white px-4 py-5 sm:px-6">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Statut</h2>
               <StatusBadge status={quote.status} viewedAt={quote.viewed_at} />
             </div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 gap-4 text-[13px] sm:grid-cols-2">
               <div>
-                <p className="text-slate-400 text-xs uppercase tracking-wide mb-0.5">Envoyé le</p>
-                <p className="text-slate-700">{formatDateTime(quote.sent_at)}</p>
+                <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Envoyé le</p>
+                <p className="tabular-nums text-slate-900">{formatDateTime(quote.sent_at)}</p>
               </div>
               <div>
-                <p className="text-slate-400 text-xs uppercase tracking-wide mb-0.5">Ouverture</p>
-                <p className="text-slate-700">{quote.viewed_at ? formatDateTime(quote.viewed_at) : "Pas encore ouvert"}</p>
+                <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Ouverture</p>
+                <p className="tabular-nums text-slate-900">{quote.viewed_at ? formatDateTime(quote.viewed_at) : "Pas encore ouvert"}</p>
               </div>
               {quote.status === "accepted" && (
                 <div>
-                  <p className="text-slate-400 text-xs uppercase tracking-wide mb-0.5">Accepté le</p>
-                  <p className="text-emerald-700 font-medium">{formatDateTime(quote.accepted_at)}</p>
+                  <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Accepté le</p>
+                  <p className="font-semibold tabular-nums text-emerald-700">{formatDateTime(quote.accepted_at)}</p>
                 </div>
               )}
               {quote.status === "rejected" && (
                 <div>
-                  <p className="text-slate-400 text-xs uppercase tracking-wide mb-0.5">Refusé le</p>
-                  <p className="text-red-700 font-medium">{formatDateTime(quote.rejected_at)}</p>
+                  <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Refusé le</p>
+                  <p className="font-semibold tabular-nums text-rose-700">{formatDateTime(quote.rejected_at)}</p>
                   {quote.rejection_reason && (
-                    <p className="text-slate-500 text-xs mt-1">Motif : {quote.rejection_reason}</p>
+                    <p className="mt-1 text-[12px] text-slate-500">Motif : {quote.rejection_reason}</p>
                   )}
                 </div>
               )}
@@ -425,15 +428,15 @@ export default function QuoteEditor({
         <fieldset disabled={isReadOnly} className="contents">
 
         {/* Client */}
-        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] px-6 py-5 mb-6">
-          <h2 className="text-sm font-semibold text-slate-900 mb-4">Client</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Contact existant</label>
+        <div className="mb-6 rounded-2xl border border-border bg-white px-4 py-5 sm:px-6">
+          <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Client</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <label className="mb-1.5 block text-[12px] font-medium text-slate-700">Contact existant</label>
               <select
                 value={contactId}
                 onChange={(e) => handleContactChange(e.target.value)}
-                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+                className="w-full rounded-xl border border-border bg-white px-3.5 py-2.5 text-[13.5px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-1 focus:ring-[color:var(--violet)] disabled:bg-slate-50 disabled:text-slate-500"
               >
                 <option value="">— Nouveau client —</option>
                 {contacts.map((c) => (
@@ -448,22 +451,22 @@ export default function QuoteEditor({
             <TextField label="Email" type="email" value={clientEmail} onChange={setClientEmail} />
             <TextField label="SIRET" value={clientSiret} onChange={setClientSiret} />
             <TextField label="N° TVA" value={clientVatNumber} onChange={setClientVatNumber} />
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               <TextField label="Adresse" value={clientAddress} onChange={setClientAddress} />
             </div>
           </div>
         </div>
 
         {/* Lines */}
-        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] mb-6">
-          <div className="px-6 py-5 flex items-center justify-between flex-wrap gap-3">
-            <h2 className="text-sm font-semibold text-slate-900">Lignes</h2>
+        <div className="mb-6 rounded-2xl border border-border bg-white">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-5 sm:px-6">
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Lignes</h2>
             <div className="flex items-center gap-2 flex-wrap">
               {contactId && (
                 <button
                   onClick={handleGenerate}
                   disabled={generating}
-                  className="inline-flex items-center gap-2 px-4 py-2 brand-gradient text-white rounded-lg text-sm font-medium hover:brightness-110 transition-all disabled:opacity-50"
+                  className="inline-flex h-9 items-center gap-2 rounded-lg border border-[color:var(--lavender-strong)] bg-[color:var(--lavender)] px-3.5 text-[13px] font-medium text-[color:var(--violet)] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {generating ? (
                     <>
@@ -481,7 +484,7 @@ export default function QuoteEditor({
               <select
                 value=""
                 onChange={(e) => handleAddFromCatalog(e.target.value)}
-                className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+                className="h-9 rounded-lg border border-border bg-white px-3 text-[13px] font-medium text-slate-700 outline-none transition-colors hover:bg-slate-50 focus:border-[color:var(--violet)] disabled:opacity-50"
               >
                 <option value="">+ Depuis le catalogue</option>
                 {offers.map((o) => (
@@ -492,7 +495,7 @@ export default function QuoteEditor({
               </select>
               <button
                 onClick={handleAddBlankLine}
-                className="px-4 py-2 brand-gradient text-white rounded-lg text-sm font-medium hover:brightness-110 transition-colors"
+                className="inline-flex h-9 items-center rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 + Ligne libre
               </button>
@@ -500,35 +503,35 @@ export default function QuoteEditor({
           </div>
 
           {generateInfo && (
-            <div className="px-6 pb-4 -mt-2">
-              <p className="text-xs text-slate-500 italic">{generateInfo}</p>
+            <div className="-mt-2 px-4 pb-4 sm:px-6">
+              <p className="text-[12px] italic text-slate-500">{generateInfo}</p>
             </div>
           )}
           {generateError && (
-            <div className="px-6 pb-4 -mt-2">
-              <p className="text-xs text-red-600">{generateError}</p>
+            <div className="-mt-2 px-4 pb-4 sm:px-6">
+              <p className="rounded-xl bg-[color:var(--danger-soft)] px-3.5 py-2.5 text-[12.5px] text-rose-700">{generateError}</p>
             </div>
           )}
 
           {lines.length === 0 ? (
-            <div className="px-6 pb-8 text-center text-slate-400 text-sm">Aucune ligne pour l&apos;instant.</div>
+            <div className="px-6 pb-8 text-center text-[13px] text-slate-500">Aucune ligne pour l&apos;instant.</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left border-collapse">
+              <table className="w-full border-collapse text-left text-[13px]">
                 <thead>
-                  <tr className="border-b border-slate-200">
-                    <th className="py-2 pl-6 pr-2 text-xs font-semibold text-slate-500 uppercase tracking-wide min-w-[200px]">
+                  <tr className="border-y border-border">
+                    <th className="min-w-[200px] py-2.5 pl-4 pr-2 sm:pl-6 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">
                       Désignation
                     </th>
-                    <th className="py-2 px-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Qté</th>
-                    <th className="py-2 px-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Unité</th>
-                    <th className="py-2 px-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">PU HT</th>
-                    <th className="py-2 px-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Remise</th>
-                    <th className="py-2 px-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">TVA %</th>
-                    <th className="py-2 px-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">
+                    <th className="px-1.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Qté</th>
+                    <th className="px-1.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Unité</th>
+                    <th className="px-1.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">PU HT</th>
+                    <th className="px-1.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Remise</th>
+                    <th className="px-1.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">TVA %</th>
+                    <th className="px-1.5 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">
                       Total HT
                     </th>
-                    <th className="py-2 pr-6 pl-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">
+                    <th className="py-2.5 pl-1.5 pr-4 text-right sm:pr-6 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">
                       &nbsp;
                     </th>
                   </tr>
@@ -537,57 +540,57 @@ export default function QuoteEditor({
                   {lines.map((line, i) => {
                     const computed = computeLineTotals(toLineInput(line));
                     return (
-                      <tr key={line.key} className="border-b border-slate-100">
-                        <td className="py-2 pl-6 pr-2 align-top">
+                      <tr key={line.key} className="border-b border-border last:border-b-0">
+                        <td className="py-2.5 pl-4 pr-2 align-top sm:pl-6">
                           <input
                             type="text"
                             value={line.name}
                             onChange={(e) => updateLine(line.key, { name: e.target.value })}
                             placeholder="Nom de la ligne"
-                            className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-sm mb-1 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+                            className="mb-1 w-full rounded-lg border border-border bg-white px-2 py-1.5 text-[13px] font-medium text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-1 focus:ring-[color:var(--violet)] disabled:bg-slate-50"
                           />
                           <input
                             type="text"
                             value={line.description}
                             onChange={(e) => updateLine(line.key, { description: e.target.value })}
                             placeholder="Description (optionnel)"
-                            className="w-full px-2 py-1 border border-slate-100 rounded-md text-xs text-slate-500 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+                            className="w-full rounded-lg border border-border bg-white px-2 py-1 text-[12px] text-slate-500 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-1 focus:ring-[color:var(--violet)] disabled:bg-slate-50"
                           />
                         </td>
-                        <td className="py-2 px-1.5 align-top">
+                        <td className="px-1.5 py-2.5 align-top">
                           <input
                             type="number"
                             step="0.01"
                             value={line.quantity}
                             onChange={(e) => updateLine(line.key, { quantity: parseFloat(e.target.value) || 0 })}
-                            className="w-14 px-1.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+                            className="w-14 rounded-lg border border-border bg-white px-1.5 py-1.5 text-[13px] tabular-nums text-slate-900 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-1 focus:ring-[color:var(--violet)] disabled:bg-slate-50 disabled:text-slate-500"
                           />
                         </td>
-                        <td className="py-2 px-1.5 align-top">
+                        <td className="px-1.5 py-2.5 align-top">
                           <input
                             type="text"
                             value={line.unit}
                             onChange={(e) => updateLine(line.key, { unit: e.target.value })}
-                            className="w-16 px-1.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+                            className="w-16 rounded-lg border border-border bg-white px-1.5 py-1.5 text-[13px] tabular-nums text-slate-900 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-1 focus:ring-[color:var(--violet)] disabled:bg-slate-50 disabled:text-slate-500"
                           />
                         </td>
-                        <td className="py-2 px-1.5 align-top">
+                        <td className="px-1.5 py-2.5 align-top">
                           <input
                             type="number"
                             step="0.01"
                             value={line.unit_price}
                             onChange={(e) => updateLine(line.key, { unit_price: parseFloat(e.target.value) || 0 })}
-                            className="w-20 px-1.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+                            className="w-20 rounded-lg border border-border bg-white px-1.5 py-1.5 text-[13px] tabular-nums text-slate-900 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-1 focus:ring-[color:var(--violet)] disabled:bg-slate-50 disabled:text-slate-500"
                           />
                         </td>
-                        <td className="py-2 px-1.5 align-top">
+                        <td className="px-1.5 py-2.5 align-top">
                           <div className="flex items-center gap-1">
                             <select
                               value={line.discount_type}
                               onChange={(e) =>
                                 updateLine(line.key, { discount_type: e.target.value as EditorLine["discount_type"] })
                               }
-                              className="px-1 py-1.5 border border-slate-200 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+                              className="rounded-lg border border-border bg-white px-1 py-1.5 text-[12px] text-slate-900 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-1 focus:ring-[color:var(--violet)] disabled:bg-slate-50"
                             >
                               <option value="">—</option>
                               <option value="percent">%</option>
@@ -601,40 +604,40 @@ export default function QuoteEditor({
                                 onChange={(e) =>
                                   updateLine(line.key, { discount_value: parseFloat(e.target.value) || 0 })
                                 }
-                                className="w-14 px-1.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+                                className="w-14 rounded-lg border border-border bg-white px-1.5 py-1.5 text-[13px] tabular-nums text-slate-900 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-1 focus:ring-[color:var(--violet)] disabled:bg-slate-50 disabled:text-slate-500"
                               />
                             )}
                           </div>
                         </td>
-                        <td className="py-2 px-1.5 align-top">
+                        <td className="px-1.5 py-2.5 align-top">
                           <input
                             type="number"
                             step="0.1"
                             value={line.vat_rate}
                             onChange={(e) => updateLine(line.key, { vat_rate: parseFloat(e.target.value) || 0 })}
-                            className="w-14 px-1.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+                            className="w-14 rounded-lg border border-border bg-white px-1.5 py-1.5 text-[13px] tabular-nums text-slate-900 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-1 focus:ring-[color:var(--violet)] disabled:bg-slate-50 disabled:text-slate-500"
                           />
                         </td>
-                        <td className="py-2 px-1.5 align-top text-right font-mono text-slate-700 pt-3.5">
+                        <td className="whitespace-nowrap px-1.5 pb-2 pt-3.5 text-right align-top font-semibold tabular-nums text-slate-900">
                           {formatCurrency(computed.net_ht)}
                         </td>
-                        <td className="py-2 pr-6 pl-1.5 align-top">
+                        <td className="py-2.5 pl-1.5 pr-4 align-top sm:pr-6">
                           <div className="flex items-center justify-end gap-1 pt-1.5">
                             <button
                               onClick={() => moveLine(line.key, "up")}
                               disabled={i === 0}
-                              className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30"
+                              className="grid h-7 w-7 place-items-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30"
                             >
                               ↑
                             </button>
                             <button
                               onClick={() => moveLine(line.key, "down")}
                               disabled={i === lines.length - 1}
-                              className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30"
+                              className="grid h-7 w-7 place-items-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30"
                             >
                               ↓
                             </button>
-                            <button onClick={() => removeLine(line.key)} className="p-1 text-red-500 hover:text-red-700">
+                            <button onClick={() => removeLine(line.key)} className="grid h-7 w-7 place-items-center rounded-md text-rose-600 transition-colors hover:bg-[color:var(--danger-soft)] hover:text-rose-700">
                               ×
                             </button>
                           </div>
@@ -649,63 +652,63 @@ export default function QuoteEditor({
         </div>
 
         {/* Totals */}
-        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] px-6 py-5 mb-6">
-          <h2 className="text-sm font-semibold text-slate-900 mb-4">Totaux</h2>
-          <div className="max-w-xs ml-auto space-y-1.5">
-            <div className="flex justify-between text-sm">
+        <div className="mb-6 rounded-2xl border border-border bg-white px-4 py-5 sm:px-6">
+          <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Totaux</h2>
+          <div className="ml-auto max-w-xs space-y-1.5">
+            <div className="flex justify-between text-[13px]">
               <span className="text-slate-500">Sous-total HT</span>
-              <span className="text-slate-800">{formatCurrency(totals.subtotal_ht)}</span>
+              <span className="tabular-nums text-slate-900">{formatCurrency(totals.subtotal_ht)}</span>
             </div>
             {totals.total_discount > 0 && (
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-[13px]">
                 <span className="text-slate-500">Total remises</span>
-                <span className="text-slate-800">-{formatCurrency(totals.total_discount)}</span>
+                <span className="tabular-nums text-slate-900">-{formatCurrency(totals.total_discount)}</span>
               </div>
             )}
             {totals.vat_breakdown.map((v) => (
-              <div className="flex justify-between text-sm" key={v.rate}>
+              <div className="flex justify-between text-[13px]" key={v.rate}>
                 <span className="text-slate-500">TVA {v.rate}%</span>
-                <span className="text-slate-800">{formatCurrency(v.amount)}</span>
+                <span className="tabular-nums text-slate-900">{formatCurrency(v.amount)}</span>
               </div>
             ))}
-            <div className="flex justify-between text-base font-semibold pt-2 mt-1 border-t border-slate-200">
-              <span>Total TTC</span>
-              <span>{formatCurrency(totals.total_ttc)}</span>
+            <div className="mt-1 flex items-baseline justify-between border-t border-border pt-2.5 text-slate-900">
+              <span className="text-[14px] font-semibold">Total TTC</span>
+              <span className="text-[20px] font-semibold tracking-tight tabular-nums">{formatCurrency(totals.total_ttc)}</span>
             </div>
           </div>
         </div>
 
         {/* Options */}
-        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] px-6 py-5 mb-6">
-          <h2 className="text-sm font-semibold text-slate-900 mb-4">Options</h2>
+        <div className="mb-6 rounded-2xl border border-border bg-white px-4 py-5 sm:px-6">
+          <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Options</h2>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Notes</label>
+              <label className="mb-1.5 block text-[12px] font-medium text-slate-700">Notes</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
-                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] resize-none"
+                className="w-full rounded-xl border border-border bg-white px-3.5 py-2.5 text-[13.5px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-1 focus:ring-[color:var(--violet)] disabled:bg-slate-50 disabled:text-slate-500 resize-none"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Mentions légales</label>
+              <label className="mb-1.5 block text-[12px] font-medium text-slate-700">Mentions légales</label>
               <textarea
                 value={legalMentions}
                 onChange={(e) => setLegalMentions(e.target.value)}
                 rows={2}
-                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] resize-none"
+                className="w-full rounded-xl border border-border bg-white px-3.5 py-2.5 text-[13.5px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-1 focus:ring-[color:var(--violet)] disabled:bg-slate-50 disabled:text-slate-500 resize-none"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <TextField label="Conditions de paiement" value={paymentTerms} onChange={setPaymentTerms} />
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Date de validité</label>
+                <label className="mb-1.5 block text-[12px] font-medium text-slate-700">Date de validité</label>
                 <input
                   type="date"
                   value={validUntil}
                   onChange={(e) => setValidUntil(e.target.value)}
-                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+                  className="w-full rounded-xl border border-border bg-white px-3.5 py-2.5 text-[13.5px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-1 focus:ring-[color:var(--violet)] disabled:bg-slate-50 disabled:text-slate-500"
                 />
               </div>
             </div>
@@ -717,13 +720,13 @@ export default function QuoteEditor({
         {/* Actions */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            {saved && !error && <p className="text-sm text-emerald-600 font-medium">Brouillon enregistré.</p>}
+            {error && <p className="text-[13px] text-rose-700">{error}</p>}
+            {saved && !error && <p className="text-[13px] font-medium text-emerald-700">Brouillon enregistré.</p>}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => router.push("/quotes")}
-              className="px-5 py-2.5 border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
+              className="inline-flex h-9 items-center rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
             >
               Annuler
             </button>
@@ -732,14 +735,14 @@ export default function QuoteEditor({
                 href={`/api/quotes/${quoteId}/pdf`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-5 py-2.5 border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
+                className="inline-flex h-9 items-center rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
               >
                 Aperçu PDF
               </a>
             ) : (
               <span
                 title="Enregistrez le brouillon avant de générer un PDF."
-                className="px-5 py-2.5 border border-slate-100 text-slate-300 rounded-lg text-sm font-medium cursor-not-allowed"
+                className="inline-flex h-9 cursor-not-allowed items-center rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-300"
               >
                 Aperçu PDF
               </span>
@@ -748,7 +751,7 @@ export default function QuoteEditor({
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-6 py-2.5 brand-gradient text-white rounded-lg text-sm font-semibold hover:brightness-110 transition-colors disabled:opacity-50"
+                className="inline-flex h-9 items-center rounded-lg bg-[color:var(--primary)] px-4 text-[13px] font-semibold text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {saving ? "Enregistrement…" : "Enregistrer brouillon"}
               </button>
@@ -756,7 +759,7 @@ export default function QuoteEditor({
             {mode === "edit" && quote && quote.status === "draft" && (
               <button
                 onClick={() => setShowSendModal(true)}
-                className="px-6 py-2.5 brand-gradient text-white rounded-lg text-sm font-semibold hover:brightness-110 transition-colors"
+                className="inline-flex h-9 items-center rounded-lg bg-[color:var(--primary)] px-4 text-[13px] font-semibold text-white transition-all hover:brightness-110"
               >
                 📤 Envoyer
               </button>

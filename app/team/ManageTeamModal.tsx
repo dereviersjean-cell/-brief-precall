@@ -63,20 +63,20 @@ export default function ManageTeamModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl max-h-[80vh] flex flex-col"
+        className="flex max-h-[80vh] w-full max-w-md flex-col rounded-2xl border border-border bg-white p-6 shadow-[var(--shadow-md)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-1 shrink-0">
-          <h2 className="font-semibold text-slate-900">Gérer mon équipe</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+          <h2 className="text-[15px] font-semibold tracking-tight text-slate-900">Gérer mon équipe</h2>
+          <button onClick={onClose} className="text-slate-400 transition-colors hover:text-slate-600">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
-        <p className="text-sm text-slate-500 mb-4 shrink-0">
+        <p className="mb-4 shrink-0 text-[13px] leading-relaxed text-slate-500">
           Rattachez ou détachez les commerciaux de votre organisation.
         </p>
 
@@ -88,13 +88,13 @@ export default function ManageTeamModal({ onClose }: { onClose: () => void }) {
           )}
 
           {state === "error" && (
-            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <p className="rounded-xl bg-[color:var(--danger-soft)] px-3.5 py-2.5 text-[13px] text-rose-700">
               Impossible de charger la liste des commerciaux.
             </p>
           )}
 
           {state === "ready" && commercials.length === 0 && (
-            <p className="text-sm text-slate-500">
+            <p className="text-[13px] text-slate-500">
               Aucun commercial dans votre organisation pour l&apos;instant. Contactez votre administrateur.
             </p>
           )}
@@ -102,11 +102,11 @@ export default function ManageTeamModal({ onClose }: { onClose: () => void }) {
           {state === "ready" && commercials.length > 0 && (
             <ul>
               {commercials.map((c) => (
-                <li key={c.id} className="flex items-center justify-between gap-3 py-2.5 border-b border-slate-100 last:border-0">
+                <li key={c.id} className="flex items-center justify-between gap-3 border-b border-border py-2.5 last:border-0">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-800 truncate">{c.name || c.email}</p>
-                    {c.name && <p className="text-xs text-slate-400 truncate">{c.email}</p>}
-                    {c.error && <p className="text-xs text-red-500 mt-0.5">{c.error}</p>}
+                    <p className="truncate text-[13px] font-medium text-slate-900">{c.name || c.email}</p>
+                    {c.name && <p className="mt-0.5 truncate text-[11.5px] text-slate-500">{c.email}</p>}
+                    {c.error && <p className="mt-0.5 text-[11.5px] text-rose-700">{c.error}</p>}
                   </div>
                   <button
                     role="switch"
@@ -115,7 +115,7 @@ export default function ManageTeamModal({ onClose }: { onClose: () => void }) {
                     disabled={c.pending}
                     onClick={() => handleToggle(c)}
                     className={`shrink-0 relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
-                      c.is_linked ? "brand-gradient" : "bg-slate-200"
+                      c.is_linked ? "bg-[color:var(--primary)]" : "bg-slate-200"
                     }`}
                   >
                     <span
@@ -133,7 +133,7 @@ export default function ManageTeamModal({ onClose }: { onClose: () => void }) {
         <div className="mt-5 flex justify-end shrink-0">
           <button
             onClick={onClose}
-            className="text-sm font-medium text-slate-600 border border-border px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors"
+            className="inline-flex h-9 items-center rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
           >
             Fermer
           </button>

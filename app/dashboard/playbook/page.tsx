@@ -32,8 +32,8 @@ export default async function PlaybookPage() {
   // encore, et ce n'est pas au commercial de déclencher l'initialisation.
   if (!playbook) {
     return (
-      <div className="mx-auto max-w-4xl px-6 py-10">
-        <p className="text-sm italic text-slate-400">
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
+        <p className="rounded-2xl border border-border bg-white px-6 py-10 text-center text-[13px] text-slate-500">
           Votre manager n&apos;a pas encore configuré le playbook de votre équipe.
         </p>
       </div>

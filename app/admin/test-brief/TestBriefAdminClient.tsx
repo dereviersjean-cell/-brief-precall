@@ -59,7 +59,7 @@ type TestResult = {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-[11px] font-medium uppercase tracking-wider text-slate-400 mb-3">{children}</h3>
+    <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">{children}</h3>
   );
 }
 
@@ -67,26 +67,26 @@ function BriefDisplay({ brief }: { brief: BriefResult }) {
   return (
     <div className="space-y-5">
       {brief.overview && (
-        <div className="bg-white rounded-2xl border border-border p-5 shadow-[var(--shadow-sm)]">
+        <div className="rounded-2xl border border-border bg-white p-5">
           <SectionTitle>Vue d&apos;ensemble</SectionTitle>
-          <p className="text-sm text-slate-700 leading-relaxed">{brief.overview}</p>
+          <p className="text-[13.5px] leading-relaxed text-slate-700">{brief.overview}</p>
         </div>
       )}
 
       {brief.accroche && (
-        <div className="bg-[color:var(--lavender)] rounded-xl border border-[color:var(--lavender-strong)] p-5">
+        <div className="rounded-2xl bg-[color:var(--lavender)] p-5">
           <SectionTitle>Accroche</SectionTitle>
-          <p className="text-sm text-[color:var(--violet)] font-medium leading-relaxed">&ldquo;{brief.accroche}&rdquo;</p>
+          <p className="text-[13.5px] font-medium leading-relaxed text-slate-900">&ldquo;{brief.accroche}&rdquo;</p>
         </div>
       )}
 
       {brief.pain_points && brief.pain_points.length > 0 && (
-        <div className="bg-white rounded-2xl border border-border p-5 shadow-[var(--shadow-sm)]">
+        <div className="rounded-2xl border border-border bg-white p-5">
           <SectionTitle>Pain points</SectionTitle>
           <ul className="space-y-3">
             {brief.pain_points.map((p, i) => (
-              <li key={i} className="text-sm">
-                <span className="font-semibold text-slate-800">{p.title}</span>
+              <li key={i} className="text-[13.5px]">
+                <span className="font-semibold text-slate-900">{p.title}</span>
                 <span className="text-slate-500 ml-1.5">— {p.detail}</span>
               </li>
             ))}
@@ -95,12 +95,12 @@ function BriefDisplay({ brief }: { brief: BriefResult }) {
       )}
 
       {brief.arguments && brief.arguments.length > 0 && (
-        <div className="bg-white rounded-2xl border border-border p-5 shadow-[var(--shadow-sm)]">
+        <div className="rounded-2xl border border-border bg-white p-5">
           <SectionTitle>Arguments</SectionTitle>
           <ul className="space-y-3">
             {brief.arguments.map((a, i) => (
-              <li key={i} className="text-sm">
-                <span className="font-semibold text-slate-800">{a.title}</span>
+              <li key={i} className="text-[13.5px]">
+                <span className="font-semibold text-slate-900">{a.title}</span>
                 <span className="text-slate-500 ml-1.5">— {a.detail}</span>
               </li>
             ))}
@@ -109,11 +109,11 @@ function BriefDisplay({ brief }: { brief: BriefResult }) {
       )}
 
       {brief.vocabulaire && brief.vocabulaire.length > 0 && (
-        <div className="bg-white rounded-2xl border border-border p-5 shadow-[var(--shadow-sm)]">
+        <div className="rounded-2xl border border-border bg-white p-5">
           <SectionTitle>Mots-clés métier</SectionTitle>
           <div className="flex flex-wrap gap-2">
             {brief.vocabulaire.map((kw, i) => (
-              <span key={i} className="px-2.5 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-medium">
+              <span key={i} className="rounded-full bg-slate-100 px-2.5 py-1 text-[12px] font-medium text-slate-700">
                 {kw}
               </span>
             ))}
@@ -122,16 +122,16 @@ function BriefDisplay({ brief }: { brief: BriefResult }) {
       )}
 
       {brief.actualites && brief.actualites.length > 0 && (
-        <div className="bg-white rounded-2xl border border-border p-5 shadow-[var(--shadow-sm)]">
+        <div className="rounded-2xl border border-border bg-white p-5">
           <SectionTitle>Actualités</SectionTitle>
           <ul className="space-y-3">
             {brief.actualites.map((a, i) => (
-              <li key={i} className="text-sm">
+              <li key={i} className="text-[13.5px]">
                 <div className="font-medium text-slate-800">{a.titre}</div>
-                <div className="text-slate-500 text-xs mt-0.5">{a.source}{a.date ? ` · ${a.date.slice(0, 10)}` : ""}</div>
+                <div className="mt-0.5 text-[12px] text-slate-500">{a.source}{a.date ? ` · ${a.date.slice(0, 10)}` : ""}</div>
                 <div className="text-slate-600 mt-1">{a.description}</div>
                 {a.url && (
-                  <a href={a.url} target="_blank" rel="noopener noreferrer" className="text-[color:var(--violet)] text-xs hover:underline mt-0.5 inline-block">
+                  <a href={a.url} target="_blank" rel="noopener noreferrer" className="mt-0.5 inline-block text-[12px] font-medium text-[color:var(--violet)] hover:underline">
                     Voir l&apos;article →
                   </a>
                 )}
@@ -142,13 +142,13 @@ function BriefDisplay({ brief }: { brief: BriefResult }) {
       )}
 
       {brief.references && brief.references.length > 0 && (
-        <div className="bg-white rounded-2xl border border-border p-5 shadow-[var(--shadow-sm)]">
+        <div className="rounded-2xl border border-border bg-white p-5">
           <SectionTitle>Références clients</SectionTitle>
           <ul className="space-y-4">
             {brief.references.map((r, i) => (
-              <li key={i} className="text-sm border-l-2 border-[color:var(--lavender-strong)] pl-3">
+              <li key={i} className="border-l-2 border-[color:var(--lavender-strong)] pl-3 text-[13.5px]">
                 <div className="font-semibold text-slate-800">{r.client_name}</div>
-                <div className="text-slate-500 mt-0.5 text-xs">{r.relevance}</div>
+                <div className="mt-0.5 text-[12px] text-slate-500">{r.relevance}</div>
                 <div className="text-slate-700 mt-1 italic">&ldquo;{r.pitch}&rdquo;</div>
               </li>
             ))}
@@ -157,9 +157,9 @@ function BriefDisplay({ brief }: { brief: BriefResult }) {
       )}
 
       {brief.historique_relationnel && (
-        <div className="bg-amber-50 rounded-xl border border-amber-100 p-5">
+        <div className="rounded-2xl bg-[color:var(--warning-soft)] p-5">
           <SectionTitle>Historique relationnel</SectionTitle>
-          <p className="text-sm text-amber-800 leading-relaxed">{brief.historique_relationnel}</p>
+          <p className="text-[13.5px] leading-relaxed text-amber-900">{brief.historique_relationnel}</p>
         </div>
       )}
     </div>
@@ -172,10 +172,10 @@ function similarityBar(score: number) {
   const pct = Math.round(score * 100);
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-        <div className="h-full bg-[color:var(--violet)] rounded-full" style={{ width: `${pct}%` }} />
+      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200">
+        <div className="h-full rounded-full bg-[color:var(--violet)]" style={{ width: `${pct}%` }} />
       </div>
-      <span className="text-xs text-slate-500 tabular-nums w-8 text-right">{pct}%</span>
+      <span className="w-8 text-right text-[12px] tabular-nums text-slate-500">{pct}%</span>
     </div>
   );
 }
@@ -184,20 +184,20 @@ function ReasoningPanel({ reasoning }: { reasoning: Reasoning }) {
   const { pappers_data, news_found, references_used } = reasoning;
 
   return (
-    <div className="bg-slate-50 border-l-4 border-[color:var(--violet)] rounded-xl p-5 space-y-6 text-sm">
+    <div className="space-y-6 rounded-2xl border border-border bg-white p-5 text-[13px]">
       <h2 className="text-[15px] font-semibold tracking-tight text-slate-900">Raisonnement IA</h2>
 
       {/* CRM */}
       <div>
-        <div className="font-medium text-slate-700 mb-1.5">CRM</div>
-        <p className="text-slate-400 text-xs italic">Aucune donnée CRM (contexte admin)</p>
+        <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">CRM</div>
+        <p className="text-[12px] italic text-slate-400">Aucune donnée CRM (contexte admin)</p>
       </div>
 
       {/* Pappers */}
       <div>
-        <div className="font-medium text-slate-700 mb-1.5">Données Pappers</div>
+        <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Données Pappers</div>
         {pappers_data ? (
-          <ul className="space-y-1 text-xs text-slate-600">
+          <ul className="space-y-1 text-[12px] text-slate-600">
             {pappers_data.denomination && <li><span className="text-slate-400">Dénomination</span> — {pappers_data.denomination}</li>}
             {pappers_data.siren && <li><span className="text-slate-400">SIREN</span> — {pappers_data.siren}</li>}
             {pappers_data.forme_juridique && <li><span className="text-slate-400">Forme</span> — {pappers_data.forme_juridique}</li>}
@@ -214,50 +214,50 @@ function ReasoningPanel({ reasoning }: { reasoning: Reasoning }) {
             )}
           </ul>
         ) : (
-          <p className="text-slate-400 text-xs italic">Aucune donnée trouvée (entreprise non française ou clé absente)</p>
+          <p className="text-[12px] italic text-slate-400">Aucune donnée trouvée (entreprise non française ou clé absente)</p>
         )}
       </div>
 
       {/* News */}
       <div>
-        <div className="font-medium text-slate-700 mb-1.5">Actualités</div>
+        <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Actualités</div>
         {news_found > 0 ? (
-          <p className="text-xs text-slate-600"><span className="font-semibold text-slate-800">{news_found}</span> article{news_found > 1 ? "s" : ""} récupéré{news_found > 1 ? "s" : ""}</p>
+          <p className="text-[12px] text-slate-600"><span className="font-semibold tabular-nums text-slate-900">{news_found}</span> article{news_found > 1 ? "s" : ""} récupéré{news_found > 1 ? "s" : ""}</p>
         ) : (
-          <p className="text-slate-400 text-xs italic">Aucune actualité (non demandé ou aucun résultat)</p>
+          <p className="text-[12px] italic text-slate-400">Aucune actualité (non demandé ou aucun résultat)</p>
         )}
       </div>
 
       {/* References */}
       <div>
-        <div className="font-medium text-slate-700 mb-1.5">
+        <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">
           Références clients sélectionnées
           {references_used.length === 0 && !process.env.NEXT_PUBLIC_ADMIN_TEST_USER_ID && (
-            <span className="ml-1.5 font-normal text-slate-400 text-xs">(ADMIN_TEST_USER_ID non configuré)</span>
+            <span className="ml-1.5 font-normal normal-case tracking-normal text-slate-400">(ADMIN_TEST_USER_ID non configuré)</span>
           )}
         </div>
         {references_used.length > 0 ? (
           <ul className="space-y-3">
             {references_used.map((r, i) => (
               <li key={i} className="space-y-1">
-                <div className="font-medium text-slate-700 text-xs">{r.client_name ?? "Client"}</div>
+                <div className="text-[12px] font-medium text-slate-700">{r.client_name ?? "Client"}</div>
                 {(r.sector || r.company_size) && (
-                  <div className="text-xs text-slate-400">{[r.sector, r.company_size].filter(Boolean).join(" · ")}</div>
+                  <div className="text-[12px] text-slate-400">{[r.sector, r.company_size].filter(Boolean).join(" · ")}</div>
                 )}
-                {r.problem && <div className="text-xs text-slate-500 line-clamp-2">Pb : {r.problem}</div>}
+                {r.problem && <div className="line-clamp-2 text-[12px] text-slate-500">Pb : {r.problem}</div>}
                 {similarityBar(r.similarity)}
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-slate-400 text-xs italic">Aucune référence disponible</p>
+          <p className="text-[12px] italic text-slate-400">Aucune référence disponible</p>
         )}
       </div>
 
       {/* Web search */}
       <div>
-        <div className="font-medium text-slate-700 mb-1.5">Recherches web Claude</div>
-        <p className="text-slate-400 text-xs italic">Non exposées par l&apos;API dans ce mode</p>
+        <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Recherches web Claude</div>
+        <p className="text-[12px] italic text-slate-400">Non exposées par l&apos;API dans ce mode</p>
       </div>
     </div>
   );
@@ -321,10 +321,10 @@ export default function TestBriefAdminClient() {
 
       <div className="space-y-6">
         {/* Form */}
-        <form onSubmit={handleGenerate} className="bg-white rounded-2xl border border-border p-6 shadow-[var(--shadow-sm)]">
+        <form onSubmit={handleGenerate} className="rounded-2xl border border-border bg-white p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+              <label className="block text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500 mb-1.5">
                 Entreprise *
               </label>
               <input
@@ -333,11 +333,11 @@ export default function TestBriefAdminClient() {
                 onChange={(e) => setCompany(e.target.value)}
                 placeholder="ex : Salesforce, LVMH, Doctolib…"
                 required
-                className="w-full px-3.5 py-2.5 border border-border rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-transparent"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-white text-[13px] text-slate-800 focus:border-[color:var(--violet)] focus:outline-none focus:ring-1 focus:ring-[color:var(--violet)]"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+              <label className="block text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500 mb-1.5">
                 Ce que je vends
               </label>
               <input
@@ -345,11 +345,11 @@ export default function TestBriefAdminClient() {
                 value={productDescription}
                 onChange={(e) => setProductDescription(e.target.value)}
                 placeholder="ex : logiciel de gestion RH SaaS"
-                className="w-full px-3.5 py-2.5 border border-border rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-transparent"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-white text-[13px] text-slate-800 focus:border-[color:var(--violet)] focus:outline-none focus:ring-1 focus:ring-[color:var(--violet)]"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+              <label className="block text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500 mb-1.5">
                 ICP
               </label>
               <input
@@ -357,7 +357,7 @@ export default function TestBriefAdminClient() {
                 value={icp}
                 onChange={(e) => setIcp(e.target.value)}
                 placeholder="ex : DRH de PME 50-200 salariés"
-                className="w-full px-3.5 py-2.5 border border-border rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20 focus:border-transparent"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-white text-[13px] text-slate-800 focus:border-[color:var(--violet)] focus:outline-none focus:ring-1 focus:ring-[color:var(--violet)]"
               />
             </div>
           </div>
@@ -368,14 +368,14 @@ export default function TestBriefAdminClient() {
                 type="checkbox"
                 checked={includeNews}
                 onChange={(e) => setIncludeNews(e.target.checked)}
-                className="w-4 h-4 rounded border-slate-300 text-[color:var(--violet)] focus:ring-[color:var(--violet)]/20"
+                className="h-4 w-4 rounded border-slate-300 accent-[color:var(--primary)]"
               />
-              <span className="text-sm text-slate-600">Inclure les actualités récentes</span>
+              <span className="text-[13px] text-slate-600">Inclure les actualités récentes</span>
             </label>
             <button
               type="submit"
               disabled={generating || !company.trim()}
-              className="flex items-center gap-2 px-5 py-2.5 brand-gradient text-white rounded-lg text-sm font-semibold hover:brightness-110 transition-colors disabled:opacity-50"
+              className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-[color:var(--primary)] px-4 text-[13.5px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {generating && <Spinner />}
               {generating ? "Génération en cours…" : "Générer"}
@@ -385,7 +385,7 @@ export default function TestBriefAdminClient() {
 
         {/* Error */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
+          <div className="rounded-xl bg-[color:var(--danger-soft)] p-4 text-[13px] text-rose-700">
             {error}
           </div>
         )}
@@ -394,7 +394,7 @@ export default function TestBriefAdminClient() {
         {result && (
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 items-start">
             <div className="space-y-1">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Brief généré</p>
+              <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Brief généré</p>
               <BriefDisplay brief={result.brief} />
             </div>
             <div className="lg:sticky lg:top-6">

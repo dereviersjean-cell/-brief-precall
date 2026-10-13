@@ -55,13 +55,13 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-slate-700 mb-1.5">{label}</label>
+      <label className="mb-1.5 block text-[12px] font-medium text-slate-700">{label}</label>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+        className="w-full rounded-xl border border-border bg-white px-3.5 py-2.5 text-[13.5px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-1 focus:ring-[color:var(--violet)]"
       />
     </div>
   );
@@ -138,11 +138,11 @@ function QuoteOfferModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 px-4" onClick={onClose}>
+      <div className="w-full max-w-md max-h-[85vh] overflow-y-auto rounded-2xl border border-border bg-white p-5 shadow-[var(--shadow-md)] sm:p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-slate-900">{offer ? "Modifier l'offre" : "Ajouter une offre"}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+          <h2 className="text-[16px] font-semibold tracking-[-0.01em] text-slate-900">{offer ? "Modifier l'offre" : "Ajouter une offre"}</h2>
+          <button onClick={onClose} className="rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -151,70 +151,72 @@ function QuoteOfferModal({
 
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Nom</label>
+            <label className="mb-1 block text-[12px] font-medium text-slate-700">Nom</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               autoFocus
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+              className="w-full rounded-xl border border-border bg-white px-3.5 py-2 text-[13.5px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-1 focus:ring-[color:var(--violet)]"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Description (optionnel)</label>
+            <label className="mb-1 block text-[12px] font-medium text-slate-700">Description (optionnel)</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] resize-none"
+              className="w-full rounded-xl border border-border bg-white px-3.5 py-2 text-[13.5px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-1 focus:ring-[color:var(--violet)] resize-none"
             />
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Prix unitaire</label>
+              <label className="mb-1 block text-[12px] font-medium text-slate-700">Prix unitaire</label>
               <input
                 type="number"
                 step="0.01"
                 value={unitPrice}
                 onChange={(e) => setUnitPrice(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+                className="w-full rounded-xl border border-border bg-white px-3.5 py-2 text-[13.5px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-1 focus:ring-[color:var(--violet)]"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Unité</label>
+              <label className="mb-1 block text-[12px] font-medium text-slate-700">Unité</label>
               <input
                 type="text"
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+                className="w-full rounded-xl border border-border bg-white px-3.5 py-2 text-[13.5px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-1 focus:ring-[color:var(--violet)]"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">TVA (%)</label>
+              <label className="mb-1 block text-[12px] font-medium text-slate-700">TVA (%)</label>
               <input
                 type="number"
                 step="0.1"
                 value={vatRate}
                 onChange={(e) => setVatRate(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+                className="w-full rounded-xl border border-border bg-white px-3.5 py-2 text-[13.5px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-1 focus:ring-[color:var(--violet)]"
               />
             </div>
           </div>
         </div>
 
-        {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
+        {error && (
+          <p className="mt-3 rounded-xl bg-[color:var(--danger-soft)] px-3.5 py-2.5 text-[13px] text-rose-700">{error}</p>
+        )}
 
         <div className="flex justify-end gap-2 mt-5">
           <button
             onClick={onClose}
-            className="text-sm font-medium text-slate-600 border border-slate-200 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors"
+            className="inline-flex h-9 items-center rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
           >
             Annuler
           </button>
           <button
             onClick={handleSubmit}
             disabled={!name.trim() || !unitPrice || loading}
-            className="text-sm font-medium text-white brand-gradient px-4 py-2 rounded-lg hover:brightness-110 transition-colors disabled:opacity-50"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? "Enregistrement…" : offer ? "Enregistrer" : "Ajouter"}
           </button>
@@ -368,27 +370,30 @@ export default function QuoteSettingsClient({
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="max-w-3xl mx-auto px-6 py-10">
-        <div className="mb-8 flex items-center gap-3">
-          <Link href="/quotes" className="text-slate-400 hover:text-slate-600 transition-colors">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
+        <div className="mb-8 flex items-start gap-3">
+          <Link
+            href="/quotes"
+            className="mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-border bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
             </svg>
           </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Paramètres devis</h1>
-            <p className="text-slate-500 mt-1 text-sm">Informations utilisées pour générer vos devis.</p>
+          <div className="min-w-0">
+            <h1 className="text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] text-slate-900">Paramètres devis</h1>
+            <p className="mt-2 text-[15px] leading-relaxed text-slate-500">Informations utilisées pour générer vos devis.</p>
           </div>
         </div>
 
         {/* Company info */}
-        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] divide-y divide-slate-100">
-          <div className="px-6 py-5">
-            <h2 className="text-sm font-semibold text-slate-900 mb-4">Informations entreprise</h2>
+        <div className="rounded-2xl border border-border bg-white divide-y divide-border">
+          <div className="px-4 py-5 sm:px-6">
+            <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Informations entreprise</h2>
 
             <div className="flex items-center gap-4 mb-5">
-              <div className="w-16 h-16 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
+              <div className="w-16 h-16 rounded-xl border border-border bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
                 {form.company_logo_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={form.company_logo_url} alt="Logo entreprise" className="w-full h-full object-contain" />
@@ -410,15 +415,15 @@ export default function QuoteSettingsClient({
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={logoUploading}
-                  className="text-sm font-medium text-[color:var(--violet)] hover:brightness-90 disabled:opacity-50"
+                  className="inline-flex h-8 items-center rounded-lg border border-[color:var(--lavender-strong)] bg-[color:var(--lavender)] px-3 text-[12.5px] font-medium text-[color:var(--violet)] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {logoUploading ? "Envoi…" : "Changer le logo"}
                 </button>
-                {logoError && <p className="text-xs text-red-600 mt-1">{logoError}</p>}
+                {logoError && <p className="mt-1.5 text-[12px] text-rose-700">{logoError}</p>}
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Raison sociale" value={form.company_name} onChange={(v) => updateField("company_name", v)} />
               <Field label="SIRET" value={form.company_siret} onChange={(v) => updateField("company_siret", v)} />
               <Field
@@ -429,25 +434,25 @@ export default function QuoteSettingsClient({
               <Field label="Site web" value={form.company_website} onChange={(v) => updateField("company_website", v)} />
               <Field label="Email" type="email" value={form.company_email} onChange={(v) => updateField("company_email", v)} />
               <Field label="Téléphone" value={form.company_phone} onChange={(v) => updateField("company_phone", v)} />
-              <div className="col-span-2">
+              <div className="sm:col-span-2">
                 <Field label="Adresse" value={form.company_address} onChange={(v) => updateField("company_address", v)} />
               </div>
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">RIB</label>
+              <div className="sm:col-span-2">
+                <label className="mb-1.5 block text-[12px] font-medium text-slate-700">RIB</label>
                 <textarea
                   value={form.company_rib}
                   onChange={(e) => updateField("company_rib", e.target.value)}
                   rows={2}
-                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] resize-none"
+                  className="w-full rounded-xl border border-border bg-white px-3.5 py-2.5 text-[13.5px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-1 focus:ring-[color:var(--violet)] resize-none"
                 />
               </div>
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Mentions légales</label>
+              <div className="sm:col-span-2">
+                <label className="mb-1.5 block text-[12px] font-medium text-slate-700">Mentions légales</label>
                 <textarea
                   value={form.legal_mentions}
                   onChange={(e) => updateField("legal_mentions", e.target.value)}
                   rows={3}
-                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] resize-none"
+                  className="w-full rounded-xl border border-border bg-white px-3.5 py-2.5 text-[13.5px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-1 focus:ring-[color:var(--violet)] resize-none"
                 />
               </div>
               <Field
@@ -471,14 +476,14 @@ export default function QuoteSettingsClient({
             </div>
           </div>
 
-          <div className="px-6 py-4 flex items-center justify-between bg-slate-50 rounded-b-2xl">
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            {saved && !error && <p className="text-sm text-emerald-600 font-medium">Modifications enregistrées.</p>}
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
+            {error && <p className="text-[13px] text-rose-700">{error}</p>}
+            {saved && !error && <p className="text-[13px] font-medium text-emerald-700">Modifications enregistrées.</p>}
             {!error && !saved && <span />}
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 brand-gradient text-white text-sm font-semibold px-6 py-2.5 rounded-lg hover:brightness-110 transition-colors disabled:opacity-50"
+              className="inline-flex h-9 items-center gap-2 rounded-lg bg-[color:var(--primary)] px-4 text-[13px] font-semibold text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving ? "Enregistrement…" : "Enregistrer"}
             </button>
@@ -486,55 +491,55 @@ export default function QuoteSettingsClient({
         </div>
 
         {/* Offer catalog */}
-        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] mt-6">
-          <div className="px-6 py-5 flex items-center justify-between">
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900">Catalogue d&apos;offres</h2>
-              <p className="text-sm text-slate-500 mt-0.5">Offres réutilisables dans vos devis.</p>
+        <div className="mt-6 rounded-2xl border border-border bg-white">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-5 sm:px-6">
+            <div className="min-w-0">
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Catalogue d&apos;offres</h2>
+              <p className="mt-1 text-[13px] text-slate-500">Offres réutilisables dans vos devis.</p>
             </div>
             <button
               onClick={() => {
                 setEditingOffer(null);
                 setShowOfferModal(true);
               }}
-              className="inline-flex items-center gap-2 px-4 py-2 brand-gradient text-white rounded-lg text-sm font-medium hover:brightness-110 transition-colors"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
             >
               + Ajouter une offre
             </button>
           </div>
 
           {offers.length === 0 ? (
-            <div className="px-6 pb-8 text-center text-slate-400 text-sm">Aucune offre pour l&apos;instant.</div>
+            <div className="px-6 pb-8 text-center text-[13px] text-slate-500">Aucune offre pour l&apos;instant.</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left border-collapse">
+              <table className="w-full border-collapse text-left text-[13px]">
                 <thead>
-                  <tr className="border-b border-slate-200">
-                    <th className="py-3 pl-6 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Nom</th>
-                    <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Prix</th>
-                    <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Unité</th>
-                    <th className="py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">TVA</th>
-                    <th className="py-3 pr-6 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Actions</th>
+                  <tr className="border-y border-border">
+                    <th className="py-2.5 pl-4 pr-4 sm:pl-6 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Nom</th>
+                    <th className="py-2.5 pr-4 text-right text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Prix</th>
+                    <th className="py-2.5 pr-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Unité</th>
+                    <th className="py-2.5 pr-4 text-right text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">TVA</th>
+                    <th className="py-2.5 pr-4 text-right sm:pr-6 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {offers.map((offer, i) => (
-                    <tr key={offer.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                      <td className="py-3 pl-6 pr-4">
-                        <p className="text-slate-800 font-medium">{offer.name}</p>
+                    <tr key={offer.id} className="border-b border-border transition-colors last:border-b-0 hover:bg-slate-50">
+                      <td className="py-3 pl-4 pr-4 sm:pl-6">
+                        <p className="font-medium text-slate-900">{offer.name}</p>
                         {offer.description && (
-                          <p className="text-slate-400 text-xs mt-0.5 truncate max-w-xs">{offer.description}</p>
+                          <p className="mt-0.5 max-w-xs truncate text-[12px] text-slate-500">{offer.description}</p>
                         )}
                       </td>
-                      <td className="py-3 pr-4 text-slate-700 text-right font-mono">{offer.unit_price.toFixed(2)} €</td>
-                      <td className="py-3 pr-4 text-slate-500">{offer.unit}</td>
-                      <td className="py-3 pr-4 text-slate-500 text-right">{offer.vat_rate}%</td>
-                      <td className="py-3 pr-6">
+                      <td className="whitespace-nowrap py-3 pr-4 text-right font-semibold tabular-nums text-slate-900">{offer.unit_price.toFixed(2)} €</td>
+                      <td className="py-3 pr-4 text-slate-600">{offer.unit}</td>
+                      <td className="py-3 pr-4 text-right tabular-nums text-slate-600">{offer.vat_rate}%</td>
+                      <td className="py-3 pr-4 sm:pr-6">
                         <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => handleMove(offer, "up")}
                             disabled={i === 0 || reordering !== null}
-                            className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30 disabled:hover:text-slate-400"
+                            className="grid h-7 w-7 place-items-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400"
                             title="Monter"
                           >
                             ↑
@@ -542,7 +547,7 @@ export default function QuoteSettingsClient({
                           <button
                             onClick={() => handleMove(offer, "down")}
                             disabled={i === offers.length - 1 || reordering !== null}
-                            className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30 disabled:hover:text-slate-400"
+                            className="grid h-7 w-7 place-items-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400"
                             title="Descendre"
                           >
                             ↓
@@ -552,13 +557,13 @@ export default function QuoteSettingsClient({
                               setEditingOffer(offer);
                               setShowOfferModal(true);
                             }}
-                            className="text-xs font-medium text-[color:var(--violet)] hover:brightness-90 px-2"
+                            className="rounded-md px-2 py-1 text-[12px] font-medium text-[color:var(--violet)] transition-colors hover:bg-[color:var(--lavender)]"
                           >
                             Modifier
                           </button>
                           <button
                             onClick={() => handleArchiveOffer(offer)}
-                            className="text-xs font-medium text-red-600 hover:text-red-700 px-2"
+                            className="rounded-md px-2 py-1 text-[12px] font-medium text-rose-700 transition-colors hover:bg-[color:var(--danger-soft)]"
                           >
                             Archiver
                           </button>

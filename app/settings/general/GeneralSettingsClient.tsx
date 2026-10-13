@@ -107,13 +107,13 @@ export default function GeneralSettingsClient({
         les briefs restent corrects mais génériques — ils décrivent le prospect sans jamais le rapprocher de vous.
       </HowItWorksCard>
 
-      <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] divide-y divide-slate-100">
+      <div className="divide-y divide-border rounded-2xl border border-border bg-white">
         {/* Section profil commercial */}
-        <div className="px-6 py-5">
-          <h2 className="text-sm font-semibold text-slate-900 mb-4">Profil commercial</h2>
+        <div className="px-5 py-5 sm:px-6">
+          <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Profil commercial</h2>
           <div className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <label className="mb-1.5 block text-[13px] font-medium text-slate-700">
                 Nom commercial
               </label>
               <input
@@ -121,16 +121,16 @@ export default function GeneralSettingsClient({
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 placeholder="Ex : Acme Solutions"
-                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+                className="w-full rounded-xl border border-border bg-white px-3.5 py-2.5 text-[14px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)]"
               />
-              <p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-400">
-                <svg className="w-3.5 h-3.5 text-[color:var(--violet)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 16v-4m0-4h.01"/></svg>
+              <p className="mt-1.5 flex items-start gap-1.5 text-[12px] leading-snug text-slate-500">
+                <svg className="mt-px h-3.5 w-3.5 shrink-0 text-[color:var(--violet)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 16v-4m0-4h.01"/></svg>
                 {followUp ? "Utilisé pour signer les accroches et emails de suivi générés." : "Utilisé pour signer les accroches générées."}
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <label className="mb-1.5 block text-[13px] font-medium text-slate-700">
                 Ce que vous vendez
               </label>
               <textarea
@@ -138,16 +138,16 @@ export default function GeneralSettingsClient({
                 onChange={(e) => setProductDescription(e.target.value)}
                 rows={3}
                 placeholder="Ex : Un logiciel de gestion de devis pour les artisans du bâtiment"
-                className="w-full px-3.5 py-3 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] resize-none leading-relaxed"
+                className="w-full resize-none rounded-xl border border-border bg-white px-3.5 py-3 text-[14px] leading-relaxed text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)]"
               />
-              <p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-400">
-                <svg className="w-3.5 h-3.5 text-[color:var(--violet)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 16v-4m0-4h.01"/></svg>
+              <p className="mt-1.5 flex items-start gap-1.5 text-[12px] leading-snug text-slate-500">
+                <svg className="mt-px h-3.5 w-3.5 shrink-0 text-[color:var(--violet)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 16v-4m0-4h.01"/></svg>
                 Sert de base aux arguments commerciaux et à l&apos;accroche suggérée dans chaque brief.
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <label className="mb-1.5 block text-[13px] font-medium text-slate-700">
                 Votre client idéal (ICP)
               </label>
               <input
@@ -155,10 +155,10 @@ export default function GeneralSettingsClient({
                 value={icp}
                 onChange={(e) => setIcp(e.target.value)}
                 placeholder="Ex : Directeurs commerciaux de PME de 10 à 50 personnes dans l'industrie"
-                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+                className="w-full rounded-xl border border-border bg-white px-3.5 py-2.5 text-[14px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)]"
               />
-              <p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-400">
-                <svg className="w-3.5 h-3.5 text-[color:var(--violet)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 16v-4m0-4h.01"/></svg>
+              <p className="mt-1.5 flex items-start gap-1.5 text-[12px] leading-snug text-slate-500">
+                <svg className="mt-px h-3.5 w-3.5 shrink-0 text-[color:var(--violet)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 16v-4m0-4h.01"/></svg>
                 Aide l&apos;IA à adapter le ton et les angles d&apos;approche au profil de vos prospects.
               </p>
             </div>
@@ -166,18 +166,18 @@ export default function GeneralSettingsClient({
         </div>
 
         {/* Footer bouton */}
-        <div className="px-6 py-4 flex items-center justify-between bg-slate-50 rounded-b-2xl">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-b-2xl px-5 py-4 sm:px-6">
           {error && (
-            <p className="text-sm text-red-600">{error}</p>
+            <p className="text-[13px] text-rose-700">{error}</p>
           )}
           {saved && !error && (
-            <p className="text-sm text-emerald-600 font-medium">Modifications enregistrées.</p>
+            <p className="text-[13px] font-medium text-emerald-700">Modifications enregistrées.</p>
           )}
           {!error && !saved && <span />}
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 brand-gradient text-white text-sm font-semibold px-6 py-2.5 rounded-lg hover:brightness-110 transition-colors disabled:opacity-50"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[color:var(--primary)] px-4 text-[13px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving ? "Enregistrement…" : "Enregistrer"}
           </button>

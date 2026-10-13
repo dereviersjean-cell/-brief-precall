@@ -80,7 +80,7 @@ export default function ImportCallClient({
   }
 
   const inputClass =
-    "w-full rounded-lg border border-border px-3 py-2 text-[13px] text-slate-900 focus:border-[color:var(--violet)] focus:outline-none focus:ring-1 focus:ring-[color:var(--violet)]";
+    "w-full rounded-xl border border-border bg-white px-3.5 py-2 text-[13.5px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)]";
 
   return (
     <div className="max-w-3xl">
@@ -98,15 +98,15 @@ export default function ImportCallClient({
         </div>
       </div>
 
-      <Card className="mb-5 border-amber-200 bg-amber-50">
+      <div className="mb-5 rounded-2xl bg-[color:var(--warning-soft)] px-5 py-4">
         <p className="text-[13px] leading-relaxed text-amber-800">
           Le call importé est un <strong>call normal</strong> : il compte dans les statistiques d&apos;équipe, les
           analytics et la bibliothèque d&apos;objections. Pour annuler un essai, supprimez le call depuis son détail.
         </p>
-      </Card>
+      </div>
 
       <Card className="mb-5">
-        <div className="mb-4 inline-flex items-center gap-1 rounded-lg bg-slate-100 p-1">
+        <div className="no-scrollbar mb-4 inline-flex max-w-full overflow-x-auto rounded-full bg-slate-100 p-1">
           {(
             [
               ["file", "Déposer un fichier"],
@@ -120,8 +120,8 @@ export default function ImportCallClient({
                 setMode(value);
                 setError(null);
               }}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                mode === value ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              className={`inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-full px-3 text-[12.5px] font-medium transition-[background-color,color,box-shadow] duration-200 ${
+                mode === value ? "bg-white text-slate-900 shadow-[0_1px_3px_oklch(0.19_0.02_266/0.12)]" : "text-slate-500 hover:text-slate-900"
               }`}
             >
               {label}
@@ -146,9 +146,9 @@ export default function ImportCallClient({
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
             {file ? (
-              <div className="flex items-center gap-3 rounded-lg border border-[color:var(--lavender-strong)] bg-[color:var(--lavender)] px-4 py-3">
+              <div className="flex items-center gap-3 rounded-xl bg-[color:var(--lavender)] px-4 py-3">
                 <Upload className="h-4 w-4 shrink-0 text-[color:var(--violet)]" />
-                <p className="flex-1 truncate text-sm font-medium text-slate-700">{file.name}</p>
+                <p className="min-w-0 flex-1 truncate text-[13px] font-medium text-slate-700">{file.name}</p>
                 <button
                   type="button"
                   onClick={() => setFile(null)}
@@ -162,10 +162,10 @@ export default function ImportCallClient({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex w-full flex-col items-center gap-2 rounded-lg border border-dashed border-border px-4 py-10 text-slate-400 transition-colors hover:border-[color:var(--violet)] hover:text-[color:var(--violet)]"
+                className="flex w-full flex-col items-center gap-2 rounded-xl border border-dashed border-border px-4 py-10 text-slate-500 transition-colors hover:border-[color:var(--violet)] hover:text-[color:var(--violet)]"
               >
                 <Upload className="h-5 w-5" />
-                <span className="text-sm font-medium">Choisir un fichier de transcript</span>
+                <span className="text-[13px] font-medium">Choisir un fichier de transcript</span>
               </button>
             )}
           </div>
@@ -188,10 +188,10 @@ export default function ImportCallClient({
       </Card>
 
       <Card className="mb-5">
-        <p className="mb-4 text-[13px] font-semibold text-slate-900">Contexte du call</p>
+        <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Contexte du call</p>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">Commercial</label>
+            <label className="mb-1 block text-[12px] font-medium text-slate-700">Commercial</label>
             <Dropdown
               className="w-full"
               ariaLabel="Commercial à qui attribuer le call"
@@ -204,8 +204,8 @@ export default function ImportCallClient({
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">
-              Titre du RDV <span className="font-normal text-slate-400">— sert à détecter l&apos;étape R1/R2/R3</span>
+            <label className="mb-1 block text-[12px] font-medium text-slate-700">
+              Titre du RDV <span className="font-normal text-slate-500">— sert à détecter l&apos;étape R1/R2/R3</span>
             </label>
             <input
               value={meetingTitle}
@@ -215,12 +215,12 @@ export default function ImportCallClient({
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">Société du prospect</label>
+            <label className="mb-1 block text-[12px] font-medium text-slate-700">Société du prospect</label>
             <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Acme" className={inputClass} />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">
-              Email du contact <span className="font-normal text-slate-400">— relie le call au signal gagné/perdu</span>
+            <label className="mb-1 block text-[12px] font-medium text-slate-700">
+              Email du contact <span className="font-normal text-slate-500">— relie le call au signal gagné/perdu</span>
             </label>
             <input
               value={contactEmail}
@@ -232,16 +232,16 @@ export default function ImportCallClient({
         </div>
       </Card>
 
-      {error && <p className="mb-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">{error}</p>}
+      {error && <p className="mb-4 rounded-xl bg-[color:var(--danger-soft)] px-3.5 py-2.5 text-[13px] text-rose-700">{error}</p>}
 
       <Button variant="primary" onClick={handleSubmit} disabled={!canSubmit || submitting}>
         {submitting ? "Analyse en cours… (jusqu'à 2 min)" : "Lancer l'analyse"}
       </Button>
 
       {result && (
-        <Card className="mt-6 border-emerald-200 bg-emerald-50">
-          <p className="text-[13px] font-semibold text-emerald-900">Analyse terminée</p>
-          <ul className="mt-2 space-y-1 text-[13px] text-emerald-800">
+        <div className="mt-6 rounded-2xl bg-[color:var(--success-soft)] p-5 sm:p-6">
+          <p className="text-[13.5px] font-semibold text-emerald-700">Analyse terminée</p>
+          <ul className="mt-2 space-y-1 text-[13px] text-slate-700 tabular-nums">
             <li>Format détecté : {FORMAT_LABELS[result.format] ?? result.format}</li>
             <li>
               Locuteurs : {result.speakers.length > 0 ? result.speakers.join(", ") : "aucun identifié"}
@@ -255,7 +255,7 @@ export default function ImportCallClient({
           </ul>
 
           {result.warnings.length > 0 && (
-            <ul className="mt-3 space-y-1 border-t border-emerald-200 pt-3 text-[12.5px] text-amber-700">
+            <ul className="mt-3 space-y-1 border-t border-emerald-700/15 pt-3 text-[12.5px] text-amber-700">
               {result.warnings.map((warning, i) => (
                 <li key={i}>{warning}</li>
               ))}
@@ -265,18 +265,18 @@ export default function ImportCallClient({
           <div className="mt-4 flex flex-wrap gap-3">
             <Link
               href={`/feedback/${result.callId}`}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg brand-gradient px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110"
             >
               Voir l&apos;analyse <ArrowRight className="h-3.5 w-3.5" />
             </Link>
             <Link
               href="/dashboard/objections"
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 hover:bg-slate-50"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
             >
               Voir les objections
             </Link>
           </div>
-        </Card>
+        </div>
       )}
     </div>
   );

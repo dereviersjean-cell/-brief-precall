@@ -55,17 +55,17 @@ export function AdminLoginForm({ onSuccess }: { onSuccess: () => void }) {
   return (
     <div className="brief-ui app-canvas min-h-screen bg-[color:var(--background)] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <div className="rounded-2xl border border-border bg-white p-8 shadow-[var(--shadow-md)]">
+        <div className="rounded-2xl border border-border bg-white p-8">
           <div className="mb-7 flex flex-col items-center text-center">
-            <div className="grid h-11 w-11 place-items-center rounded-xl brand-gradient text-base font-semibold text-white shadow-[var(--shadow-glow)]">
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-[color:var(--primary)] text-[16px] font-semibold text-white">
               B
             </div>
-            <h1 className="mt-4 text-xl font-semibold tracking-tight text-slate-900">Administration Brief</h1>
+            <h1 className="mt-4 text-[22px] font-semibold leading-tight tracking-[-0.02em] text-slate-900">Administration Brief</h1>
             <p className="mt-1 text-[13px] text-slate-500">Accès réservé à l&apos;équipe</p>
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-slate-700">Mot de passe</label>
+              <label className="mb-1.5 block text-[12.5px] font-medium text-slate-700">Mot de passe</label>
               <input
                 type="password"
                 value={password}
@@ -76,14 +76,14 @@ export function AdminLoginForm({ onSuccess }: { onSuccess: () => void }) {
               />
             </div>
             {error && (
-              <p className="rounded-lg border border-[color:var(--danger-soft)] bg-[color:var(--danger-soft)] px-3 py-2 text-[13px] text-rose-700">
+              <p className="rounded-xl bg-[color:var(--danger-soft)] px-3.5 py-2.5 text-[13px] text-rose-700">
                 {error}
               </p>
             )}
             <button
               type="submit"
               disabled={loading || !password}
-              className="flex h-10 w-full items-center justify-center gap-2 rounded-lg brand-gradient text-[13.5px] font-medium text-white shadow-[var(--shadow-glow)] transition-all hover:brightness-110 disabled:opacity-50"
+              className="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-[color:var(--primary)] text-[13.5px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading && <Spinner />}
               {loading ? "Connexion…" : "Se connecter"}
@@ -119,7 +119,7 @@ export function AdminPageShell({
 }
 
 // ─── Page header ──────────────────────────────────────────────────────────────
-// Même forme que PageHeader (app/components/ui/PageHeader.tsx) : pastille,
+// Même forme que PageHeader (app/components/ui/PageHeader.tsx) : étiquette,
 // titre, sous-titre, actions — sans carte ni halos, le contenu commence
 // tout de suite.
 
@@ -137,14 +137,14 @@ export function AdminPageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
+    <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
       <div className="min-w-0">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--lavender-strong)] bg-[color:var(--lavender)] px-2.5 py-0.5 text-[10.5px] font-medium uppercase tracking-[0.08em] text-[color:var(--violet)]">
-          {Icon && <Icon className="h-3 w-3" />}
+        <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.08em] text-[color:var(--violet)]">
+          {Icon && <Icon className="h-3.5 w-3.5" />}
           {eyebrow}
         </span>
-        <h1 className="mt-2 text-[28px] font-semibold leading-[1.15] tracking-tight text-slate-900">{title}</h1>
-        {subtitle && <div className="mt-1.5 text-[13.5px] text-slate-500">{subtitle}</div>}
+        <h1 className="mt-1.5 text-[28px] font-semibold leading-[1.1] tracking-[-0.03em] text-slate-900">{title}</h1>
+        {subtitle && <div className="mt-2 text-[14px] leading-relaxed text-slate-500">{subtitle}</div>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2 sm:shrink-0">{actions}</div>}
     </div>
@@ -155,10 +155,10 @@ export function AdminPageHeader({
 
 export function AdminCard({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`rounded-2xl border border-border bg-white p-6 shadow-[var(--shadow-sm)] ${className}`}>{children}</div>
+    <div className={`rounded-2xl border border-border bg-white p-6 ${className}`}>{children}</div>
   );
 }
 
 // Champ de saisie standard de l'admin (texte, mot de passe, zone de texte).
 export const ADMIN_INPUT =
-  "w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-[13.5px] text-slate-900 placeholder:text-slate-400 transition-colors focus:border-[color:var(--ring)] focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/20";
+  "w-full rounded-xl border border-border bg-white px-3.5 py-2.5 text-[13.5px] text-slate-900 placeholder:text-slate-400 transition-colors focus:border-[color:var(--violet)] focus:outline-none focus:ring-1 focus:ring-[color:var(--violet)]";
