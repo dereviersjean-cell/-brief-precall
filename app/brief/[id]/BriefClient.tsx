@@ -1012,51 +1012,6 @@ export default function BriefClient({
                     )}
                   </Section>
 
-                  {/* Ordre de lecture d'un commercial deux minutes avant
-                      l'appel, le même que l'exemple du site : ce qui se dit
-                      d'abord (les pain points et leurs questions, la
-                      référence à citer), le contexte ensuite (arguments,
-                      actualités). Les actualités venaient en premier, les
-                      pain points en dernier. */}
-                  {brief.painPoints.length > 0 && (
-                    <Section title="Pain points identifiés">
-                      <div className="space-y-3.5">
-                        {brief.painPoints.map((p, i) => (
-                          <TalkingPointItem key={i} point={p} color={painPointColors[i % painPointColors.length]} />
-                        ))}
-                      </div>
-                    </Section>
-                  )}
-
-                  {brief.references && brief.references.length > 0 && (
-                    <Section title="Références clients">
-                      <div className="space-y-3">
-                        {brief.references.map((ref, i) => (
-                          <div key={i} className="rounded-2xl border border-border p-4">
-                            <p className="text-[15px] font-semibold text-slate-900">{ref.client_name}</p>
-                            <p className="mt-1 text-[12.5px] leading-relaxed text-slate-600">{ref.relevance}</p>
-                            <div className="mt-3 rounded-xl bg-[color:var(--lavender)] px-4 py-3">
-                              <p className={`${LABEL} text-[color:var(--violet)]`}>
-                                À dire en call
-                              </p>
-                              <p className="mt-1 text-[13.5px] leading-relaxed text-slate-900">{ref.pitch}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </Section>
-                  )}
-
-                  {brief.talkingPoints.length > 0 && (
-                    <Section title="Arguments commerciaux">
-                      <div className="space-y-3.5">
-                        {brief.talkingPoints.map((p, i) => (
-                          <TalkingPointItem key={i} point={p} color={talkingPointColors[i % talkingPointColors.length]} />
-                        ))}
-                      </div>
-                    </Section>
-                  )}
-
                   {brief.actualites && brief.actualites.length > 0 && (
                     <Section title="Actualités récentes">
                       <div className="-mx-2.5 space-y-0.5">
@@ -1104,6 +1059,45 @@ export default function BriefClient({
                             </div>
                             <p className="text-[13.5px] leading-relaxed text-slate-900">{news}</p>
                           </div>
+                        ))}
+                      </div>
+                    </Section>
+                  )}
+
+                  {brief.talkingPoints.length > 0 && (
+                    <Section title="Arguments commerciaux">
+                      <div className="space-y-3.5">
+                        {brief.talkingPoints.map((p, i) => (
+                          <TalkingPointItem key={i} point={p} color={talkingPointColors[i % talkingPointColors.length]} />
+                        ))}
+                      </div>
+                    </Section>
+                  )}
+
+                  {brief.references && brief.references.length > 0 && (
+                    <Section title="Références clients">
+                      <div className="space-y-3">
+                        {brief.references.map((ref, i) => (
+                          <div key={i} className="rounded-2xl border border-border p-4">
+                            <p className="text-[15px] font-semibold text-slate-900">{ref.client_name}</p>
+                            <p className="mt-1 text-[12.5px] leading-relaxed text-slate-600">{ref.relevance}</p>
+                            <div className="mt-3 rounded-xl bg-[color:var(--lavender)] px-4 py-3">
+                              <p className={`${LABEL} text-[color:var(--violet)]`}>
+                                À dire en call
+                              </p>
+                              <p className="mt-1 text-[13.5px] leading-relaxed text-slate-900">{ref.pitch}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </Section>
+                  )}
+
+                  {brief.painPoints.length > 0 && (
+                    <Section title="Pain points identifiés">
+                      <div className="space-y-3.5">
+                        {brief.painPoints.map((p, i) => (
+                          <TalkingPointItem key={i} point={p} color={painPointColors[i % painPointColors.length]} />
                         ))}
                       </div>
                     </Section>
