@@ -193,11 +193,12 @@ function timeUntil(iso: string): string | null {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function DayDivider({ label }: { label: string }) {
+function DayDivider({ label, count }: { label: string; count?: number }) {
   return (
-    <h2 className="mb-2.5 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-slate-500">
-      {label}
-    </h2>
+    <div className="flex items-baseline justify-between gap-3 border-b border-border pb-3">
+      <h2 className="text-[20px] font-semibold tracking-[-0.02em] text-slate-900 first-letter:uppercase">{label}</h2>
+      {count !== undefined && <span className="text-[13px] tabular-nums text-slate-500">{count} RDV</span>}
+    </div>
   );
 }
 
@@ -220,6 +221,7 @@ function CalendarEventCard({
   existingBrief,
   nextLabel,
   index,
+  featured = false,
 }: {
   event: CalendarEvent;
   onPrepare: (event: CalendarEvent) => void;
@@ -227,92 +229,201 @@ function CalendarEventCard({
   existingBrief?: StoredBrief;
   nextLabel: string | null;
   index: number;
+  /** Le prochain rendez-vous, mis en avant en tête de liste (maquette R2a). */
+  featured?: boolean;
 }) {
   const start = eventStartDate(event);
   const duration = eventDuration(event);
+  const logoSize = featured ? "h-[52px] w-[52px] rounded-2xl" : "h-10 w-10 rounded-xl";
+
+  const logo = (
+    // Le logo de l'entreprise du participant externe, trouvé par le serveur
+    // à partir de son domaine et du nom de l'entreprise (app/api/company-logo,
+    // mis en cache).
+    <CompanyLogo
+      domain={companyDomainFromEmail(getCompanyAttendee(event)?.email)}
+      name={event.company}
+      alt={event.summary}
+      className={`${logoSize} shrink-0 border border-border bg-white object-contain p-1`}
+      fallback={
+        <div className={`${logoSize} grid shrink-0 place-items-center bg-[color:var(--primary)]`}>
+          <span className={`${featured ? "text-[20px]" : "text-[15px]"} font-semibold text-white`}>
+            {(event.company || getCompanyFromDomain(event) || event.summary).charAt(0).toUpperCase()}
+          </span>
+        </div>
+      }
+    />
+  );
+
+  const attendees =
+    event.attendees.length > 0 ? event.attendees.map((a) => a.name ?? a.email).join(", ") : "Aucun participant externe";
+
+  const actions = (
+    <div className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto">
+      {existingBrief ? (
+        <Link
+          href={`/brief/${existingBrief.calendar_event_id ?? existingBrief.id}?company=${encodeURIComponent(existingBrief.company_name ?? "")}&cached=true&contactEmail=${encodeURIComponent(existingBrief.contact_email ?? "")}&title=${encodeURIComponent(existingBrief.meeting_title ?? "")}`}
+          className={`inline-flex items-center gap-1.5 rounded-full font-medium transition-colors duration-200 ${
+            featured
+              ? "h-11 bg-[color:var(--primary)] px-5 text-[14px] font-semibold text-white hover:brightness-110"
+              : "h-10 border border-border bg-white px-4 text-[13.5px] text-slate-900 hover:bg-slate-50"
+          }`}
+        >
+          Revoir
+          <ArrowRight className="w-4 h-4" />
+        </Link>
+      ) : (
+        <button
+          onClick={() => onPrepare(event)}
+          className={`inline-flex items-center gap-1.5 rounded-full bg-[color:var(--primary)] font-semibold text-white transition duration-200 hover:brightness-110 ${
+            featured ? "h-11 px-5 text-[14px]" : "h-10 px-4 text-[13.5px]"
+          }`}
+        >
+          Préparer le brief
+          <ArrowRight className="w-4 h-4" />
+        </button>
+      )}
+      {event.manual && onDelete && (
+        <button
+          onClick={() => onDelete(event.id)}
+          aria-label="Supprimer ce rendez-vous"
+          className="flex h-10 w-10 items-center justify-center rounded-full text-slate-400 hover:bg-[color:var(--danger-soft)] hover:text-rose-700 transition-colors duration-200"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      )}
+    </div>
+  );
+
+  const pills = (
+    <>
+      {event.manual && (
+        <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11.5px] font-semibold text-slate-600">
+          Ajouté manuellement
+        </span>
+      )}
+      {existingBrief && (
+        <span className="shrink-0 rounded-full bg-[color:var(--success-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-emerald-700">
+          Brief généré
+        </span>
+      )}
+    </>
+  );
+
+  if (featured) {
+    return (
+      <motion.section
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className="rounded-[24px] bg-[color:var(--lavender)] px-5 py-5 sm:px-8 sm:py-6"
+      >
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px] text-slate-600">
+          {nextLabel && <NextBadge label={nextLabel} />}
+          <span className="tabular-nums">
+            {dayLabel(start)} · {formatTime(start)}
+          </span>
+          {duration > 0 && <span className="tabular-nums">{duration} min</span>}
+          {pills}
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-4">
+          {logo}
+          <div className="min-w-0 flex-1">
+            <h3 className="text-[22px] font-semibold leading-tight tracking-[-0.03em] text-slate-900 sm:text-[24px]">{event.summary}</h3>
+            <p className="mt-1 truncate text-[14px] text-slate-600">{attendees}</p>
+          </div>
+          {actions}
+        </div>
+      </motion.section>
+    );
+  }
 
   return (
-    <motion.div
+    <motion.li
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: Math.min(index * 0.04, 0.3), duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
       // Sous `sm`, les actions passent sur une seconde ligne (`w-full`) : sur
       // 375 px, l'heure, le titre, les pastilles et « Préparer le brief » ne
       // tiennent pas côte à côte sans écraser le titre.
-      className="flex flex-wrap items-center gap-x-3 gap-y-2.5 rounded-2xl border border-border bg-white px-3.5 py-3 sm:flex-nowrap sm:gap-5 sm:px-4"
+      className="flex flex-wrap items-center gap-x-4 gap-y-3 py-5 sm:flex-nowrap sm:gap-5"
     >
-      <div className="w-12 shrink-0 text-center sm:w-14">
-        <p className="text-[16px] font-semibold tabular-nums text-slate-900 sm:text-[17px]">{formatTime(start)}</p>
-        <p className="text-[11.5px] tabular-nums text-slate-500">{duration > 0 ? `${duration} min` : "—"}</p>
+      <div className="w-14 shrink-0 sm:w-16">
+        <p className="text-[18px] font-semibold tabular-nums tracking-tight text-slate-900 sm:text-[20px]">{formatTime(start)}</p>
+        <p className="text-[12px] tabular-nums text-slate-500">{duration > 0 ? `${duration} min` : "—"}</p>
       </div>
-      <div className="h-10 w-px shrink-0 bg-border" />
+      {logo}
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          {/* Le logo de l'entreprise du participant externe, trouvé par le
-              serveur à partir de son domaine et du nom de l'entreprise
-              (app/api/company-logo, mis en cache). */}
-          <CompanyLogo
-            domain={companyDomainFromEmail(getCompanyAttendee(event)?.email)}
-            name={event.company}
-            alt={event.summary}
-            className="w-7 h-7 rounded-lg object-contain shrink-0 bg-white border border-border p-0.5"
-            fallback={
-              <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[color:var(--primary)]">
-                <span className="text-[12px] font-bold text-white">
-                  {event.summary.charAt(0).toUpperCase()}
-                </span>
-              </div>
-            }
-          />
-          <h3 className="min-w-0 truncate text-[14px] font-semibold leading-snug text-slate-900">{event.summary}</h3>
-          {event.manual && (
-            <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11.5px] font-semibold text-slate-600">
-              Ajouté manuellement
-            </span>
-          )}
+          <h3 className="min-w-0 truncate text-[15.5px] font-semibold leading-snug text-slate-900 sm:text-[16px]">{event.summary}</h3>
           {nextLabel && <NextBadge label={nextLabel} />}
-          {existingBrief && (
-            <span className="shrink-0 rounded-full bg-[color:var(--lavender)] px-2 py-0.5 text-[11.5px] font-semibold text-[color:var(--violet)]">
-              Brief généré
-            </span>
-          )}
+          {pills}
         </div>
-        <p className="mt-1 truncate text-[12.5px] text-slate-500">
-          {event.attendees.length > 0
-            ? event.attendees.map((a) => a.name ?? a.email).join(", ")
-            : "Aucun participant externe"}
-        </p>
+        <p className="mt-0.5 truncate text-[13.5px] text-slate-500">{attendees}</p>
       </div>
-      <div className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto">
-        {existingBrief ? (
-          <Link
-            href={`/brief/${existingBrief.calendar_event_id ?? existingBrief.id}?company=${encodeURIComponent(existingBrief.company_name ?? "")}&cached=true&contactEmail=${encodeURIComponent(existingBrief.contact_email ?? "")}&title=${encodeURIComponent(existingBrief.meeting_title ?? "")}`}
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-[13px] font-medium text-slate-900 hover:bg-slate-50 transition-colors duration-200"
-          >
-            Revoir
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        ) : (
-          <button
-            onClick={() => onPrepare(event)}
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[color:var(--primary)] px-3 text-[13px] font-medium text-white hover:brightness-110 transition duration-200"
-          >
-            Préparer le brief
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        )}
-        {event.manual && onDelete && (
-          <button
-            onClick={() => onDelete(event.id)}
-            aria-label="Supprimer ce rendez-vous"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-[color:var(--danger-soft)] hover:text-rose-700 transition-colors duration-200"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        )}
-      </div>
-    </motion.div>
+      {actions}
+    </motion.li>
   );
+}
+
+// Le bandeau de la semaine (maquette R2a, version claire choisie par Jean le
+// 13/10/2026) : les sept jours que couvre l'agenda, un trait par rendez-vous,
+// vert quand son brief est prêt. Un clic descend au jour.
+function WeekStrip({
+  events,
+  briefs,
+  activeKey,
+}: {
+  events: CalendarEvent[];
+  briefs: StoredBrief[];
+  activeKey: string | null;
+}) {
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + i);
+    return d;
+  });
+  return (
+    <div className="-mx-1 overflow-x-auto px-1 no-scrollbar">
+      <div className="grid min-w-[560px] grid-cols-7 gap-1.5 rounded-[22px] border border-border bg-white p-1.5">
+        {days.map((d) => {
+          const key = d.toDateString();
+          const dayEvents = events.filter((e) => new Date(eventStartDate(e)).toDateString() === key);
+          const on = key === activeKey;
+          const weekday = d.toLocaleDateString("fr-FR", { weekday: "short" });
+          return (
+            <button
+              key={key}
+              type="button"
+              disabled={dayEvents.length === 0}
+              onClick={() => document.getElementById(dayAnchor(key))?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              className={`rounded-2xl px-2 py-3 text-center transition-colors ${
+                on ? "bg-[color:var(--primary)] text-white" : "text-slate-900 enabled:hover:bg-slate-50"
+              } disabled:cursor-default`}
+            >
+              <div className={`text-[12px] font-medium capitalize ${on ? "text-white/75" : "text-slate-400"}`}>{weekday}</div>
+              <div className="mt-0.5 text-[21px] font-semibold leading-tight tabular-nums">{d.getDate()}</div>
+              <div className="mt-2 flex h-1.5 flex-wrap justify-center gap-1">
+                {dayEvents.slice(0, 4).map((e) => (
+                  <span
+                    key={e.id}
+                    className={`h-1.5 w-3.5 rounded-full ${
+                      briefs.some((b) => b.calendar_event_id === e.id) ? "bg-emerald-400" : on ? "bg-white/45" : "bg-slate-200"
+                    }`}
+                  />
+                ))}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function dayAnchor(dayKey: string) {
+  return `jour-${dayKey.replace(/\s+/g, "-")}`;
 }
 
 function CompanyModal({
@@ -600,16 +711,16 @@ function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
 
 function RecentBriefsCard({ briefs }: { briefs: StoredBrief[] }) {
   return (
-    <div className="rounded-2xl border border-border bg-white p-4 sm:p-5">
-      <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">
+    <section>
+      <h2 className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-slate-500">
         Briefs récents
       </h2>
-      <div className="space-y-0.5">
+      <div className="flex flex-wrap gap-2.5">
         {briefs.map((brief) => (
           <Link
             key={brief.id}
             href={`/brief/${brief.calendar_event_id ?? brief.id}?company=${encodeURIComponent(brief.company_name ?? "")}&cached=true&contactEmail=${encodeURIComponent(brief.contact_email ?? "")}&title=${encodeURIComponent(brief.meeting_title ?? "")}`}
-            className="-mx-1.5 flex items-center gap-2.5 rounded-lg px-1.5 py-2 hover:bg-slate-50 transition-colors group"
+            className="group inline-flex items-center gap-3 rounded-2xl border border-border bg-white py-2.5 pl-2.5 pr-4 transition-colors hover:border-slate-300"
           >
             <CompanyLogo
               domain={companyDomainFromEmail(brief.contact_email)}
@@ -624,24 +735,23 @@ function RecentBriefsCard({ briefs }: { briefs: StoredBrief[] }) {
                 </div>
               }
             />
-            <div className="flex-1 min-w-0">
-              <p className="truncate text-[13px] font-medium text-slate-900 group-hover:text-[color:var(--violet)] transition-colors">
+            <span className="min-w-0">
+              <span className="block truncate text-[13.5px] font-semibold text-slate-900 group-hover:text-[color:var(--violet)] transition-colors">
                 {formatCompanyName(brief.company_name)}
-              </p>
-              <p className="text-[11.5px] tabular-nums text-slate-500">
+              </span>
+              <span className="block text-[12px] tabular-nums text-slate-500">
                 {new Date(brief.created_at).toLocaleDateString("fr-FR", {
                   day: "numeric",
                   month: "long",
                   hour: "2-digit",
                   minute: "2-digit",
                 })}
-              </p>
-            </div>
-            <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[color:var(--violet)] transition-colors shrink-0" />
+              </span>
+            </span>
           </Link>
         ))}
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -848,31 +958,48 @@ export default function BriefToolClient() {
 
       {/* Calendar events */}
       {showCalendar && !calendarLoading && (
-        <div className="space-y-7">
+        <div className="space-y-10">
           {calendarGroups.length === 0 ? (
             <EmptyState
               title="Aucun rendez-vous à venir pour l'instant."
               subtitle={`Aucun événement ${calendarLabel} avec des participants extérieurs dans les 7 prochains jours.`}
             />
           ) : (
-            calendarGroups.map(([dayKey, events]) => (
-              <div key={dayKey}>
-                <DayDivider label={dayLabel(eventStartDate(events[0]))} />
-                <div className="space-y-2">
-                  {events.map((e, i) => (
-                    <CalendarEventCard
-                      key={e.id}
-                      event={e}
-                      index={i}
-                      onPrepare={handlePrepare}
-                      onDelete={handleDeleteManualMeeting}
-                      existingBrief={recentBriefs.find((b) => b.calendar_event_id === e.id)}
-                      nextLabel={e.id === nextEvent?.id ? nextEventLabel : null}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))
+            <>
+              {nextEvent && (
+                <CalendarEventCard
+                  featured
+                  event={nextEvent}
+                  index={0}
+                  onPrepare={handlePrepare}
+                  onDelete={handleDeleteManualMeeting}
+                  existingBrief={recentBriefs.find((b) => b.calendar_event_id === nextEvent.id)}
+                  nextLabel={nextEventLabel}
+                />
+              )}
+              {calendarGroups.map(([dayKey, dayEvents]) => {
+                const events = dayEvents.filter((e) => e.id !== nextEvent?.id);
+                if (events.length === 0) return null;
+                return (
+                  <section key={dayKey} id={dayAnchor(dayKey)} className="scroll-mt-24">
+                    <DayDivider label={dayLabel(eventStartDate(events[0]))} count={events.length} />
+                    <ul className="divide-y divide-border">
+                      {events.map((e, i) => (
+                        <CalendarEventCard
+                          key={e.id}
+                          event={e}
+                          index={i}
+                          onPrepare={handlePrepare}
+                          onDelete={handleDeleteManualMeeting}
+                          existingBrief={recentBriefs.find((b) => b.calendar_event_id === e.id)}
+                          nextLabel={null}
+                        />
+                      ))}
+                    </ul>
+                  </section>
+                );
+              })}
+            </>
           )}
         </div>
       )}
@@ -889,48 +1016,41 @@ export default function BriefToolClient() {
 
   return (
     <div className="max-w-6xl mx-auto w-full px-4 py-6 sm:px-6 sm:py-10">
-      {/* Hero header */}
+      {/* En-tête (maquette R2a) : les chiffres sont dans le sous-titre. */}
       <FadeIn>
-        <div data-tour="brief-content" className="mb-4 rounded-[20px] border border-border bg-white p-5 sm:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0">
-              <span className="mb-2.5 inline-flex items-center gap-1.5 rounded-full bg-[color:var(--lavender)] px-2.5 py-1 text-[11.5px] font-semibold text-[color:var(--violet)]">
-                <Sparkles className="w-3 h-3" />
-                Préparation IA
-              </span>
-              <h1 className="text-[24px] font-semibold leading-tight tracking-[-0.02em] text-slate-900 sm:text-[26px]">Vos prochains rendez-vous</h1>
-              <p className="mt-1 text-[13.5px] text-slate-500">
-                {upcomingCount} RDV à venir
-                {showCalendar && ` · ${calendarLabel}`}
-              </p>
-            </div>
-            <button
-              data-tour="brief-add"
-              onClick={() =>
-                isAuthenticated
-                  ? setShowAddMeetingModal(true)
-                  : signIn(provider === "azure-ad" ? "azure-ad" : "google", { callbackUrl: "/brief" })
-              }
-              className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors duration-200"
-            >
-              <Plus className="w-4 h-4" />
-              Ajouter un RDV
-            </button>
+        <div data-tour="brief-content" className="mb-7 flex flex-wrap items-end justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.035em] text-slate-900 sm:text-[30px]">Vos prochains rendez-vous</h1>
+            <p className="mt-1 text-[14.5px] text-slate-500">
+              {upcomingCount} RDV à venir
+              {prepRate !== null && ` · ${prepRate} % déjà préparés`}
+              {showCalendar && ` · ${calendarLabel}`}
+            </p>
           </div>
+          <button
+            data-tour="brief-add"
+            onClick={() =>
+              isAuthenticated
+                ? setShowAddMeetingModal(true)
+                : signIn(provider === "azure-ad" ? "azure-ad" : "google", { callbackUrl: "/brief" })
+            }
+            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full bg-[color:var(--primary)] px-4 text-[13.5px] font-semibold text-white hover:brightness-110 transition duration-200"
+          >
+            <Plus className="w-4 h-4" />
+            Ajouter un RDV
+          </button>
         </div>
       </FadeIn>
 
-      {/* Stats */}
-      <div className={`grid grid-cols-1 gap-3 mb-6 sm:gap-4 ${showCalendar ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
-        <StatTile compact index={0} accent="indigo" label="RDV à venir" value={upcomingCount} icon={<Calendar className="w-3.5 h-3.5" />} />
-        {/* « Avec participants externes » retirée le 21/08/2026 : lib/calendar.ts
-            ne remonte QUE les événements ayant au moins un participant externe,
-            donc cette tuile comptait le même ensemble que « RDV à venir ». Elle
-            additionnait en plus des PARTICIPANTS et non des rendez-vous — deux
-            unités différentes qui coïncidaient tant que chaque RDV n'avait
-            qu'un invité. En mode « briefs enregistrés » la tuile garde du sens
-            et reste affichée. */}
-        {!showCalendar && (
+      {/* Sans agenda chargé, les chiffres restent en tuiles. « Avec
+          participants externes » retirée le 21/08/2026 : lib/calendar.ts ne
+          remonte QUE les événements ayant au moins un participant externe,
+          donc cette tuile comptait le même ensemble que « RDV à venir ». En
+          mode « briefs enregistrés » la tuile garde du sens et reste
+          affichée. */}
+      {!showCalendar && (
+        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+          <StatTile compact index={0} accent="indigo" label="RDV à venir" value={upcomingCount} icon={<Calendar className="w-3.5 h-3.5" />} />
           <StatTile
             compact
             index={1}
@@ -939,27 +1059,34 @@ export default function BriefToolClient() {
             value={recentBriefs.length}
             icon={<Users className="w-3.5 h-3.5" />}
           />
-        )}
-        <StatTile
-          compact
-          index={2}
-          accent="emerald"
-          label="Taux de préparation"
-          value={prepRate}
-          suffix={prepRate !== null ? "%" : undefined}
-          icon={<Sparkles className="w-3.5 h-3.5" />}
-        />
-      </div>
-
-      {recentBriefs.length > 0 ? (
-        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
-          <div className="min-w-0">{feedContent}</div>
-          <div className="lg:sticky lg:top-6">
-            <RecentBriefsCard briefs={recentBriefs} />
-          </div>
+          <StatTile
+            compact
+            index={2}
+            accent="emerald"
+            label="Taux de préparation"
+            value={prepRate}
+            suffix={prepRate !== null ? "%" : undefined}
+            icon={<Sparkles className="w-3.5 h-3.5" />}
+          />
         </div>
-      ) : (
-        feedContent
+      )}
+
+      {showCalendar && !calendarLoading && calendarGroups.length > 0 && (
+        <div className="mb-6">
+          <WeekStrip
+            events={calendarEvents}
+            briefs={recentBriefs}
+            activeKey={nextEvent ? new Date(eventStartDate(nextEvent)).toDateString() : null}
+          />
+        </div>
+      )}
+
+      {feedContent}
+
+      {recentBriefs.length > 0 && (
+        <div className="mt-12">
+          <RecentBriefsCard briefs={recentBriefs} />
+        </div>
       )}
 
       <AnimatePresence>
