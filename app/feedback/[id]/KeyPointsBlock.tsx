@@ -60,23 +60,23 @@ export default function KeyPointsBlock({
   }, []);
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6">
-      <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-        <span>💡</span> Points clés
+    <div className="rounded-2xl border border-border bg-white p-5 sm:p-6">
+      <h2 className="text-[17px] font-semibold tracking-tight text-slate-900">
+        Points clés
       </h2>
-      <p className="text-sm text-slate-500 mt-0.5 mb-4">Ce qu&apos;un dirigeant retiendra de cette réunion</p>
+      <p className="text-[13.5px] text-slate-500 mt-0.5 mb-4">Ce qu&apos;un dirigeant retiendra de cette réunion</p>
 
       {status === "loading" && (
-        <div className="flex items-center gap-2 text-sm text-slate-500 py-1">
+        <div className="flex items-center gap-2 text-[13.5px] text-slate-500 py-1">
           <Spinner />
           Génération des points clés en cours…
         </div>
       )}
 
       {status === "error" && (
-        <div className="flex items-center gap-2 text-sm text-red-600 py-1">
+        <div className="flex flex-wrap items-center gap-2 text-[13.5px] text-rose-700 py-1">
           <span>Impossible de générer les points clés.</span>
-          <button onClick={generate} className="text-[color:var(--violet)] hover:brightness-90 font-medium underline">
+          <button onClick={generate} className="text-[color:var(--violet)] font-medium hover:underline">
             Réessayer
           </button>
         </div>

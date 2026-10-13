@@ -57,11 +57,11 @@ function SortHeader({
 }) {
   const active = currentSort === sortKey;
   return (
-    <th className={`px-4 py-3 text-${align === "right" ? "right" : "left"}`}>
+    <th className={`px-4 py-2.5 text-${align === "right" ? "right" : "left"}`}>
       <button
         onClick={() => onSort(sortKey)}
-        className={`inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide transition-colors ${
-          active ? "text-[color:var(--violet)]" : "text-slate-400 hover:text-slate-600"
+        className={`inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.07em] transition-colors ${
+          active ? "text-[color:var(--violet)]" : "text-slate-500 hover:text-slate-900"
         } ${align === "right" ? "flex-row-reverse" : ""}`}
       >
         {icon}
@@ -129,76 +129,66 @@ export default function ContactsClient({ contacts }: { contacts: ContactOverview
   const totalVisios = contacts.reduce((n, c) => n + c.video_call_count, 0);
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-10">
-      {/* Hero header */}
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
+      {/* En-tête */}
       <FadeIn>
-        <div className="relative overflow-hidden rounded-3xl border border-border shadow-[var(--shadow-sm)] bg-white p-8 mb-6">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-[color:var(--lavender-strong)]/60 via-[color:var(--lavender)]/40 to-transparent blur-3xl"
-          />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-gradient-to-tr from-blue-100/40 to-transparent blur-3xl"
-          />
-          <div className="relative flex items-start justify-between gap-4 flex-wrap">
-            <div>
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[color:var(--violet)] bg-[color:var(--lavender)] px-2.5 py-1 rounded-full mb-3">
-                <Users className="w-3 h-3" />
-                Vue d&apos;ensemble
-              </span>
-              <h1 className="text-2xl font-bold text-slate-900">Historique</h1>
-              <p className="text-slate-500 text-sm mt-1">
-                {contacts.length} {contacts.length === 1 ? "contact suivi" : "contacts suivis"}
-              </p>
-            </div>
-            {contacts.length > 0 && (
-              <div className="relative">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Rechercher un contact, une entreprise…"
-                  className="pl-9 pr-3.5 py-2 border border-border rounded-lg text-sm text-slate-700 bg-white w-72 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
-                />
-              </div>
-            )}
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
+          <div className="min-w-0">
+            <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.08em] text-[color:var(--violet)]">
+              <Users className="h-3.5 w-3.5" />
+              Vue d&apos;ensemble
+            </span>
+            <h1 className="mt-1.5 text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] text-slate-900">Historique</h1>
+            <p className="mt-2 text-[15px] leading-relaxed text-slate-500">
+              {contacts.length} {contacts.length === 1 ? "contact suivi" : "contacts suivis"}
+            </p>
           </div>
+          {contacts.length > 0 && (
+            <div className="relative w-full sm:w-72 sm:shrink-0">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Rechercher un contact, une entreprise…"
+                className="w-full rounded-lg border border-border bg-white py-2 pl-9 pr-3.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/40"
+              />
+            </div>
+          )}
         </div>
       </FadeIn>
 
       {/* Stats */}
       {contacts.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
           <StatTile index={0} accent="indigo" label="Contacts suivis" value={contacts.length} icon={<Users className="w-3.5 h-3.5" />} />
           <StatTile index={1} accent="violet" label="Visios enregistrées" value={totalVisios} icon={<VideoIcon className="w-3.5 h-3.5" />} />
         </div>
       )}
 
       {contacts.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-12 text-center">
-          <div className="w-12 h-12 bg-[color:var(--lavender)] rounded-xl flex items-center justify-center mx-auto mb-4">
+        <div className="rounded-2xl border border-border bg-white px-6 py-12 text-center">
+          <div className="mx-auto mb-4 grid h-11 w-11 place-items-center rounded-xl bg-[color:var(--lavender)]">
             <svg className="w-6 h-6 text-[color:var(--violet)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
             </svg>
           </div>
-          <p className="text-slate-700 font-medium">Aucun contact pour l&apos;instant</p>
-          <p className="text-slate-400 text-sm mt-1">
+          <p className="text-[14px] font-semibold text-slate-900">Aucun contact pour l&apos;instant</p>
+          <p className="mt-1 text-[13px] text-slate-500">
             Vos contacts apparaîtront ici après vos premiers calls enregistrés.
           </p>
         </div>
       ) : filteredRows.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-12 text-center">
-          <p className="text-slate-500 text-sm">Aucun résultat pour « {query} ».</p>
+        <div className="rounded-2xl border border-border bg-white px-6 py-12 text-center">
+          <p className="text-[13px] text-slate-500">Aucun résultat pour « {query} ».</p>
         </div>
       ) : (
         <FadeIn delay={0.1}>
-          <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] overflow-hidden">
+          <div className="overflow-hidden rounded-2xl border border-border bg-white">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse stacked-table sm:min-w-[760px]">
                 <thead>
-                  <tr className="border-b border-border bg-slate-50/60">
+                  <tr className="border-b border-border">
                     <SortHeader label="Contact / Entreprise" sortKey="name" currentSort={sortKey} currentDirection={sortDirection} onSort={handleSort} />
                     <SortHeader label="Dernier contact" sortKey="date" currentSort={sortKey} currentDirection={sortDirection} onSort={handleSort} />
                     <SortHeader
@@ -217,7 +207,7 @@ export default function ContactsClient({ contacts }: { contacts: ContactOverview
                       currentDirection={sortDirection}
                       onSort={handleSort}
                     />
-                    <th className="px-4 py-3 w-8" />
+                    <th className="w-8 px-4 py-2.5" />
                   </tr>
                 </thead>
                 <tbody>
@@ -225,33 +215,33 @@ export default function ContactsClient({ contacts }: { contacts: ContactOverview
                     <tr
                       key={contact.contact_email}
                       onClick={() => router.push(`/contacts/${encodeURIComponent(contact.contact_email)}`)}
-                      className="border-b border-slate-100 last:border-b-0 hover:bg-[color:var(--lavender)]/50 cursor-pointer transition-colors group"
+                      className="group cursor-pointer border-b border-border transition-colors last:border-b-0 hover:bg-slate-50"
                     >
-                      <td className="px-4 py-3.5 max-w-[280px]">
+                      <td className="max-w-[280px] px-4 py-3">
                         <Link
                           href={`/contacts/${encodeURIComponent(contact.contact_email)}`}
                           className="flex items-center gap-3"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br brand-gradient flex items-center justify-center shrink-0">
-                            <span className="text-xs font-bold text-white">{displayName.charAt(0).toUpperCase()}</span>
+                          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[color:var(--lavender)]">
+                            <span className="text-[12px] font-semibold text-[color:var(--violet)]">{displayName.charAt(0).toUpperCase()}</span>
                           </div>
                           <div className="min-w-0">
-                            <p className="font-medium text-slate-900 text-sm truncate group-hover:text-[color:var(--violet)] transition-colors">
+                            <p className="truncate text-[13px] font-medium text-slate-900 transition-colors group-hover:text-[color:var(--violet)]">
                               {displayName}
                             </p>
                             {contact.contact_email !== displayName && (
-                              <p className="text-slate-400 text-xs truncate mt-0.5">{contact.contact_email}</p>
+                              <p className="mt-0.5 truncate text-[11.5px] text-slate-500">{contact.contact_email}</p>
                             )}
                           </div>
                         </Link>
                       </td>
-                      <td data-label="Dernier contact" className="px-4 py-3.5 whitespace-nowrap text-sm text-slate-600">
+                      <td data-label="Dernier contact" className="whitespace-nowrap px-4 py-3 text-[13px] tabular-nums text-slate-600">
                         {formatDate(contact.last_contact_at)}
                       </td>
-                      <td data-label="Visios" className="px-4 py-3.5 whitespace-nowrap">
+                      <td data-label="Visios" className="whitespace-nowrap px-4 py-3">
                         {contact.video_call_count > 0 ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[color:var(--lavender)] text-[color:var(--violet)]">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-[color:var(--lavender)] px-2 py-0.5 text-[11.5px] font-semibold tabular-nums text-[color:var(--violet)]">
                             <VideoIcon className="w-3 h-3 shrink-0" />
                             {contact.video_call_count}
                           </span>
@@ -259,9 +249,9 @@ export default function ContactsClient({ contacts }: { contacts: ContactOverview
                           <span className="text-slate-300 text-xs">—</span>
                         )}
                       </td>
-                      <td data-label="Emails envoyés" className="px-4 py-3.5 whitespace-nowrap">
+                      <td data-label="Emails envoyés" className="whitespace-nowrap px-4 py-3">
                         {contact.emails_sent_count > 0 ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-600">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-[color:var(--success-soft)] px-2 py-0.5 text-[11.5px] font-semibold tabular-nums text-emerald-700">
                             <EnvelopeIcon className="w-3 h-3 shrink-0" />
                             {contact.emails_sent_count}
                           </span>
@@ -269,8 +259,8 @@ export default function ContactsClient({ contacts }: { contacts: ContactOverview
                           <span className="text-slate-300 text-xs">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3.5">
-                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[color:var(--violet)] transition-colors" />
+                      <td className="px-4 py-3">
+                        <ChevronRight className="h-4 w-4 text-slate-300 transition-colors group-hover:text-[color:var(--violet)]" />
                       </td>
                     </tr>
                   ))}

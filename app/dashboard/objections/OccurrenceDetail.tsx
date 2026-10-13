@@ -18,13 +18,13 @@ function formatTimecode(ms: number): string {
 
 function Bullets({ label, bullets, fallback }: { label: string; bullets: string[]; fallback: string }) {
   return (
-    <div>
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</p>
+    <div className="min-w-0">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">{label}</p>
       {bullets.length > 0 ? (
-        <ul className="mt-1.5 space-y-1">
+        <ul className="mt-2 space-y-1.5">
           {bullets.map((bullet, i) => (
-            <li key={i} className="flex gap-2 text-[13.5px] leading-relaxed text-slate-800">
-              <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-slate-400" />
+            <li key={i} className="flex gap-2.5 text-[13.5px] leading-relaxed text-slate-700">
+              <span className="mt-[8px] h-1.5 w-1.5 shrink-0 rounded-full bg-slate-300" />
               {bullet}
             </li>
           ))}
@@ -32,7 +32,7 @@ function Bullets({ label, bullets, fallback }: { label: string; bullets: string[
       ) : (
         // Objection analysée avant la migration 009 : pas de puces, on retombe
         // sur le résumé plutôt que d'afficher un bloc vide.
-        <p className="mt-1 text-[13.5px] leading-relaxed text-slate-700">{fallback}</p>
+        <p className="mt-2 text-[13.5px] leading-relaxed text-slate-700">{fallback}</p>
       )}
     </div>
   );
@@ -83,39 +83,41 @@ export default function OccurrenceDetail({ occurrence }: { occurrence: Objection
   const seekSeconds = Math.max(0, ((occurrence.startMs ?? 0) - 5000) / 1000);
 
   return (
-    <div className="mt-4 space-y-3">
-      <Bullets
-        label="Ce que le prospect a dit"
-        bullets={occurrence.prospectBullets}
-        fallback={occurrence.objection}
-      />
-      <Bullets
-        label="Ce que le commercial a répondu"
-        bullets={occurrence.commercialBullets}
-        fallback={occurrence.response}
-      />
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
+        <Bullets
+          label="Ce que le prospect a dit"
+          bullets={occurrence.prospectBullets}
+          fallback={occurrence.objection}
+        />
+        <Bullets
+          label="Ce que le commercial a répondu"
+          bullets={occurrence.commercialBullets}
+          fallback={occurrence.response}
+        />
+      </div>
 
       {occurrence.suggestedResponse && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+        <div className="rounded-xl bg-[color:var(--lavender)] px-3.5 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-[color:var(--violet)]">
             Ce qu&apos;il aurait fallu répondre
           </p>
-          <p className="mt-1.5 text-[13.5px] leading-relaxed text-emerald-900">{occurrence.suggestedResponse}</p>
+          <p className="mt-1 text-[13.5px] leading-relaxed text-slate-900">{occurrence.suggestedResponse}</p>
         </div>
       )}
 
       {occurrence.handlingComment && (
-        <div className="rounded-lg bg-slate-50 px-3.5 py-2.5">
-          <p className="text-[13px] text-slate-600">{occurrence.handlingComment}</p>
+        <div className="rounded-xl bg-slate-50 px-3.5 py-2.5">
+          <p className="text-[13px] leading-relaxed text-slate-600">{occurrence.handlingComment}</p>
           {!occurrence.evaluatedAgainstPlaybook && (
-            <p className="mt-1.5 text-xs italic text-slate-400">
+            <p className="mt-1.5 text-[12px] text-slate-500">
               Appréciation générale — aucune méthode définie pour cette objection au moment de l&apos;analyse.
             </p>
           )}
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-2 pt-1">
+      <div className="flex flex-wrap items-center gap-2">
         {hasVerbatim && (
           <button
             type="button"
@@ -136,24 +138,26 @@ export default function OccurrenceDetail({ occurrence }: { occurrence: Objection
             <PlayCircle className="h-3.5 w-3.5" />
             {showVideo ? "Masquer l'extrait" : "Voir l'extrait vidéo"}
             {occurrence.startMs !== null && (
-              <span className="font-mono text-[11px] text-slate-400">{formatTimecode(occurrence.startMs)}</span>
+              <span className="text-[11px] tabular-nums text-slate-400">{formatTimecode(occurrence.startMs)}</span>
             )}
           </button>
         )}
       </div>
 
       {showTranscript && (
-        <div className="space-y-2.5 rounded-xl border border-border bg-slate-50 px-4 py-3">
+        <div className="space-y-3 rounded-xl border border-border px-4 py-3.5">
           {occurrence.prospectVerbatim && (
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Prospect</p>
-              <p className="mt-1 text-[13px] leading-relaxed text-slate-700">«&nbsp;{occurrence.prospectVerbatim}&nbsp;»</p>
+            <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-x-3">
+              <p className="pt-px text-[12px] text-slate-400">Prospect</p>
+              <p className="border-l-2 border-border pl-3 text-[13px] italic leading-relaxed text-slate-600">
+                «&nbsp;{occurrence.prospectVerbatim}&nbsp;»
+              </p>
             </div>
           )}
           {occurrence.commercialVerbatim && (
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Commercial</p>
-              <p className="mt-1 text-[13px] leading-relaxed text-slate-700">
+            <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-x-3">
+              <p className="pt-px text-[12px] text-slate-400">Commercial</p>
+              <p className="border-l-2 border-border pl-3 text-[13px] italic leading-relaxed text-slate-600">
                 «&nbsp;{occurrence.commercialVerbatim}&nbsp;»
               </p>
             </div>
@@ -162,7 +166,7 @@ export default function OccurrenceDetail({ occurrence }: { occurrence: Objection
       )}
 
       {showVideo && (
-        <div className="rounded-xl border border-border bg-slate-900 p-2">
+        <div className="rounded-xl bg-slate-900 p-2">
           {loadingVideo && <p className="px-2 py-6 text-center text-[13px] text-slate-300">Chargement de la vidéo…</p>}
           {videoError && <p className="px-2 py-6 text-center text-[13px] text-rose-300">{videoError}</p>}
           {/* Dernier filet : aucun des trois états attendus n'est vrai. Ne

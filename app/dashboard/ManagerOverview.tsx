@@ -69,7 +69,7 @@ export default async function ManagerOverview({ userId, userName }: { userId: st
   }));
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-10">
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
       <FadeIn>
         <div className="mb-8">
           <PageHeader
@@ -91,7 +91,7 @@ export default async function ManagerOverview({ userId, userName }: { userId: st
                 </Button>
                 <Link
                   href="/brief"
-                  className="brand-gradient inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-lg text-[13px] font-medium text-white shadow-[var(--shadow-glow)] hover:brightness-110 transition-all"
+                  className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-[filter] hover:brightness-110"
                 >
                   <Sparkles className="h-3.5 w-3.5" /> Nouveau brief
                 </Link>
@@ -101,7 +101,7 @@ export default async function ManagerOverview({ userId, userName }: { userId: st
         </div>
       </FadeIn>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         <StatTile index={0} accent="indigo" label="Calls équipe" value={totalCalls} icon={<Phone className="w-3.5 h-3.5" />} />
         <StatTile index={1} accent="violet" label="Briefs équipe" value={totalBriefs} icon={<FileText className="w-3.5 h-3.5" />} />
         <StatTile
@@ -117,22 +117,22 @@ export default async function ManagerOverview({ userId, userName }: { userId: st
         <StatTile index={3} accent="amber" label="Commerciaux actifs" value={activeCount} suffix={`/${commercials.length}`} icon={<UsersIcon className="w-3.5 h-3.5" />} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2 space-y-5">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="space-y-4 lg:col-span-2">
           <ScoreTrendChart weeks={trendWeeks} title={`Score moyen équipe — ${TREND_WEEKS} dernières semaines`} />
 
           <FadeIn delay={0.1}>
             <Card padded={false} className="overflow-hidden">
-              <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500 px-5 pt-5 mb-1">Équipe cette semaine</h2>
+              <h2 className="px-4 pt-4 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500 sm:px-5 sm:pt-5">Équipe cette semaine</h2>
               <TeamRosterTable rows={rosterRows} />
             </Card>
           </FadeIn>
         </div>
 
-        <div className="space-y-5">
+        <div className="space-y-4">
           <FadeIn delay={0.15}>
-            <Card padded={false} className="p-5">
-              <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-4">Dernière activité</h2>
+            <Card padded={false} className="p-4 sm:p-5">
+              <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Dernière activité</h2>
               <TasksList tasks={activityRows} totalCount={activityRows.length} />
             </Card>
           </FadeIn>

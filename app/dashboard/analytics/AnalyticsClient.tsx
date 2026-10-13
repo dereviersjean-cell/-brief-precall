@@ -153,13 +153,13 @@ const INTERACTION_METRICS: Metric[] = [
 const TONE_DOT: Record<Tone, string> = {
   good: "bg-emerald-500",
   warn: "bg-amber-400",
-  neutral: "bg-[color:var(--violet)]",
+  neutral: "bg-[color:var(--primary)]",
 };
 
 const TONE_BAR: Record<Tone, string> = {
   good: "bg-emerald-500",
   warn: "bg-amber-400",
-  neutral: "bg-[color:var(--violet)]",
+  neutral: "bg-[color:var(--primary)]",
 };
 
 export default function AnalyticsClient({
@@ -190,7 +190,7 @@ export default function AnalyticsClient({
 
   return (
     <div>
-      <div className="mb-5 inline-flex items-center gap-1 rounded-xl border border-border bg-white p-1 shadow-[var(--shadow-xs)]">
+      <div className="mb-4 inline-flex items-center gap-1 rounded-xl border border-border bg-white p-1">
         {(
           [
             ["activity", "Activité", Activity],
@@ -204,7 +204,7 @@ export default function AnalyticsClient({
               setFamily(value);
               setSelectedKey((value === "activity" ? ACTIVITY_METRICS : INTERACTION_METRICS)[0].key);
             }}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors ${
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12.5px] font-medium transition-colors ${
               family === value
                 ? "bg-[color:var(--lavender)] text-[color:var(--violet)]"
                 : "text-slate-500 hover:text-slate-900"
@@ -216,8 +216,8 @@ export default function AnalyticsClient({
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-[var(--shadow-sm)]">
-        <div data-tour="analytics-tiles" className="grid grid-cols-2 divide-x divide-y divide-slate-100 border-b border-slate-100 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="overflow-hidden rounded-2xl border border-border bg-white">
+        <div data-tour="analytics-tiles" className="grid grid-cols-2 divide-x divide-y divide-border border-b border-border sm:grid-cols-3 lg:grid-cols-5">
           {metrics.map((m) => {
             const value = m.value(analytics.teamAverage);
             const active = m.key === metric.key;
@@ -227,34 +227,34 @@ export default function AnalyticsClient({
                 type="button"
                 onClick={() => setSelectedKey(m.key)}
                 title={m.help}
-                className={`px-4 py-4 text-left transition-colors ${active ? "bg-[color:var(--lavender)]" : "hover:bg-slate-50"}`}
+                className={`px-3.5 py-3.5 text-left transition-colors ${active ? "bg-[color:var(--lavender)]" : "hover:bg-slate-50"}`}
               >
-                <p className="flex items-center gap-1.5 text-[19px] font-semibold text-slate-900">
+                <p className="flex items-center gap-1.5 text-[18px] font-semibold leading-tight tracking-tight tabular-nums text-slate-900">
                   {value !== null && (
                     <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${TONE_DOT[m.tone(value)]}`} />
                   )}
                   {value === null ? "—" : m.format(value)}
                 </p>
-                <p className="mt-0.5 text-[12.5px] text-slate-500">{m.label}</p>
+                <p className={`mt-1 text-[11.5px] leading-tight ${active ? "text-[color:var(--violet)]" : "text-slate-500"}`}>{m.label}</p>
               </button>
             );
           })}
         </div>
 
-        <div className="px-6 py-6">
-          <p className="text-sm font-semibold text-slate-900">{metric.label}</p>
-          <p className="mt-0.5 text-[13px] text-slate-500">{metric.help}</p>
+        <div className="p-4 sm:p-5">
+          <p className="text-[13.5px] font-semibold text-slate-900">{metric.label}</p>
+          <p className="mt-0.5 text-[12.5px] text-slate-500">{metric.help}</p>
 
           {rows.length === 0 ? (
-            <p className="mt-6 text-sm italic text-slate-400">
+            <p className="mt-5 text-[13px] text-slate-500">
               Aucune donnée sur cette période.
               {family === "interactions" &&
                 " Les métriques d'interaction nécessitent un transcript exploitable — elles apparaissent au fur et à mesure des calls analysés."}
             </p>
           ) : (
-            <div className="mt-6">
+            <div className="mt-4">
               {teamValue !== null && (
-                <p className="mb-2 text-right text-xs text-slate-400">
+                <p className="mb-1.5 text-right text-[11.5px] tabular-nums text-slate-500">
                   Moyenne d&apos;équipe {metric.format(teamValue)}
                 </p>
               )}
@@ -264,14 +264,14 @@ export default function AnalyticsClient({
                   return (
                     <li key={commercial.userId} className="flex items-center gap-3">
                       <span
-                        className={`w-40 shrink-0 truncate text-[13px] ${
+                        className={`w-24 shrink-0 truncate text-[13px] sm:w-40 ${
                           isSelf ? "font-semibold text-slate-900" : "text-slate-600"
                         }`}
                         title={commercial.name ?? commercial.email}
                       >
                         {commercial.name ?? commercial.email}
                       </span>
-                      <span className="w-20 shrink-0 text-right text-[13px] font-medium text-slate-900">
+                      <span className="w-16 shrink-0 text-right text-[13px] font-semibold tabular-nums text-slate-900 sm:w-20">
                         {metric.format(value)}
                       </span>
                       <span className="relative h-2 flex-1 overflow-visible rounded-full bg-slate-100">
@@ -281,7 +281,7 @@ export default function AnalyticsClient({
                         />
                         {teamValue !== null && (
                           <span
-                            className="absolute -top-1 bottom-[-4px] w-px border-l border-dashed border-slate-400"
+                            className="absolute -top-1 bottom-[-4px] w-px border-l border-dashed border-slate-500"
                             style={{ left: `${Math.min(100, (100 * teamValue) / maxValue)}%` }}
                             aria-hidden
                           />

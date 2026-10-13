@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 
-// Porté du mockup Lovable (app-shell.tsx), juillet 2026 — en-tête de page
-// standard (eyebrow + titre + sous-titre + actions) réutilisé par toutes les
-// pages migrées vers le nouveau design system.
+// En-tête de page standard (eyebrow + titre + sous-titre + actions), porté du
+// mockup Lovable en juillet 2026 puis aligné sur le site public en octobre :
+// l'eyebrow n'est plus une pastille encadrée mais une petite étiquette en
+// capitales, le titre prend la graisse et l'approche des titres du site.
 export function PageHeader({
   eyebrow,
   title,
@@ -27,14 +28,14 @@ export function PageHeader({
     <div className="flex flex-col gap-4 pb-1 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
       <div className="min-w-0">
         {eyebrow && (
-          <span className="inline-flex items-center rounded-full border border-[color:var(--lavender-strong)] bg-[color:var(--lavender)] px-2.5 py-0.5 text-[10.5px] font-medium uppercase tracking-[0.08em] text-[color:var(--violet)]">
+          <span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[color:var(--violet)]">
             {eyebrow}
           </span>
         )}
-        <h1 className="mt-2 text-[28px] leading-[1.15] font-semibold tracking-tight text-slate-900">
+        <h1 className="mt-1.5 text-[30px] leading-[1.1] font-semibold tracking-[-0.03em] text-slate-900">
           {title}
         </h1>
-        {subtitle && <p className="mt-1.5 text-[13.5px] text-slate-500">{subtitle}</p>}
+        {subtitle && <p className="mt-2 text-[15px] leading-relaxed text-slate-500">{subtitle}</p>}
       </div>
       {/* `flex-wrap` sous `sm` : trois boutons ne tiennent pas sur une ligne de
           390 px, ils passent à la ligne au lieu de déborder. */}

@@ -72,13 +72,15 @@ export default function SuggestedCategories({ unclassifiedCount }: { unclassifie
   if (unclassifiedCount === 0 && !suggestions) return null;
 
   return (
-    <Card className="mb-6">
+    <Card padded={false} className="mb-6 px-4 py-5 sm:px-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-2.5">
-          <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[color:var(--warning-soft)] text-amber-700">
+            <Lightbulb className="h-3.5 w-3.5" />
+          </span>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-slate-900">Catégories qui vous manquent</p>
-            <p className="mt-0.5 text-xs text-slate-500">
+            <p className="text-[14px] font-semibold text-slate-900">Catégories qui vous manquent</p>
+            <p className="mt-0.5 text-[12.5px] leading-snug text-slate-500">
               {unclassifiedCount} objection{unclassifiedCount > 1 ? "s" : ""} non classée
               {unclassifiedCount > 1 ? "s" : ""} — Brief les regroupe par thème pour repérer celles qui reviennent.
             </p>
@@ -89,25 +91,27 @@ export default function SuggestedCategories({ unclassifiedCount }: { unclassifie
         </Button>
       </div>
 
-      {error && <p className="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">{error}</p>}
-      {note && <p className="mt-4 text-sm italic text-slate-400">{note}</p>}
+      {error && (
+        <p className="mt-4 rounded-xl bg-[color:var(--danger-soft)] px-3.5 py-2.5 text-[13px] text-rose-700">{error}</p>
+      )}
+      {note && <p className="mt-4 text-[13px] text-slate-500">{note}</p>}
 
       {suggestions && suggestions.length > 0 && (
-        <ul className="mt-4 space-y-3">
+        <ul className="mt-4 space-y-2.5">
           {suggestions.map((suggestion) => {
             const done = created.has(suggestion.label);
             return (
-              <li key={suggestion.label} className="rounded-xl border border-border p-4">
+              <li key={suggestion.label} className="rounded-xl border border-dashed border-border px-4 py-3.5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-900">
+                    <p className="text-[13.5px] font-semibold text-slate-900">
                       {suggestion.label}
-                      <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                      <span className="ml-2 inline-flex rounded-full bg-slate-100 px-2 py-0.5 align-middle text-[11.5px] font-semibold tabular-nums text-slate-600">
                         {suggestion.occurrences} occurrence{suggestion.occurrences > 1 ? "s" : ""}
                       </span>
                     </p>
                     {suggestion.description && (
-                      <p className="mt-1 text-[13px] text-slate-500">{suggestion.description}</p>
+                      <p className="mt-1 text-[13px] leading-relaxed text-slate-500">{suggestion.description}</p>
                     )}
                   </div>
                   <Button
@@ -121,16 +125,16 @@ export default function SuggestedCategories({ unclassifiedCount }: { unclassifie
                   </Button>
                 </div>
 
-                <div className="mt-3 space-y-1.5 border-l-2 border-slate-200 pl-3">
+                <div className="mt-3 space-y-1.5 border-l-2 border-border pl-3">
                   {suggestion.samples.map((sample, i) => (
-                    <p key={i} className="text-[12.5px] leading-relaxed text-slate-600">
+                    <p key={i} className="text-[12.5px] italic leading-relaxed text-slate-500">
                       «&nbsp;{sample}&nbsp;»
                     </p>
                   ))}
                 </div>
 
                 {done && (
-                  <p className="mt-3 text-xs text-amber-600">
+                  <p className="mt-3 text-[12px] font-medium text-amber-700">
                     Ajoutez-lui une méthode de traitement dans « Vos objections de référence » — sans elle, les réponses
                     des commerciaux seront évaluées au jugement général et non par rapport à la vôtre.
                   </p>
@@ -142,7 +146,7 @@ export default function SuggestedCategories({ unclassifiedCount }: { unclassifie
       )}
 
       {suggestions && suggestions.length > 0 && (
-        <p className="mt-4 text-xs text-slate-400">
+        <p className="mt-4 text-[12px] text-slate-500">
           Créer une catégorie ne reclasse pas l&apos;existant tout de suite : les objections déjà en base seront
           rattachées au prochain passage de classification.
         </p>

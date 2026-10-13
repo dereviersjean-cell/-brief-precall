@@ -4,16 +4,16 @@ import { hasSlackConnection } from "@/lib/slack";
 
 function StatusRow({ label, connected, href }: { label: string; connected: boolean; href: string }) {
   return (
-    <div className="flex items-center justify-between py-2">
-      <span className="text-sm text-slate-600">{label}</span>
+    <div className="flex items-center justify-between gap-3 py-2.5">
+      <span className="text-[13px] text-slate-900">{label}</span>
       {connected ? (
-        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--success-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-emerald-700">
+          <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--success)]" />
           Connecté
         </span>
       ) : (
-        <Link href={href} className="inline-flex items-center gap-1.5 text-xs font-medium text-[color:var(--violet)] hover:underline">
-          <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+        <Link href={href} className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-[color:var(--violet)] hover:underline">
+          <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
           Connecter
         </Link>
       )}
@@ -41,23 +41,23 @@ export default async function ConnectionsStatus({ userId }: { userId: string }) 
   if (!showCrm && !showSlack && !showDigest) return null;
 
   return (
-    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
-      <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-1">Connexions & distribution</h2>
-      <div className="divide-y divide-slate-100">
+    <div className="rounded-2xl border border-border bg-white p-4 sm:p-5">
+      <h2 className="mb-1 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Connexions & distribution</h2>
+      <div className="divide-y divide-border">
         {showCrm && <StatusRow label="HubSpot" connected={hubspot !== null} href="/settings/connexions" />}
         {showCrm && <StatusRow label="Pipedrive" connected={pipedrive !== null} href="/settings/connexions" />}
         {showSlack && <StatusRow label="Slack" connected={slack} href="/settings/connexions" />}
         {showDigest && (
-        <div className="flex items-center justify-between py-2">
-          <span className="text-sm text-slate-600">Digest hebdomadaire</span>
+        <div className="flex items-center justify-between gap-3 py-2.5">
+          <span className="text-[13px] text-slate-900">Digest hebdomadaire</span>
           {digest.enabled ? (
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--success-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-emerald-700">
+              <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--success)]" />
               Activé
             </span>
           ) : (
-            <Link href="/notifications" className="inline-flex items-center gap-1.5 text-xs font-medium text-[color:var(--violet)] hover:underline">
-              <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+            <Link href="/notifications" className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-[color:var(--violet)] hover:underline">
+              <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
               Activer
             </Link>
           )}

@@ -29,20 +29,20 @@ function HandlingBar({ stat }: { stat: ObjectionCategoryStat }) {
   const evaluated = stat.wellHandled + stat.partiallyHandled + stat.notHandled;
   if (evaluated === 0) {
     return (
-      <p className="text-xs text-slate-400">
+      <p className="text-[12px] text-slate-500">
         {stat.occurrences > 0 ? "Traitement pas encore évalué" : "Jamais rencontrée sur la période"}
       </p>
     );
   }
   const segments = [
-    { count: stat.wellHandled, className: "bg-emerald-500", label: "bien traitée" },
-    { count: stat.partiallyHandled, className: "bg-amber-400", label: "partiellement" },
-    { count: stat.notHandled, className: "bg-rose-500", label: "non traitée" },
+    { count: stat.wellHandled, className: "bg-[color:var(--success)]", label: "bien traitée" },
+    { count: stat.partiallyHandled, className: "bg-[color:var(--warning)]", label: "partiellement" },
+    { count: stat.notHandled, className: "bg-[color:var(--danger)]", label: "non traitée" },
   ].filter((s) => s.count > 0);
 
   return (
     <div className="w-full">
-      <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+      <div className="flex h-2.5 w-full gap-0.5 overflow-hidden rounded-full bg-slate-100">
         {segments.map((segment) => (
           <div
             key={segment.label}
@@ -52,10 +52,10 @@ function HandlingBar({ stat }: { stat: ObjectionCategoryStat }) {
           />
         ))}
       </div>
-      <p className="mt-1.5 text-xs text-slate-400">
+      <p className="mt-1.5 text-[12px] tabular-nums text-slate-500">
         {Math.round((100 * stat.wellHandled) / evaluated)}% bien traitées
         {stat.notHandled > 0 && (
-          <span className="ml-2 inline-flex items-center gap-1 text-rose-500">
+          <span className="ml-2 inline-flex items-center gap-1 font-medium text-rose-700">
             <XCircle className="h-3 w-3" /> {stat.notHandled} non traitée{stat.notHandled > 1 ? "s" : ""}
           </span>
         )}
@@ -69,9 +69,13 @@ function OutcomeBadge({ stat }: { stat: ObjectionCategoryStat }) {
   if (resolved === 0) return null;
   const rate = (stat.wonCount / resolved) * 100;
   const cls =
-    rate >= 60 ? "bg-green-100 text-green-700" : rate >= 30 ? "bg-orange-100 text-orange-700" : "bg-red-100 text-red-700";
+    rate >= 60
+      ? "bg-[color:var(--success-soft)] text-emerald-700"
+      : rate >= 30
+        ? "bg-[color:var(--warning-soft)] text-amber-700"
+        : "bg-[color:var(--danger-soft)] text-rose-700";
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${cls}`}>
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] font-semibold tabular-nums ${cls}`}>
       <Trophy className="h-3 w-3" /> {Math.round(rate)}% gagnés ({stat.wonCount}/{resolved})
     </span>
   );
@@ -128,7 +132,7 @@ export default async function ObjectionsStatsPage({
   );
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-10">
+    <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <FadeIn>
         <div className="mb-8">
           <PageHeader eyebrow="Performance" title="Objections" subtitle={subtitle} />
@@ -151,27 +155,27 @@ export default async function ObjectionsStatsPage({
       <PeriodFilter preset={period.preset} from={period.from} to={period.to} />
 
       <FadeIn delay={0.05}>
-        <Card padded={false} className="p-6">
+        <Card padded={false} className="px-4 py-1.5 sm:px-6">
           {totalOccurrences === 0 && categories.length === 0 ? (
-            <p className="text-sm italic text-slate-400">
+            <p className="py-4 text-[13.5px] leading-relaxed text-slate-500">
               {isManager
                 ? "Définissez d'abord vos objections de référence ci-dessus — les objections détectées dans les calls viendront s'y ranger automatiquement."
                 : "Aucune objection enregistrée pour l'instant — elles apparaissent ici au fur et à mesure des calls analysés."}
             </p>
           ) : (
-            <ul className="divide-y divide-slate-100">
+            <ul className="divide-y divide-border">
               {stats.map((stat) => (
                 <li key={stat.categoryId ?? "unclassified"}>
                   <Link
                     href={`/dashboard/objections/${stat.categoryId ?? "non-classees"}?${linkParams}`}
-                    className="-mx-3 flex items-start justify-between gap-4 rounded-xl px-3 py-4 transition-colors hover:bg-slate-50"
+                    className="-mx-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-3 rounded-xl px-2 py-4 transition-colors hover:bg-slate-50 sm:-mx-3 sm:grid-cols-[minmax(0,15rem)_minmax(0,1fr)_auto] sm:px-3"
                   >
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-semibold text-slate-900">{stat.label}</p>
+                        <p className="text-[13.5px] font-semibold text-slate-900">{stat.label}</p>
                         <OutcomeBadge stat={stat} />
                       </div>
-                      <p className="mt-0.5 text-xs text-slate-400">
+                      <p className="mt-1 text-[12px] tabular-nums text-slate-500">
                         {stat.occurrences} occurrence{stat.occurrences > 1 ? "s" : ""}
                         {stat.commercialsCount > 0 && (
                           <span className="ml-2 inline-flex items-center gap-1">
@@ -179,11 +183,11 @@ export default async function ObjectionsStatsPage({
                           </span>
                         )}
                       </p>
-                      <div className="mt-2.5 max-w-md">
-                        <HandlingBar stat={stat} />
-                      </div>
                     </div>
-                    <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-slate-300" />
+                    <ChevronRight className="h-4 w-4 shrink-0 text-slate-400 sm:order-3" />
+                    <div className="col-span-2 min-w-0 sm:order-2 sm:col-span-1">
+                      <HandlingBar stat={stat} />
+                    </div>
                   </Link>
                 </li>
               ))}
@@ -192,7 +196,7 @@ export default async function ObjectionsStatsPage({
         </Card>
       </FadeIn>
 
-      <p className="mt-4 text-xs text-slate-400">
+      <p className="mt-4 text-[12.5px] text-slate-500">
         Pour retrouver le verbatim de chaque réponse et faire une recherche sémantique,{" "}
         <Link href="/settings/objections" className="font-medium text-[color:var(--violet)] hover:underline">
           ouvrez la bibliothèque complète →

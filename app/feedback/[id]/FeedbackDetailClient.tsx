@@ -14,6 +14,9 @@ import ConversationAnalyticsBlock from "./ConversationAnalyticsBlock";
 import KeyPointsBlock from "./KeyPointsBlock";
 import SpeakerTimelineBlock from "./SpeakerTimelineBlock";
 
+// Étiquette de section et carte, reprises du site (AnalysisObject).
+const LABEL = "text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500";
+const CARD = "rounded-2xl border border-border bg-white";
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -63,7 +66,7 @@ function highlightMatches(text: string, query: string) {
   while (matchAt !== -1) {
     if (matchAt > cursor) parts.push(text.slice(cursor, matchAt));
     parts.push(
-      <span key={key++} className="bg-yellow-100 text-slate-900">
+      <span key={key++} className="rounded-sm bg-[color:var(--warning-soft)] text-slate-900">
         {text.slice(matchAt, matchAt + trimmed.length)}
       </span>
     );
@@ -215,12 +218,12 @@ function TranscriptSection({
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
+    <div className={`${CARD} p-5`}>
       <button
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between text-left"
       >
-        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">📄 Transcript</h2>
+        <h2 className={LABEL}>Transcript</h2>
         <svg
           className={`w-4 h-4 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`}
           fill="none"
@@ -234,10 +237,10 @@ function TranscriptSection({
       {open && (
         <div className="mt-4">
           {turns.length === 0 ? (
-            <p className="text-sm text-slate-400">Transcript non disponible</p>
+            <p className="text-[13.5px] text-slate-400">Transcript non disponible</p>
           ) : (
             <>
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-2.5">
                 <div className="relative flex-1">
                   <Search className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
@@ -245,25 +248,25 @@ function TranscriptSection({
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="Rechercher dans le transcript…"
-                    className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-md text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+                    className="h-9 w-full rounded-full border border-border bg-white pl-8 pr-3 text-[13px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)]"
                   />
                 </div>
                 <button
                   onClick={handleCopy}
-                  className="shrink-0 text-xs font-medium text-slate-600 border border-slate-200 rounded-md px-3 py-1.5 hover:bg-slate-50 transition-colors"
+                  className="h-9 shrink-0 rounded-full border border-border bg-white px-3 text-[12.5px] font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
                 >
                   {copied ? "✓ Copié" : "📋 Copier"}
                 </button>
               </div>
               {showTip && hasTimestamps && (
-                <p className="flex items-center justify-between gap-2 text-xs text-[color:var(--violet)] bg-[color:var(--lavender)] rounded-md px-2.5 py-1.5 mb-3">
+                <p className="flex items-start justify-between gap-2 rounded-xl bg-[color:var(--lavender)] px-3 py-2 mb-3 text-[12.5px] leading-relaxed text-[color:var(--violet)]">
                   <span>Cliquez sur un nom pour le corriger, ou sur une ligne pour aller à ce moment de la vidéo</span>
-                  <button onClick={dismissTip} className="text-[color:var(--violet)] hover:text-[color:var(--violet)] shrink-0">
+                  <button onClick={dismissTip} className="shrink-0 text-[color:var(--violet)] opacity-70 transition-opacity hover:opacity-100">
                     ✕
                   </button>
                 </p>
               )}
-              <p className="text-xs text-slate-400 mb-3">
+              <p className="text-[12px] text-slate-400 tabular-nums mb-3">
                 {trimmedQuery
                   ? `${filteredTurns.length} résultat${filteredTurns.length !== 1 ? "s" : ""} trouvé${filteredTurns.length !== 1 ? "s" : ""}`
                   : `${turns.length} tour${turns.length !== 1 ? "s" : ""} de parole`}
@@ -277,11 +280,11 @@ function TranscriptSection({
                       key={i}
                       ref={isActive ? activeRowRef : undefined}
                       onClick={canSeek ? () => onSeek(turn.startMs as number) : undefined}
-                      className={`rounded-lg p-3 mb-2 transition-colors ${
+                      className={`rounded-xl px-3 py-2.5 mb-1.5 transition-colors ${
                         isActive ? "bg-[color:var(--lavender)] ring-1 ring-[color:var(--lavender-strong)]" : i % 2 === 0 ? "bg-slate-50" : "bg-white"
                       } ${canSeek ? "cursor-pointer hover:bg-[color:var(--lavender)]/60" : ""}`}
                     >
-                      <div className="flex items-center justify-between mb-1.5 gap-2">
+                      <div className="flex items-center justify-between mb-1 gap-2">
                         <div className="flex items-center gap-1.5 min-w-0" onClick={(e) => e.stopPropagation()}>
                           {editingSpeakerId === turn.speakerId ? (
                             <input
@@ -293,11 +296,11 @@ function TranscriptSection({
                                 if (e.key === "Escape") setEditingSpeakerId(null);
                               }}
                               onBlur={commitEdit}
-                              className="text-xs font-semibold text-slate-700 uppercase tracking-wide border border-[color:var(--lavender-strong)] rounded px-1.5 py-0.5 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+                              className="text-[11px] font-semibold text-slate-900 uppercase tracking-[0.07em] border border-[color:var(--lavender-strong)] bg-white rounded-md px-1.5 py-0.5 outline-none focus:border-[color:var(--violet)]"
                             />
                           ) : (
                             <>
-                              <span className="text-xs font-semibold text-slate-700 uppercase tracking-wide truncate">
+                              <span className="text-[11px] font-semibold text-slate-700 uppercase tracking-[0.07em] truncate">
                                 {turn.displayName}
                               </span>
                               {turn.speakerId && (
@@ -313,10 +316,10 @@ function TranscriptSection({
                           )}
                         </div>
                         {turn.startMs !== null && (
-                          <span className="text-xs text-slate-400 shrink-0">{formatDuration(Math.floor(turn.startMs / 1000))}</span>
+                          <span className="text-[11.5px] text-slate-400 tabular-nums shrink-0">{formatDuration(Math.floor(turn.startMs / 1000))}</span>
                         )}
                       </div>
-                      <p className="text-slate-700 text-sm leading-relaxed">{highlightMatches(turn.text, query)}</p>
+                      <p className="text-slate-700 text-[13.5px] leading-relaxed">{highlightMatches(turn.text, query)}</p>
                     </div>
                   );
                 })}
@@ -342,39 +345,39 @@ function ScoreBar({
 }) {
   const pct = Math.round((score / 5) * 100);
   const color =
-    score >= 4 ? "bg-green-500" : score >= 2.5 ? "bg-orange-400" : "bg-red-400";
+    score >= 4 ? "bg-[color:var(--success)]" : score >= 2.5 ? "bg-[color:var(--warning)]" : "bg-[color:var(--danger)]";
   const textColor =
-    score >= 4 ? "text-green-700" : score >= 2.5 ? "text-orange-600" : "text-red-600";
+    score >= 4 ? "text-emerald-700" : score >= 2.5 ? "text-amber-700" : "text-rose-700";
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-1.5">
-        <span className="text-sm font-medium text-slate-700 flex items-center gap-2">
+      <div className="flex items-baseline justify-between gap-3 mb-1.5">
+        <span className="min-w-0 text-[13.5px] font-medium text-slate-900">
           {label}
           {weight != null && weight !== 1 && (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">
+            <span className="ml-1.5 whitespace-nowrap text-[12px] font-normal tabular-nums text-slate-400">
               poids {weight}
             </span>
           )}
         </span>
-        <span className={`text-sm font-bold ${textColor}`}>{score}/5</span>
+        <span className={`shrink-0 text-[13.5px] font-semibold tabular-nums ${textColor}`}>{score}/5</span>
       </div>
-      <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-1.5">
+      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
         <div className={`h-full rounded-full ${color} transition-all`} style={{ width: `${pct}%` }} />
       </div>
-      {description && <p className="text-xs text-slate-500 leading-relaxed">{description}</p>}
+      {description && <p className="mt-2 text-[13px] text-slate-500 leading-relaxed">{description}</p>}
     </div>
   );
 }
 
 function List({ items, icon, color }: { items: string[]; icon: string; color: string }) {
-  if (items.length === 0) return <p className="text-slate-400 text-sm italic">Aucun élément.</p>;
+  if (items.length === 0) return <p className="text-slate-400 text-[13.5px]">Aucun élément.</p>;
   return (
-    <ul className="space-y-2">
+    <ul className="space-y-2.5">
       {items.map((item, i) => (
         <li key={i} className="flex items-start gap-2.5">
-          <span className={`text-sm mt-0.5 ${color}`}>{icon}</span>
-          <span className="text-sm text-slate-700 leading-relaxed">{item}</span>
+          <span className={`w-3.5 shrink-0 text-center text-[13px] font-semibold leading-relaxed ${color}`}>{icon}</span>
+          <span className="text-[13.5px] text-slate-700 leading-relaxed">{item}</span>
         </li>
       ))}
     </ul>
@@ -389,8 +392,8 @@ function OutcomeBadge({ outcome }: { outcome: DealOutcomeInfo | null }) {
   const isWon = outcome.outcome === "won";
   return (
     <span
-      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
-        isWon ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"
+      className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+        isWon ? "bg-[color:var(--success-soft)] text-emerald-700" : "bg-[color:var(--danger-soft)] text-rose-700"
       }`}
     >
       {isWon ? "✓ Deal gagné" : "✕ Deal perdu"}
@@ -435,42 +438,45 @@ function ObjectionItem({ objection, response, trainingEnabled }: { objection: st
   }
 
   return (
-    <li className="text-sm leading-relaxed">
-      <p className="text-slate-700">
-        <span className="text-slate-400">–</span> {objection}
+    <li className="rounded-2xl border border-border p-4">
+      <blockquote className="border-l-2 border-border pl-3 text-[13.5px] italic leading-relaxed text-slate-600">
+        {objection}
+      </blockquote>
+      <p className="mt-2.5 flex items-start gap-2 text-[13.5px] leading-relaxed text-slate-900">
+        <span className="shrink-0 text-slate-400">↳</span>
+        <span>{response}</span>
       </p>
-      <p className="text-slate-500 pl-4 mt-0.5">↳ {response}</p>
-      <span className="pl-4 mt-1 flex items-center gap-3">
+      <span className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
         <button
           type="button"
           onClick={handleToggle}
-          className="text-xs text-[color:var(--violet)] hover:text-[color:var(--violet)] font-medium"
+          className="text-[12.5px] font-medium text-[color:var(--violet)] hover:underline"
         >
           {expanded ? "Masquer les cas similaires" : "Voir des cas similaires déjà traités"}
         </button>
         {trainingEnabled && (
           <Link
             href={`/training?objection=${encodeURIComponent(objection)}`}
-            className="text-xs text-[color:var(--violet)] font-medium hover:underline"
+            className="text-[12.5px] text-[color:var(--violet)] font-medium hover:underline"
           >
             M&apos;entraîner sur cette objection →
           </Link>
         )}
       </span>
       {expanded && (
-        <div className="pl-4 mt-2 space-y-2">
-          {loading && <p className="text-xs text-slate-400 italic">Recherche en cours…</p>}
-          {error && <p className="text-xs text-red-500">Recherche indisponible pour le moment.</p>}
+        <div className="mt-3 space-y-2">
+          {loading && <p className="text-[12.5px] text-slate-400">Recherche en cours…</p>}
+          {error && <p className="text-[12.5px] text-rose-700">Recherche indisponible pour le moment.</p>}
           {similar && similar.length === 0 && !loading && !error && (
-            <p className="text-xs text-slate-400 italic">Aucun cas similaire trouvé pour l&apos;instant.</p>
+            <p className="text-[12.5px] text-slate-400">Aucun cas similaire trouvé pour l&apos;instant.</p>
           )}
           {similar?.map((s) => (
-            <div key={s.id} className="bg-slate-50 rounded-lg p-3">
+            <div key={s.id} className="rounded-xl bg-slate-50 px-3.5 py-3">
               <div className="flex items-start justify-between gap-2">
-                <p className="text-xs text-slate-600 font-medium">{s.objection}</p>
+                <p className="text-[12.5px] text-slate-900 font-medium leading-relaxed">{s.objection}</p>
                 <OutcomeBadge outcome={s.outcome} />
               </div>
-              <p className="text-xs text-slate-500 mt-1">↳ {s.response}</p>
+              <p className="text-[12.5px] text-slate-500 leading-relaxed mt-1">↳ {s.response}</p>
             </div>
           ))}
         </div>
@@ -498,29 +504,29 @@ function ReadOnlyVideoStatus({ call }: { call: CallWithAnalysis }) {
     : "L'enregistrement n'a pas pu être récupéré (bot refusé ou échec technique).";
 
   return (
-    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
-      <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Enregistrement</h2>
-      <p className="text-sm text-slate-500 italic">{message}</p>
+    <div className={`${CARD} p-5`}>
+      <h2 className={`${LABEL} mb-2`}>Enregistrement</h2>
+      <p className="text-[13.5px] text-slate-500">{message}</p>
     </div>
   );
 }
 
 function ReadOnlyEmailBlock({ call }: { call: CallWithAnalysis }) {
   return (
-    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Email de suivi</h2>
+    <div className={`${CARD} p-5 sm:p-6`}>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <h2 className={LABEL}>Email de suivi</h2>
         {call.follow_up_sent_at && (
-          <span className="text-xs text-emerald-600 font-medium">Envoyé le {formatSentAt(call.follow_up_sent_at)}</span>
+          <span className="rounded-full bg-[color:var(--success-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-emerald-700">Envoyé le {formatSentAt(call.follow_up_sent_at)}</span>
         )}
       </div>
       {call.follow_up_email ? (
         <>
-          <p className="text-sm font-semibold text-slate-800 mb-2">{call.follow_up_email.subject}</p>
-          <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">{call.follow_up_email.body}</p>
+          <p className="text-[14px] font-semibold text-slate-900 mb-2">{call.follow_up_email.subject}</p>
+          <p className="text-[13.5px] text-slate-600 whitespace-pre-wrap leading-relaxed">{call.follow_up_email.body}</p>
         </>
       ) : (
-        <p className="text-slate-400 text-sm italic">Aucun email de suivi généré.</p>
+        <p className="text-slate-400 text-[13.5px]">Aucun email de suivi généré.</p>
       )}
     </div>
   );
@@ -658,28 +664,28 @@ export default function FeedbackDetailClient({
     globalScore === null
       ? "text-slate-400"
       : globalScore >= 4
-      ? "text-green-600"
+      ? "text-emerald-700"
       : globalScore >= 2.5
-      ? "text-orange-500"
-      : "text-red-500";
+      ? "text-amber-700"
+      : "text-rose-700";
 
   const sentimentBg: Record<string, string> = {
-    positif: "bg-green-100 text-green-700",
-    neutre: "bg-slate-100 text-slate-500",
-    négatif: "bg-red-100 text-red-600",
+    positif: "bg-[color:var(--success-soft)] text-emerald-700",
+    neutre: "bg-slate-100 text-slate-600",
+    négatif: "bg-[color:var(--danger-soft)] text-rose-700",
   };
 
   // Partagé entre la vue analysée et la vue « aucune parole » : sur un call
   // non analysé, l'enregistrement reste le seul moyen de vérifier ce qui
   // s'est passé (micro coupé, personne n'a parlé).
   const recordingPanel = hasVideo ? (
-    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Enregistrement</h2>
+    <div className={`${CARD} p-5`}>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className={LABEL}>Enregistrement</h2>
         {videoStatus === "idle" && (
           <button
             onClick={loadVideo}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-[color:var(--violet)] hover:brightness-90 transition-colors px-2.5 py-1 rounded-lg border border-[color:var(--lavender-strong)] hover:bg-[color:var(--lavender)]"
+            className="inline-flex h-8 items-center gap-1.5 rounded-full bg-[color:var(--lavender)] px-3 text-[12.5px] font-medium text-[color:var(--violet)] transition-colors hover:bg-[color:var(--lavender-strong)]"
           >
             <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z" />
@@ -688,21 +694,23 @@ export default function FeedbackDetailClient({
           </button>
         )}
         {videoStatus === "loading" && (
-          <span className="text-xs text-slate-400">Chargement…</span>
+          <span className="text-[12px] text-slate-400">Chargement…</span>
         )}
       </div>
       {videoStatus === "ready" && videoUrl && (
-        <video
-          ref={videoRef}
-          controls
-          src={videoUrl}
-          onTimeUpdate={(e) => setCurrentTimeMs(Math.floor(e.currentTarget.currentTime * 1000))}
-          className="w-full rounded-xl bg-black"
-          style={{ maxHeight: "320px" }}
-        />
+        <div className="mt-3 overflow-hidden rounded-2xl bg-slate-900 p-1.5">
+          <video
+            ref={videoRef}
+            controls
+            src={videoUrl}
+            onTimeUpdate={(e) => setCurrentTimeMs(Math.floor(e.currentTarget.currentTime * 1000))}
+            className="w-full rounded-xl bg-black"
+            style={{ maxHeight: "320px" }}
+          />
+        </div>
       )}
       {videoStatus === "unavailable" && (
-        <p className="text-sm text-slate-400 italic">Enregistrement non disponible.</p>
+        <p className="mt-3 text-[13.5px] text-slate-400">Enregistrement non disponible.</p>
       )}
     </div>
   ) : (
@@ -725,12 +733,12 @@ export default function FeedbackDetailClient({
   const activeTab: Tab = tab === "email" && !followUpEnabled ? "overview" : tab;
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="max-w-6xl mx-auto px-6 py-10">
+    <div className="min-h-screen bg-background">
+      <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 sm:py-10">
         {/* Back */}
         <Link
           href={backHref}
-          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-[color:var(--violet)] transition-colors mb-6"
+          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-slate-500 hover:text-slate-900 transition-colors mb-5"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
@@ -739,27 +747,27 @@ export default function FeedbackDetailClient({
         </Link>
 
         {/* Header */}
-        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-6 mb-5">
+        <div className="rounded-[20px] border border-border bg-white px-5 py-5 sm:px-7 mb-5">
           <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="text-xl font-bold text-slate-900">{displayName}</h1>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="min-w-0 break-words text-[22px] font-semibold leading-tight tracking-[-0.02em] text-slate-900">{displayName}</h1>
                 {call.meeting_stage && (
                   <span
                     title={call.meeting_title ?? undefined}
-                    className="inline-flex items-center rounded-full border border-[color:var(--lavender-strong)] bg-[color:var(--lavender)] px-2.5 py-0.5 text-[11px] font-semibold text-[color:var(--violet)]"
+                    className="inline-flex items-center rounded-full bg-[color:var(--lavender)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--violet)]"
                   >
                     {MEETING_STAGE_LABELS[call.meeting_stage]}
                   </span>
                 )}
               </div>
               {call.contact_email && call.contact_email !== displayName && (
-                <p className="text-slate-400 text-sm mt-0.5">{call.contact_email}</p>
+                <p className="mt-0.5 break-all text-[13px] text-slate-500">{call.contact_email}</p>
               )}
-              <p className="text-slate-400 text-sm mt-1 flex items-center gap-3 flex-wrap">
+              <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] text-slate-500">
                 <span>{formatDateTime(call.started_at ?? call.created_at)}</span>
                 {call.duration_seconds !== null && (
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-center gap-1 tabular-nums">
                     <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
                     </svg>
@@ -773,12 +781,12 @@ export default function FeedbackDetailClient({
             </div>
             <div className="text-right shrink-0">
               {globalScore !== null && (
-                <p className={`text-3xl font-bold ${globalColor}`}>
-                  {globalScore.toFixed(1)}<span className="text-base font-medium text-slate-300">/5</span>
+                <p className={`text-[32px] font-semibold leading-none tracking-tight tabular-nums ${globalColor}`}>
+                  {globalScore.toFixed(1)}<span className="text-[15px] font-medium text-slate-400">/5</span>
                 </p>
               )}
               {a?.sentiment && (
-                <span className={`inline-block mt-1 text-xs font-medium px-2.5 py-0.5 rounded-full ${sentimentBg[a.sentiment] ?? "bg-slate-100 text-slate-500"}`}>
+                <span className={`inline-block mt-2 text-[11.5px] font-semibold px-2 py-0.5 rounded-full ${sentimentBg[a.sentiment] ?? "bg-slate-100 text-slate-500"}`}>
                   {a.sentiment}
                 </span>
               )}
@@ -788,14 +796,14 @@ export default function FeedbackDetailClient({
 
         {noSpeech ? (
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-5 items-start">
-            <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-8">
-              <h2 className="text-base font-semibold text-slate-900">Aucune parole détectée</h2>
-              <p className="text-sm text-slate-500 mt-2">
+            <div className={`${CARD} p-6 sm:p-8`}>
+              <h2 className="text-[17px] font-semibold tracking-tight text-slate-900">Aucune parole détectée</h2>
+              <p className="text-[14px] leading-relaxed text-slate-500 mt-2">
                 L&apos;enregistrement ne contient aucune parole exploitable : ce rendez-vous n&apos;a donc été ni analysé,
                 ni noté{followUpEnabled ? ", et aucun email de suivi n'a été rédigé" : ""}. Il ne compte pas dans vos
                 moyennes.
               </p>
-              <p className="text-sm text-slate-500 mt-2">
+              <p className="text-[14px] leading-relaxed text-slate-500 mt-2">
                 Le plus souvent, le micro était coupé ou personne n&apos;a pris la parole. Vous pouvez le vérifier en
                 écoutant l&apos;enregistrement.
               </p>
@@ -803,20 +811,22 @@ export default function FeedbackDetailClient({
             <div>{recordingPanel}</div>
           </div>
         ) : !a ? (
-          <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-10 text-center text-slate-400 text-sm">
+          <div className={`${CARD} p-10 text-center text-slate-500 text-[14px]`}>
             Analyse non disponible pour cet appel.
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-5 items-start">
             {/* LEFT — tabbed content, scrolls with the page */}
             <div className="min-w-0">
-              <div className="inline-flex items-center gap-1 bg-white rounded-xl border border-slate-200 p-1 mb-5">
+              <div className="inline-flex items-center rounded-full bg-slate-100 p-1 mb-5">
                 {TABS.map((t) => (
                   <button
                     key={t.key}
                     onClick={() => setTab(t.key)}
-                    className={`px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors duration-200 ${
-                      activeTab === t.key ? "brand-gradient text-white" : "text-slate-500 hover:text-slate-700"
+                    className={`h-8 rounded-full px-3.5 text-[13px] font-medium transition-[background-color,color,box-shadow] duration-200 ${
+                      activeTab === t.key
+                        ? "bg-white text-slate-900 shadow-[0_1px_3px_oklch(0.19_0.02_266/0.12)]"
+                        : "text-slate-500 hover:text-slate-900"
                     }`}
                   >
                     {t.label}
@@ -845,11 +855,11 @@ export default function FeedbackDetailClient({
                   {/* Scores par dimension — dynamique via le playbook_snapshot de
                       l'analyse (ou les 4 labels historiques si absent) */}
                   {effectiveScores.length > 0 && (
-                    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-6">
-                      <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-5">
+                    <div className={`${CARD} p-5 sm:p-6`}>
+                      <h2 className={`${LABEL} mb-4`}>
                         Scores par dimension
                       </h2>
-                      <div className="space-y-5">
+                      <div className="space-y-4">
                         {effectiveScores.map((dim) => (
                           <ScoreBar
                             key={dim.key}
@@ -864,14 +874,14 @@ export default function FeedbackDetailClient({
                   )}
 
                   {/* Strengths + Weaknesses */}
-                  <div className="grid grid-cols-2 gap-5">
-                    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
-                      <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Points forts</h2>
-                      <List items={a.strengths ?? []} icon="✓" color="text-green-500" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div className={`${CARD} p-5`}>
+                      <h2 className={`${LABEL} mb-3`}>Points forts</h2>
+                      <List items={a.strengths ?? []} icon="✓" color="text-[color:var(--success)]" />
                     </div>
-                    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
-                      <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Axes d&apos;amélioration</h2>
-                      <List items={a.weaknesses ?? []} icon="△" color="text-orange-400" />
+                    <div className={`${CARD} p-5`}>
+                      <h2 className={`${LABEL} mb-3`}>Axes d&apos;amélioration</h2>
+                      <List items={a.weaknesses ?? []} icon="△" color="text-[color:var(--warning)]" />
                     </div>
                   </div>
 
@@ -879,9 +889,9 @@ export default function FeedbackDetailClient({
                       section n'existe pas. Les objections restent extraites et
                       apparaissent sur les calls passés le jour où il s'ouvre. */}
                   {isModuleEnabled("objections") && (a.objections ?? []).length > 0 && (
-                    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
-                      <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Objections rencontrées</h2>
-                      <ul className="space-y-3">
+                    <div className={`${CARD} p-5`}>
+                      <h2 className={`${LABEL} mb-3`}>Objections rencontrées</h2>
+                      <ul className="space-y-2.5">
                         {(a.objections ?? []).map((o, i) => (
                           <ObjectionItem
                             key={i}
@@ -896,8 +906,8 @@ export default function FeedbackDetailClient({
 
                   {/* Next steps */}
                   {(a.next_steps ?? []).length > 0 && (
-                    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
-                      <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Prochaines étapes</h2>
+                    <div className="rounded-2xl bg-[color:var(--lavender)] p-5">
+                      <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[color:var(--violet)] mb-3">Prochaines étapes</h2>
                       <List items={a.next_steps ?? []} icon="→" color="text-[color:var(--violet)]" />
                     </div>
                   )}
@@ -908,13 +918,13 @@ export default function FeedbackDetailClient({
                 readOnly ? (
                   <ReadOnlyEmailBlock call={call} />
                 ) : (
-                <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
+                <div className={`${CARD} p-5 sm:p-6`}>
                   {/* Le menu « Type de call » a été retiré le 29/09/2026 : il ne
                       changeait rien à l'email (les modèles par type de call ne
                       servaient qu'aux tâches). Décision de Jean : pas de
                       modèles par type de call pour l'email de suivi. */}
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Email de suivi suggéré</h2>
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                    <h2 className={LABEL}>Email de suivi suggéré</h2>
                     {call.follow_up_email && !sentAt && (
                       <div className="flex items-center gap-2">
                         <button
@@ -925,7 +935,7 @@ export default function FeedbackDetailClient({
                               setTimeout(() => setCopied(false), 2000);
                             });
                           }}
-                          className="text-xs font-medium text-[color:var(--violet)] hover:brightness-90 transition-colors px-2.5 py-1 rounded-lg border border-[color:var(--lavender-strong)] hover:bg-[color:var(--lavender)]"
+                          className="h-8 rounded-full border border-border bg-white px-3 text-[12.5px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
                         >
                           {copied ? "Copié !" : "Copier"}
                         </button>
@@ -972,7 +982,7 @@ export default function FeedbackDetailClient({
                               setSendStatus("error");
                             }
                           }}
-                          className="text-xs font-medium text-white brand-gradient hover:brightness-110 transition-colors px-2.5 py-1 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="h-8 rounded-full bg-[color:var(--primary)] px-3.5 text-[12.5px] font-medium text-white transition-[filter] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {sendStatus === "sending" ? "Envoi…" : "Envoyer"}
                         </button>
@@ -980,7 +990,7 @@ export default function FeedbackDetailClient({
                     )}
                     {sentAt && (
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs text-emerald-600 font-medium">
+                        <span className="rounded-full bg-[color:var(--success-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-emerald-700">
                           Envoyé le {formatSentAt(sentAt)}
                         </span>
                       </div>
@@ -988,7 +998,7 @@ export default function FeedbackDetailClient({
                   </div>
 
                   {sendStatus === "auth-error" && (
-                    <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700">
+                    <div className="mb-4 rounded-xl bg-[color:var(--warning-soft)] px-4 py-3 text-[13.5px] text-amber-700">
                       Reconnecte-toi à Google pour envoyer cet email.{" "}
                       <a href="/api/auth/signout" className="font-medium underline hover:text-amber-900">
                         Se déconnecter
@@ -996,7 +1006,7 @@ export default function FeedbackDetailClient({
                     </div>
                   )}
                   {sendStatus === "error" && (
-                    <p className="mb-4 text-sm text-red-600">
+                    <p className="mb-4 text-[13.5px] text-rose-700">
                       {sendError ?? "Erreur lors de l’envoi, réessaie."}
                     </p>
                   )}
@@ -1010,7 +1020,7 @@ export default function FeedbackDetailClient({
                         // champ, « Envoyer » échouait sur « Adresse email du
                         // contact introuvable » sans aucun moyen d'y remédier.
                         <div className="mb-3">
-                          <label htmlFor="follow-up-recipient" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                          <label htmlFor="follow-up-recipient" className={`block ${LABEL} mb-1.5`}>
                             Destinataire
                           </label>
                           <input
@@ -1019,9 +1029,9 @@ export default function FeedbackDetailClient({
                             value={followUpRecipient}
                             onChange={(e) => setFollowUpRecipient(e.target.value)}
                             placeholder="prenom.nom@entreprise.com"
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+                            className="w-full rounded-xl border border-border bg-white px-3.5 py-2 text-[14px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)]"
                           />
-                          <p className="mt-1.5 text-xs text-slate-500">
+                          <p className="mt-1.5 text-[12.5px] text-slate-500">
                             Aucun participant externe n&apos;était identifié dans l&apos;invitation : indique l&apos;adresse à laquelle envoyer.
                           </p>
                         </div>
@@ -1030,14 +1040,14 @@ export default function FeedbackDetailClient({
                         type="text"
                         value={subject}
                         onChange={(e) => setSubject(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] mb-3"
+                        className="w-full rounded-xl border border-border bg-white px-3.5 py-2 text-[14px] font-semibold text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] mb-3"
                         placeholder="Objet"
                       />
                       <textarea
                         value={body}
                         onChange={(e) => setBody(e.target.value)}
                         rows={8}
-                        className="w-full px-3 py-3 border border-slate-200 rounded-lg text-sm text-slate-600 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] resize-none leading-relaxed"
+                        className="w-full rounded-xl border border-border bg-white px-3.5 py-3 text-[14px] text-slate-700 outline-none transition-colors focus:border-[color:var(--violet)] resize-none leading-relaxed"
                       />
                     </>
                   ) : (
@@ -1047,7 +1057,7 @@ export default function FeedbackDetailClient({
                     // participant externe). Le message était donc faux, et il
                     // n'existait aucun moyen de rattraper.
                     <div className="space-y-3">
-                      <p className="text-sm text-slate-600">
+                      <p className="text-[13.5px] leading-relaxed text-slate-600">
                         Aucun email de suivi n&apos;a été généré pour ce call
                         {call.contact_email ? "." : " : aucun participant externe n'était identifié dans l'invitation, donc aucun destinataire."}
                       </p>
@@ -1057,17 +1067,17 @@ export default function FeedbackDetailClient({
                           onChange={(e) => setFollowUpRecipient(e.target.value)}
                           type="email"
                           placeholder="Email du destinataire"
-                          className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]"
+                          className="h-9 flex-1 rounded-full border border-border bg-white px-3.5 text-[14px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)]"
                         />
                         <button
                           onClick={generateFollowUp}
                           disabled={followUpStatus === "loading" || !followUpRecipient.trim()}
-                          className="h-9 px-3.5 inline-flex items-center justify-center rounded-lg brand-gradient text-white text-sm font-medium hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                          className="h-9 px-4 inline-flex items-center justify-center rounded-full bg-[color:var(--primary)] text-white text-[13px] font-medium hover:brightness-110 transition-[filter] disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                         >
                           {followUpStatus === "loading" ? "Génération…" : "Générer l'email"}
                         </button>
                       </div>
-                      {followUpError && <p className="text-sm text-red-600">{followUpError}</p>}
+                      {followUpError && <p className="text-[13.5px] text-rose-700">{followUpError}</p>}
                     </div>
                   )}
                 </div>
@@ -1077,7 +1087,7 @@ export default function FeedbackDetailClient({
 
             {/* RIGHT — sticky video + transcript, stays in view while the
                 left column scrolls */}
-            <div className="lg:sticky lg:top-6 space-y-5">
+            <div className="lg:sticky lg:top-20 space-y-5">
               {recordingPanel}
 
               <TranscriptSection

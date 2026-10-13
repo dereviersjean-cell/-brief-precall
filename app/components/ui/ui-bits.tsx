@@ -1,8 +1,18 @@
 import type { ReactNode } from "react";
 
 // Primitives visuelles partagées — portées du mockup Lovable (ui-bits.tsx),
-// juillet 2026. Couleurs via les tokens de app/globals.css (var(--violet),
-// var(--lavender), etc.) — voir la note "Rebrand" en tête de ce fichier CSS.
+// juillet 2026, puis alignées sur le site public (octobre 2026). Couleurs via
+// les tokens de app/globals.css (var(--violet), var(--lavender), etc.).
+//
+// Le langage visuel du site, à suivre dans les écrans de l'app :
+//   - cartes : rounded-2xl, border border-border, fond blanc, SANS ombre ;
+//   - étiquettes de section : text-[11px] font-semibold uppercase
+//     tracking-[0.07em] text-slate-500 ;
+//   - chiffres clés : semibold, leading-none, tracking-tight, tabular-nums ;
+//   - encadré d'accent : rounded-2xl bg-[color:var(--lavender)], étiquette
+//     en text-[color:var(--violet)] ;
+//   - pastilles : rounded-full px-2 py-0.5 text-[11.5px] font-semibold ;
+//   - pas de dégradé, pas de halo, pas d'effet de soulèvement au survol.
 
 // ---- Button system ----
 type BtnVariant = "primary" | "secondary" | "ghost" | "outline" | "danger";
@@ -60,7 +70,7 @@ export function Card({
 }) {
   return (
     <div
-      className={`rounded-2xl border border-border bg-white shadow-[var(--shadow-sm)] ${
+      className={`rounded-2xl border border-border bg-white ${
         padded ? "p-6" : ""
       } ${className}`}
     >
@@ -95,7 +105,7 @@ export function ScoreChip({ value }: { value: number | null }) {
   const t = scoreTone(value);
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-medium tabular-nums ${t.chip}`}
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold tabular-nums ${t.chip}`}
     >
       {value == null ? "—" : `${value.toFixed(1)}/5`}
     </span>
@@ -110,7 +120,7 @@ export function SentimentChip({ value }: { value: "positif" | "neutre" | "négat
   };
   if (!value) return <span className="text-slate-400">—</span>;
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-medium ${map[value]}`}>
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${map[value]}`}>
       {value}
     </span>
   );
@@ -118,7 +128,7 @@ export function SentimentChip({ value }: { value: "positif" | "neutre" | "négat
 
 export function Eyebrow({ children, icon }: { children: ReactNode; icon?: ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--lavender)] px-3 py-1 text-[11px] font-medium tracking-wide text-[color:var(--violet)]">
+    <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.08em] text-[color:var(--violet)]">
       {icon}
       {children}
     </span>
@@ -147,18 +157,18 @@ export function StatCard({
     rose: "bg-[color:var(--danger-soft)] text-rose-700",
   }[tone];
   return (
-    <div className="group rounded-2xl border border-border bg-white p-5 shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] transition-shadow">
-      <div className="flex items-start justify-between">
-        <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+    <div className="rounded-2xl border border-border bg-white p-5">
+      <div className="flex items-center justify-between">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">
           {label}
         </div>
-        {icon && <div className={`grid h-9 w-9 place-items-center rounded-xl ${bg} group-hover:scale-105 transition-transform`}>{icon}</div>}
+        {icon && <div className={`grid h-8 w-8 place-items-center rounded-lg ${bg}`}>{icon}</div>}
       </div>
-      <div className="mt-4 flex items-baseline gap-1">
-        <div className="text-[34px] font-semibold tracking-tight text-slate-900 leading-none">
+      <div className="mt-3 flex items-baseline gap-1">
+        <div className="text-[30px] font-semibold tracking-tight tabular-nums text-slate-900 leading-none">
           {value}
         </div>
-        {suffix && <div className="text-[15px] text-slate-400">{suffix}</div>}
+        {suffix && <div className="text-[14px] font-medium text-slate-400">{suffix}</div>}
       </div>
       {hint && <div className="mt-2 text-[12px] text-slate-500">{hint}</div>}
     </div>
@@ -181,7 +191,7 @@ export function StatusChip({
   }[tone];
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11.5px] font-medium ${map}`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11.5px] font-semibold ${map}`}
     >
       {children}
     </span>

@@ -25,14 +25,14 @@ export default function ScoreTrendChart({ weeks, title }: { weeks: ScoreTrendWee
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5"
+      className="rounded-2xl border border-border bg-white p-4 sm:p-5"
     >
-      <div className="flex items-start justify-between gap-4">
-        <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500">{title}</h2>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">{title}</h2>
         {hasAnyData && <TrendSummary weeks={weeks} />}
       </div>
       {!hasAnyData ? (
-        <p className="text-sm text-slate-400 italic py-8 text-center">Pas encore assez de calls analysés.</p>
+        <p className="py-10 text-center text-[13px] text-slate-500">Pas encore assez de calls analysés.</p>
       ) : (
         <ScoreChart weeks={weeks} />
       )}
@@ -59,9 +59,9 @@ function TrendSummary({ weeks }: { weeks: ScoreTrendWeek[] }) {
   const label = flat ? "stable" : `${delta > 0 ? "+" : "−"}${Math.abs(delta).toFixed(1)} pt`;
 
   return (
-    <div className="flex items-center gap-2 shrink-0">
-      <span className="text-[12px] text-slate-400">sur la période</span>
-      <span className={`rounded-full px-2 py-0.5 text-[11.5px] font-medium ${tone}`}>{label}</span>
+    <div className="flex shrink-0 items-center gap-2">
+      <span className="text-[12px] text-slate-500">sur la période</span>
+      <span className={`rounded-full px-2 py-0.5 text-[11.5px] font-semibold tabular-nums ${tone}`}>{label}</span>
     </div>
   );
 }
@@ -102,12 +102,31 @@ function ScoreChart({ weeks }: { weeks: ScoreTrendWeek[] }) {
   const showAllValues = points.length <= 8;
 
   return (
-    <div className="mt-4">
-      <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-[210px]" role="img" aria-label="Évolution du score moyen">
+    <div className="mt-3">
+      {/* La légende ne décrit que ce qui est effectivement tracé : annoncer
+          « Moyenne » ou « Aucun call » quand ni l'une ni l'autre n'apparaît
+          oblige à chercher à l'écran quelque chose qui n'y est pas. */}
+      <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-slate-500">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-0.5 w-4 rounded-full bg-[color:var(--primary)]" /> Score hebdomadaire
+        </span>
+        {showAverage && (
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-0 w-4 border-t-2 border-dotted border-amber-400" /> Moyenne
+          </span>
+        )}
+        {points.length < weeks.length && (
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-slate-300" /> Aucun call
+          </span>
+        )}
+      </div>
+
+      <svg viewBox={`0 0 ${w} ${h}`} className="h-auto w-full" role="img" aria-label="Évolution du score moyen">
         <defs>
           <linearGradient id="scoreArea" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--violet)" stopOpacity="0.22" />
-            <stop offset="100%" stopColor="var(--violet)" stopOpacity="0" />
+            <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.16" />
+            <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
           </linearGradient>
         </defs>
 
@@ -120,10 +139,10 @@ function ScoreChart({ weeks }: { weeks: ScoreTrendWeek[] }) {
               x2={w - pad.r}
               y1={y(g)}
               y2={y(g)}
-              stroke="oklch(0.94 0.01 258)"
+              stroke="var(--border)"
               strokeWidth={1}
             />
-            <text x={pad.l - 8} y={y(g) + 3.5} textAnchor="end" fontSize="10" fill="oklch(0.6 0.03 257)">
+            <text x={pad.l - 8} y={y(g) + 4} textAnchor="end" fontSize="11" fill="var(--color-slate-400)">
               {g}
             </text>
           </g>
@@ -138,13 +157,14 @@ function ScoreChart({ weeks }: { weeks: ScoreTrendWeek[] }) {
           x2={w - pad.r}
           y1={y(avg)}
           y2={y(avg)}
-          stroke="oklch(0.75 0.13 70)"
-          strokeWidth={1.25}
-          strokeDasharray="5 4"
+          stroke="var(--warning)"
+          strokeWidth={1.5}
+          strokeDasharray="2 4"
+          strokeLinecap="round"
         />
-        <g transform={`translate(${w - pad.r - 52}, ${y(avg) - 17})`}>
-          <rect width="52" height="15" rx="7.5" fill="oklch(0.97 0.03 80)" />
-          <text x="26" y="10.5" textAnchor="middle" fontSize="9.5" fontWeight={600} fill="oklch(0.5 0.11 60)">
+        <g transform={`translate(${w - pad.r - 54}, ${y(avg) - 18})`}>
+          <rect width="54" height="16" rx="8" fill="var(--warning-soft)" />
+          <text x="27" y="11" textAnchor="middle" fontSize="10" fontWeight={600} fill="oklch(0.5 0.11 60)">
             moy. {avg.toFixed(1)}
           </text>
         </g>
@@ -160,8 +180,8 @@ function ScoreChart({ weeks }: { weeks: ScoreTrendWeek[] }) {
               <polyline
                 points={line}
                 fill="none"
-                stroke="var(--violet)"
-                strokeWidth={2.25}
+                stroke="var(--primary)"
+                strokeWidth={2.5}
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
@@ -173,7 +193,7 @@ function ScoreChart({ weeks }: { weeks: ScoreTrendWeek[] }) {
           const isLast = idx === points.length - 1;
           return (
             <g key={`p-${p.i}`}>
-              <circle cx={p.x} cy={p.y} r={isLast ? 5 : 3.5} fill="white" stroke="var(--violet)" strokeWidth={2.25} />
+              <circle cx={p.x} cy={p.y} r={4} fill="white" stroke="var(--primary)" strokeWidth={2} />
               {(showAllValues || isLast) && (
                 <>
                   {/* Fond derrière la valeur : sans lui, elle se colle à
@@ -181,7 +201,7 @@ function ScoreChart({ weeks }: { weeks: ScoreTrendWeek[] }) {
                       gauche — « 3 » et « 2.6 » se lisaient « 32.6 ». */}
                   <rect
                     x={p.x - 13}
-                    y={p.y - 21}
+                    y={p.y - 22}
                     width={26}
                     height={14}
                     rx={4}
@@ -192,9 +212,9 @@ function ScoreChart({ weeks }: { weeks: ScoreTrendWeek[] }) {
                     x={p.x}
                     y={p.y - 11}
                     textAnchor="middle"
-                    fontSize="11"
-                    fontWeight={isLast ? 700 : 600}
-                    fill="oklch(0.3 0.1 258)"
+                    fontSize={isLast ? "12" : "11"}
+                    fontWeight={600}
+                    fill={isLast ? "var(--foreground)" : "var(--color-slate-600)"}
                   >
                     {p.value.toFixed(1)}
                   </text>
@@ -213,7 +233,7 @@ function ScoreChart({ weeks }: { weeks: ScoreTrendWeek[] }) {
               cx={x(i)}
               cy={pad.t + ih}
               r={2.5}
-              fill="oklch(0.85 0.01 258)"
+              fill="var(--color-slate-300)"
             />
           )
         )}
@@ -222,34 +242,15 @@ function ScoreChart({ weeks }: { weeks: ScoreTrendWeek[] }) {
           <text
             key={`l-${wk.weekStart.toISOString()}`}
             x={x(i)}
-            y={h - 9}
+            y={h - 8}
             textAnchor="middle"
             fontSize="10.5"
-            fill="oklch(0.55 0.03 257)"
+            fill="var(--color-slate-400)"
           >
             {wk.weekLabel}
           </text>
         ))}
       </svg>
-
-      {/* La légende ne décrit que ce qui est effectivement tracé : annoncer
-          « Moyenne » ou « Aucun call » quand ni l'une ni l'autre n'apparaît
-          oblige à chercher à l'écran quelque chose qui n'y est pas. */}
-      <div className="mt-1 flex items-center justify-center gap-4 text-[11.5px] text-slate-400">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-[2px] w-4 rounded bg-[color:var(--violet)]" /> Score hebdomadaire
-        </span>
-        {showAverage && (
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-[2px] w-4 rounded bg-amber-300" /> Moyenne
-          </span>
-        )}
-        {points.length < weeks.length && (
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-slate-300" /> Aucun call
-          </span>
-        )}
-      </div>
     </div>
   );
 }

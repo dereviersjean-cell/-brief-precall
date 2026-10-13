@@ -12,7 +12,6 @@ import {
 import { mostRecentParisMonday, bucketScoresByWeek } from "@/lib/paris-week";
 import { PageHeader } from "@/app/components/ui/PageHeader";
 import { Card } from "@/app/components/ui/ui-bits";
-import { Target } from "lucide-react";
 import ScoreTrendChart from "../ScoreTrendChart";
 import DimensionScores from "../DimensionScores";
 import FadeIn from "../FadeIn";
@@ -62,7 +61,7 @@ export default async function ScoresPage({
     : `Bonjour${userName ? ` ${userName.split(" ")[0]}` : ""} — tendance et dimensions de vos calls.`;
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-10">
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
       <FadeIn>
         <div className="mb-8">
           <PageHeader eyebrow="Performance" title="Scores" subtitle={subtitle} />
@@ -71,7 +70,7 @@ export default async function ScoresPage({
 
       {isManager && <CommercialSelector commercials={commercials} selectedId={selected?.id ?? null} />}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <ScoreTrendChart
             weeks={trendWeeks}
@@ -81,21 +80,16 @@ export default async function ScoresPage({
 
         <div>
           <FadeIn delay={0.1}>
-            <Card padded={false} className="p-5">
-              <div className="flex items-center gap-2 mb-1">
-                <div className="grid h-7 w-7 place-items-center rounded-lg bg-[color:var(--lavender)] text-[color:var(--violet)] shrink-0">
-                  <Target className="h-3.5 w-3.5" />
-                </div>
-                <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500">Scores moyens par dimension</h2>
-              </div>
-              <span className="block text-[11px] font-normal text-slate-400 mb-4">
+            <Card padded={false} className="p-4 sm:p-5">
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Scores moyens par dimension</h2>
+              <span className="mb-4 mt-1 block text-[11.5px] tabular-nums text-slate-500">
                 {averages.calls_analyzed_count} call{averages.calls_analyzed_count !== 1 ? "s" : ""} analysé
                 {averages.calls_analyzed_count !== 1 ? "s" : ""}, tous temps
               </span>
               {averages.dimensions.length > 0 ? (
                 <DimensionScores dimensions={averages.dimensions} />
               ) : (
-                <p className="text-sm text-slate-400 italic">Pas encore assez de calls analysés.</p>
+                <p className="py-6 text-center text-[13px] text-slate-500">Pas encore assez de calls analysés.</p>
               )}
             </Card>
           </FadeIn>

@@ -54,7 +54,7 @@ export default async function TrainingPage({
     const stats = selected ? allStats.filter((s) => s.userId === selected.id) : allStats;
 
     return (
-      <main className="max-w-4xl mx-auto px-6 py-10">
+      <main className="max-w-4xl mx-auto px-4 py-10 sm:px-6">
         <FadeIn>
           <div className="mb-8">
             <PageHeader
@@ -72,31 +72,31 @@ export default async function TrainingPage({
         <CommercialSelector commercials={commercials} selectedId={selected?.id ?? null} />
 
         <FadeIn delay={0.05}>
-          <Card padded={false} className="p-6">
+          <Card padded={false} className="px-4 py-1.5 sm:px-6">
             {stats.length === 0 ? (
-              <p className="text-slate-400 text-sm italic">Aucune session d&apos;entraînement terminée pour l&apos;instant.</p>
+              <p className="py-4 text-[13.5px] text-slate-500">Aucune session d&apos;entraînement terminée pour l&apos;instant.</p>
             ) : (
-              <ul className="divide-y divide-slate-100">
+              <ul className="divide-y divide-border">
                 {stats.map((stat) => (
-                  <li key={stat.userId} className="py-3.5 flex items-center justify-between gap-4">
+                  <li key={stat.userId} className="py-4 flex items-center justify-between gap-4">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-700 truncate">{stat.name ?? stat.email}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">
+                      <p className="text-[13.5px] font-semibold text-slate-900 truncate">{stat.name ?? stat.email}</p>
+                      <p className="text-[12px] tabular-nums text-slate-500 mt-0.5">
                         {stat.sessionsCount} session{stat.sessionsCount > 1 ? "s" : ""}
                         {stat.lastSessionAt && ` · dernière le ${formatDate(stat.lastSessionAt)}`}
                       </p>
                     </div>
                     <div className="shrink-0">
                       {stat.avgScore === null ? (
-                        <span className="text-xs text-slate-300">—</span>
+                        <span className="text-xs text-slate-400">—</span>
                       ) : (
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold tabular-nums ${
                             stat.avgScore >= 4
-                              ? "bg-green-100 text-green-700"
+                              ? "bg-[color:var(--success-soft)] text-emerald-700"
                               : stat.avgScore >= 2.5
-                              ? "bg-orange-100 text-orange-700"
-                              : "bg-red-100 text-red-700"
+                                ? "bg-[color:var(--warning-soft)] text-amber-700"
+                                : "bg-[color:var(--danger-soft)] text-rose-700"
                           }`}
                         >
                           {stat.avgScore.toFixed(1)}/5 en moyenne
@@ -110,7 +110,7 @@ export default async function TrainingPage({
           </Card>
         </FadeIn>
 
-        <p className="mt-4 flex items-center gap-1.5 text-xs text-slate-400">
+        <p className="mt-4 flex flex-wrap items-center gap-1.5 text-[12.5px] text-slate-500">
           <Dumbbell className="h-3.5 w-3.5" />
           Vue détaillée par objection et par équipe :{" "}
           <Link href="/team/insights" className="text-[color:var(--violet)] font-medium hover:underline">

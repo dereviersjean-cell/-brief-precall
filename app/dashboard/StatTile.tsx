@@ -59,11 +59,10 @@ export default function StatTile({
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.07, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      whileHover={{ y: -3, boxShadow: "0 8px 24px -8px rgba(15, 23, 42, 0.12)" }}
-      className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5"
+      className="bg-white rounded-2xl border border-border p-5"
     >
       <div className="flex items-center justify-between mb-3">
-        <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">{label}</p>
+        <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-[0.07em]">{label}</p>
         {icon && (
           <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${colors.bg} ${colors.text}`}>
             {icon}
@@ -71,11 +70,11 @@ export default function StatTile({
         )}
       </div>
       <div className="flex items-baseline gap-2 flex-wrap">
-        <p className="text-3xl font-bold text-slate-900 tabular-nums">
+        <p className="text-[30px] font-semibold leading-none tracking-tight text-slate-900 tabular-nums">
           {value !== null ? (
             <>
               <AnimatedNumber value={value} decimals={decimals} />
-              {suffix && <span className="text-base font-medium text-slate-300 ml-0.5">{suffix}</span>}
+              {suffix && <span className="text-[14px] font-medium text-slate-400 ml-0.5">{suffix}</span>}
             </>
           ) : (
             <span className="text-slate-300">—</span>

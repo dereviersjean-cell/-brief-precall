@@ -37,10 +37,10 @@ export default async function AnalyticsPage({
 
   if (!organizationId) {
     return (
-      <div className="mx-auto max-w-5xl px-6 py-10">
+      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
         <PageHeader eyebrow="Performance" title="Analytics" />
-        <Card className="mt-8">
-          <p className="text-sm italic text-slate-400">
+        <Card padded={false} className="mt-8 p-4 sm:p-5">
+          <p className="text-[13px] text-slate-500">
             Vous devez être rattaché à une organisation pour voir les statistiques d&apos;équipe.
           </p>
         </Card>
@@ -60,7 +60,7 @@ export default async function AnalyticsPage({
   const analytics = await getTeamAnalytics(organizationId, scopedUserIds, period);
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-10">
+    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
       <FadeIn>
         <div className="mb-8">
           <PageHeader

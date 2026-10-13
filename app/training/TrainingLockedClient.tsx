@@ -47,7 +47,7 @@ export default function TrainingLockedClient() {
         <div aria-hidden className="pointer-events-none select-none blur-[2px] opacity-50">
           <Card padded={false} className="p-5">
             <div className="flex items-center gap-3">
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl brand-gradient text-white text-[14px] font-semibold">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[color:var(--lavender)] text-[color:var(--violet)] text-[13px] font-semibold">
                 CM
               </span>
               <div>
@@ -56,10 +56,10 @@ export default function TrainingLockedClient() {
               </div>
             </div>
             <div className="mt-4 space-y-2.5">
-              <div className="max-w-[70%] rounded-2xl rounded-bl-md bg-slate-50 border border-border px-3.5 py-2.5 text-[13px] text-slate-700">
+              <div className="max-w-[70%] rounded-2xl rounded-bl-md bg-slate-100 px-3.5 py-2.5 text-[13px] text-slate-700">
                 « On est déjà engagés avec un concurrent, honnêtement je ne vois pas ce que ça changerait. »
               </div>
-              <div className="max-w-[70%] ml-auto rounded-2xl rounded-br-md brand-gradient text-white px-3.5 py-2.5 text-[13px]">
+              <div className="max-w-[70%] ml-auto rounded-2xl rounded-br-md bg-[color:var(--primary)] text-white px-3.5 py-2.5 text-[13px]">
                 Qu&apos;est-ce qui vous ferait reconsidérer votre choix aujourd&apos;hui ?
               </div>
             </div>
@@ -67,31 +67,31 @@ export default function TrainingLockedClient() {
         </div>
 
         <div className="absolute inset-0 grid place-items-center px-4">
-          <div className="text-center px-6 py-8 rounded-2xl bg-white/90 backdrop-blur border border-border shadow-[var(--shadow-md)] max-w-sm">
+          <div className="text-center px-6 py-8 rounded-2xl bg-white border border-border max-w-sm">
             <span className="mx-auto grid h-11 w-11 place-items-center rounded-xl bg-[color:var(--lavender)] text-[color:var(--violet)] mb-3">
               <Lock className="h-5 w-5" />
             </span>
             <p className="text-[14px] font-semibold text-slate-900">Module non débloqué</p>
-            <p className="mt-1 text-[12.5px] text-slate-500">
+            <p className="mt-1 text-[13px] leading-relaxed text-slate-500">
               Entraînement est un module additionnel — demandez son activation pour votre organisation.
             </p>
 
             {state === "sent" ? (
-              <p className="mt-4 inline-flex items-center justify-center gap-1.5 text-[13px] font-medium text-emerald-600">
+              <p className="mt-4 inline-flex items-center justify-center gap-1.5 text-[13px] font-medium text-emerald-700">
                 <Check className="h-3.5 w-3.5" /> Demande envoyée — on revient vers vous rapidement.
               </p>
             ) : (
               <button
                 onClick={handleRequest}
                 disabled={state === "sending"}
-                className="mt-4 inline-flex items-center justify-center gap-1.5 brand-gradient h-9 px-4 rounded-lg text-[13px] font-medium text-white shadow-[var(--shadow-glow)] hover:brightness-110 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                className="mt-4 inline-flex items-center justify-center gap-1.5 bg-[color:var(--primary)] h-9 px-4 rounded-lg text-[13px] font-medium text-white hover:brightness-110 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {state === "sending" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                 {state === "sending" ? "Envoi…" : "Je veux débloquer ce module"}
               </button>
             )}
             {state === "error" && (
-              <p className="mt-2 text-[11.5px] text-rose-500">
+              <p className="mt-2 text-[12px] text-rose-700">
                 Erreur d&apos;envoi — écrivez-nous directement à{" "}
                 <a href="mailto:hello@oliverlist.com" className="underline">
                   hello@oliverlist.com
@@ -104,7 +104,7 @@ export default function TrainingLockedClient() {
       </div>
 
       <div className="mt-8">
-        <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-3">Ce que ça débloque</h2>
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500 mb-3">Ce que ça débloque</h2>
         <ul className="space-y-3">
           {FEATURES.map((f) => (
             <li key={f.text} className="flex items-start gap-3">
@@ -117,7 +117,7 @@ export default function TrainingLockedClient() {
         </ul>
       </div>
 
-      <div className="mt-6 flex items-center gap-2 text-[11.5px] text-slate-400">
+      <div className="mt-6 flex items-center gap-2 text-[12px] text-slate-500">
         <Dumbbell className="h-3.5 w-3.5" />
         Déjà client ? Votre administrateur peut l&apos;activer depuis l&apos;espace admin.
       </div>

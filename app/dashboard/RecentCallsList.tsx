@@ -15,11 +15,11 @@ export default function RecentCallsList({
   linksEnabled?: boolean;
 }) {
   if (calls.length === 0) {
-    return <p className="text-sm text-slate-400 italic">Aucun call pour l&apos;instant.</p>;
+    return <p className="text-[13px] text-slate-500">Aucun call pour l&apos;instant.</p>;
   }
 
   return (
-    <div className="divide-y divide-slate-100">
+    <div className="divide-y divide-border">
       {calls.map((call, i) => (
         <motion.div
           key={call.id}
@@ -32,13 +32,13 @@ export default function RecentCallsList({
               avec un identifiant fictif. Ligne inerte plutôt que lien mort. */}
           <ConditionalLink href={linksEnabled ? `/feedback/${call.id}` : null} className="flex items-center justify-between gap-3 py-2.5 group">
             <div className="min-w-0">
-              <p className="text-sm font-medium text-slate-800 group-hover:text-[color:var(--violet)] transition-colors truncate">
+              <p className="truncate text-[13px] font-medium text-slate-900 transition-colors group-hover:text-[color:var(--violet)]">
                 {call.name}
               </p>
-              <p className="text-xs text-slate-400">{call.dateLabel}</p>
+              <p className="text-[11.5px] text-slate-500">{call.dateLabel}</p>
             </div>
             {call.score !== null && (
-              <span className={`text-sm font-semibold shrink-0 ${scoreColorClass(call.score).text}`}>
+              <span className={`shrink-0 text-[13px] font-semibold tabular-nums ${scoreColorClass(call.score).text}`}>
                 {call.score.toFixed(1)}/5
               </span>
             )}

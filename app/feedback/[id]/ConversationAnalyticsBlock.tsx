@@ -9,6 +9,11 @@ function formatMmSs(ms: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+// Chiffre clé, étiquette et précision d'une tuile, alignés sur le site.
+const STAT_VALUE = "text-[24px] font-semibold leading-none tracking-tight tabular-nums text-slate-900";
+const STAT_LABEL = "mt-2 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500";
+const STAT_HINT = "mt-2 text-[13px] leading-relaxed text-slate-600";
+
 function formatSeconds(ms: number): string {
   return `${Math.round(ms / 1000)}s`;
 }
@@ -26,13 +31,13 @@ function SpeakerBreakdownCard({
   valueFor: (speaker: AnalyticsSpeaker) => string;
 }) {
   return (
-    <div className="bg-slate-50 rounded-lg p-4">
-      <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">{label}</p>
-      <div className="space-y-1">
+    <div className="rounded-xl bg-slate-50 p-4">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500 mb-2.5">{label}</p>
+      <div className="space-y-1.5">
         {speakers.map((s) => (
           <div key={s.speaker_id} className="flex items-baseline justify-between gap-2">
-            <span className="text-sm text-slate-600 truncate">{s.display_name}</span>
-            <span className="text-sm font-semibold text-slate-900 shrink-0">{valueFor(s)}</span>
+            <span className="text-[13px] text-slate-600 truncate">{s.display_name}</span>
+            <span className="text-[13px] font-semibold tabular-nums text-slate-900 shrink-0">{valueFor(s)}</span>
           </div>
         ))}
       </div>
@@ -60,10 +65,10 @@ export default function ConversationAnalyticsBlock({ analytics }: { analytics: C
   const silencePct = analytics.total_duration_ms > 0 ? Math.round((100 * silenceMs) / analytics.total_duration_ms) : 0;
 
   return (
-    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
+    <div className="rounded-2xl border border-border bg-white p-5">
       <div className="mb-4">
-        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">🎧 Analyse de la conversation</h2>
-        <p className="text-xs text-slate-400 mt-0.5">
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">Analyse de la conversation</h2>
+        <p className="text-[12.5px] text-slate-400 mt-1">
           Statistiques calculées depuis le transcript — qui a parlé quand est visible juste au-dessus.
         </p>
       </div>
@@ -71,16 +76,16 @@ export default function ConversationAnalyticsBlock({ analytics }: { analytics: C
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {showCommercialSections && commercial_prospect_ratio && (
-          <div className="bg-slate-50 rounded-lg p-4">
-            <p className="text-2xl font-semibold text-slate-900">
+          <div className="rounded-xl bg-slate-50 p-4">
+            <p className="text-[24px] font-semibold leading-none tracking-tight tabular-nums text-slate-900">
               {commercial_prospect_ratio.commercial_pct}% / {commercial_prospect_ratio.prospect_pct}%
             </p>
-            <p className="text-xs text-slate-500 uppercase tracking-wide mt-1">Commercial / Prospect</p>
+            <p className={STAT_LABEL}>Commercial / Prospect</p>
             <span
-              className={`inline-block mt-2 text-xs font-medium px-2 py-0.5 rounded-full ${
+              className={`inline-block mt-2.5 text-[11.5px] font-semibold leading-snug px-2 py-0.5 rounded-full ${
                 commercial_prospect_ratio.is_healthy
-                  ? "bg-green-100 text-green-700"
-                  : "bg-orange-100 text-orange-700"
+                  ? "bg-[color:var(--success-soft)] text-emerald-700"
+                  : "bg-[color:var(--warning-soft)] text-amber-700"
               }`}
             >
               {commercial_prospect_ratio.is_healthy
@@ -99,10 +104,10 @@ export default function ConversationAnalyticsBlock({ analytics }: { analytics: C
         />
 
         {longestOverall && (
-          <div className="bg-slate-50 rounded-lg p-4">
-            <p className="text-2xl font-semibold text-slate-900">{formatMmSs(longestOverall.longest_turn_ms)}</p>
-            <p className="text-xs text-slate-500 uppercase tracking-wide mt-1">Plus longue intervention</p>
-            <p className="text-sm text-slate-600 mt-2">{longestOverall.display_name}</p>
+          <div className="rounded-xl bg-slate-50 p-4">
+            <p className={STAT_VALUE}>{formatMmSs(longestOverall.longest_turn_ms)}</p>
+            <p className={STAT_LABEL}>Plus longue intervention</p>
+            <p className={STAT_HINT}>{longestOverall.display_name}</p>
           </div>
         )}
 
@@ -112,10 +117,10 @@ export default function ConversationAnalyticsBlock({ analytics }: { analytics: C
           valueFor={(s) => formatSeconds(s.avg_turn_duration_ms)}
         />
 
-        <div className="bg-slate-50 rounded-lg p-4">
-          <p className="text-2xl font-semibold text-slate-900">{totalMonologues === 0 ? "Aucun" : totalMonologues}</p>
-          <p className="text-xs text-slate-500 uppercase tracking-wide mt-1">Monologues &gt; 30s</p>
-          <p className="text-sm text-slate-600 mt-2">
+        <div className="rounded-xl bg-slate-50 p-4">
+          <p className={STAT_VALUE}>{totalMonologues === 0 ? "Aucun" : totalMonologues}</p>
+          <p className={STAT_LABEL}>Monologues &gt; 30s</p>
+          <p className={STAT_HINT}>
             {monologueSpeakers.length > 0
               ? monologueSpeakers.map((s) => `${s.display_name} (${s.monologues_count})`).join(" · ")
               : "Aucun monologue"}
@@ -123,20 +128,20 @@ export default function ConversationAnalyticsBlock({ analytics }: { analytics: C
         </div>
 
         {showCommercialSections && (
-          <div className="bg-slate-50 rounded-lg p-4">
-            <p className="text-2xl font-semibold text-slate-900">{back_and_forth_count}</p>
-            <p className="text-xs text-slate-500 uppercase tracking-wide mt-1">Échanges dynamiques</p>
+          <div className="rounded-xl bg-slate-50 p-4">
+            <p className={STAT_VALUE}>{back_and_forth_count}</p>
+            <p className={STAT_LABEL}>Échanges dynamiques</p>
             {back_and_forth_count >= 10 && (
-              <p className="text-sm text-slate-600 mt-2">Rythme conversationnel fluide</p>
+              <p className={STAT_HINT}>Rythme conversationnel fluide</p>
             )}
           </div>
         )}
 
         {silencePct > 0 && (
-          <div className="bg-slate-50 rounded-lg p-4">
-            <p className="text-2xl font-semibold text-slate-900">{silencePct}%</p>
-            <p className="text-xs text-slate-500 uppercase tracking-wide mt-1">Silences</p>
-            <p className="text-sm text-slate-600 mt-2">{formatMmSs(silenceMs)} sans échange</p>
+          <div className="rounded-xl bg-slate-50 p-4">
+            <p className={STAT_VALUE}>{silencePct}%</p>
+            <p className={STAT_LABEL}>Silences</p>
+            <p className={STAT_HINT}>{formatMmSs(silenceMs)} sans échange</p>
           </div>
         )}
       </div>

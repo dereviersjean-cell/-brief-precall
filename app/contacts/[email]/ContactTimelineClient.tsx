@@ -58,12 +58,12 @@ function EnvelopeIcon({ className }: { className?: string }) {
 function ScoreBadge({ score }: { score: number }) {
   const cls =
     score >= 4
-      ? "bg-green-100 text-green-700"
+      ? "bg-[color:var(--success-soft)] text-emerald-700"
       : score >= 2.5
-      ? "bg-orange-100 text-orange-700"
-      : "bg-red-100 text-red-700";
+      ? "bg-[color:var(--warning-soft)] text-amber-700"
+      : "bg-[color:var(--danger-soft)] text-rose-700";
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${cls}`}>
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold tabular-nums ${cls}`}>
       {score.toFixed(1)}/5
     </span>
   );
@@ -72,12 +72,12 @@ function ScoreBadge({ score }: { score: number }) {
 function SentimentBadge({ sentiment }: { sentiment: string | null }) {
   if (!sentiment) return null;
   const map: Record<string, string> = {
-    positif: "bg-green-50 text-green-600",
-    neutre: "bg-slate-100 text-slate-500",
-    négatif: "bg-red-50 text-red-500",
+    positif: "bg-[color:var(--success-soft)] text-emerald-700",
+    neutre: "bg-slate-100 text-slate-600",
+    négatif: "bg-[color:var(--danger-soft)] text-rose-700",
   };
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${map[sentiment] ?? "bg-slate-100 text-slate-500"}`}>
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${map[sentiment] ?? "bg-slate-100 text-slate-600"}`}>
       {sentiment}
     </span>
   );
@@ -85,12 +85,12 @@ function SentimentBadge({ sentiment }: { sentiment: string | null }) {
 
 function SummaryRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-3 py-2">
-      <span className="flex items-center gap-2 text-sm text-slate-500">
+    <div className="flex items-center justify-between gap-3 py-2.5">
+      <span className="flex items-center gap-2 text-[13px] text-slate-500">
         {icon}
         {label}
       </span>
-      <span className="text-sm font-semibold text-slate-900 text-right">{value}</span>
+      <span className="text-right text-[13px] font-semibold tabular-nums text-slate-900">{value}</span>
     </div>
   );
 }
@@ -113,25 +113,25 @@ function ReplyEntry({ item }: { item: ContactTimelineItem }) {
 
   return (
     <div className="mt-3 ml-4 relative pl-8">
-      {/* Sub-dot — blue */}
-      <div className="absolute left-0 top-2.5 w-3 h-3 rounded-full bg-white border-2 border-blue-400 flex items-center justify-center">
-        <div className="w-1 h-1 rounded-full bg-blue-400" />
+      {/* Sub-dot */}
+      <div className="absolute left-0 top-2.5 flex h-3 w-3 items-center justify-center rounded-full border-2 border-[color:var(--primary)] bg-white">
+        <div className="h-1 w-1 rounded-full bg-[color:var(--primary)]" />
       </div>
 
-      <div className="bg-blue-50 border border-blue-100 rounded-xl overflow-hidden">
+      <div className="overflow-hidden rounded-xl bg-[color:var(--lavender)]">
         {/* Header */}
         <div className="flex items-center gap-2 px-4 py-3">
-          <svg className="w-4 h-4 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <svg className="h-4 w-4 shrink-0 text-[color:var(--violet)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
           </svg>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-slate-700">Le prospect a répondu</p>
-            <p className="text-xs text-slate-400 mt-0.5">{formatDateTime(item.replied_at)}</p>
+            <p className="text-[13px] font-medium text-slate-900">Le prospect a répondu</p>
+            <p className="mt-0.5 text-[11.5px] text-slate-500">{formatDateTime(item.replied_at)}</p>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={() => { setShowReplyForm((v) => !v); setSendStatus("idle"); }}
-              className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors px-2.5 py-1 rounded-lg border border-blue-200 hover:bg-blue-100"
+              className="rounded-lg border border-[color:var(--lavender-strong)] bg-white px-2.5 py-1 text-[12px] font-medium text-[color:var(--violet)] transition-colors hover:bg-white/80"
             >
               {showReplyForm ? "Refermer" : "Répondre"}
             </button>
@@ -140,7 +140,7 @@ function ReplyEntry({ item }: { item: ContactTimelineItem }) {
 
         {/* Success toast */}
         {successToast && (
-          <div className="mx-4 mt-3 rounded-xl border px-4 py-2.5 flex items-center justify-between gap-4 bg-emerald-50 border-emerald-200">
+          <div className="mx-4 mt-3 flex items-center justify-between gap-4 rounded-xl bg-[color:var(--success-soft)] px-4 py-2.5">
             <p className="text-sm font-medium text-emerald-700">Email envoyé avec succès.</p>
             <button onClick={() => setSuccessToast(false)} className="text-emerald-400 hover:text-emerald-600 text-lg leading-none shrink-0">×</button>
           </div>
@@ -148,13 +148,13 @@ function ReplyEntry({ item }: { item: ContactTimelineItem }) {
 
         {/* Inline reply form */}
         {showReplyForm && (
-          <div className="px-4 pt-3 pb-3 border-t border-blue-100">
+          <div className="border-t border-[color:var(--lavender-strong)] px-4 pb-3 pt-3">
             <textarea
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
               rows={5}
               placeholder="Votre message de relance…"
-              className="w-full px-3 py-2.5 border border-blue-200 rounded-lg text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none leading-relaxed"
+              className="w-full resize-none rounded-lg border border-border bg-white px-3 py-2.5 text-sm leading-relaxed text-slate-700 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)]/40"
             />
             <div className="flex items-center gap-2 mt-2 flex-wrap">
               <button
@@ -181,18 +181,18 @@ function ReplyEntry({ item }: { item: ContactTimelineItem }) {
                     setSendStatus("error");
                   }
                 }}
-                className="text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors px-3 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-lg bg-[color:var(--primary)] px-3 py-1.5 text-[12px] font-medium text-white transition-[filter] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {sendStatus === "sending" ? "Envoi…" : "Envoyer"}
               </button>
               <button
                 onClick={() => { setShowReplyForm(false); setSendStatus("idle"); }}
-                className="text-xs text-slate-400 hover:text-slate-600 transition-colors px-2 py-1.5"
+                className="px-2 py-1.5 text-[12px] text-slate-500 transition-colors hover:text-slate-900"
               >
                 Annuler
               </button>
               {sendStatus === "error" && (
-                <p className="text-xs text-red-500">Erreur lors de l&apos;envoi, réessaie.</p>
+                <p className="text-[12px] text-rose-700">Erreur lors de l&apos;envoi, réessaie.</p>
               )}
             </div>
           </div>
@@ -209,32 +209,32 @@ function FollowUpEntry({ item }: { item: ContactTimelineItem }) {
   return (
     <div className="mt-3 ml-4 relative pl-8">
       {/* Sub-dot */}
-      <div className="absolute left-0 top-2.5 w-3 h-3 rounded-full bg-white border-2 border-emerald-400 flex items-center justify-center">
-        <div className="w-1 h-1 rounded-full bg-emerald-400" />
+      <div className="absolute left-0 top-2.5 flex h-3 w-3 items-center justify-center rounded-full border-2 border-[color:var(--success)] bg-white">
+        <div className="h-1 w-1 rounded-full bg-[color:var(--success)]" />
       </div>
 
-      <div className="bg-emerald-50 border border-emerald-100 rounded-xl overflow-hidden">
+      <div className="overflow-hidden rounded-xl bg-[color:var(--success-soft)]">
         {/* Header row — always visible, clickable */}
         <button
           onClick={() => setOpen((v) => !v)}
           className="w-full flex items-center gap-2 px-4 py-3 text-left"
         >
-          <svg className="w-4 h-4 text-emerald-500 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+          <svg className="h-4 w-4 shrink-0 text-emerald-700" fill="currentColor" viewBox="0 0 24 24">
             <path d="M1.5 8.67v8.58a3 3 0 003 3h15a3 3 0 003-3V8.67l-8.928 5.493a3 3 0 01-3.144 0L1.5 8.67z" />
             <path d="M22.5 6.908V6.75a3 3 0 00-3-3h-15a3 3 0 00-3 3v.158l9.714 5.978a1.5 1.5 0 001.572 0L22.5 6.908z" />
           </svg>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-slate-700 truncate">
+            <p className="truncate text-[13px] font-medium text-slate-900">
               {item.follow_up_email.subject}
             </p>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="mt-0.5 text-[11.5px] text-slate-500">
               {item.follow_up_sent_at
                 ? `Envoyé le ${formatDate(item.follow_up_sent_at)}`
                 : "Brouillon généré"}
             </p>
           </div>
           <svg
-            className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+            className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${open ? "rotate-180" : ""}`}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -246,8 +246,8 @@ function FollowUpEntry({ item }: { item: ContactTimelineItem }) {
 
         {/* Expandable body */}
         {open && (
-          <div className="px-4 pb-4 border-t border-emerald-100">
-            <pre className="mt-3 text-sm text-slate-600 leading-relaxed whitespace-pre-wrap bg-white rounded-lg px-3 py-3 border border-emerald-100 font-sans">
+          <div className="border-t border-white/70 px-4 pb-4">
+            <pre className="mt-3 whitespace-pre-wrap rounded-lg border border-border bg-white px-3 py-3 font-sans text-[13px] leading-relaxed text-slate-600">
               {item.follow_up_email.body}
             </pre>
           </div>
@@ -269,41 +269,33 @@ export default function ContactTimelineClient({ contactEmail, timeline }: Props)
   const totalDurationSeconds = timeline.reduce((n, i) => n + (i.duration_seconds ?? 0), 0);
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-10">
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
       <FadeIn>
-        <Link href="/contacts" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-[color:var(--violet)] transition-colors mb-6">
+        <Link href="/contacts" className="mb-5 inline-flex items-center gap-1.5 text-[13px] text-slate-500 transition-colors hover:text-[color:var(--violet)]">
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
           Tous les contacts
         </Link>
 
-        {/* Hero header */}
-        <div className="relative overflow-hidden rounded-3xl border border-border shadow-[var(--shadow-sm)] bg-white p-8 mb-6">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-[color:var(--lavender-strong)]/60 via-[color:var(--lavender)]/40 to-transparent blur-3xl"
-          />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-gradient-to-tr from-blue-100/40 to-transparent blur-3xl"
-          />
-          <div className="relative flex items-start gap-4 flex-wrap">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br brand-gradient flex items-center justify-center shrink-0 shadow-[var(--shadow-glow)]">
-              <span className="text-lg font-bold text-white">{displayName.charAt(0).toUpperCase()}</span>
+        {/* En-tête du contact */}
+        <div className="mb-4 rounded-2xl border border-border bg-white p-4 sm:p-6">
+          <div className="flex flex-wrap items-start gap-4">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[color:var(--lavender)]">
+              <span className="text-[17px] font-semibold text-[color:var(--violet)]">{displayName.charAt(0).toUpperCase()}</span>
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="text-2xl font-bold text-slate-900">{displayName}</h1>
-              {contactEmail !== displayName && <p className="text-slate-400 text-sm mt-0.5">{contactEmail}</p>}
-              <div className="flex items-center gap-2 mt-3 flex-wrap">
+              <h1 className="break-words text-[26px] font-semibold leading-[1.15] tracking-[-0.03em] text-slate-900">{displayName}</h1>
+              {contactEmail !== displayName && <p className="mt-1 break-all text-[13px] text-slate-500">{contactEmail}</p>}
+              <div className="mt-3 flex flex-wrap items-center gap-2">
                 {videoCallCount > 0 && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[color:var(--lavender)] text-[color:var(--violet)]">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[color:var(--lavender)] px-2 py-0.5 text-[11.5px] font-semibold text-[color:var(--violet)]">
                     <VideoIcon className="w-3 h-3 shrink-0" />
                     {videoCallCount} {videoCallCount === 1 ? "visio enregistrée" : "visios enregistrées"}
                   </span>
                 )}
                 {emailsSentCount > 0 && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-600">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[color:var(--success-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-emerald-700">
                     <EnvelopeIcon className="w-3 h-3 shrink-0" />
                     {emailsSentCount} {emailsSentCount === 1 ? "email envoyé" : "emails envoyés"}
                   </span>
@@ -315,18 +307,18 @@ export default function ContactTimelineClient({ contactEmail, timeline }: Props)
       </FadeIn>
 
       {timeline.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-12 text-center">
-          <div className="w-12 h-12 bg-[color:var(--lavender)] rounded-xl flex items-center justify-center mx-auto mb-4">
-            <Calendar className="w-6 h-6 text-[color:var(--violet)]" strokeWidth={1.5} />
+        <div className="rounded-2xl border border-border bg-white px-6 py-12 text-center">
+          <div className="mx-auto mb-4 grid h-11 w-11 place-items-center rounded-xl bg-[color:var(--lavender)]">
+            <Calendar className="h-5 w-5 text-[color:var(--violet)]" strokeWidth={1.5} />
           </div>
-          <p className="text-slate-700 font-medium">Aucun call enregistré pour ce contact</p>
-          <p className="text-slate-400 text-sm mt-1">L&apos;historique apparaîtra ici après un premier call.</p>
+          <p className="text-[14px] font-semibold text-slate-900">Aucun call enregistré pour ce contact</p>
+          <p className="mt-1 text-[13px] text-slate-500">L&apos;historique apparaîtra ici après un premier call.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start">
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
           {/* LEFT — vertical timeline */}
           <div className="min-w-0 relative">
-            <div className="absolute left-4 top-2 bottom-2 w-px bg-slate-200" />
+            <div className="absolute bottom-2 left-4 top-2 w-px bg-border" />
 
             <div className="space-y-0">
               {timeline.map((item, idx) => {
@@ -336,24 +328,24 @@ export default function ContactTimelineClient({ contactEmail, timeline }: Props)
                 return (
                   <div key={item.id} className={`relative pl-12 ${isLast ? "" : "pb-6"}`}>
                     {/* Dot */}
-                    <div className="absolute left-2 top-2 w-4 h-4 rounded-full bg-white border-2 border-[color:var(--violet)] flex items-center justify-center">
-                      <div className="w-1.5 h-1.5 rounded-full bg-[color:var(--violet)]" />
+                    <div className="absolute left-2 top-2 flex h-4 w-4 items-center justify-center rounded-full border-2 border-[color:var(--primary)] bg-white">
+                      <div className="h-1.5 w-1.5 rounded-full bg-[color:var(--primary)]" />
                     </div>
 
                     {/* Call card */}
                     <Link
                       href={`/feedback/${item.id}`}
-                      className="block bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5 hover:shadow-[var(--shadow-md)] hover:border-[color:var(--lavender-strong)] transition-all"
+                      className="block rounded-2xl border border-border bg-white p-4 transition-colors hover:border-[color:var(--lavender-strong)] sm:p-5"
                     >
-                      <div className="flex items-start justify-between gap-4">
+                      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <svg className="w-4 h-4 text-[color:var(--violet)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
                             </svg>
-                            <p className="font-semibold text-slate-900 text-sm">{formatDateTime(item.date)}</p>
+                            <p className="text-[13.5px] font-semibold text-slate-900">{formatDateTime(item.date)}</p>
                           </div>
-                          <p className="text-slate-400 text-xs mt-1 flex items-center gap-2">
+                          <p className="mt-1 flex items-center gap-2 text-[11.5px] tabular-nums text-slate-500">
                             {item.duration_seconds !== null && (
                               <span className="flex items-center gap-1">
                                 <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -377,13 +369,13 @@ export default function ContactTimelineClient({ contactEmail, timeline }: Props)
                       </div>
 
                       {item.analysis?.summary && (
-                        <p className="text-slate-500 text-sm mt-3 leading-relaxed line-clamp-2">
+                        <p className="mt-3 line-clamp-2 text-[13px] leading-relaxed text-slate-600">
                           {item.analysis.summary}
                         </p>
                       )}
 
                       {!item.analysis && (
-                        <p className="text-slate-300 text-xs mt-3 italic">Analyse en attente…</p>
+                        <p className="mt-3 text-[12px] text-slate-400">Analyse en attente…</p>
                       )}
                     </Link>
 
@@ -398,14 +390,14 @@ export default function ContactTimelineClient({ contactEmail, timeline }: Props)
           {/* RIGHT — sticky summary */}
           <div className="lg:sticky lg:top-6">
             <FadeIn delay={0.15}>
-              <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
-                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Résumé</h2>
-                <div className="divide-y divide-slate-100">
+              <div className="rounded-2xl border border-border bg-white p-4 sm:p-5">
+                <h2 className="mb-1 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Résumé</h2>
+                <div className="divide-y divide-border">
                   {totalDurationSeconds > 0 && (
-                    <SummaryRow icon={<Clock className="w-4 h-4 text-slate-300" />} label="Durée totale échangée" value={formatTotalDuration(totalDurationSeconds)} />
+                    <SummaryRow icon={<Clock className="h-4 w-4 text-slate-400" />} label="Durée totale échangée" value={formatTotalDuration(totalDurationSeconds)} />
                   )}
-                  <SummaryRow icon={<Calendar className="w-4 h-4 text-slate-300" />} label="Premier échange" value={formatDate(timeline[0].date)} />
-                  <SummaryRow icon={<Calendar className="w-4 h-4 text-slate-300" />} label="Dernier échange" value={formatDate(timeline[timeline.length - 1].date)} />
+                  <SummaryRow icon={<Calendar className="h-4 w-4 text-slate-400" />} label="Premier échange" value={formatDate(timeline[0].date)} />
+                  <SummaryRow icon={<Calendar className="h-4 w-4 text-slate-400" />} label="Dernier échange" value={formatDate(timeline[timeline.length - 1].date)} />
                 </div>
               </div>
             </FadeIn>

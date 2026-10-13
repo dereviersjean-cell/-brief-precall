@@ -160,7 +160,7 @@ export default function FeedbackClient({
 
   return (
     <div className="min-h-screen bg-background">
-      <div data-tour="feedback-content" className="max-w-6xl mx-auto px-6 py-10">
+      <div data-tour="feedback-content" className="max-w-6xl mx-auto px-4 py-8 sm:px-6 sm:py-10">
         <PageHeader
           eyebrow="Analyse IA"
           title={
@@ -182,12 +182,12 @@ export default function FeedbackClient({
         />
 
         {calls.length === 0 ? (
-          <div className="mt-6 bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-12 text-center">
-            <div className="w-12 h-12 bg-[color:var(--lavender)] rounded-xl flex items-center justify-center mx-auto mb-4">
-              <Mic className="w-6 h-6 text-[color:var(--violet)]" strokeWidth={1.5} />
+          <div className="mt-8 rounded-2xl border border-border bg-white px-6 py-12 text-center">
+            <div className="mx-auto mb-4 grid h-11 w-11 place-items-center rounded-xl bg-[color:var(--lavender)]">
+              <Mic className="h-5 w-5 text-[color:var(--violet)]" strokeWidth={1.75} />
             </div>
-            <p className="text-slate-700 font-medium">Aucun appel analysé pour l&apos;instant</p>
-            <p className="text-slate-400 text-sm mt-1">
+            <p className="text-[15px] font-semibold text-slate-900">Aucun appel analysé pour l&apos;instant</p>
+            <p className="mt-1 text-[13.5px] text-slate-500">
               Vos analyses apparaîtront ici après chaque appel enregistré via Recall.AI.
             </p>
           </div>
@@ -196,7 +196,7 @@ export default function FeedbackClient({
             {/* KPI strip */}
             {/* Trois indicateurs depuis le retrait du sentiment : en deux
                 colonnes le troisième resterait seul sur sa ligne. */}
-            <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <KpiPill label="Calls analysés" value={calls.length.toString()} hint="au total" icon={<Mic className="h-4 w-4" />} />
               <KpiPill
                 label="Score moyen"
@@ -217,33 +217,33 @@ export default function FeedbackClient({
             </div>
 
             {/* Filter bar */}
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-white p-2 pl-3 shadow-[var(--shadow-sm)]">
-              <div className="flex items-center gap-1">
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+              <div className="no-scrollbar inline-flex max-w-full overflow-x-auto rounded-full bg-slate-100 p-1">
                 <FilterTab active={filter === "all"} onClick={() => setFilter("all")} count={rows.length}>Tous</FilterTab>
                 <FilterTab active={filter === "todo"} onClick={() => setFilter("todo")} count={todoCount}>À traiter</FilterTab>
                 <FilterTab active={filter === "sent"} onClick={() => setFilter("sent")} count={sentCount}>Suivi envoyé</FilterTab>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="relative w-[260px]">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
+                <div className="relative w-full sm:w-[260px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    className="h-9 w-full rounded-md border border-border bg-white pl-8 pr-3 text-[13px] outline-none focus:border-[color:var(--violet)]"
+                    className="h-9 w-full rounded-full border border-border bg-white pl-9 pr-3.5 text-[13px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)]"
                     placeholder="Rechercher un contact, une entreprise…"
                   />
                 </div>
                 <button
                   disabled
                   title="Bientôt disponible"
-                  className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-white px-2.5 text-[12.5px] text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-white px-3 text-[12.5px] font-medium text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Filter className="h-3.5 w-3.5" /> Filtres
                 </button>
                 <button
                   disabled
                   title="Déjà trié par date"
-                  className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-white px-2.5 text-[12.5px] text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-white px-3 text-[12.5px] font-medium text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ArrowDownUp className="h-3.5 w-3.5" /> Date
                 </button>
@@ -251,15 +251,15 @@ export default function FeedbackClient({
             </div>
 
             {/* Grouped list */}
-            <div className="mt-4 space-y-6">
+            <div className="mt-6 space-y-7">
               {grouped.map(([group, groupRows], groupIndex) => (
                 <section key={group}>
-                  <div className="mb-2 flex items-center gap-3">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">{group}</div>
-                    <div className="h-px flex-1 bg-slate-200/70" />
-                    <div className="text-[11px] text-slate-400 tabular-nums">{groupRows.length} call{groupRows.length > 1 ? "s" : ""}</div>
+                  <div className="mb-2.5 flex items-center gap-3">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">{group}</div>
+                    <div className="h-px flex-1 bg-border" />
+                    <div className="text-[11.5px] text-slate-400 tabular-nums">{groupRows.length} call{groupRows.length > 1 ? "s" : ""}</div>
                   </div>
-                  <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-[var(--shadow-sm)] divide-y divide-slate-100">
+                  <div className="space-y-2">
                     {groupRows.map((r, rowIndex) => (
                       <CallRow key={r.call.id} row={r} linksEnabled={linksEnabled} tourAnchor={groupIndex === 0 && rowIndex === 0} />
                     ))}
@@ -268,15 +268,15 @@ export default function FeedbackClient({
               ))}
 
               {grouped.length === 0 && (
-                <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
-                  <div className="text-[14px] font-medium text-slate-700">Aucun call ne correspond à ce filtre.</div>
+                <div className="rounded-2xl border border-dashed border-border bg-white px-6 py-10 text-center">
+                  <div className="text-[14px] font-semibold text-slate-900">Aucun call ne correspond à ce filtre.</div>
                   <div className="mt-1 text-[12.5px] text-slate-500">Essayez « Tous » ou modifiez votre recherche.</div>
                 </div>
               )}
             </div>
 
-            <div className="mt-6 flex items-center gap-2 rounded-xl border border-border bg-[color:var(--lavender)]/40 px-3.5 py-2.5 text-[12px] text-slate-600">
-              <Sparkles className="h-3.5 w-3.5 text-[color:var(--violet)]" />
+            <div className="mt-8 flex items-start gap-2.5 rounded-2xl bg-[color:var(--lavender)] px-4 py-3 text-[12.5px] leading-relaxed text-slate-600">
+              <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[color:var(--violet)]" />
               Le bot Brief rejoint automatiquement vos visios et publie l&apos;analyse ici, en moyenne quelques minutes après la fin du call.
             </div>
           </>
@@ -309,16 +309,16 @@ function KpiPill({
     info: "bg-[color:var(--lavender)] text-[color:var(--violet)]",
   }[tone];
   return (
-    <div className="rounded-2xl border border-border bg-white p-4 shadow-[var(--shadow-sm)]">
+    <div className="rounded-2xl border border-border bg-white p-5">
       <div className="flex items-center justify-between">
-        <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500">{label}</div>
-        <div className={`grid h-7 w-7 place-items-center rounded-lg ${toneBg}`}>{icon}</div>
+        <div className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">{label}</div>
+        <div className={`grid h-8 w-8 place-items-center rounded-lg ${toneBg}`}>{icon}</div>
       </div>
-      <div className="mt-2 flex items-baseline gap-1">
-        <div className="text-[26px] font-semibold tabular-nums tracking-tight text-slate-900 leading-none">{value}</div>
-        {suffix && <div className="text-[12.5px] text-slate-500">{suffix}</div>}
+      <div className="mt-3 flex items-baseline gap-1">
+        <div className="text-[30px] font-semibold tabular-nums tracking-tight text-slate-900 leading-none">{value}</div>
+        {suffix && <div className="text-[14px] font-medium text-slate-400">{suffix}</div>}
       </div>
-      {hint && <div className="mt-1 text-[11.5px] text-slate-500">{hint}</div>}
+      {hint && <div className="mt-2 text-[12px] text-slate-500">{hint}</div>}
     </div>
   );
 }
@@ -337,13 +337,13 @@ function FilterTab({
   return (
     <button
       onClick={onClick}
-      className={`inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[12.5px] font-medium transition-colors ${
-        active ? "brand-gradient text-white shadow-[var(--shadow-glow)]" : "text-slate-600 hover:bg-slate-100"
+      className={`inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-[12.5px] font-medium transition-[background-color,color,box-shadow] duration-200 ${
+        active ? "bg-white text-slate-900 shadow-[0_1px_3px_oklch(0.19_0.02_266/0.12)]" : "text-slate-500 hover:text-slate-900"
       }`}
     >
       {children}
       {count !== undefined && (
-        <span className={`rounded-full px-1.5 text-[10.5px] tabular-nums ${active ? "bg-white/20" : "bg-slate-100 text-slate-500"}`}>{count}</span>
+        <span className={`text-[11.5px] tabular-nums ${active ? "text-slate-500" : "text-slate-400"}`}>{count}</span>
       )}
     </button>
   );
@@ -371,7 +371,7 @@ function CallRow({
       // fictif (erreur 22P02 remontée en erreur serveur).
       href={linksEnabled ? `/feedback/${call.id}` : null}
       data-tour={tourAnchor ? "feedback-list" : undefined}
-      className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-4 py-3.5 hover:bg-slate-50/70 transition-colors"
+      className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border bg-white px-4 py-3.5 transition-colors hover:border-slate-300 sm:gap-4 sm:px-5"
     >
       <div className="flex min-w-0 items-center gap-3.5">
         <div className="relative shrink-0">
@@ -382,22 +382,22 @@ function CallRow({
             domain={companyDomainFromEmail(call.contact_email)}
             name={call.prospect_company?.trim() || call.company_name?.trim() || null}
             alt={call.company_name ?? contactName}
-            className="h-10 w-10 rounded-xl object-contain bg-white border border-border p-1 shadow-[var(--shadow-sm)]"
+            className="h-10 w-10 rounded-xl object-contain bg-white border border-border p-1"
             fallback={
-              <div className="grid h-10 w-10 place-items-center rounded-xl brand-gradient text-white text-[13px] font-semibold shadow-[var(--shadow-sm)]">
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-[color:var(--lavender)] text-[color:var(--violet)] text-[13.5px] font-semibold">
                 {contactName.charAt(0).toUpperCase()}
               </div>
             }
           />
           {call.recall_bot_id && (
-            <div className="absolute -bottom-1 -right-1 grid h-4 w-4 place-items-center rounded-full bg-white ring-1 ring-slate-200">
+            <div className="absolute -bottom-1 -right-1 grid h-4 w-4 place-items-center rounded-full bg-white ring-1 ring-border">
               <Play className="h-2 w-2 text-[color:var(--violet)] fill-current" />
             </div>
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <div className="truncate text-[13.5px] font-medium text-slate-900 group-hover:text-[color:var(--violet)]">{contactName}</div>
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="truncate text-[14px] font-semibold text-slate-900">{contactName}</div>
             {externals.length > 1 && (
               <span
                 // Le survol nomme les autres : un « +2 » muet obligerait à
@@ -411,19 +411,19 @@ function CallRow({
             {company && (
               <>
                 <span className="text-slate-300">·</span>
-                <div className="truncate text-[12.5px] text-slate-500">{company}</div>
+                <div className="min-w-0 truncate text-[13px] text-slate-500">{company}</div>
               </>
             )}
             {call.meeting_stage && (
               <span
                 title={MEETING_STAGE_LABELS[call.meeting_stage]}
-                className="inline-flex shrink-0 items-center rounded-full border border-[color:var(--lavender-strong)] bg-[color:var(--lavender)] px-1.5 py-px text-[10px] font-semibold text-[color:var(--violet)]"
+                className="inline-flex shrink-0 items-center rounded-full bg-[color:var(--lavender)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--violet)]"
               >
                 {MEETING_STAGE_SHORT_LABELS[call.meeting_stage]}
               </span>
             )}
           </div>
-          <div className="mt-0.5 flex items-center gap-2.5 text-[11.5px] text-slate-500">
+          <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[12px] text-slate-500">
             {call.duration_seconds !== null ? (
               <span className="inline-flex items-center gap-1">
                 <Clock className="h-3 w-3" />
@@ -441,36 +441,36 @@ function CallRow({
         </div>
       </div>
 
-      <div className="flex items-center gap-5">
+      <div className="flex items-center gap-3 sm:gap-5">
         <div className="hidden md:flex flex-col items-end w-[110px]">
-          <div className={`text-[13px] font-semibold tabular-nums ${t.text}`}>
+          <div className={`text-[15px] font-semibold leading-none tracking-tight tabular-nums ${t.text}`}>
             {score == null ? "—" : score.toFixed(1)}
-            <span className="text-[11px] text-slate-400 font-normal">{score == null ? "" : "/5"}</span>
+            <span className="text-[11.5px] font-medium text-slate-400">{score == null ? "" : "/5"}</span>
           </div>
-          <div className="mt-1 h-1.5 w-[100px] overflow-hidden rounded-full bg-slate-100">
+          <div className="mt-2 h-1.5 w-[100px] overflow-hidden rounded-full bg-slate-100">
             <div className={`h-full rounded-full ${t.bar}`} style={{ width: `${pct}%` }} />
           </div>
         </div>
 
-        <div className="w-[110px] flex justify-end">
+        <div className="flex justify-end sm:w-[110px]">
           {followUp === "envoye" && (
-            <span className="inline-flex items-center gap-1 text-[12px] font-medium text-emerald-700">
-              <CheckCircle2 className="h-3.5 w-3.5" /> Envoyé
+            <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[color:var(--success-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-emerald-700">
+              <CheckCircle2 className="h-3 w-3" /> Envoyé
             </span>
           )}
           {followUp === "brouillon" && (
-            <span className="inline-flex items-center gap-1 text-[12px] font-medium text-amber-700">
-              <FileEdit className="h-3.5 w-3.5" /> Brouillon
+            <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[color:var(--warning-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-amber-700">
+              <FileEdit className="h-3 w-3" /> Brouillon
             </span>
           )}
           {followUp === "aucun" && (
-            <span className="inline-flex items-center gap-1 text-[12px] font-medium text-slate-400">
-              <Mail className="h-3.5 w-3.5" /> À écrire
+            <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-slate-100 px-2 py-0.5 text-[11.5px] font-semibold text-slate-500">
+              <Mail className="h-3 w-3" /> À écrire
             </span>
           )}
         </div>
 
-        <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-[color:var(--violet)] group-hover:translate-x-0.5 transition-all" />
+        <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition-colors group-hover:text-slate-500" />
       </div>
     </ConditionalLink>
   );

@@ -61,12 +61,12 @@ function CategoryForm({
   submitLabel: string;
 }) {
   const inputClass =
-    "w-full rounded-lg border border-border px-3 py-2 text-[13px] text-slate-900 focus:border-[color:var(--violet)] focus:outline-none focus:ring-1 focus:ring-[color:var(--violet)]";
+    "w-full rounded-lg border border-border bg-white px-3 py-2 text-[13px] text-slate-900 placeholder:text-slate-400 focus:border-[color:var(--violet)] focus:outline-none focus:ring-1 focus:ring-[color:var(--violet)]";
 
   return (
-    <div className="space-y-3 rounded-xl border border-[color:var(--lavender-strong)] bg-[color:var(--lavender)] p-4">
+    <div className="space-y-3.5 rounded-xl bg-[color:var(--lavender)] p-4">
       <div>
-        <label className="mb-1 block text-xs font-medium text-slate-600">Nom de l&apos;objection</label>
+        <label className="mb-1 block text-[12px] font-medium text-slate-700">Nom de l&apos;objection</label>
         <input
           value={draft.label}
           onChange={(e) => setDraft({ ...draft, label: e.target.value })}
@@ -76,8 +76,8 @@ function CategoryForm({
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-slate-600">
-          Ce qui la caractérise <span className="font-normal text-slate-400">— sert à la reconnaître dans les calls</span>
+        <label className="mb-1 block text-[12px] font-medium text-slate-700">
+          Ce qui la caractérise <span className="font-normal text-slate-500">— sert à la reconnaître dans les calls</span>
         </label>
         <textarea
           value={draft.description}
@@ -88,9 +88,9 @@ function CategoryForm({
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-slate-600">
+        <label className="mb-1 block text-[12px] font-medium text-slate-700">
           Comment la traiter{" "}
-          <span className="font-normal text-slate-400">— les réponses des commerciaux sont évaluées là-dessus</span>
+          <span className="font-normal text-slate-500">— les réponses des commerciaux sont évaluées là-dessus</span>
         </label>
         <textarea
           value={draft.handlingGuidance}
@@ -101,8 +101,8 @@ function CategoryForm({
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-slate-600">
-          Formulations entendues <span className="font-normal text-slate-400">— une par ligne, facultatif</span>
+        <label className="mb-1 block text-[12px] font-medium text-slate-700">
+          Formulations entendues <span className="font-normal text-slate-500">— une par ligne, facultatif</span>
         </label>
         <textarea
           value={draft.examplePhrasings}
@@ -117,7 +117,7 @@ function CategoryForm({
           type="button"
           onClick={onSubmit}
           disabled={submitting || !draft.label.trim()}
-          className="inline-flex h-8 items-center gap-1.5 rounded-lg brand-gradient px-3 text-[12px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[color:var(--primary)] px-3 text-[12px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Check className="h-3.5 w-3.5" />
           {submitting ? "Enregistrement…" : submitLabel}
@@ -125,7 +125,7 @@ function CategoryForm({
         <button
           type="button"
           onClick={onCancel}
-          className="inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-[12px] font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+          className="inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-[12px] font-medium text-slate-600 hover:bg-white hover:text-slate-900"
         >
           <X className="h-3.5 w-3.5" /> Annuler
         </button>
@@ -212,17 +212,19 @@ export default function ObjectionsLibrary({ categories }: { categories: Objectio
   }
 
   return (
-    <div className="mb-6 rounded-2xl border border-border bg-white shadow-[var(--shadow-sm)]">
+    <div className="mb-6 rounded-2xl border border-border bg-white">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-3 px-6 py-4 text-left"
+        className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left sm:px-6"
       >
-        <span className="flex min-w-0 items-center gap-2.5">
-          <BookOpen className="h-4 w-4 shrink-0 text-[color:var(--violet)]" />
+        <span className="flex min-w-0 items-center gap-3">
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[color:var(--lavender)] text-[color:var(--violet)]">
+            <BookOpen className="h-3.5 w-3.5" />
+          </span>
           <span className="min-w-0">
-            <span className="block text-sm font-semibold text-slate-900">Vos objections de référence</span>
-            <span className="block text-xs text-slate-400">
+            <span className="block text-[14px] font-semibold text-slate-900">Vos objections de référence</span>
+            <span className="mt-0.5 block text-[12.5px] leading-snug text-slate-500">
               {categories.length === 0
                 ? "Aucune objection définie — les objections des calls ne peuvent pas encore être rangées."
                 : `${categories.length} objection${categories.length > 1 ? "s" : ""} · c'est dans ces cases que sont rangées les objections détectées dans les calls`}
@@ -233,7 +235,7 @@ export default function ObjectionsLibrary({ categories }: { categories: Objectio
       </button>
 
       {open && (
-        <div className="border-t border-slate-100 px-6 py-5">
+        <div className="border-t border-border px-4 py-5 sm:px-6">
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <button
               type="button"
@@ -242,20 +244,22 @@ export default function ObjectionsLibrary({ categories }: { categories: Objectio
                 setEditingId(null);
                 setDraft(EMPTY_DRAFT);
               }}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 shadow-[var(--shadow-xs)] transition-all hover:bg-slate-50 hover:text-slate-900"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
             >
               <Plus className="h-4 w-4" /> Ajouter à la main
             </button>
             <button
               type="button"
               onClick={() => setImportOpen(true)}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 shadow-[var(--shadow-xs)] transition-all hover:bg-slate-50 hover:text-slate-900"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
             >
               <FileUp className="h-4 w-4" /> Importer un document
             </button>
           </div>
 
-          {error && <p className="mb-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">{error}</p>}
+          {error && (
+            <p className="mb-4 rounded-xl bg-[color:var(--danger-soft)] px-3.5 py-2.5 text-[13px] text-rose-700">{error}</p>
+          )}
 
           {adding && (
             <div className="mb-4">
@@ -274,13 +278,13 @@ export default function ObjectionsLibrary({ categories }: { categories: Objectio
           )}
 
           {categories.length === 0 && !adding ? (
-            <p className="text-sm italic text-slate-400">
+            <p className="text-[13.5px] leading-relaxed text-slate-500">
               Définissez ici les objections qui reviennent le plus souvent et la manière de les traiter. Chaque call
               analysé rangera ensuite automatiquement les objections détectées dans ces cases, et la réponse du
               commercial sera évaluée par rapport à votre méthode.
             </p>
           ) : (
-            <ul className="space-y-3">
+            <ul className="space-y-2.5">
               {categories.map((category) =>
                 editingId === category.id ? (
                   <li key={category.id}>
@@ -297,24 +301,26 @@ export default function ObjectionsLibrary({ categories }: { categories: Objectio
                     />
                   </li>
                 ) : (
-                  <li key={category.id} className="rounded-xl border border-border p-4">
+                  <li key={category.id} className="rounded-xl border border-border px-4 py-3.5">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-900">{category.label}</p>
-                        {category.description && <p className="mt-1 text-[13px] text-slate-500">{category.description}</p>}
+                        <p className="text-[13.5px] font-semibold text-slate-900">{category.label}</p>
+                        {category.description && (
+                          <p className="mt-1 text-[13px] leading-relaxed text-slate-500">{category.description}</p>
+                        )}
                         {category.handlingGuidance ? (
-                          <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-[13px] text-slate-600">
-                            <span className="font-medium text-slate-700">Comment la traiter : </span>
+                          <p className="mt-2.5 rounded-xl bg-slate-50 px-3.5 py-2.5 text-[13px] leading-relaxed text-slate-600">
+                            <span className="font-semibold text-slate-900">Comment la traiter : </span>
                             {category.handlingGuidance}
                           </p>
                         ) : (
-                          <p className="mt-2 text-xs italic text-amber-600">
+                          <p className="mt-2.5 text-[12px] font-medium text-amber-700">
                             Pas de méthode définie — les réponses seront évaluées au jugement général, pas par rapport à
                             la vôtre.
                           </p>
                         )}
                         {category.examplePhrasings.length > 0 && (
-                          <p className="mt-2 text-xs text-slate-400">
+                          <p className="mt-2.5 text-[12px] italic leading-relaxed text-slate-500">
                             {category.examplePhrasings.map((p) => `« ${p} »`).join("  ·  ")}
                           </p>
                         )}

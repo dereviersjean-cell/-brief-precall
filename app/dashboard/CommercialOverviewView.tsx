@@ -43,7 +43,7 @@ export default function CommercialOverviewView({
   linksEnabled?: boolean;
 }) {
   return (
-    <div className="max-w-6xl mx-auto px-6 py-10">
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
       <FadeIn>
         <div className="mb-8">
           {viewerRole === "manager" ? (
@@ -72,7 +72,7 @@ export default function CommercialOverviewView({
                   </Button>
                   <Link
                     href="/brief"
-                    className="brand-gradient inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-lg text-[13px] font-medium text-white shadow-[var(--shadow-glow)] hover:brightness-110 transition-all"
+                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-[filter] hover:brightness-110"
                   >
                     <Sparkles className="h-3.5 w-3.5" /> Nouveau brief
                   </Link>
@@ -86,7 +86,7 @@ export default function CommercialOverviewView({
       {/* Ancre de la visite guidée : la bulle parle des chiffres de la
           semaine, c'est donc cette rangée qu'il faut mettre en évidence, pas
           la page entière. */}
-      <div data-tour="overview-stats" className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+      <div data-tour="overview-stats" className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
         <StatTile index={0} accent="indigo" label="Calls cette semaine" value={weekStats.calls_count} icon={<Phone className="w-3.5 h-3.5" />} />
         <StatTile index={1} accent="violet" label="Briefs générés" value={weekStats.briefs_count} icon={<FileText className="w-3.5 h-3.5" />} />
         <StatTile
@@ -101,19 +101,19 @@ export default function CommercialOverviewView({
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2 space-y-5">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="space-y-4 lg:col-span-2">
           <ScoreTrendChart weeks={trendWeeks} title={`Score moyen — ${TREND_WEEKS} dernières semaines`} />
 
           <FadeIn delay={0.1}>
-            <Card padded={false} className="p-5">
-              <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-4">Calls récents</h2>
+            <Card padded={false} className="p-4 sm:p-5">
+              <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Calls récents</h2>
               <RecentCallsList calls={last5Calls} linksEnabled={linksEnabled} />
             </Card>
           </FadeIn>
         </div>
 
-        <div className="space-y-5">
+        <div className="space-y-4">
           {viewerRole === "self" && userId && (
             <FadeIn delay={0.15}>
               <ConnectionsStatus userId={userId} />
@@ -121,31 +121,31 @@ export default function CommercialOverviewView({
           )}
 
           <FadeIn delay={0.2}>
-            <Card padded={false} className="p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500">Historique important</h2>
-                <History className="w-4 h-4 text-slate-300" />
+            <Card padded={false} className="p-4 sm:p-5">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <h2 className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Historique important</h2>
+                <History className="h-3.5 w-3.5 text-slate-400" />
               </div>
               {topContacts.length === 0 ? (
-                <p className="text-sm text-slate-400 italic">Aucun contact pour l&apos;instant.</p>
+                <p className="text-[13px] text-slate-500">Aucun contact pour l&apos;instant.</p>
               ) : (
-                <ul className="space-y-3">
+                <ul className="divide-y divide-border">
                   {topContacts.map((c) => (
-                    <li key={c.contact_email} className="flex items-center justify-between gap-3 min-w-0">
+                    <li key={c.contact_email} className="flex min-w-0 items-center justify-between gap-3 py-2.5">
                       <div className="min-w-0">
-                        <p className="text-sm text-slate-700 truncate">{formatContactDisplayName(c.company_name, c.contact_email)}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">
+                        <p className="truncate text-[13px] font-medium text-slate-900">{formatContactDisplayName(c.company_name, c.contact_email)}</p>
+                        <p className="mt-0.5 text-[11.5px] text-slate-500">
                           {c.video_call_count} call{c.video_call_count > 1 ? "s" : ""}
                         </p>
                       </div>
-                      <span className="text-xs text-slate-400 shrink-0 tabular-nums">
+                      <span className="shrink-0 text-[11.5px] tabular-nums text-slate-500">
                         {new Date(c.last_contact_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
                       </span>
                     </li>
                   ))}
                 </ul>
               )}
-              <Link href="/contacts" className="inline-block mt-4 text-xs font-medium text-[color:var(--violet)] hover:underline">
+              <Link href="/contacts" className="mt-3 inline-block text-[12.5px] font-medium text-[color:var(--violet)] hover:underline">
                 Tout l&apos;historique →
               </Link>
             </Card>

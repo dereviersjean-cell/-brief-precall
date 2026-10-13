@@ -25,25 +25,25 @@ export default function DimensionScores({ dimensions }: { dimensions: DimensionR
       : null;
 
   return (
-    <div className="space-y-3.5">
+    <ul className="space-y-3">
       {dimensions.map((dim, i) => {
         const isWeakest = weakest?.key === dim.key;
         return (
-          <div key={dim.key}>
-            <div className="flex items-center justify-between gap-3 mb-1.5">
-              <span className="text-sm text-slate-600 flex items-center gap-2 min-w-0">
+          <li key={dim.key}>
+            <div className="flex items-baseline justify-between gap-3 text-[13px]">
+              <span className={`flex min-w-0 items-center gap-2 text-slate-900 ${isWeakest ? "font-medium" : ""}`}>
                 <span className="truncate">{dim.label}</span>
                 {isWeakest && (
-                  <span className="shrink-0 rounded-full bg-[color:var(--warning-soft)] px-2 py-0.5 text-[10.5px] font-medium text-amber-700">
+                  <span className="shrink-0 rounded-full bg-[color:var(--warning-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-amber-700">
                     à travailler
                   </span>
                 )}
               </span>
-              <span className="text-sm font-semibold text-slate-800 shrink-0 tabular-nums">
+              <span className="shrink-0 tabular-nums text-slate-500">
                 {dim.average !== null ? (
                   <>
-                    {dim.average.toFixed(1)}
-                    <span className="text-slate-300 font-normal"> / 5</span>
+                    <span className="font-semibold text-slate-900">{dim.average.toFixed(1)}</span>
+                    <span> / 5</span>
                   </>
                 ) : (
                   "—"
@@ -51,13 +51,13 @@ export default function DimensionScores({ dimensions }: { dimensions: DimensionR
               </span>
             </div>
 
-            <div className="relative h-2.5 rounded-full bg-slate-100 overflow-hidden">
+            <div className="relative mt-1.5 h-2 overflow-hidden rounded-full bg-slate-100">
               {/* Graduations 1..4 : l'échelle se lit sur la barre elle-même,
                   au lieu d'être déduite du chiffre à côté. */}
               {[1, 2, 3, 4].map((g) => (
                 <span
                   key={g}
-                  className="absolute top-0 bottom-0 w-px bg-white/70"
+                  className="absolute inset-y-0 w-px bg-white"
                   style={{ left: `${(g / 5) * 100}%` }}
                 />
               ))}
@@ -70,9 +70,9 @@ export default function DimensionScores({ dimensions }: { dimensions: DimensionR
                 }`}
               />
             </div>
-          </div>
+          </li>
         );
       })}
-    </div>
+    </ul>
   );
 }

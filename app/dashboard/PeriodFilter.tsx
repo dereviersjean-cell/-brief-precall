@@ -38,8 +38,8 @@ export default function PeriodFilter({
 
   return (
     <div className="mb-5 flex flex-wrap items-center gap-2">
-      <div className="inline-flex items-center gap-1 rounded-xl border border-border bg-white p-1 shadow-[var(--shadow-xs)]">
-        <CalendarRange className="ml-1.5 mr-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+      <div className="inline-flex max-w-full flex-wrap items-center gap-1 rounded-xl border border-border bg-white p-1">
+        <CalendarRange className="ml-1.5 mr-0.5 h-3.5 w-3.5 shrink-0 text-slate-500" />
         {PERIOD_PRESETS.map((option) => (
           <button
             key={option.value}
@@ -71,7 +71,7 @@ export default function PeriodFilter({
       </div>
 
       {customOpen && (
-        <div className="inline-flex flex-wrap items-center gap-2 rounded-xl border border-border bg-white px-3 py-2 shadow-[var(--shadow-xs)]">
+        <div className="inline-flex max-w-full flex-wrap items-center gap-2 rounded-xl border border-border bg-white px-3 py-2">
           <label htmlFor="period-from" className="text-[12.5px] text-slate-500">
             Du
           </label>
@@ -98,7 +98,7 @@ export default function PeriodFilter({
             type="button"
             disabled={!customFrom && !customTo}
             onClick={() => apply("custom", { from: customFrom || undefined, to: customTo || undefined })}
-            className="rounded-lg brand-gradient px-3 py-1.5 text-[12.5px] font-medium text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-[color:var(--primary)] px-3 py-1.5 text-[12.5px] font-medium text-white transition-[filter] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Appliquer
           </button>

@@ -195,7 +195,7 @@ function timeUntil(iso: string): string | null {
 
 function DayDivider({ label }: { label: string }) {
   return (
-    <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+    <h2 className="mb-2.5 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-slate-500">
       {label}
     </h2>
   );
@@ -203,7 +203,7 @@ function DayDivider({ label }: { label: string }) {
 
 function NextBadge({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[color:var(--violet)] bg-[color:var(--lavender)] px-2 py-0.5 rounded-full shrink-0">
+    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[color:var(--lavender)] px-2 py-0.5 text-[11.5px] font-semibold text-[color:var(--violet)]">
       <span className="relative flex h-1.5 w-1.5">
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[color:var(--violet)] opacity-75" />
         <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[color:var(--violet)]" />
@@ -236,16 +236,18 @@ function CalendarEventCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: Math.min(index * 0.04, 0.3), duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-      whileHover={{ y: -2, boxShadow: "0 8px 24px -10px rgba(15, 23, 42, 0.15)" }}
-      className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] py-3.5 px-4 flex items-center gap-5"
+      // Sous `sm`, les actions passent sur une seconde ligne (`w-full`) : sur
+      // 375 px, l'heure, le titre, les pastilles et « Préparer le brief » ne
+      // tiennent pas côte à côte sans écraser le titre.
+      className="flex flex-wrap items-center gap-x-3 gap-y-2.5 rounded-2xl border border-border bg-white px-3.5 py-3 sm:flex-nowrap sm:gap-5 sm:px-4"
     >
-      <div className="text-center w-16 shrink-0">
-        <p className="text-lg font-bold text-slate-900 tabular-nums">{formatTime(start)}</p>
-        <p className="text-xs text-slate-400">{duration > 0 ? `${duration} min` : "—"}</p>
+      <div className="w-12 shrink-0 text-center sm:w-14">
+        <p className="text-[16px] font-semibold tabular-nums text-slate-900 sm:text-[17px]">{formatTime(start)}</p>
+        <p className="text-[11.5px] tabular-nums text-slate-500">{duration > 0 ? `${duration} min` : "—"}</p>
       </div>
-      <div className="w-px h-10 bg-slate-200 shrink-0" />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1 flex-wrap">
+      <div className="h-10 w-px shrink-0 bg-border" />
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Le logo de l'entreprise du participant externe, trouvé par le
               serveur à partir de son domaine et du nom de l'entreprise
               (app/api/company-logo, mis en cache). */}
@@ -255,37 +257,37 @@ function CalendarEventCard({
             alt={event.summary}
             className="w-7 h-7 rounded-lg object-contain shrink-0 bg-white border border-border p-0.5"
             fallback={
-              <div className="w-7 h-7 rounded-lg brand-gradient flex items-center justify-center shrink-0 shadow-[var(--shadow-glow)]">
-                <span className="text-xs font-bold text-white">
+              <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[color:var(--primary)]">
+                <span className="text-[12px] font-bold text-white">
                   {event.summary.charAt(0).toUpperCase()}
                 </span>
               </div>
             }
           />
-          <h3 className="font-semibold text-slate-900 truncate">{event.summary}</h3>
+          <h3 className="min-w-0 truncate text-[14px] font-semibold leading-snug text-slate-900">{event.summary}</h3>
           {event.manual && (
-            <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-medium shrink-0">
+            <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11.5px] font-semibold text-slate-600">
               Ajouté manuellement
             </span>
           )}
           {nextLabel && <NextBadge label={nextLabel} />}
           {existingBrief && (
-            <span className="text-xs bg-[color:var(--lavender)] text-[color:var(--violet)] px-2 py-0.5 rounded-full font-medium shrink-0">
+            <span className="shrink-0 rounded-full bg-[color:var(--lavender)] px-2 py-0.5 text-[11.5px] font-semibold text-[color:var(--violet)]">
               Brief généré
             </span>
           )}
         </div>
-        <p className="text-sm text-slate-500 truncate">
+        <p className="mt-1 truncate text-[12.5px] text-slate-500">
           {event.attendees.length > 0
             ? event.attendees.map((a) => a.name ?? a.email).join(", ")
             : "Aucun participant externe"}
         </p>
       </div>
-      <div className="shrink-0 flex items-center gap-2">
+      <div className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto">
         {existingBrief ? (
           <Link
             href={`/brief/${existingBrief.calendar_event_id ?? existingBrief.id}?company=${encodeURIComponent(existingBrief.company_name ?? "")}&cached=true&contactEmail=${encodeURIComponent(existingBrief.contact_email ?? "")}&title=${encodeURIComponent(existingBrief.meeting_title ?? "")}`}
-            className="flex items-center gap-1.5 h-8 text-sm font-medium text-slate-700 border border-border bg-white px-3 rounded-lg hover:bg-slate-50 transition-colors duration-200"
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-[13px] font-medium text-slate-900 hover:bg-slate-50 transition-colors duration-200"
           >
             Revoir
             <ArrowRight className="w-3.5 h-3.5" />
@@ -293,7 +295,7 @@ function CalendarEventCard({
         ) : (
           <button
             onClick={() => onPrepare(event)}
-            className="flex items-center gap-1.5 h-8 brand-gradient text-white text-sm font-medium px-3 rounded-lg shadow-[var(--shadow-sm)] hover:brightness-110 hover:shadow-[var(--shadow-md)] transition-all duration-200"
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[color:var(--primary)] px-3 text-[13px] font-medium text-white hover:brightness-110 transition duration-200"
           >
             Préparer le brief
             <ArrowRight className="w-3.5 h-3.5" />
@@ -303,7 +305,7 @@ function CalendarEventCard({
           <button
             onClick={() => onDelete(event.id)}
             aria-label="Supprimer ce rendez-vous"
-            className="flex items-center justify-center h-8 w-8 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors duration-200"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-[color:var(--danger-soft)] hover:text-rose-700 transition-colors duration-200"
           >
             <X className="w-4 h-4" />
           </button>
@@ -339,17 +341,17 @@ function CompanyModal({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 8 }}
         transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-        className="bg-white rounded-2xl border border-border shadow-xl p-6 w-full max-w-sm relative"
+        className="relative w-full max-w-sm rounded-2xl border border-border bg-white p-6 shadow-[var(--shadow-md)]"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-slate-300 hover:text-slate-500 transition-colors"
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
-        <h2 className="font-semibold text-slate-900 mb-1">Nom de l&apos;entreprise ?</h2>
-        <p className="text-sm text-slate-500 mb-4">
+        <h2 className="mb-1 text-[17px] font-semibold tracking-[-0.01em] text-slate-900">Nom de l&apos;entreprise ?</h2>
+        <p className="mb-4 text-[13.5px] leading-relaxed text-slate-500">
           Précisez le nom pour générer un brief précis.
         </p>
         <input
@@ -367,14 +369,14 @@ function CompanyModal({
         <div className="flex gap-2">
           <button
             onClick={onClose}
-            className="flex-1 text-sm text-slate-600 border border-border px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors duration-200"
+            className="inline-flex h-9 flex-1 items-center justify-center rounded-lg border border-border bg-white px-4 text-[13px] font-medium text-slate-700 hover:bg-slate-50 transition-colors duration-200"
           >
             Annuler
           </button>
           <button
             onClick={() => value.trim() && onConfirm(event.id, value.trim())}
             disabled={!value.trim()}
-            className="flex-1 text-sm font-semibold brand-gradient text-white px-4 py-2 rounded-lg hover:brightness-110 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex h-9 flex-1 items-center justify-center rounded-lg bg-[color:var(--primary)] px-4 text-[13px] font-medium text-white hover:brightness-110 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Générer le brief
           </button>
@@ -458,23 +460,23 @@ function AddMeetingModal({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 8 }}
         transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-        className="bg-white rounded-2xl border border-border shadow-xl p-6 w-full max-w-sm relative max-h-[85vh] overflow-y-auto"
+        className="relative max-h-[85vh] w-full max-w-sm overflow-y-auto rounded-2xl border border-border bg-white p-6 shadow-[var(--shadow-md)]"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-slate-300 hover:text-slate-500 transition-colors"
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
-        <h2 className="font-semibold text-slate-900 mb-1">Ajouter un rendez-vous</h2>
-        <p className="text-sm text-slate-500 mb-4">
+        <h2 className="mb-1 text-[17px] font-semibold tracking-[-0.01em] text-slate-900">Ajouter un rendez-vous</h2>
+        <p className="mb-4 text-[13.5px] leading-relaxed text-slate-500">
           Pour un RDV absent de votre agenda synchronisé. Il ne sera pas enregistré automatiquement — seul un brief pourra être préparé.
         </p>
 
         <div className="space-y-3 mb-4">
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Nom du rendez-vous</label>
+            <label className="mb-1 block text-[12px] font-medium text-slate-600">Nom du rendez-vous</label>
             <input
               type="text"
               value={title}
@@ -485,7 +487,7 @@ function AddMeetingModal({
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Entreprise</label>
+            <label className="mb-1 block text-[12px] font-medium text-slate-600">Entreprise</label>
             <input
               type="text"
               value={company}
@@ -495,7 +497,7 @@ function AddMeetingModal({
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">
+            <label className="mb-1 block text-[12px] font-medium text-slate-600">
               Nom du contact (optionnel)
             </label>
             <input
@@ -505,12 +507,12 @@ function AddMeetingModal({
               placeholder="ex. Edmond Dantès"
               className="w-full px-3.5 py-2.5 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
             />
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+            <p className="mt-1 text-[12px] leading-relaxed text-slate-500">
               Prénom + nom : c&apos;est ce qui permet de retrouver son poste et son parcours.
             </p>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Email du contact (optionnel)</label>
+            <label className="mb-1 block text-[12px] font-medium text-slate-600">Email du contact (optionnel)</label>
             <input
               type="email"
               value={contactEmail}
@@ -521,7 +523,7 @@ function AddMeetingModal({
           </div>
           <div className="flex gap-2">
             <div className="flex-1">
-              <label className="block text-xs font-medium text-slate-500 mb-1">Date</label>
+              <label className="mb-1 block text-[12px] font-medium text-slate-600">Date</label>
               <input
                 type="date"
                 value={date}
@@ -530,7 +532,7 @@ function AddMeetingModal({
               />
             </div>
             <div className="flex-1">
-              <label className="block text-xs font-medium text-slate-500 mb-1">Heure</label>
+              <label className="mb-1 block text-[12px] font-medium text-slate-600">Heure</label>
               <input
                 type="time"
                 value={time}
@@ -541,19 +543,19 @@ function AddMeetingModal({
           </div>
         </div>
 
-        {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
+        {error && <p className="mb-3 text-[13px] text-rose-700">{error}</p>}
 
         <div className="flex gap-2">
           <button
             onClick={onClose}
-            className="flex-1 text-sm text-slate-600 border border-border px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors duration-200"
+            className="inline-flex h-9 flex-1 items-center justify-center rounded-lg border border-border bg-white px-4 text-[13px] font-medium text-slate-700 hover:bg-slate-50 transition-colors duration-200"
           >
             Annuler
           </button>
           <button
             onClick={handleSubmit}
             disabled={!canSubmit || submitting}
-            className="flex-1 text-sm font-semibold brand-gradient text-white px-4 py-2 rounded-lg hover:brightness-110 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex h-9 flex-1 items-center justify-center rounded-lg bg-[color:var(--primary)] px-4 text-[13px] font-medium text-white hover:brightness-110 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? "Ajout…" : "Ajouter"}
           </button>
@@ -565,19 +567,19 @@ function AddMeetingModal({
 
 function EventsSkeleton() {
   return (
-    <div className="space-y-3 animate-pulse">
+    <div className="space-y-2 animate-pulse">
       {[1, 2, 3].map((i) => (
-        <div key={i} className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] py-3.5 px-4 flex items-center gap-5">
-          <div className="w-16 shrink-0 space-y-1.5">
-            <div className="h-6 bg-slate-100 rounded w-12 mx-auto" />
-            <div className="h-3 bg-slate-100 rounded w-10 mx-auto" />
+        <div key={i} className="flex items-center gap-3 rounded-2xl border border-border bg-white px-3.5 py-3 sm:gap-5 sm:px-4">
+          <div className="w-12 shrink-0 space-y-1.5 sm:w-14">
+            <div className="h-5 bg-slate-100 rounded w-11 mx-auto" />
+            <div className="h-3 bg-slate-100 rounded w-9 mx-auto" />
           </div>
-          <div className="w-px h-10 bg-slate-200 shrink-0" />
-          <div className="flex-1 space-y-2">
+          <div className="h-10 w-px shrink-0 bg-border" />
+          <div className="min-w-0 flex-1 space-y-2">
             <div className="h-4 bg-slate-100 rounded w-1/3" />
             <div className="h-3 bg-slate-100 rounded w-1/2" />
           </div>
-          <div className="h-8 w-28 bg-slate-100 rounded-lg shrink-0" />
+          <div className="hidden h-8 w-28 shrink-0 rounded-lg bg-slate-100 sm:block" />
         </div>
       ))}
     </div>
@@ -586,28 +588,28 @@ function EventsSkeleton() {
 
 function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
   return (
-    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-12 text-center">
-      <div className="w-12 h-12 bg-[color:var(--lavender)] rounded-xl flex items-center justify-center mx-auto mb-4">
+    <div className="rounded-2xl border border-border bg-white px-6 py-12 text-center">
+      <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-[color:var(--lavender)]">
         <Calendar className="w-6 h-6 text-[color:var(--violet)]" strokeWidth={1.5} />
       </div>
-      <p className="text-slate-700 font-medium">{title}</p>
-      <p className="text-slate-400 text-sm mt-1">{subtitle}</p>
+      <p className="text-[15px] font-semibold text-slate-900">{title}</p>
+      <p className="mx-auto mt-1 max-w-md text-[13.5px] leading-relaxed text-slate-500">{subtitle}</p>
     </div>
   );
 }
 
 function RecentBriefsCard({ briefs }: { briefs: StoredBrief[] }) {
   return (
-    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
-      <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+    <div className="rounded-2xl border border-border bg-white p-4 sm:p-5">
+      <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">
         Briefs récents
       </h2>
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         {briefs.map((brief) => (
           <Link
             key={brief.id}
             href={`/brief/${brief.calendar_event_id ?? brief.id}?company=${encodeURIComponent(brief.company_name ?? "")}&cached=true&contactEmail=${encodeURIComponent(brief.contact_email ?? "")}&title=${encodeURIComponent(brief.meeting_title ?? "")}`}
-            className="flex items-center gap-3 -mx-2 px-2 py-2 rounded-lg hover:bg-slate-50 transition-colors group"
+            className="-mx-1.5 flex items-center gap-2.5 rounded-lg px-1.5 py-2 hover:bg-slate-50 transition-colors group"
           >
             <CompanyLogo
               domain={companyDomainFromEmail(brief.contact_email)}
@@ -615,18 +617,18 @@ function RecentBriefsCard({ briefs }: { briefs: StoredBrief[] }) {
               alt={formatCompanyName(brief.company_name)}
               className="w-8 h-8 rounded-lg object-contain shrink-0 bg-white border border-border p-0.5"
               fallback={
-                <div className="w-8 h-8 rounded-lg brand-gradient flex items-center justify-center shrink-0">
-                  <span className="text-xs font-bold text-white">
+                <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--primary)]">
+                  <span className="text-[12px] font-bold text-white">
                     {formatCompanyName(brief.company_name).charAt(0).toUpperCase()}
                   </span>
                 </div>
               }
             />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-900 truncate group-hover:text-[color:var(--violet)] transition-colors">
+              <p className="truncate text-[13px] font-medium text-slate-900 group-hover:text-[color:var(--violet)] transition-colors">
                 {formatCompanyName(brief.company_name)}
               </p>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-[11.5px] tabular-nums text-slate-500">
                 {new Date(brief.created_at).toLocaleDateString("fr-FR", {
                   day: "numeric",
                   month: "long",
@@ -635,7 +637,7 @@ function RecentBriefsCard({ briefs }: { briefs: StoredBrief[] }) {
                 })}
               </p>
             </div>
-            <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-[color:var(--violet)] transition-colors shrink-0" />
+            <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[color:var(--violet)] transition-colors shrink-0" />
           </Link>
         ))}
       </div>
@@ -793,18 +795,18 @@ export default function BriefToolClient() {
 
       {/* Connect Google Calendar banner */}
       {!isAuthenticated && status !== "loading" && (
-        <div className="bg-[color:var(--lavender)] border border-[color:var(--lavender-strong)] rounded-2xl p-4 mb-6 flex items-center justify-between gap-4 flex-wrap">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-[color:var(--lavender)] px-5 py-4">
           <div className="flex items-center gap-3">
-            <span className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shrink-0 shadow-sm">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white">
               <Calendar className="w-4 h-4 text-[color:var(--violet)]" />
             </span>
-            <p className="text-sm text-slate-700">
+            <p className="text-[14px] text-slate-900">
               Connectez Google Calendar pour charger vos vrais rendez-vous.
             </p>
           </div>
           <button
             onClick={() => signIn("google", { callbackUrl: "/brief" })}
-            className="flex items-center gap-2 h-9 brand-gradient text-white text-sm font-medium px-4 rounded-lg hover:brightness-110 transition-colors duration-200 shrink-0"
+            className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg bg-[color:var(--primary)] px-4 text-[13px] font-medium text-white hover:brightness-110 transition duration-200"
           >
             Connecter Google
           </button>
@@ -813,8 +815,8 @@ export default function BriefToolClient() {
 
       {/* Calendar error */}
       {calendarError && (
-        <div className="bg-red-50 border border-red-100 rounded-2xl p-4 mb-6 flex items-center justify-between gap-4 flex-wrap">
-          <p className="text-sm text-red-700">{calendarError}</p>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-[color:var(--danger-soft)] px-5 py-4">
+          <p className="text-[13.5px] text-rose-700">{calendarError}</p>
           <button
             // prompt=consent pour Google : c'est le seul moyen d'obtenir une
             // nouvelle clé de renouvellement (refresh_token). Une connexion
@@ -825,7 +827,7 @@ export default function BriefToolClient() {
                 ? signIn("azure-ad", { callbackUrl: "/brief" })
                 : signIn("google", { callbackUrl: "/brief" }, { prompt: "consent" })
             }
-            className="text-sm font-medium text-red-700 border border-red-200 bg-white px-3 h-8 rounded-lg hover:bg-red-100 transition-colors duration-200 shrink-0"
+            className="inline-flex h-8 shrink-0 items-center rounded-lg border border-rose-200 bg-white px-3 text-[13px] font-medium text-rose-700 hover:bg-rose-50 transition-colors duration-200"
           >
             Reconnecter
           </button>
@@ -836,7 +838,7 @@ export default function BriefToolClient() {
       {calendarLoading && (
         <div className="space-y-8">
           <div>
-            <div className="mb-3 animate-pulse">
+            <div className="mb-2.5 animate-pulse">
               <div className="h-3 bg-slate-100 rounded w-24" />
             </div>
             <EventsSkeleton />
@@ -846,7 +848,7 @@ export default function BriefToolClient() {
 
       {/* Calendar events */}
       {showCalendar && !calendarLoading && (
-        <div className="space-y-8">
+        <div className="space-y-7">
           {calendarGroups.length === 0 ? (
             <EmptyState
               title="Aucun rendez-vous à venir pour l'instant."
@@ -886,26 +888,18 @@ export default function BriefToolClient() {
   );
 
   return (
-    <div className="max-w-6xl mx-auto w-full px-6 py-10">
+    <div className="max-w-6xl mx-auto w-full px-4 py-6 sm:px-6 sm:py-10">
       {/* Hero header */}
       <FadeIn>
-        <div data-tour="brief-content" className="relative overflow-hidden rounded-3xl border border-border bg-white p-8 mb-6">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-[color:var(--lavender-strong)]/60 via-[color:var(--lavender)]/40 to-transparent blur-3xl"
-          />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-gradient-to-tr from-emerald-100/40 to-transparent blur-3xl"
-          />
-          <div className="relative flex items-start justify-between gap-4 flex-wrap">
-            <div>
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[color:var(--violet)] bg-[color:var(--lavender)] px-2.5 py-1 rounded-full mb-3">
+        <div data-tour="brief-content" className="mb-4 rounded-[20px] border border-border bg-white p-5 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0">
+              <span className="mb-2.5 inline-flex items-center gap-1.5 rounded-full bg-[color:var(--lavender)] px-2.5 py-1 text-[11.5px] font-semibold text-[color:var(--violet)]">
                 <Sparkles className="w-3 h-3" />
                 Préparation IA
               </span>
-              <h1 className="text-2xl font-bold text-slate-900">Vos prochains rendez-vous</h1>
-              <p className="text-slate-500 text-sm mt-1">
+              <h1 className="text-[24px] font-semibold leading-tight tracking-[-0.02em] text-slate-900 sm:text-[26px]">Vos prochains rendez-vous</h1>
+              <p className="mt-1 text-[13.5px] text-slate-500">
                 {upcomingCount} RDV à venir
                 {showCalendar && ` · ${calendarLabel}`}
               </p>
@@ -917,7 +911,7 @@ export default function BriefToolClient() {
                   ? setShowAddMeetingModal(true)
                   : signIn(provider === "azure-ad" ? "azure-ad" : "google", { callbackUrl: "/brief" })
               }
-              className="flex items-center gap-2 h-9 text-sm font-medium text-slate-600 border border-border bg-white px-3.5 rounded-lg hover:bg-slate-50 hover:text-slate-900 transition-colors duration-200 shrink-0"
+              className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors duration-200"
             >
               <Plus className="w-4 h-4" />
               Ajouter un RDV
@@ -927,7 +921,7 @@ export default function BriefToolClient() {
       </FadeIn>
 
       {/* Stats */}
-      <div className={`grid grid-cols-1 gap-4 mb-6 ${showCalendar ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
+      <div className={`grid grid-cols-1 gap-3 mb-6 sm:gap-4 ${showCalendar ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
         <StatTile index={0} accent="indigo" label="RDV à venir" value={upcomingCount} icon={<Calendar className="w-3.5 h-3.5" />} />
         {/* « Avec participants externes » retirée le 21/08/2026 : lib/calendar.ts
             ne remonte QUE les événements ayant au moins un participant externe,
@@ -956,7 +950,7 @@ export default function BriefToolClient() {
       </div>
 
       {recentBriefs.length > 0 ? (
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5 items-start">
+        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
           <div className="min-w-0">{feedContent}</div>
           <div className="lg:sticky lg:top-6">
             <RecentBriefsCard briefs={recentBriefs} />

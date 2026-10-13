@@ -18,7 +18,7 @@ type SpeakerRow = {
 // kept as a separate small copy rather than a shared import since the two
 // components color by a different key (this one has no is_commercial flag
 // to prioritize indigo for, just talk-time rank).
-const SPEAKER_COLORS = ["bg-[color:var(--violet)]", "bg-slate-500", "bg-amber-500", "bg-violet-500", "bg-teal-500", "bg-rose-400"];
+const SPEAKER_COLORS = ["bg-[color:var(--violet)]", "bg-slate-900/70", "bg-[color:var(--warning)]", "bg-teal-500", "bg-[color:var(--danger)]", "bg-slate-400"];
 
 function formatMmSs(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000);
@@ -56,21 +56,24 @@ export default function SpeakerTimelineBlock({
   const rows = Array.from(bySpeaker.values()).sort((a, b) => b.totalMs - a.totalMs);
 
   return (
-    <div className="bg-white rounded-2xl border border-border shadow-[var(--shadow-sm)] p-5">
-      <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">🎙️ Qui a parlé, et quand</h2>
-      <div className="space-y-4">
+    <div className="rounded-2xl border border-border bg-white p-5">
+      <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 mb-4">Qui a parlé, et quand</h2>
+      <div className="space-y-3.5">
         {rows.map((row, i) => {
           const color = SPEAKER_COLORS[i % SPEAKER_COLORS.length];
           const pct = totalDurationMs > 0 ? Math.round((100 * row.totalMs) / totalDurationMs) : 0;
           return (
             <div key={row.speakerId}>
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-sm font-medium text-slate-700 truncate">{row.displayName}</span>
-                <span className="text-xs text-slate-400 shrink-0 ml-2">
+                <span className="flex min-w-0 items-center gap-2 text-[13.5px] text-slate-900">
+                  <span className={`h-2 w-2 shrink-0 rounded-full ${color}`} aria-hidden />
+                  <span className="truncate">{row.displayName}</span>
+                </span>
+                <span className="text-[12px] tabular-nums text-slate-400 shrink-0 ml-2">
                   {formatMmSs(row.totalMs)} · {pct}%
                 </span>
               </div>
-              <div className="relative h-2.5 bg-slate-100 rounded-full overflow-hidden">
+              <div className="relative h-2 bg-slate-100 rounded-full overflow-hidden">
                 {row.turns.map((turn, ti) => {
                   const leftPct = (turn.startMs / totalDurationMs) * 100;
                   const widthPct = Math.max(((turn.endMs - turn.startMs) / totalDurationMs) * 100, 0.5);

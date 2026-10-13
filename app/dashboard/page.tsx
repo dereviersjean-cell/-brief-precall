@@ -27,7 +27,7 @@ export default async function DashboardPage({
   if (role !== "manager") {
     return (
       <div className="min-h-screen bg-background">
-        <div className="max-w-6xl mx-auto px-6 pt-6">
+        <div className="mx-auto max-w-6xl px-4 pt-6 sm:px-6">
           <ActivationBanner activation={activation} />
         </div>
         <CommercialOverview userId={userId} userName={userName} />
@@ -46,7 +46,7 @@ export default async function DashboardPage({
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-6xl mx-auto px-6 pt-6">
+      <div className="mx-auto max-w-6xl px-4 pt-6 sm:px-6">
         <ActivationBanner activation={activation} />
         <CommercialSelector commercials={commercials} selectedId={selected?.id ?? null} />
       </div>

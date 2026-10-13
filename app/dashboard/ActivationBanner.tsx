@@ -32,7 +32,7 @@ export default function ActivationBanner({ activation }: { activation: Activatio
   if (activation.total === 0 || remaining.length === 0) return null;
 
   return (
-    <div className="mb-6 rounded-2xl border border-[color:var(--lavender-strong)] bg-[color:var(--lavender)] px-5 py-4">
+    <div className="mb-6 rounded-2xl bg-[color:var(--lavender)] px-4 py-3.5 sm:px-5 sm:py-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           <Rocket className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--violet)]" />
@@ -47,7 +47,7 @@ export default function ActivationBanner({ activation }: { activation: Activatio
         </div>
         <Link
           href="/bienvenue"
-          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-white px-3 text-[12.5px] font-medium text-[color:var(--violet)] shadow-[var(--shadow-xs)] transition-colors hover:bg-white/80"
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-[color:var(--lavender-strong)] bg-white px-3 text-[12.5px] font-medium text-[color:var(--violet)] transition-colors hover:bg-white/80"
         >
           Terminer <ArrowRight className="h-3.5 w-3.5" />
         </Link>

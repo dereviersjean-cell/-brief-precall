@@ -59,9 +59,9 @@ function speak(text: string, enabled: boolean) {
 }
 
 const SOURCE_BADGES: Record<TrainingObjectionCandidate["source"], { label: string; cls: string }> = {
-  no_response: { label: "Restée sans réponse", cls: "bg-amber-50 border-amber-200 text-amber-700" },
-  lost_deal: { label: "Deal perdu", cls: "bg-rose-50 border-rose-200 text-rose-700" },
-  unknown_outcome: { label: "Issue inconnue", cls: "bg-slate-50 border-border text-slate-500" },
+  no_response: { label: "Restée sans réponse", cls: "bg-[color:var(--warning-soft)] text-amber-700" },
+  lost_deal: { label: "Deal perdu", cls: "bg-[color:var(--danger-soft)] text-rose-700" },
+  unknown_outcome: { label: "Issue inconnue", cls: "bg-slate-100 text-slate-600" },
 };
 
 function formatDate(iso: string): string {
@@ -69,28 +69,37 @@ function formatDate(iso: string): string {
 }
 
 function ScoreChipSmall({ score }: { score: number | null }) {
-  if (score === null) return <span className="text-xs text-slate-300">—</span>;
-  const cls = score >= 4 ? "bg-green-100 text-green-700" : score >= 2.5 ? "bg-orange-100 text-orange-700" : "bg-red-100 text-red-700";
-  return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${cls}`}>{score.toFixed(1)}/5</span>;
+  if (score === null) return <span className="text-xs text-slate-400">—</span>;
+  const cls =
+    score >= 4
+      ? "bg-[color:var(--success-soft)] text-emerald-700"
+      : score >= 2.5
+        ? "bg-[color:var(--warning-soft)] text-amber-700"
+        : "bg-[color:var(--danger-soft)] text-rose-700";
+  return (
+    <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold tabular-nums ${cls}`}>
+      {score.toFixed(1)}/5
+    </span>
+  );
 }
 
 function HandledChip({ value }: { value: TrainingDebrief["objection_handled"] }) {
   if (value === "oui") {
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[color:var(--success-soft)] text-emerald-700">
+      <span className="inline-flex items-center gap-1 rounded-full bg-[color:var(--success-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-emerald-700">
         <Trophy className="w-3 h-3" /> Objection traitée
       </span>
     );
   }
   if (value === "non") {
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[color:var(--danger-soft)] text-rose-700">
+      <span className="inline-flex items-center gap-1 rounded-full bg-[color:var(--danger-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-rose-700">
         <XCircle className="w-3 h-3" /> Objection non traitée
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
+    <span className="inline-flex items-center gap-1 rounded-full bg-[color:var(--warning-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-amber-700">
       <HelpCircle className="w-3 h-3" /> Partiellement traitée
     </span>
   );
@@ -98,60 +107,66 @@ function HandledChip({ value }: { value: TrainingDebrief["objection_handled"] })
 
 function DebriefView({ debrief }: { debrief: TrainingDebrief }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-baseline gap-2">
+        <div className="flex items-baseline gap-1.5">
           <span
-            className={`text-3xl font-bold ${
-              debrief.global_score >= 4 ? "text-green-600" : debrief.global_score >= 2.5 ? "text-orange-500" : "text-red-500"
+            className={`text-[30px] font-semibold leading-none tracking-tight tabular-nums ${
+              debrief.global_score >= 4 ? "text-emerald-700" : debrief.global_score >= 2.5 ? "text-amber-700" : "text-rose-700"
             }`}
           >
             {debrief.global_score.toFixed(1)}
           </span>
-          <span className="text-sm text-slate-400">/5</span>
+          <span className="text-[13px] text-slate-400">/5</span>
         </div>
         <HandledChip value={debrief.objection_handled} />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
         {debrief.axes.map((axis) => (
-          <div key={axis.key} className="rounded-xl border border-border p-3">
-            <div className="flex items-center justify-between text-[12px]">
-              <span className="font-medium text-slate-700">{axis.label}</span>
-              <span className="tabular-nums font-semibold text-slate-900">{axis.score.toFixed(1)}/5</span>
+          <div key={axis.key} className="min-w-0">
+            <div className="flex items-center justify-between gap-2 text-[12.5px]">
+              <span className="truncate text-slate-900">{axis.label}</span>
+              <span className="shrink-0 tabular-nums font-semibold text-slate-900">{axis.score.toFixed(1)}/5</span>
             </div>
-            <div className="mt-1.5 h-1.5 rounded-full bg-[color:var(--lavender)]">
-              <div className="h-full rounded-full brand-gradient" style={{ width: `${(axis.score / 5) * 100}%` }} />
+            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+              <div className="h-full rounded-full bg-[color:var(--primary)]" style={{ width: `${(axis.score / 5) * 100}%` }} />
             </div>
-            <p className="mt-2 text-[12px] text-slate-500 leading-relaxed">{axis.comment}</p>
+            <p className="mt-1.5 text-[12px] text-slate-500 leading-relaxed">{axis.comment}</p>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="rounded-xl bg-emerald-50/60 border border-emerald-100 p-3.5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 mb-2">Points forts</p>
-          <ul className="space-y-1.5 text-[13px] text-slate-700">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 border-t border-border pt-4">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-emerald-700 mb-2">Points forts</p>
+          <ul className="space-y-1.5 text-[13px] leading-relaxed text-slate-700">
             {debrief.strengths.map((s, i) => (
-              <li key={i}>• {s}</li>
+              <li key={i} className="flex gap-2.5">
+                <span className="mt-[8px] h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--success)]" aria-hidden />
+                <span>{s}</span>
+              </li>
             ))}
           </ul>
         </div>
-        <div className="rounded-xl bg-rose-50/60 border border-rose-100 p-3.5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-rose-700 mb-2">À travailler</p>
-          <ul className="space-y-1.5 text-[13px] text-slate-700">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-rose-700 mb-2">À travailler</p>
+          <ul className="space-y-1.5 text-[13px] leading-relaxed text-slate-700">
             {debrief.weaknesses.map((s, i) => (
-              <li key={i}>• {s}</li>
+              <li key={i} className="flex gap-2.5">
+                <span className="mt-[8px] h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--danger)]" aria-hidden />
+                <span>{s}</span>
+              </li>
             ))}
           </ul>
         </div>
       </div>
 
-      <div className="rounded-xl bg-[color:var(--lavender)] border border-[color:var(--lavender-strong)] p-3.5">
-        <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[color:var(--violet)] mb-2">
+      <div className="rounded-xl bg-[color:var(--lavender)] px-3.5 py-3">
+        <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-[color:var(--violet)]">
           <Sparkles className="w-3.5 h-3.5" /> La réponse à retenir
         </p>
-        <p className="text-[13.5px] text-slate-800 leading-relaxed italic">« {debrief.better_response} »</p>
+        <p className="mt-1 text-[13.5px] text-slate-900 leading-relaxed">« {debrief.better_response} »</p>
       </div>
     </div>
   );
@@ -370,7 +385,7 @@ export default function TrainingClient({
       <main className="brief-ui mx-auto px-4 sm:px-10 py-8 max-w-4xl">
         <div className="flex items-start justify-between gap-4 flex-wrap mb-5">
           <div className="flex items-center gap-3 min-w-0">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl brand-gradient text-white text-[14px] font-semibold">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[color:var(--lavender)] text-[color:var(--violet)] text-[13px] font-semibold">
               {persona.name
                 .split(" ")
                 .map((n) => n[0])
@@ -391,7 +406,7 @@ export default function TrainingClient({
                 <button
                   onClick={() => setVoiceEnabled((v) => !v)}
                   title={voiceEnabled ? "Couper la voix du prospect" : "Activer la voix du prospect"}
-                  className="grid h-9 w-9 place-items-center rounded-lg border border-border bg-white text-slate-600 hover:bg-slate-50"
+                  className="grid h-9 w-9 place-items-center rounded-lg border border-border bg-white text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
                 >
                   {voiceEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
                 </button>
@@ -414,17 +429,19 @@ export default function TrainingClient({
           </div>
         </div>
 
-        <div className="rounded-xl border border-border bg-[color:var(--lavender)]/50 px-4 py-2.5 mb-4 flex items-center gap-2 flex-wrap text-[12.5px] text-slate-700">
-          <MessagesSquare className="h-3.5 w-3.5 text-[color:var(--violet)] shrink-0" />
+        <div className="rounded-2xl border border-border bg-white px-4 py-3 mb-4 flex items-center gap-2.5 flex-wrap text-[13px] text-slate-600">
+          <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-[color:var(--lavender)] text-[color:var(--violet)]">
+            <MessagesSquare className="h-3.5 w-3.5" />
+          </span>
           <span className="min-w-0">
-            Objection à traiter : <b>« {session.scenario.objection} »</b>
+            Objection à traiter : <b className="font-semibold text-slate-900">« {session.scenario.objection} »</b>
           </span>
           {session.scenario.meetingStage && (
-            <span className="inline-flex items-center rounded-full border border-[color:var(--lavender-strong)] bg-white px-1.5 py-px text-[10px] font-semibold text-[color:var(--violet)]">
+            <span className="inline-flex items-center rounded-full bg-[color:var(--lavender)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--violet)]">
               {MEETING_STAGE_SHORT_LABELS[session.scenario.meetingStage]}
             </span>
           )}
-          <span className="ml-auto shrink-0 text-[11.5px] text-slate-400 tabular-nums">{commercialTurns}/12 tours</span>
+          <span className="ml-auto shrink-0 text-[12px] text-slate-500 tabular-nums">{commercialTurns}/12 tours</span>
         </div>
 
         <Card padded={false} className="p-5">
@@ -434,8 +451,8 @@ export default function TrainingClient({
                 <div
                   className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-[13.5px] leading-relaxed ${
                     turn.role === "commercial"
-                      ? "brand-gradient text-white rounded-br-md"
-                      : "bg-slate-50 border border-border text-slate-800 rounded-bl-md"
+                      ? "bg-[color:var(--primary)] text-white rounded-br-md"
+                      : "bg-slate-100 text-slate-800 rounded-bl-md"
                   }`}
                 >
                   {turn.text}
@@ -444,7 +461,7 @@ export default function TrainingClient({
             ))}
             {sending && (
               <div className="flex justify-start">
-                <div className="rounded-2xl rounded-bl-md bg-slate-50 border border-border px-3.5 py-2.5 text-[13.5px] text-slate-400">
+                <div className="rounded-2xl rounded-bl-md bg-slate-100 px-3.5 py-2.5 text-[13.5px] text-slate-400">
                   <Loader2 className="h-4 w-4 animate-spin" />
                 </div>
               </div>
@@ -461,7 +478,7 @@ export default function TrainingClient({
                     title={recording ? "Arrêter la dictée" : "Répondre à la voix"}
                     className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition-colors ${
                       recording
-                        ? "border-rose-300 bg-rose-50 text-rose-600 animate-pulse"
+                        ? "border-transparent bg-[color:var(--danger-soft)] text-rose-700 animate-pulse"
                         : "border-border bg-white text-slate-600 hover:bg-slate-50"
                     }`}
                   >
@@ -479,31 +496,35 @@ export default function TrainingClient({
                   }}
                   rows={2}
                   placeholder={recording ? "Parlez — votre réponse s'écrit ici…" : micSupported ? "Répondez au prospect (ou dictez au micro)…" : "Répondez au prospect…"}
-                  className="flex-1 resize-none rounded-xl border border-border bg-white px-3.5 py-2.5 text-[13.5px] text-slate-900 outline-none focus:ring-2 focus:ring-[color:var(--violet)]/30"
+                  className="min-w-0 flex-1 resize-none rounded-xl border border-border bg-white px-3.5 py-2.5 text-[13.5px] text-slate-900 placeholder:text-slate-400 outline-none focus:border-[color:var(--violet)] focus:ring-1 focus:ring-[color:var(--violet)]"
                 />
                 <button
                   onClick={sendMessage}
                   disabled={sending || !draft.trim()}
                   title="Envoyer (Entrée)"
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-xl brand-gradient text-white shadow-[var(--shadow-glow)] hover:brightness-110 disabled:opacity-40 transition-all"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[color:var(--primary)] text-white hover:brightness-110 disabled:opacity-40 transition-all"
                 >
                   <Send className="h-4 w-4" />
                 </button>
               </div>
-              {recording && <p className="mt-2 text-[11.5px] text-rose-500">● Dictée en cours — cliquez sur le micro pour arrêter, puis envoyez.</p>}
+              {recording && <p className="mt-2 text-[12px] text-rose-700">● Dictée en cours — cliquez sur le micro pour arrêter, puis envoyez.</p>}
             </div>
           )}
         </Card>
 
         {error && (
-          <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-[12.5px] text-rose-700">{error}</p>
+          <p className="mt-3 rounded-xl bg-[color:var(--danger-soft)] px-3.5 py-2.5 text-[13px] text-rose-700">{error}</p>
         )}
 
         {debrief && (
           <FadeIn>
-            <Card className="mt-5">
-              <h2 className="text-[15px] font-semibold text-slate-900 mb-4">Débrief de la session</h2>
-              <DebriefView debrief={debrief} />
+            <Card padded={false} className="mt-5 overflow-hidden">
+              <div className="border-b border-border px-5 py-3.5 sm:px-6">
+                <h2 className="text-[14px] font-semibold text-slate-900">Débrief de la session</h2>
+              </div>
+              <div className="px-5 py-5 sm:px-6">
+                <DebriefView debrief={debrief} />
+              </div>
             </Card>
           </FadeIn>
         )}
@@ -521,16 +542,16 @@ export default function TrainingClient({
       />
 
       {error && (
-        <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-[12.5px] text-rose-700">{error}</p>
+        <p className="mt-4 rounded-xl bg-[color:var(--danger-soft)] px-3.5 py-2.5 text-[13px] text-rose-700">{error}</p>
       )}
 
       <section className="mt-7">
-        <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-3">
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500 mb-3">
           Vos points faibles détectés dans vos calls
         </h2>
         {candidates.length === 0 ? (
           <Card>
-            <p className="text-sm text-slate-500">
+            <p className="text-[13.5px] leading-relaxed text-slate-500">
               Rien à travailler pour l&apos;instant — vos objections mal traitées apparaîtront ici au fil de vos calls
               analysés. Vous pouvez aussi vous entraîner sur une objection libre ci-dessous.
             </p>
@@ -543,17 +564,20 @@ export default function TrainingClient({
               return (
                 <Card key={key} padded={false} className="p-4 flex flex-col">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10.5px] font-semibold ${badge.cls}`}>
+                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-[color:var(--lavender)] text-[color:var(--violet)]">
+                      <Mic className="h-3.5 w-3.5" aria-hidden />
+                    </span>
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${badge.cls}`}>
                       {badge.label}
                     </span>
                     {c.meetingStage && (
-                      <span className="inline-flex items-center rounded-full border border-[color:var(--lavender-strong)] bg-[color:var(--lavender)] px-1.5 py-px text-[10px] font-semibold text-[color:var(--violet)]">
+                      <span className="inline-flex items-center rounded-full bg-[color:var(--lavender)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--violet)]">
                         {MEETING_STAGE_SHORT_LABELS[c.meetingStage]}
                       </span>
                     )}
                   </div>
-                  <p className="mt-2.5 text-[13.5px] font-medium text-slate-900 leading-snug flex-1">« {c.objection} »</p>
-                  <p className="mt-2 text-[11.5px] text-slate-400">
+                  <p className="mt-3 flex-1 border-l-2 border-border pl-3 text-[13.5px] italic leading-relaxed text-slate-700">« {c.objection} »</p>
+                  <p className="mt-2.5 text-[12px] text-slate-500">
                     {c.companyName ?? "Prospect"} · {formatDate(c.createdAt)}
                   </p>
                   <Button
@@ -584,7 +608,7 @@ export default function TrainingClient({
       </section>
 
       <section className="mt-8">
-        <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-3">Objection libre</h2>
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500 mb-3">Objection libre</h2>
         <Card padded={false} className="p-4">
           <div className="flex flex-col sm:flex-row gap-2">
             <input
@@ -596,7 +620,7 @@ export default function TrainingClient({
                 }
               }}
               placeholder="Ex : « Votre solution est trop chère pour une équipe de notre taille »"
-              className="h-10 flex-1 rounded-lg border border-border bg-white px-3.5 text-[13.5px] text-slate-900 outline-none focus:ring-2 focus:ring-[color:var(--violet)]/30"
+              className="h-10 min-w-0 flex-1 rounded-lg border border-border bg-white px-3.5 text-[13.5px] text-slate-900 placeholder:text-slate-400 outline-none focus:border-[color:var(--violet)] focus:ring-1 focus:ring-[color:var(--violet)]"
             />
             <Button
               variant="primary"
@@ -612,8 +636,8 @@ export default function TrainingClient({
 
       {history.length > 0 && (
         <section className="mt-8">
-          <h2 className="text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-3">Vos dernières sessions</h2>
-          <Card padded={false} className="divide-y divide-slate-100">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500 mb-3">Vos dernières sessions</h2>
+          <Card padded={false} className="divide-y divide-border overflow-hidden">
             {history.map((s) => {
               const expanded = expandedHistoryId === s.id;
               const score = s.debrief?.global_score ?? null;
@@ -621,21 +645,21 @@ export default function TrainingClient({
                 <div key={s.id}>
                   <button
                     onClick={() => setExpandedHistoryId(expanded ? null : s.id)}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50/70 transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-slate-50 transition-colors sm:px-5"
                   >
-                    <span className="text-[12px] text-slate-400 tabular-nums shrink-0 w-14">{formatDate(s.created_at)}</span>
-                    <span className="flex-1 min-w-0 text-[13px] text-slate-700 truncate">« {s.scenario.objection} »</span>
+                    <span className="text-[12px] text-slate-500 tabular-nums shrink-0 w-14">{formatDate(s.created_at)}</span>
+                    <span className="flex-1 min-w-0 text-[13px] text-slate-900 truncate">« {s.scenario.objection} »</span>
                     {s.status === "completed" ? (
                       <ScoreChipSmall score={score} />
                     ) : (
-                      <span className="text-xs text-slate-400 shrink-0">Interrompue</span>
+                      <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11.5px] font-semibold text-slate-500">Interrompue</span>
                     )}
                     {s.debrief && (
-                      <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-slate-300 transition-transform ${expanded ? "rotate-180" : ""}`} />
+                      <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform ${expanded ? "rotate-180" : ""}`} />
                     )}
                   </button>
                   {expanded && s.debrief && (
-                    <div className="px-4 pb-4">
+                    <div className="border-t border-border px-4 py-5 sm:px-5">
                       <DebriefView debrief={s.debrief} />
                     </div>
                   )}
