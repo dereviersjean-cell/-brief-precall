@@ -12,7 +12,7 @@ import { ClientLogos, HERO_INK } from "@/app/components/landing/ClientLogos";
 import { PlaybookPreview } from "@/app/components/landing/PlaybookPreview";
 import { PerformanceDashboard } from "@/app/components/landing/PerformanceDashboard";
 import { UpcomingMeetings } from "@/app/components/landing/UpcomingMeetings";
-import { SourcesObject, ObjectionObject, DigestObject } from "@/app/components/landing/objects";
+import { SourcesObject, ProgressObject, StructureObject, DigestObject } from "@/app/components/landing/objects";
 import { PARCOURS, TOOL_WEEKS } from "@/app/components/landing/Accompaniment";
 import { NB } from "@/app/components/landing/team-data";
 import { TestimonialCarousel, CompanyMark } from "@/app/components/landing/TestimonialCarousel";
@@ -87,7 +87,7 @@ export function Hero() {
                     href="#methode"
                     className="inline-flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-full border border-white/35 px-6 text-[16px] font-medium text-white transition-[background-color,transform] hover:bg-white/10 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                   >
-                    Voir les 3 moments <ArrowRight className="h-4 w-4 rotate-90" />
+                    Voir les 4 leviers <ArrowRight className="h-4 w-4 rotate-90" />
                   </a>
                 </div>
               </div>
@@ -188,13 +188,12 @@ export function TeamSection() {
             </li>
           ))}
         </ul>
-
       </div>
     </section>
   );
 }
 
-// ─── La méthode : un deal, trois moments ─────────────────────────────────────
+// ─── La méthode : quatre leviers ─────────────────────────────────────────────
 
 const STEPS: JourneyStep[] = [
   {
@@ -206,7 +205,14 @@ const STEPS: JourneyStep[] = [
     points: [
       { title: "Fiche entreprise sourcée", body: "Effectifs, CA, dirigeants, financement : depuis les registres officiels, les annuaires professionnels et le web." },
       { title: "Signaux récents", body: "Levées de fonds, recrutements clés, mentions presse des 90 derniers jours." },
-      { title: "La bonne référence client", body: "Brief pioche dans vos cas clients celui qui ressemble le plus au prospect." },
+      {
+        title: "La référence client la plus proche",
+        body: "Brief compare le prospect à vos cas clients, importés d'un fichier, saisis à la main ou repris de vos deals gagnés dans HubSpot ou Pipedrive. Il en retient jusqu'à trois, proches par le secteur, le type de client ou le problème à résoudre.",
+      },
+      {
+        title: "La phrase à dire en call",
+        body: "Pour chaque référence : pourquoi elle compte pour ce prospect, et une phrase prête à dire, avec le nom du client et son résultat.",
+      },
     ],
     object: <SourcesObject />,
   },
@@ -226,24 +232,42 @@ const STEPS: JourneyStep[] = [
   {
     verb: "Progresser",
     when: "Lundi 08:00",
-    moment: "Chaque semaine, en équipe",
-    title: "Ce qui fait gagner un deal profite à toute l'équipe.",
-    body: "Chaque objection traitée nourrit une bibliothèque commune. Le commercial junior répond comme s'il avait dix ans de maison, et vous voyez enfin sur quelles objections l'équipe lâche.",
+    moment: "Chaque semaine, pour chaque commercial",
+    title: "Chaque commercial voit où il progresse, et s'entraîne là où il bute.",
+    body: "Ses scores sur la grille de l'équipe, semaine après semaine, la dimension à travailler en priorité, et un entraînement sur ses propres objections. Le commercial junior répond bientôt comme s'il avait dix ans de maison.",
     points: [
-      { title: "Bibliothèque d'objections vivante", body: "Face à une objection, Brief retrouve les cas similaires déjà traités par l'équipe, et ce qui a marché." },
-      { title: "Ce qui marche, chiffré", body: "Pour chaque objection : combien de fois elle revient, et à quel point l'équipe la traite bien." },
-      { title: "Scores comparés dans le temps", body: "Les dimensions du playbook où chacun progresse, et celles qui restent à travailler." },
+      { title: "Sa progression, semaine après semaine", body: "Score global sur les six dernières semaines, moyenne par dimension du playbook, et la dimension à travailler en priorité." },
+      { title: "Entraînement sur ses vraies objections", body: "Un prospect joué par l'IA, à la voix, reprend les objections restées sans réponse dans ses calls. À la fin : une note, ses points forts, et la meilleure réponse à réutiliser." },
+      { title: "Bibliothèque d'objections vivante", body: "Face à une objection, Brief retrouve comment l'équipe y a déjà répondu, et ce qui a marché." },
+      { title: "Le bilan de la semaine", body: "Chaque vendredi soir ou lundi matin, au choix : ce qui a bien fonctionné, ce qui peut être amélioré, ce qu'il ne faut pas oublier." },
     ],
-    object: <ObjectionObject />,
+    object: <ProgressObject />,
+  },
+  {
+    verb: "Structurer",
+    when: "Dès le départ",
+    moment: "Une méthode pour toute l'équipe",
+    title: "Toute l'équipe vend avec la même méthode, la vôtre.",
+    body: "Votre playbook devient la grille de l'équipe, vos étapes de vente ont chacune leur consigne, vos objections leurs réponses de référence. Chaque nouveau commercial arrive dans une équipe qui a déjà sa méthode.",
+    points: [
+      { title: "Votre playbook, votre grille", body: "Dimensions, poids et questions clés, importés depuis Notion, Word ou PDF. Tout le monde est noté sur les mêmes critères." },
+      { title: "Une consigne par étape", body: "R1, R2, R3 reconnus depuis le titre du rendez-vous, chacun analysé avec sa propre consigne." },
+      { title: "Vos objections, vos réponses", body: "Vous fixez les catégories et la façon de traiter chacune. Brief y range chaque objection entendue en call, et vous suggère les nouvelles catégories qui reviennent." },
+      { title: "Mis en place avec votre expert", body: "Un expert de l'équipe Brief installe tout avec vous, une brique par semaine pendant huit semaines." },
+    ],
+    object: <StructureObject />,
   },
 ];
 
-// Les trois moments, tels que l'introduction de « La méthode » les annonce.
-// Mêmes couleurs que la séquence (Journey) : bleu, corail, soleil.
+// Les quatre leviers, tels que l'introduction de « La méthode » les annonce.
+// Mêmes couleurs que la séquence (Journey) : bleu, corail, soleil, lilas.
+// Titre « Quatre leviers. Un seul objectif : le ROI. » (Jean, 13/10/2026),
+// à la place de « Trois moments. Un seul objectif : le closing. »
 export const MOMENTS = [
   { verb: "Préparer", when: "la veille", anchor: "preparer", soft: "bg-land-accent-soft", solid: "bg-land-accent" },
   { verb: "Débriefer", when: "après le call", anchor: "debriefer", soft: "bg-land-coral-soft", solid: "bg-land-coral" },
   { verb: "Progresser", when: "chaque semaine", anchor: "progresser", soft: "bg-land-sun-soft", solid: "bg-land-sun-ink" },
+  { verb: "Structurer", when: "dès le départ", anchor: "structurer", soft: "bg-land-lilac-soft", solid: "bg-land-lilac-ink" },
 ];
 
 // Introduction de « La méthode ». Rendue deux fois, une seule visible : dans
@@ -253,18 +277,19 @@ export function MethodIntro() {
   return (
     <>
       <h2 className={`${H2} max-w-[16ch]`}>
-        <span className="text-land-ink">Trois moments.</span>{" "}
-        <span className="text-land-faint">Un seul objectif : le closing.</span>
+        <span className="text-land-ink">Quatre leviers.</span>{" "}
+        <span className="text-land-faint">Un seul objectif : le ROI.</span>
       </h2>
       <p className="mt-6 max-w-[54ch] text-[18px] leading-relaxed text-land-muted md:text-[20px]">
-        Suivez un rendez-vous, de la veille au point d&apos;équipe. Brief s&apos;organise exactement comme le
-        travail d&apos;un commercial, rien d&apos;autre.
+        Préparer chaque rendez-vous, débriefer chaque call, faire progresser chaque commercial, structurer toute
+        l&apos;équipe autour de votre méthode. Brief actionne les quatre, pour que chaque rendez-vous rapporte
+        davantage.
       </p>
-      {/* Les trois moments annoncés d'emblée, numérotés, dans leur couleur et
+      {/* Les leviers annoncés d'emblée, numérotés, dans leur couleur et
           reliés par un trait : la structure se lit avant même d'entrer dans
           la séquence. Verticale, elle tient aussi dans la colonne étroite du
           haut de page épinglé. */}
-      <ol className="relative mt-8 space-y-3" aria-label="Les trois moments">
+      <ol className="relative mt-8 space-y-3" aria-label="Les quatre leviers">
         <span aria-hidden className="absolute bottom-5 left-[19px] top-5 w-0.5 rounded-full bg-land-line" />
         {MOMENTS.map((m, i) => (
           <li key={m.verb} className="relative">
@@ -290,7 +315,7 @@ export function MethodIntro() {
 export function MethodSection() {
   return (
     <section id="methode" className="land-method scroll-mt-20 border-t border-land-line">
-      <div className="mx-auto max-w-6xl px-4 pt-20 sm:px-6 lg:pt-32">
+      <div className="mx-auto max-w-6xl px-4 pt-20 sm:px-6 lg:pb-16 lg:pt-32">
         <MethodIntro />
       </div>
       <div className="mx-auto max-w-6xl px-4 pb-16 sm:px-6 lg:pb-24">
@@ -617,7 +642,7 @@ const FAQ_GROUPS = [
     {
       title: "Le produit",
       items: [
-        { q: `Comment Brief augmente concrètement le taux de closing ?`, a: `En travaillant trois leviers : arriver préparé, savoir ce qui a marché ou pas (un débrief noté, adapté à l'étape R1, R2 ou R3), et capitaliser en équipe grâce à la bibliothèque d'objections.` },
+        { q: `Comment Brief augmente concrètement le taux de closing ?`, a: `En travaillant quatre leviers : arriver préparé, savoir ce qui a marché ou pas (un débrief noté, adapté à l'étape R1, R2 ou R3), faire progresser chaque commercial (ses scores, un entraînement sur ses propres objections), et structurer toute l'équipe autour d'une même méthode.` },
         { q: `Comment Brief rejoint mes rendez-vous ?`, a: `Vous connectez votre agenda Google ou Outlook. Brief détecte les visios (Meet, Teams, Zoom) et y envoie son bot, « Brief Notetaker », qui enregistre et transcrit. Vous pouvez exclure des rendez-vous manuellement.` },
         { q: `Comment fonctionne l'analyse par étape R1, R2, R3 ?`, a: `Le manager configure une fois les motifs de titre de rendez-vous (« Rencontre X » pour la découverte, « Présentation X » pour la démo…) et les consignes propres à chaque étape. Brief évalue ensuite chaque call selon les critères de son étape, entièrement modifiables : un R1 n'est pas jugé comme un R3.` },
         { q: `Mon playbook est dans Notion ou dans un document : comment l'importer ?`, a: `Connectez Notion, ou importez un PDF ou un fichier Word, ou collez simplement le texte. Brief en extrait les dimensions, leur poids et les questions ; vous relisez et ajustez avant d'enregistrer. Sans playbook, une grille par défaut en quatre dimensions s'applique.` },
@@ -895,7 +920,8 @@ export function PageHero({
 }
 
 // ─── Page Sécurité ───────────────────────────────────────────────────────────
-// Tout ce qui suit est aligné sur la politique de confidentialité et sur le
+// Tout ce qui suit est aligné sur la politique de confidentialité (qui porte
+// la liste des prestataires, retirée d'ici le 13/10/2026) et sur le
 // code (12/10/2026) : base Supabase et application Vercel à Paris, Recall en
 // région Europe (Francfort), vidéo jamais conservée par Brief, scope Gmail
 // limité à l'envoi (Mail.Send côté Microsoft), message d'annonce du bot,
@@ -950,37 +976,6 @@ export function SecurityContent() {
           ))}
         </ul>
 
-        <div className="mt-16 grid grid-cols-1 gap-10 rounded-[24px] bg-land-surface p-6 ring-1 ring-land-line sm:p-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-          <div>
-            <h2 className="text-[28px] font-semibold leading-[1.1] tracking-[-0.03em] text-land-ink md:text-[36px]">
-              Qui traite quoi
-            </h2>
-            <p className="mt-4 text-[16px] leading-relaxed text-land-muted">
-              Chaque prestataire n&apos;accède qu&apos;aux données nécessaires à sa tâche. La liste complète figure dans
-              notre politique de confidentialité.
-            </p>
-            <Link
-              href="/confidentialite"
-              className="mt-6 inline-flex h-11 items-center gap-2 rounded-full border border-land-line px-5 text-[15px] font-medium text-land-ink transition-colors hover:bg-land-sunken"
-            >
-              Politique de confidentialité <ArrowRight className="h-4 w-4" aria-hidden />
-            </Link>
-          </div>
-          <dl className="divide-y divide-land-line">
-            {[
-              ["Base de données et application", "Supabase et Vercel, à Paris"],
-              ["Enregistrement et transcription des visios", "Recall.ai, région Europe (Francfort)"],
-              ["Briefs, analyses et brouillons d'email", "Anthropic (modèles Claude), dans le cadre de son offre professionnelle"],
-              ["Emails envoyés par Brief", "Resend"],
-              ["Vos outils, si vous les connectez", "Google, Microsoft, HubSpot, Pipedrive, Notion, Slack"],
-            ].map(([k, v]) => (
-              <div key={k} className="grid grid-cols-1 gap-1 py-3.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] sm:gap-6">
-                <dt className="text-[14.5px] font-medium text-land-ink">{k}</dt>
-                <dd className="text-[14.5px] text-land-muted">{v}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
       </div>
     </section>
   );

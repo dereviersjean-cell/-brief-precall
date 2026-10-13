@@ -15,8 +15,9 @@ export type JourneyStep = {
   object: ReactNode;
 };
 
-// La séquence « un deal, trois moments » de la landing. Sur grand écran, le
-// texte des trois étapes défile à gauche pendant que l'objet produit reste
+// La séquence « quatre leviers » de la landing (trois moments d'un deal, puis
+// la structuration de l'équipe). Sur grand écran, le
+// texte des étapes défile à gauche pendant que l'objet produit reste
 // collé à droite et change d'état : le brief se compile, le call est noté,
 // l'objection rejoint la bibliothèque. Sous `lg`, pas d'épinglage (collant +
 // tactile = saccades) : chaque étape porte son objet juste sous son texte.
@@ -28,11 +29,12 @@ export type JourneyStep = {
 // en %C3%A9 dans la barre d'adresse.
 // Une couleur par moment, la même partout où il apparaît (titre, frise,
 // nappe derrière l'objet) : Préparer en bleu, Débriefer en corail,
-// Progresser en soleil.
+// Progresser en soleil, Structurer en lilas.
 const TONES = [
   { text: "text-land-accent", soft: "var(--land-accent-soft)", solid: "var(--land-accent)" },
   { text: "text-land-coral-ink", soft: "var(--land-coral-soft)", solid: "var(--land-coral)" },
   { text: "text-land-sun-ink", soft: "var(--land-sun-soft)", solid: "var(--land-sun)" },
+  { text: "text-land-lilac-ink", soft: "var(--land-lilac-soft)", solid: "var(--land-lilac)" },
 ];
 
 const slug = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -80,7 +82,7 @@ export function Journey({ steps }: { steps: JourneyStep[] }) {
     return () => ro.disconnect();
   }, []);
 
-  // Rail vertical des trois moments (grand écran) : il relie la pastille de
+  // Rail vertical des leviers (grand écran) : il relie la pastille de
   // la première étape à celle de la dernière. Positions MESURÉES — elles
   // dépendent de la hauteur des textes.
   useEffect(() => {
@@ -136,9 +138,9 @@ export function Journey({ steps }: { steps: JourneyStep[] }) {
     <div className="grid grid-cols-1 [timeline-scope:--journey] lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-14">
       {/* Marge basse sur grand écran : la colonne de texte doit dépasser la
           dernière étape, sinon l'objet collant se décroche et remonte sous la
-          barre de navigation pendant qu'on lit encore « Progresser ». */}
+          barre de navigation pendant qu'on lit encore la dernière étape. */}
       <div ref={colRef} className="relative [view-timeline:--journey_block] lg:pb-[22vh] lg:pl-16">
-        {/* Rail vertical (grand écran) : les trois moments se lisent comme
+        {/* Rail vertical (grand écran) : les leviers se lisent comme
             des étapes qui descendent. La piste se remplit au rythme de la
             lecture — la ligne de remplissage suit le milieu de l'écran
             (timeline de défilement native, recentrée par
@@ -153,7 +155,7 @@ export function Journey({ steps }: { steps: JourneyStep[] }) {
               className="land-rail-fill h-full w-full rounded-full"
               style={{
                 transform: `scaleY(${active / (steps.length - 1)})`,
-                backgroundImage: `linear-gradient(180deg, ${TONES.map((t) => t.solid).join(", ")})`,
+                backgroundImage: `linear-gradient(180deg, ${TONES.slice(0, steps.length).map((t) => t.solid).join(", ")})`,
               }}
             />
           </div>
@@ -174,7 +176,7 @@ export function Journey({ steps }: { steps: JourneyStep[] }) {
               style={{ "--tone": tone.solid, "--tone-soft": tone.soft } as CSSProperties}
             >
               {/* Numéro et moment en tête de chaque étape (demande de Jean,
-                  12/10/2026) : la page doit se lire comme trois moments
+                  12/10/2026) : la page doit se lire comme des leviers
                   distincts, pas comme une liste de fonctionnalités. Sur grand
                   écran la pastille se pose sur le rail. */}
               <div className="mb-5 flex items-center gap-3 lg:-ml-16 lg:gap-5">
@@ -187,7 +189,7 @@ export function Journey({ steps }: { steps: JourneyStep[] }) {
                 </span>
                 <span className="land-step-text text-[14px] leading-tight">
                   <span className="block font-semibold text-land-ink">
-                    Moment {i + 1} sur {steps.length}
+                    Levier {i + 1} sur {steps.length}
                   </span>
                   <span className="text-land-muted">{step.moment}</span>
                 </span>
@@ -222,11 +224,11 @@ export function Journey({ steps }: { steps: JourneyStep[] }) {
           un grand vide sous le brief et l'objection. */}
       <div className="hidden lg:block">
         <div ref={pinRef} data-journey-pin className="sticky top-16 flex h-[calc(100vh-4rem)] flex-col justify-center py-8">
-          {/* Repère compact des trois moments : le rail de la colonne de
+          {/* Repère compact des leviers : le rail de la colonne de
               texte porte déjà la progression, ici on rappelle seulement où
               l'on est. */}
           <div className="mb-6 flex justify-center">
-            <ol className="inline-flex items-center gap-1 rounded-full border border-land-line bg-land-surface p-1" aria-label="Les trois moments du rendez-vous">
+            <ol className="inline-flex items-center gap-1 rounded-full border border-land-line bg-land-surface p-1" aria-label="Les quatre leviers">
               {steps.map((step, i) => {
                 const tone = TONES[i % TONES.length];
                 const on = active === i;

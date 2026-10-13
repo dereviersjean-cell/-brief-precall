@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
 import { ValdorLogo, CartonnerieLogo } from "@/app/components/landing/brands";
-import { Check, Clock, History, MapPin, Target, Play } from "lucide-react";
+import { Check, Clock, History, MapPin, Target, Mic, FileUp, Plus } from "lucide-react";
 
 // Les aperçus produit de la landing. Chacun reprend la STRUCTURE RÉELLE d'un
 // écran de Brief — mêmes sections, même ordre, même densité, même ton que les
@@ -14,7 +14,8 @@ import { Check, Clock, History, MapPin, Target, Play } from "lucide-react";
 //                       lib/brief-generator.ts interroge (registre, presse,
 //                       annuaire, CRM, références clients)
 //   AnalysisObject    ↔ app/feedback/[id]/FeedbackDetailClient.tsx (client)
-//   ObjectionObject   ↔ /dashboard/objections/[categoryId] + OccurrenceDetail
+//   ProgressObject    ↔ /dashboard/scores (Mes scores) + /training
+//   StructureObject   ↔ le Playbook, les étapes et les catégories d'objections
 //   DigestObject      ↔ le bilan hebdomadaire manager (lib/admin-config.ts)
 //
 // Le fil : Thomas Lefèvre (commercial) présente sa solution à Claire Mercier,
@@ -361,20 +362,38 @@ export function SourcesObject() {
           <p className="mt-1.5 text-[13px] text-land-ink">Contact entrant en septembre, aucune affaire en cours.</p>
         </section>
 
+        {/* La référence client la plus proche (lib/brief-generator.ts) : Voyage
+            présélectionne les cas clients les plus proches du prospect, Claude
+            en garde trois au plus — même secteur, même type de client ou même
+            problème — chacun avec la raison et la phrase « À dire en call ». */}
         <section className="land-step-row border-t border-land-line pt-4" style={d(4)}>
-          <div className="flex items-center gap-2.5">
-            <CartonnerieLogo size={28} />
-            <div className="text-[15px] font-semibold text-land-ink">Cartonnerie du Val</div>
-          </div>
-          <p className="mt-0.5 text-[12.5px] leading-relaxed text-land-muted">
-            Votre référence client la plus proche · même métier, même montée en charge d&apos;un deuxième site.
-          </p>
-          <div className="mt-2.5 rounded-xl bg-land-accent-soft px-3.5 py-2.5">
-            <Label tone="accent">À dire en call</Label>
-            <p className="mt-1 text-[13.5px] leading-relaxed text-land-ink">
-              «{NB}La Cartonnerie du Val a ouvert son deuxième site l&apos;an dernier. Ils ont tenu leurs délais clients
-              dès le premier mois, sans recruter au planning.{NB}»
+          <BlockHead label="Références clients" source="Vos cas clients" i={4} />
+          <div className="mt-3 rounded-2xl border border-land-line bg-land-bg p-3.5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <CartonnerieLogo size={28} />
+                <div className="text-[15px] font-semibold text-land-ink">Cartonnerie du Val</div>
+              </div>
+              <span className="shrink-0 rounded-full bg-land-accent px-2 py-0.5 text-[11px] font-semibold text-white">La plus proche</span>
+            </div>
+            <p className="mt-2 text-[12.5px] leading-relaxed text-land-muted">
+              <span className="font-medium text-land-ink">Pourquoi elle compte{NB}:</span> même métier, même clientèle
+              agroalimentaire, même montée en charge d&apos;un deuxième site.
             </p>
+            <div className="mt-2.5 rounded-xl bg-land-accent-soft px-3.5 py-2.5">
+              <Label tone="accent">À dire en call</Label>
+              <p className="mt-1 text-[13.5px] leading-relaxed text-land-ink">
+                «{NB}La Cartonnerie du Val a ouvert son deuxième site l&apos;an dernier. Ils ont tenu leurs délais clients
+                dès le premier mois, sans recruter au planning.{NB}»
+              </p>
+            </div>
+          </div>
+          <div className="mt-2 flex items-center justify-between gap-3 rounded-xl border border-land-line px-3.5 py-2.5">
+            <div className="min-w-0">
+              <div className="text-[13px] font-semibold text-land-ink">Emballages Morin</div>
+              <div className="truncate text-[12px] text-land-muted">Même clientèle cosmétique, mêmes exigences de recyclabilité</div>
+            </div>
+            <span className="shrink-0 text-[11.5px] font-medium text-land-faint">2e référence</span>
           </div>
         </section>
       </div>
@@ -385,77 +404,193 @@ export function SourcesObject() {
   );
 }
 
-// ─── Progresser : l'objection rejoint la bibliothèque ────────────────────────
+// ─── Progresser : la progression d'un commercial ─────────────────────────────
+// Reprend Mes scores (app/dashboard/scores : score global semaine par semaine
+// sur six semaines, moyenne par dimension, la plus faible marquée « à
+// travailler ») et l'entraînement (app/training : un prospect joué par l'IA
+// reprend une objection restée sans réponse, puis note et donne la meilleure
+// réponse à réutiliser).
 
-export function ObjectionObject() {
+const WEEKS = [2.6, 2.8, 2.9, 3.1, 3.2, 3.4];
+const PROGRESS_DIMS: { label: string; score: number; weak?: boolean }[] = [
+  { label: "Découverte du pain business", score: 3.8 },
+  { label: "Qualification décision et achat", score: 3.5 },
+  { label: "Traitement des objections", score: 2.7, weak: true },
+];
+const fr = (n: number) => n.toFixed(1).replace(".", ",");
+
+export function ProgressObject() {
+  const px = (i: number) => 8 + i * 44.8;
+  const py = (v: number) => 52 - ((v - 2.4) / 1.2) * 44;
+  const line = WEEKS.map((v, i) => `${px(i)},${py(v)}`).join(" ");
   return (
     <div className={`overflow-hidden ${SHEET}`}>
-      <div className="px-6 pt-6 sm:px-7">
-        <div className="text-[17px] font-semibold tracking-tight text-land-ink">Charge de déploiement pour l&apos;équipe</div>
-        <div className="mt-1 text-[13px] text-land-muted">
-          Catégorie de votre playbook · 9 occurrences ce trimestre · 4 commerciaux
-        </div>
-        <div className="mt-3 flex h-2 gap-0.5 overflow-hidden rounded-full" aria-hidden>
-          <span className="bg-land-accent" style={{ width: "33%" }} />
-          <span className="bg-land-accent/35" style={{ width: "45%" }} />
-          <span className="bg-land-line" style={{ width: "22%" }} />
-        </div>
-        <div className="mt-1.5 flex gap-4 text-[12px] text-land-muted">
-          <span>
-            <span className="font-medium tabular-nums text-land-accent">3</span> bien traitées
-          </span>
-          <span>
-            <span className="font-medium tabular-nums text-land-ink">4</span> partiellement
-          </span>
-          <span>
-            <span className="font-medium tabular-nums text-land-ink">2</span> sans réponse
-          </span>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-land-line px-6 py-3.5 sm:px-7">
+        <span className="inline-flex items-center gap-2.5 text-[13.5px] font-medium text-land-ink">
+          {/* Commercial fictif, portrait généré par IA. */}
+          <Image src="/landing/people/avatar-thomas.jpg" alt="" width={24} height={24} className="h-6 w-6 rounded-full object-cover" />
+          Thomas Lefèvre · Mes scores
+        </span>
+        <span className="text-[12.5px] text-land-muted">6 dernières semaines</span>
       </div>
 
-      <div className="land-step-row mx-4 mb-4 mt-5 rounded-2xl border border-land-line bg-land-bg px-4 py-4 sm:mx-5 sm:px-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="inline-flex items-center gap-2 text-[13px] font-medium text-land-ink">
-            {/* Commercial fictif, portrait généré par IA. */}
-            <Image src="/landing/people/avatar-thomas.jpg" alt="" width={24} height={24} className="h-6 w-6 rounded-full object-cover" />
-            <span>
-              Thomas · Valdor Emballages · <span className="tabular-nums">2{NB}oct.</span>
+      <div className="grid grid-cols-1 gap-6 px-6 py-5 sm:grid-cols-2 sm:px-7">
+        <section>
+          <Label>Score global</Label>
+          <div className="mt-1.5 flex items-baseline gap-2">
+            <span className="text-[30px] font-semibold leading-none tabular-nums tracking-tight text-land-ink">{fr(WEEKS[5])}</span>
+            <span className="text-[13px] text-land-faint">/5</span>
+            <span className="ml-1 rounded-full bg-land-accent-soft px-2 py-0.5 text-[12px] font-semibold tabular-nums text-land-accent">
+              +{fr(WEEKS[5] - WEEKS[0])}
             </span>
+          </div>
+          <svg viewBox="0 0 240 60" className="mt-3 h-14 w-full overflow-visible" aria-hidden>
+            <polygon points={`${px(0)},60 ${line} ${px(5)},60`} className="fill-land-accent-soft" />
+            <polyline points={line} fill="none" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" className="stroke-land-accent" />
+            <circle cx={px(5)} cy={py(WEEKS[5])} r="4.5" className="fill-land-accent stroke-land-surface" strokeWidth="2" />
+          </svg>
+        </section>
+        <section>
+          <Label>Par dimension du playbook</Label>
+          <ul className="mt-2.5 space-y-2.5">
+            {PROGRESS_DIMS.map((dim, i) => (
+              <li key={dim.label} className="land-step-row" style={d(i)}>
+                <div className="flex items-center justify-between gap-2 text-[12.5px]">
+                  <span className="truncate text-land-ink">{dim.label}</span>
+                  <span className="shrink-0 font-semibold tabular-nums text-land-ink">{fr(dim.score)}</span>
+                </div>
+                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-land-sunken">
+                  <div className={`h-full rounded-full ${dim.weak ? "bg-land-warn" : "bg-land-accent"}`} style={{ width: `${(dim.score / 5) * 100}%` }} />
+                </div>
+                {dim.weak && <div className="mt-1 text-[11.5px] font-semibold text-land-warn">À travailler</div>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
+
+      <div className="land-step-row mx-4 mb-4 rounded-2xl border border-land-line bg-land-bg px-4 py-4 sm:mx-5 sm:px-5" style={d(3)}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-2 text-[13px] font-semibold text-land-ink">
+            <span className="grid h-6 w-6 place-items-center rounded-md bg-land-accent-soft text-land-accent">
+              <Mic className="h-3.5 w-3.5" aria-hidden />
+            </span>
+            Entraînement · Charge de déploiement
           </span>
-          <span className="rounded-full bg-land-warn/12 px-2 py-0.5 text-[11.5px] font-semibold text-land-warn">
-            Partiellement traitée
-          </span>
+          <span className="rounded-full bg-land-accent-soft px-2 py-0.5 text-[11.5px] font-semibold tabular-nums text-land-accent">4,2/5</span>
         </div>
-        <ul className="mt-3 space-y-1.5 text-[13.5px] leading-snug">
-          <li className="flex gap-2">
-            <span className="w-[4.5rem] shrink-0 text-land-faint">Prospect</span>
-            <span className="text-land-ink">Craint qu&apos;une nouvelle intégration surcharge une équipe déjà sous tension.</span>
-          </li>
-          <li className="flex gap-2">
-            <span className="w-[4.5rem] shrink-0 text-land-faint">Thomas</span>
-            <span className="text-land-ink">Rassure sur le support, sans chiffrer le temps demandé à l&apos;équipe.</span>
-          </li>
-        </ul>
-        <blockquote className="mt-3 border-l-2 border-land-line pl-3 text-[13px] italic leading-relaxed text-land-muted">
+        <p className="mt-2 text-[12.5px] text-land-muted">
+          Objection restée sans réponse chez Valdor le 2{NB}oct., rejouée par un prospect IA, à la voix.
+        </p>
+        <blockquote className="mt-2.5 border-l-2 border-land-line pl-3 text-[13px] italic leading-relaxed text-land-muted">
           «{NB}Honnêtement, l&apos;équipe est déjà sous l&apos;eau avec la nouvelle ligne. Une intégration de plus, ça me
           fait peur.{NB}»
         </blockquote>
         <div className="mt-3 rounded-xl bg-land-accent-soft px-3.5 py-3">
-          <Label tone="accent">Ce qu&apos;il aurait fallu répondre</Label>
+          <Label tone="accent">Meilleure réponse à réutiliser</Label>
           <p className="mt-1 text-[13.5px] leading-relaxed text-land-ink">
             Chiffrer l&apos;effort{NB}: deux heures de paramétrage, puis rien. Citer la Cartonnerie du Val, déployée en
             10{NB}jours sans ressource interne.
           </p>
         </div>
-        <span className="mt-3 inline-flex items-center gap-1.5 text-[12.5px] font-medium text-land-accent">
-          <Play className="h-3.5 w-3.5" aria-hidden />
-          <span>
-            Revoir l&apos;extrait à <span className="tabular-nums">21:04</span>
-          </span>
-        </span>
       </div>
       <div className="border-t border-land-line px-6 py-3 text-[12px] text-land-faint sm:px-7">
-        Exemple. Catégorie, réponses et chiffres fictifs.
+        Exemple. Commercial, scores et objection fictifs.
+      </div>
+    </div>
+  );
+}
+
+// ─── Structurer : la méthode de toute l'équipe ───────────────────────────────
+// Ce que le manager règle une fois pour toute l'équipe : la grille du playbook
+// (dimensions et poids, importée depuis Notion, Word ou PDF), les étapes
+// R1 / R2 / R3 et leur consigne (lib/meeting-stage.ts), les catégories
+// d'objections avec les catégories suggérées à partir des calls, et l'équipe
+// notée sur cette même grille.
+
+const STRUCT_DIMS: [string, number][] = [
+  ["Ouverture et cadrage", 1],
+  ["Découverte du pain business", 3],
+  ["Qualification décision et achat", 2],
+  ["Closing de l'étape suivante", 2],
+];
+const STRUCT_CATS: [string, number][] = [
+  ["Prix et budget", 14],
+  ["Charge de déploiement pour l'équipe", 9],
+  ["Solution déjà en place", 6],
+];
+
+export function StructureObject() {
+  return (
+    <div className={`overflow-hidden ${SHEET}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-land-line px-6 py-3.5 sm:px-7">
+        <span className="text-[14px] font-semibold text-land-ink">La méthode de l&apos;équipe</span>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-land-sunken px-2.5 py-0.5 text-[11.5px] font-medium text-land-muted">
+          <FileUp className="h-3 w-3" aria-hidden /> Importée depuis Notion
+        </span>
+      </div>
+
+      <div className="space-y-5 px-6 py-5 sm:px-7">
+        <section>
+          <Label>Grille du playbook</Label>
+          <ul className="mt-2.5 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+            {STRUCT_DIMS.map(([label, w], i) => (
+              <li key={label} className="land-step-row flex items-center justify-between gap-2 rounded-xl border border-land-line px-3 py-2" style={d(i)}>
+                <span className="truncate text-[12.5px] text-land-ink">{label}</span>
+                <span className="shrink-0 rounded-md bg-land-sunken px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-land-muted">
+                  ×{w}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="border-t border-land-line pt-4">
+          <Label>Étapes et consignes</Label>
+          <div className="mt-2.5 grid grid-cols-1 gap-1.5 sm:grid-cols-3">
+            {[
+              ["R1", "Découverte"],
+              ["R2", "Présentation"],
+              ["R3", "Closing"],
+            ].map(([k, v]) => (
+              <div key={k} className="flex items-center gap-2 rounded-xl border border-land-line px-2.5 py-2">
+                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-land-accent text-[10.5px] font-semibold text-white">{k}</span>
+                <span className="truncate text-[12.5px] font-medium text-land-ink">{v}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="border-t border-land-line pt-4">
+          <Label>Catégories d&apos;objections</Label>
+          <ul className="mt-2.5 flex flex-wrap gap-1.5">
+            {STRUCT_CATS.map(([label, n]) => (
+              <li key={label} className="inline-flex items-center gap-1.5 rounded-full border border-land-line px-2.5 py-1 text-[12px] text-land-ink">
+                {label} <span className="tabular-nums text-land-faint">{n}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="land-step-row mt-2 flex items-center justify-between gap-3 rounded-xl border border-dashed border-land-line px-3 py-2" style={d(4)}>
+            <span className="text-[12.5px] text-land-muted">
+              <span className="font-medium text-land-ink">Suggérée{NB}:</span> Délais de validation juridique · 4{NB}calls
+            </span>
+            <span className="inline-flex shrink-0 items-center gap-1 text-[12px] font-semibold text-land-accent">
+              <Plus className="h-3.5 w-3.5" aria-hidden /> Ajouter
+            </span>
+          </div>
+        </section>
+
+        <section className="flex items-center justify-between gap-3 border-t border-land-line pt-4">
+          <div className="flex -space-x-2">
+            {["thomas", "julie", "karim", "lea"].map((n) => (
+              <Image key={n} src={`/landing/people/avatar-${n}.jpg`} alt="" width={30} height={30} className="h-[30px] w-[30px] rounded-full object-cover ring-2 ring-land-surface" />
+            ))}
+          </div>
+          <span className="text-right text-[12.5px] text-land-muted">4 commerciaux, notés sur la même grille</span>
+        </section>
+      </div>
+      <div className="border-t border-land-line px-6 py-3 text-[12px] text-land-faint sm:px-7">
+        Exemple. Grille, catégories et équipe fictives.
       </div>
     </div>
   );
