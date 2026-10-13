@@ -3,9 +3,10 @@ import { Mail, EyeOff, Ban, Server, ArrowUpRight } from "lucide-react";
 import { SiteChrome } from "@/app/components/landing/SiteChrome";
 import { PageHero } from "@/app/components/landing/sections";
 import { NB } from "@/app/components/landing/team-data";
+import { LEGAL_LINK, LegalBullets, LegalSection, LegalTable, LegalToc } from "@/app/components/landing/legal";
 
 // Politique de confidentialité, refaite le 13/10/2026 dans l'habillage du site
-// public (elle vivait dans le layout minimal de `app/(legal)`).
+// public (elle vivait dans le layout minimal de `app/(legal)`, supprimé depuis).
 //
 // Page lue par la vérification OAuth de Google : l'URL /confidentialite, la
 // mention de la Google API Services User Data Policy (Limited Use), la liste
@@ -20,7 +21,6 @@ export const metadata: Metadata = {
 
 const UPDATED = "13 octobre 2026";
 
-const LINK = "font-medium text-land-ink underline decoration-land-line underline-offset-4 transition-colors hover:decoration-land-accent";
 
 const ESSENTIALS = [
   { icon: Mail, title: "Aucune lecture de vos emails", body: "Brief peut envoyer un email en votre nom, jamais lire votre messagerie." },
@@ -65,41 +65,6 @@ const RETENTION: [string, string][] = [
   ["Données de facturation", "Le temps imposé par la loi (10 ans pour les pièces comptables)."],
 ];
 
-function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
-  return (
-    <section id={id} className="scroll-mt-24 border-t border-land-line pt-10 first:border-t-0 first:pt-0">
-      <h2 className="text-[24px] font-semibold leading-tight tracking-[-0.025em] text-land-ink md:text-[28px]">{title}</h2>
-      <div className="mt-5 space-y-4 text-[16px] leading-[1.7] text-land-muted">{children}</div>
-    </section>
-  );
-}
-
-function Bullets({ items }: { items: React.ReactNode[] }) {
-  return (
-    <ul className="space-y-2.5">
-      {items.map((item, i) => (
-        <li key={i} className="flex gap-3">
-          <span aria-hidden className="mt-[11px] h-1.5 w-1.5 shrink-0 rounded-full bg-land-accent" />
-          <span>{item}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function Table({ rows }: { rows: [string, string][] }) {
-  return (
-    <dl className="divide-y divide-land-line rounded-[20px] bg-land-surface px-5 ring-1 ring-land-line sm:px-6">
-      {rows.map(([k, v]) => (
-        <div key={k} className="grid grid-cols-1 gap-1 py-4 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)] sm:gap-6">
-          <dt className="text-[15px] font-medium text-land-ink">{k}</dt>
-          <dd className="text-[15px] leading-relaxed text-land-muted">{v}</dd>
-        </div>
-      ))}
-    </dl>
-  );
-}
-
 const B = ({ children }: { children: React.ReactNode }) => <b className="font-semibold text-land-ink">{children}</b>;
 
 export default function PrivacyPolicyPage() {
@@ -127,39 +92,26 @@ export default function PrivacyPolicyPage() {
       </section>
 
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-16 lg:py-24">
-        <nav aria-label="Sommaire" className="hidden lg:block">
-          <div className="sticky top-24">
-            <div className="text-[13px] font-semibold uppercase tracking-[0.12em] text-land-faint">Sommaire</div>
-            <ol className="mt-4 space-y-1 border-l border-land-line">
-              {SECTIONS.map((s) => (
-                <li key={s.id}>
-                  <a href={`#${s.id}`} className="-ml-px block border-l border-transparent py-1.5 pl-4 text-[14px] text-land-muted transition-colors hover:border-land-accent hover:text-land-ink">
-                    {s.title}
-                  </a>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </nav>
+        <LegalToc sections={SECTIONS} />
 
         <article className="max-w-[72ch] space-y-10">
-          <Section id="qui" title="Qui sommes-nous">
+          <LegalSection id="qui" title="Qui sommes-nous">
             <p>
               Brief (« nous ») est un logiciel de préparation et d&apos;analyse de rendez-vous commerciaux B2B, édité
               par une société basée en France, destiné aux équipes commerciales.
             </p>
             <p>
               Pour toute question relative à cette politique ou à vos données, écrivez-nous à{" "}
-              <a href="mailto:contact@brief-ai.fr" className={LINK}>contact@brief-ai.fr</a>.
+              <a href="mailto:contact@brief-ai.fr" className={LEGAL_LINK}>contact@brief-ai.fr</a>.
             </p>
-          </Section>
+          </LegalSection>
 
-          <Section id="donnees" title="Les données que nous collectons">
+          <LegalSection id="donnees" title="Les données que nous collectons">
             <p>
               Lorsque vous connectez votre compte Google (ou Microsoft) à Brief, nous accédons, avec votre consentement
               explicite au moment de la connexion, aux données suivantes :
             </p>
-            <Bullets
+            <LegalBullets
               items={[
                 <><B>Identité</B> : nom, adresse email et photo de profil de votre compte Google ou Microsoft.</>,
                 <><B>Agenda</B> : les événements de votre calendrier (horaires, participants, titre du rendez-vous), et la possibilité d&apos;écrire dans la description d&apos;un événement pour y déposer votre brief pré-rendez-vous.</>,
@@ -176,7 +128,7 @@ export default function PrivacyPolicyPage() {
               lui aussi à l&apos;envoi.
             </p>
             <p>Selon les intégrations que vous ou votre organisation activez, nous pouvons aussi traiter :</p>
-            <Bullets
+            <LegalBullets
               items={[
                 <>L&apos;enregistrement, la transcription et l&apos;analyse de vos visios (Google Meet, Teams, Zoom), lorsqu&apos;un bot Brief y est invité.</>,
                 <>Les données de vos contacts et opportunités issues d&apos;un CRM connecté (HubSpot, Pipedrive).</>,
@@ -184,11 +136,11 @@ export default function PrivacyPolicyPage() {
                 <>Des informations publiques sur les entreprises de vos prospects (registre légal français, actualités).</>,
               ]}
             />
-          </Section>
+          </LegalSection>
 
-          <Section id="usages" title="Pourquoi nous les utilisons">
+          <LegalSection id="usages" title="Pourquoi nous les utilisons">
             <p>Ces données servent exclusivement à faire fonctionner Brief pour vous :</p>
-            <Bullets
+            <LegalBullets
               items={[
                 <>Générer un dossier de préparation avant chaque rendez-vous.</>,
                 <>Transcrire et analyser vos appels selon le playbook de votre équipe.</>,
@@ -199,7 +151,7 @@ export default function PrivacyPolicyPage() {
             />
             <div className="rounded-[20px] bg-land-accent-soft p-5 text-land-ink sm:p-6">
               Notre utilisation et notre transfert des informations reçues des API Google respectent la{" "}
-              <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer" className={LINK}>
+              <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer" className={LEGAL_LINK}>
                 Google API Services User Data Policy
               </a>
               , y compris ses exigences d&apos;utilisation limitée (Limited Use). En particulier, les données issues de
@@ -207,21 +159,21 @@ export default function PrivacyPolicyPage() {
               servent jamais à entraîner des modèles d&apos;intelligence artificielle génériques : elles servent
               uniquement à générer, pour vous, les briefs, analyses et brouillons décrits ci-dessus.
             </div>
-          </Section>
+          </LegalSection>
 
-          <Section id="prestataires" title="Avec qui nous les partageons">
+          <LegalSection id="prestataires" title="Avec qui nous les partageons">
             <p>
               Nous ne vendons aucune donnée. Certains traitements sont confiés à des prestataires, chacun n&apos;ayant
               accès qu&apos;aux données nécessaires à sa tâche :
             </p>
-            <Table rows={PROVIDERS} />
+            <LegalTable rows={PROVIDERS} />
             <p>
               Nous pouvons également communiquer des données si la loi nous y oblige, ou pour protéger nos droits, notre
               sécurité ou celle de nos utilisateurs.
             </p>
-          </Section>
+          </LegalSection>
 
-          <Section id="hebergement" title="Hébergement et localisation">
+          <LegalSection id="hebergement" title="Hébergement et localisation">
             <p>
               La base de données et l&apos;application sont hébergées à Paris. Les enregistrements et transcriptions de
               vos visios sont traités en Europe, à Francfort (région eu-central-1 de Recall.ai). Les briefs et analyses
@@ -231,62 +183,62 @@ export default function PrivacyPolicyPage() {
               Nous privilégions des prestataires et des hébergements européens ou conformes au RGPD pour l&apos;ensemble
               de nos traitements.
             </p>
-          </Section>
+          </LegalSection>
 
-          <Section id="conservation" title="Durées de conservation">
+          <LegalSection id="conservation" title="Durées de conservation">
             <p>
               Nous conservons vos données le temps nécessaire à la fourniture du service, tant que votre compte est
               actif au sein de votre organisation. Les enregistrements vidéo de vos visios ne sont jamais stockés
               durablement par Brief : nous conservons la transcription et l&apos;analyse qui en sont issues, pas la vidéo
               elle-même.
             </p>
-            <Table rows={RETENTION} />
+            <LegalTable rows={RETENTION} />
             <p>
               En cas de résiliation de l&apos;abonnement de votre organisation ou de suppression de votre compte, vos
               données sont supprimées ou anonymisées, sauf obligation légale de conservation plus longue (par exemple
               pour la facturation).
             </p>
-          </Section>
+          </LegalSection>
 
-          <Section id="droits" title="Vos droits">
+          <LegalSection id="droits" title="Vos droits">
             <p>
               Conformément au RGPD, vous disposez d&apos;un droit d&apos;accès, de rectification, d&apos;effacement, de
               portabilité et d&apos;opposition sur vos données personnelles. Pour l&apos;exercer, écrivez-nous à{" "}
-              <a href="mailto:contact@brief-ai.fr" className={LINK}>contact@brief-ai.fr</a>. Vous pouvez également
+              <a href="mailto:contact@brief-ai.fr" className={LEGAL_LINK}>contact@brief-ai.fr</a>. Vous pouvez également
               introduire une réclamation auprès de la CNIL (cnil.fr).
             </p>
             <p>
               Vous pouvez à tout moment révoquer l&apos;accès de Brief à votre compte Google depuis la page{" "}
-              <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer" className={LINK}>
+              <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer" className={LEGAL_LINK}>
                 myaccount.google.com/permissions
               </a>
               . La révocation prend effet immédiatement ; certaines fonctionnalités de Brief (agenda, email) cessent
               alors de fonctionner jusqu&apos;à une nouvelle connexion.
             </p>
-          </Section>
+          </LegalSection>
 
-          <Section id="securite" title="Sécurité">
+          <LegalSection id="securite" title="Sécurité">
             <p>
               Nous mettons en œuvre des mesures techniques et organisationnelles raisonnables pour protéger vos données
               (chiffrement en transit, accès restreint à la base de données, isolation des données entre
               organisations). Aucun système n&apos;étant infaillible, nous ne pouvons garantir une sécurité absolue.
             </p>
-          </Section>
+          </LegalSection>
 
-          <Section id="cookies" title="Cookies">
+          <LegalSection id="cookies" title="Cookies">
             <p>
               Brief utilise uniquement des cookies strictement nécessaires au fonctionnement du service, notamment un
               cookie de session pour vous garder connecté. Nous n&apos;utilisons pas de cookies publicitaires ni de
               traceurs tiers à des fins de suivi marketing.
             </p>
-          </Section>
+          </LegalSection>
 
-          <Section id="modifications" title="Modifications de cette politique">
+          <LegalSection id="modifications" title="Modifications de cette politique">
             <p>
               Nous pouvons mettre à jour cette politique, par exemple lors de l&apos;ajout d&apos;une nouvelle
               fonctionnalité ou intégration. La date de mise à jour en haut de cette page indique la dernière révision.
             </p>
-          </Section>
+          </LegalSection>
 
           <div className="flex flex-col items-start gap-4 rounded-[24px] bg-land-surface p-6 ring-1 ring-land-line sm:flex-row sm:items-center sm:justify-between sm:p-8">
             <div>

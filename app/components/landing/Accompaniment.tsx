@@ -18,8 +18,13 @@ import { ValdorLogo } from "./brands";
 import { NB } from "./team-data";
 
 // « D'abord l'outil, ensuite on vous accompagne » (12/10/2026), sur le modèle
-// de la section « 4 leviers » d'uptoo.fr : une grille 2 × 2, chaque levier
-// illustré sur un aplat pastel, puis le parcours.
+// de la section « 4 leviers » d'uptoo.fr : une grille 2 × 2 illustrée sur des
+// aplats pastel, puis le parcours.
+// Depuis le 13/10/2026, chaque carte dit quel levier de la méthode (« Quatre
+// leviers. Un seul objectif : le ROI. ») elle met en place, dans la couleur
+// de ce levier : Équipez = 1 et 2 (bleu), Coachez = 3 Progresser (soleil),
+// Structurez = 4 Structurer (lilas). Configurez n'est pas un levier : aplat
+// neutre. Sans ce lien, les deux séries de quatre se faisaient concurrence.
 // L'outil (briefs, analyse et suivi des calls) est la porte d'entrée ; le
 // reste se déploie avec un expert, un point par semaine — c'est le parcours
 // réel de lib/parcours.ts (huit semaines, une brique ouverte par semaine).
@@ -130,11 +135,14 @@ export function Accompaniment() {
           outils de l&apos;équipe. Une brique à la fois, au rythme de l&apos;équipe.
         </p>
 
-        <ul className="mt-14 grid grid-cols-1 gap-x-8 gap-y-14 md:grid-cols-2 lg:mt-16">
+        <p className="mt-14 text-[13px] font-semibold uppercase tracking-[0.12em] text-land-faint lg:mt-16">
+          Les quatre leviers, mis en place avec vous
+        </p>
+        <ul className="mt-6 grid grid-cols-1 gap-x-8 gap-y-14 md:grid-cols-2">
           {/* 1. Le produit d'appel */}
           <Lever
             tone="bg-land-accent-soft"
-            tag="Dès la semaine 1"
+            tag="Leviers 1 et 2 · dès la semaine 1"
             title="Équipez vos commerciaux"
             body="Un brief prêt la veille de chaque rendez-vous, chaque visio enregistrée et notée sur votre grille, l'historique de chaque prospect. Gratuit pour commencer, sans carte bancaire."
             href="/produit#methode"
@@ -169,8 +177,8 @@ export function Accompaniment() {
 
           {/* 2. Le coaching */}
           <Lever
-            tone="bg-land-coral-soft"
-            tag="Avec votre expert"
+            tone="bg-land-sun-soft"
+            tag="Levier 3 · avec votre expert"
             title="Coachez vos équipes"
             body="Chaque semaine, votre expert prépare le point à partir des vrais calls de l'équipe : le call exemplaire à réécouter, les objections qui résistent, puis l'entraînement de vos commerciaux sur ces objections-là."
             href={SALES_CONTACT.bookingUrl}
@@ -180,12 +188,12 @@ export function Accompaniment() {
               <Image src="/landing/people/coaching.jpg" alt="" fill sizes="(min-width: 768px) 30vw, 80vw" className="object-cover" />
             </div>
             <div className="absolute bottom-8 right-5 w-[220px] rounded-2xl bg-land-surface p-4 shadow-[var(--land-shadow)] sm:right-7">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.07em] text-land-coral-ink">Point de la semaine</div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.07em] text-land-sun-ink">Point de la semaine</div>
               <div className="mt-1 text-[14px] font-semibold text-land-ink">Semaine 5 · Objections</div>
               <ul className="mt-2.5 space-y-1.5 text-[12.5px] text-land-muted">
                 {["Call exemplaire à réécouter", "3 objections qui résistent", "Réponses écrites ensemble"].map((t) => (
                   <li key={t} className="flex items-center gap-2">
-                    <Check className="h-3.5 w-3.5 shrink-0 text-land-coral-ink" aria-hidden /> {t}
+                    <Check className="h-3.5 w-3.5 shrink-0 text-land-sun-ink" aria-hidden /> {t}
                   </li>
                 ))}
               </ul>
@@ -194,11 +202,11 @@ export function Accompaniment() {
 
           {/* 3. La méthode */}
           <Lever
-            tone="bg-land-sun-soft"
-            tag="Avec votre expert"
+            tone="bg-land-lilac-soft"
+            tag="Levier 4 · avec votre expert"
             title="Structurez votre méthode"
-            body="Votre expert construit avec vous la grille de l'équipe et les consignes de chaque étape R1, R2, R3, puis installe les rituels : le point hebdomadaire, le bilan du vendredi, les réponses de référence aux objections."
-            href="/produit#manager"
+            body="Votre expert construit avec vous la grille de l'équipe et les consignes de chaque étape R1, R2, R3, puis installe les rituels : le point hebdomadaire, le bilan de la semaine, les réponses de référence aux objections."
+            href="/produit#structurer"
           >
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
               <div className="relative flex flex-col items-center gap-3">
@@ -207,10 +215,10 @@ export function Accompaniment() {
                   { icon: ListChecks, label: "Grille de l'équipe" },
                   { icon: Layers, label: "Étapes R1 · R2 · R3" },
                   { icon: CalendarCheck, label: "Point hebdomadaire" },
-                  { icon: Mail, label: "Bilan du vendredi" },
+                  { icon: Mail, label: "Bilan de la semaine" },
                 ].map((st) => (
                   <div key={st.label} className="relative flex items-center gap-3 rounded-xl bg-land-surface py-2 pl-2 pr-4 shadow-[var(--land-shadow)]">
-                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-land-sun-soft text-land-sun-ink">
+                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-land-lilac-soft text-land-lilac-ink">
                       <st.icon className="h-4 w-4" aria-hidden />
                     </span>
                     <span className="whitespace-nowrap text-[13px] font-medium text-land-ink">{st.label}</span>
@@ -228,7 +236,7 @@ export function Accompaniment() {
               (Playbook), catégories d'objections, style des emails de suivi,
               canaux d'envoi (préférences de notification), modules ouverts. */}
           <Lever
-            tone="bg-land-lilac-soft"
+            tone="bg-land-sunken"
             tag="Avec votre expert"
             title="Configurez Brief pour votre équipe"
             body="Votre expert règle Brief avec vous, à partir de vos besoins : votre grille et vos étapes, vos catégories d'objections, le ton de vos emails de suivi, les outils où tout doit arriver. Au bout de huit semaines, on fait le bilan et on décide ensemble du rythme de suivi."
