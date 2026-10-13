@@ -286,7 +286,12 @@ function TranscriptSection({
                     >
                       <div className="flex items-center justify-between mb-1 gap-2">
                         <div className="flex items-center gap-1.5 min-w-0" onClick={(e) => e.stopPropagation()}>
-                          {editingSpeakerId === turn.speakerId ? (
+                          {/* `editingSpeakerId !== null` : un transcript en texte brut
+                              (call importé, sans transcript_json) n'a pas
+                              d'identifiant d'intervenant. Sans cette garde,
+                              null === null ouvrait un champ vide à chaque tour
+                              de parole à la place du nom. */}
+                          {editingSpeakerId !== null && editingSpeakerId === turn.speakerId ? (
                             <input
                               autoFocus
                               value={editDraft}
@@ -659,6 +664,11 @@ export default function FeedbackDetailClient({
     ? getEffectiveScoresForDisplay({ scores: a.scores, playbook_snapshot: a.playbook_snapshot })
     : [];
   const displayName = formatContactDisplayName(call.company_name, call.contact_email);
+  const lowest = effectiveScores.reduce<(typeof effectiveScores)[number] | null>(
+    (min, d) => (min === null || d.score < min.score ? d : min),
+    null
+  );
+  const weakest = lowest && lowest.score < 3 ? lowest : null;
 
   const globalColor =
     globalScore === null
@@ -727,7 +737,7 @@ export default function FeedbackDetailClient({
   // l'ouverture du module, chaque call a déjà le sien.
   const followUpEnabled = isModuleEnabled("follow_up");
   const TABS: { key: Tab; label: string }[] = [
-    { key: "overview", label: "Overview" },
+    { key: "overview", label: "Vue d'ensemble" },
     ...(followUpEnabled ? [{ key: "email" as const, label: "Email de suivi" }] : []),
   ];
   const activeTab: Tab = tab === "email" && !followUpEnabled ? "overview" : tab;
@@ -792,6 +802,11 @@ export default function FeedbackDetailClient({
               )}
             </div>
           </div>
+          {/* Le verdict de l'analyse en une phrase. Il était rédigé pour chaque
+              call mais n'apparaissait que dans l'historique d'un contact. */}
+          {a?.summary && (
+            <p className="mt-4 border-t border-border pt-4 text-[15px] leading-relaxed text-slate-700">{a.summary}</p>
+          )}
         </div>
 
         {noSpeech ? (
@@ -836,6 +851,35 @@ export default function FeedbackDetailClient({
 
               {activeTab === "overview" && (
                 <div className="space-y-5">
+                  {/* À retenir, en tête : ce que le commercial doit faire après
+                      le call (les prochaines étapes, qui étaient tout en bas)
+                      et le point faible de ce call — la dimension la moins
+                      bien notée, montrée seulement sous 3/5. */}
+                  {((a.next_steps ?? []).length > 0 || weakest) && (
+                    <div className={`grid grid-cols-1 gap-5 ${(a.next_steps ?? []).length > 0 && weakest ? "sm:grid-cols-2" : ""}`}>
+                      {(a.next_steps ?? []).length > 0 && (
+                        <div className="rounded-2xl bg-[color:var(--lavender)] p-5">
+                          <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[color:var(--violet)] mb-3">Prochaines étapes</h2>
+                          <List items={a.next_steps ?? []} icon="→" color="text-[color:var(--violet)]" />
+                        </div>
+                      )}
+                      {weakest && (
+                        <div className={`${CARD} p-5`}>
+                          <h2 className={`${LABEL} mb-3`}>À travailler sur ce call</h2>
+                          <div className="flex items-baseline justify-between gap-3">
+                            <p className="text-[15px] font-semibold text-slate-900">{weakest.label}</p>
+                            <span className="shrink-0 rounded-full bg-[color:var(--danger-soft)] px-2 py-0.5 text-[11.5px] font-semibold tabular-nums text-rose-700">
+                              {weakest.score.toFixed(1)}/5
+                            </span>
+                          </div>
+                          {weakest.description && (
+                            <p className="mt-1.5 text-[14px] leading-relaxed text-slate-600">{weakest.description}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Points clés — generated on demand (not by analyzeCall), cached
                       on call_analysis.key_points. */}
                   <KeyPointsBlock callId={call.id} initialKeyPoints={a.key_points} />
@@ -904,13 +948,6 @@ export default function FeedbackDetailClient({
                     </div>
                   )}
 
-                  {/* Next steps */}
-                  {(a.next_steps ?? []).length > 0 && (
-                    <div className="rounded-2xl bg-[color:var(--lavender)] p-5">
-                      <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[color:var(--violet)] mb-3">Prochaines étapes</h2>
-                      <List items={a.next_steps ?? []} icon="→" color="text-[color:var(--violet)]" />
-                    </div>
-                  )}
                 </div>
               )}
 
