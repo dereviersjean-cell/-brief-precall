@@ -26,12 +26,26 @@ function formatDateTime(iso: string) {
 // encadrés à dire en rendez-vous, neutre pour les sections.
 const LABEL = "text-[11px] font-semibold uppercase tracking-[0.08em]";
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+// Un des trois temps du brief : numéro, titre, puis ses rubriques sur deux
+// colonnes (une seule sous `md`).
+function Part({ n, title, children }: { n: number; title: string; children: ReactNode }) {
   return (
-    <section>
-      <h2 className={`${LABEL} text-slate-500`}>{title}</h2>
-      <div className="mt-3">{children}</div>
+    <section className="border-t border-border pt-8 first:border-t-0 first:pt-0">
+      <div className="flex items-baseline gap-3">
+        <span className="text-[13px] font-semibold tabular-nums text-[color:var(--violet)]">0{n}</span>
+        <h2 className="text-[20px] font-semibold tracking-[-0.02em] text-slate-900">{title}</h2>
+      </div>
+      <div className="mt-5 grid grid-cols-1 gap-x-10 gap-y-8 md:grid-cols-2">{children}</div>
     </section>
+  );
+}
+
+function Item({ label, wide = false, children }: { label: string; wide?: boolean; children: ReactNode }) {
+  return (
+    <div className={`min-w-0 ${wide ? "md:col-span-2" : ""}`}>
+      <h3 className="text-[11.5px] font-semibold uppercase tracking-[0.09em] text-slate-500">{label}</h3>
+      <div className="mt-2.5">{children}</div>
+    </div>
   );
 }
 
@@ -778,244 +792,298 @@ export default function BriefClient({
         )}
       </div>
 
-      <main className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-8">
-        {/* Le brief tient sur une seule feuille, comme sur le site : en-tête
-            (statut, date), titre, accroche, puis le corps en deux colonnes. */}
-        <div className="overflow-hidden rounded-[20px] border border-border bg-white">
-          {/* Meeting header */}
-          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border px-5 py-3.5 sm:px-7">
-            <div className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11.5px] font-semibold ${badge.bg} ${badge.fg}`}>
+      <main className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-8 sm:py-10">
+        {/* Le brief en trois temps (maquette D validée par Jean le
+            13/10/2026) : 01 le prospect, 02 les angles d'attaque, 03 ce
+            qu'on garde sous les yeux pendant l'appel. Chaque temps en deux
+            colonnes, de petites étiquettes, pas de cartes : la page se lit
+            comme un document bien rangé. */}
+        <header className="border-b border-border pb-8">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13.5px] text-slate-500">
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[12px] font-semibold ${badge.bg} ${badge.fg}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
               {badge.label}
-            </div>
+            </span>
             {/* La date et l'heure du rendez-vous, et rien d'autre : la
                 durée était toujours 60 min par défaut et le secteur un
                 tiret. Vide si la date est inconnue (brief enregistré
                 avant la migration 013) — mieux que la fausse date que
                 cette ligne affichait, celle du chargement de la page. */}
             {meeting.date && (
-              <p className="text-[13px] tabular-nums text-slate-500">{formatDateTime(meeting.date)}</p>
-            )}
-          </div>
-
-          <div className="px-5 pt-6 sm:px-7">
-            <div className="flex items-center gap-3 sm:gap-4">
-              {/* Le logo de l'entreprise plutôt que l'initiale du titre du
-                  rendez-vous — qui donnait un « R » pour « Rendez vous
-                  bewtr », c'est-à-dire rien. Source privilégiée : le logo de
-                  l'annuaire déjà enregistré avec le contact ; à défaut, le
-                  domaine de son adresse. */}
-              <CompanyLogo
-                src={brief?.contact?.company?.logoUrl}
-                domain={companyDomainFromEmail(contactEmail)}
-                name={brief?.contact?.company?.name ?? meeting.company}
-                alt={brief?.contact?.company?.name ?? displayName}
-                className="h-11 w-11 shrink-0 rounded-xl border border-border bg-white object-contain p-1"
-                fallback={
-                  <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-slate-100 text-[18px] font-semibold text-slate-500">
-                    {(brief?.contact?.company?.name ?? meeting.company).charAt(0).toUpperCase()}
-                  </div>
-                }
-              />
-              <h1 className="min-w-0 text-[24px] font-semibold leading-tight tracking-[-0.02em] text-slate-900 sm:text-[28px]">
-                {displayName}
-              </h1>
-            </div>
-
-            {/* Plafond quotidien de l'accès « briefs » : le contact commercial
-                plutôt qu'une simple attente. */}
-            {rateLimited?.quotaReached && (
-              <div className="mt-5">
-                <TalkToSales
-                  variant="banner"
-                  title={rateLimited.message}
-                  description="Besoin de plus de briefs, ou de l'enregistrement et de l'analyse de vos rendez-vous ? Parlons-en."
-                />
-              </div>
-            )}
-
-            {/* Rate limit banner */}
-            {rateLimited && !rateLimited.quotaReached && (
-              <div className="mt-5 flex items-start gap-3 rounded-2xl bg-[color:var(--warning-soft)] px-5 py-4">
-                <svg className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
+              <span className="inline-flex items-center gap-1.5 tabular-nums">
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                <div>
-                  <p className="mb-0.5 text-[14px] font-semibold text-amber-800">Limite de génération atteinte</p>
-                  <p className="text-[13.5px] text-amber-700">{rateLimited.message}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Error banner */}
-            {error && (
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-[color:var(--danger-soft)] px-5 py-4">
-                <div className="flex items-center gap-3">
-                  <svg className="w-5 h-5 text-rose-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  <p className="text-[13.5px] text-rose-700">{error}</p>
-                </div>
-                <button
-                  onClick={() => generateBrief()}
-                  disabled={isGenerating}
-                  className="inline-flex h-8 shrink-0 items-center rounded-lg border border-rose-200 bg-white px-3 text-[13px] font-medium text-rose-700 hover:bg-rose-50 transition-colors disabled:opacity-50"
-                >
-                  Réessayer
-                </button>
-              </div>
-            )}
-
-            {/* Mock data banner — masqué pendant la génération, sinon il
-                s'affiche en double avec l'animation plein écran ci-dessous. */}
-            {!isAiGenerated && !error && brief && !isGenerating && (
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-[color:var(--warning-soft)] px-5 py-4">
-                <div className="flex items-center gap-3">
-                  <svg className="w-5 h-5 text-amber-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <p className="text-[13.5px] text-amber-800">
-                    Ce brief utilise des données exemples. Générez une version personnalisée par l&apos;IA.
-                  </p>
-                </div>
-                <button
-                  onClick={() => generateBrief()}
-                  disabled={isGenerating}
-                  className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg bg-[color:var(--primary)] px-4 text-[13px] font-medium text-white hover:brightness-110 transition disabled:opacity-60"
-                >
-                  {isGenerating ? (
-                    <>
-                      <Spinner />
-                      Génération...
-                    </>
-                  ) : (
-                    "Générer avec l'IA →"
-                  )}
-                </button>
-              </div>
+                {formatDateTime(meeting.date)}
+              </span>
             )}
           </div>
+          <div className="mt-4 flex items-center gap-4">
+            {/* Le logo de l'entreprise plutôt que l'initiale du titre du
+                rendez-vous — qui donnait un « R » pour « Rendez vous
+                bewtr », c'est-à-dire rien. Source privilégiée : le logo de
+                l'annuaire déjà enregistré avec le contact ; à défaut, le
+                domaine de son adresse. */}
+            <CompanyLogo
+              src={brief?.contact?.company?.logoUrl}
+              domain={companyDomainFromEmail(contactEmail)}
+              name={brief?.contact?.company?.name ?? meeting.company}
+              alt={brief?.contact?.company?.name ?? displayName}
+              className="h-12 w-12 shrink-0 rounded-xl border border-border bg-white object-contain p-1"
+              fallback={
+                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-slate-100 text-[18px] font-semibold text-slate-500">
+                  {(brief?.contact?.company?.name ?? meeting.company).charAt(0).toUpperCase()}
+                </div>
+              }
+            />
+            <h1 className="min-w-0 text-[26px] font-semibold leading-tight tracking-[-0.035em] text-slate-900 sm:text-[32px]">
+              {displayName}
+            </h1>
+          </div>
+        </header>
 
-          {/* Génération ou régénération en cours : même animation dans les
-              deux cas — remplace le brief existant plutôt que de le griser en
-              fond, puisqu'il est de toute façon sur le point d'être remplacé. */}
-          {isGenerating && <GeneratingProgress company={meeting.company} isRegenerating={!!brief} />}
+        <div className="mt-6 empty:hidden">
+          {/* Plafond quotidien de l'accès « briefs » : le contact commercial
+              plutôt qu'une simple attente. */}
+          {rateLimited?.quotaReached && (
+            <div className="mt-5">
+              <TalkToSales
+                variant="banner"
+                title={rateLimited.message}
+                description="Besoin de plus de briefs, ou de l'enregistrement et de l'analyse de vos rendez-vous ? Parlons-en."
+              />
+            </div>
+          )}
 
-          {/* Brief content */}
-          {brief && !isGenerating && (
-            <div>
-              <div className="space-y-4 px-5 pt-5 sm:px-7">
-                {/* Suggested opening line */}
-                {brief.suggestedOpeningLine && (
-                  <div className="rounded-2xl bg-[color:var(--lavender)] px-5 py-4">
-                    <p className={`${LABEL} text-[color:var(--violet)]`}>
-                      Accroche suggérée
-                    </p>
-                    <p className="mt-1.5 text-[16.5px] font-medium leading-snug text-slate-900 sm:text-[18px]">
-                      «&nbsp;{brief.suggestedOpeningLine}&nbsp;»
-                    </p>
-                  </div>
+          {/* Rate limit banner */}
+          {rateLimited && !rateLimited.quotaReached && (
+            <div className="mt-5 flex items-start gap-3 rounded-2xl bg-[color:var(--warning-soft)] px-5 py-4">
+              <svg className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
+              </svg>
+              <div>
+                <p className="mb-0.5 text-[14px] font-semibold text-amber-800">Limite de génération atteinte</p>
+                <p className="text-[13.5px] text-amber-700">{rateLimited.message}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Error banner */}
+          {error && (
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-[color:var(--danger-soft)] px-5 py-4">
+              <div className="flex items-center gap-3">
+                <svg className="w-5 h-5 text-rose-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <p className="text-[13.5px] text-rose-700">{error}</p>
+              </div>
+              <button
+                onClick={() => generateBrief()}
+                disabled={isGenerating}
+                className="inline-flex h-8 shrink-0 items-center rounded-lg border border-rose-200 bg-white px-3 text-[13px] font-medium text-rose-700 hover:bg-rose-50 transition-colors disabled:opacity-50"
+              >
+                Réessayer
+              </button>
+            </div>
+          )}
+
+          {/* Mock data banner — masqué pendant la génération, sinon il
+              s'affiche en double avec l'animation plein écran ci-dessous. */}
+          {!isAiGenerated && !error && brief && !isGenerating && (
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-[color:var(--warning-soft)] px-5 py-4">
+              <div className="flex items-center gap-3">
+                <svg className="w-5 h-5 text-amber-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-[13.5px] text-amber-800">
+                  Ce brief utilise des données exemples. Générez une version personnalisée par l&apos;IA.
+                </p>
+              </div>
+              <button
+                onClick={() => generateBrief()}
+                disabled={isGenerating}
+                className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg bg-[color:var(--primary)] px-4 text-[13px] font-medium text-white hover:brightness-110 transition disabled:opacity-60"
+              >
+                {isGenerating ? (
+                  <>
+                    <Spinner />
+                    Génération...
+                  </>
+                ) : (
+                  "Générer avec l'IA →"
+                )}
+              </button>
+            </div>
+          )}
+        
+        </div>
+
+        {/* Génération ou régénération en cours : même animation dans les
+            deux cas — remplace le brief existant plutôt que de le griser en
+            fond, puisqu'il est de toute façon sur le point d'être remplacé. */}
+        {isGenerating && (
+          <div className="mt-8 overflow-hidden rounded-[20px] border border-border bg-white">
+            <GeneratingProgress company={meeting.company} isRegenerating={!!brief} />
+          </div>
+        )}
+
+        {brief && !isGenerating && (
+          <div className="mt-10 space-y-10">
+            <Part n={1} title="Le prospect">
+              <Item label="Contact">
+                {/* brief.contact plutôt que meeting.contacts (toujours vide
+                    — jamais alimenté) : construit côté serveur à partir
+                    d'Apollo quand un contactEmail est connu, avec repli sur
+                    le seul email si l'enrichissement échoue ou n'est pas
+                    configuré (cf. lib/apollo.ts). */}
+                {/* brief.contact plutôt que meeting.contacts (toujours vide
+                    — jamais alimenté) : construit côté serveur à partir
+                    d'Apollo quand un contactEmail est connu, avec repli sur
+                    le seul email si l'enrichissement échoue ou n'est pas
+                    configuré (cf. lib/apollo.ts). */}
+                {brief.contact ? (
+                  <ContactCard contact={brief.contact} notFound={contactEnriched === false} />
+                ) : (
+                  !editingContact && (
+                    <p className="text-[13px] text-slate-500">Aucun contact identifié pour ce rendez-vous.</p>
+                  )
                 )}
 
-                {/* Historique relationnel */}
-                {brief.historiqueRelationnel && (
-                  // Encadré neutre : l'historique est un contexte, pas une
-                  // alerte — l'ambre le faisait lire comme un avertissement.
-                  <div className="rounded-2xl bg-slate-100/70 px-5 py-4">
-                    <p className={`${LABEL} flex items-center gap-1.5`}>
-                      <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      Historique avec ce contact
+                {/* Saisie du contact — l'adresse est optionnelle à la
+                    création d'un RDV manuel, il faut donc pouvoir la
+                    renseigner ou la corriger ensuite. Met à jour la seule
+                    fiche contact, sans relancer la génération du brief
+                    (~54s et un appel Claude pour une donnée qui n'en dépend
+                    pas). */}
+                {editingContact ? (
+                  <div className="mt-3 space-y-2.5">
+                    <div>
+                      <label className="mb-1 block text-[12px] font-medium text-slate-600">
+                        Nom et prénom
+                      </label>
+                      <input
+                        type="text"
+                        value={contactNameInput}
+                        onChange={(e) => setContactNameInput(e.target.value)}
+                        autoFocus
+                        placeholder="ex. Edmond Dantès"
+                        className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") saveContact();
+                          if (e.key === "Escape") setEditingContact(false);
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[12px] font-medium text-slate-600">
+                        Email (optionnel)
+                      </label>
+                      <input
+                        type="email"
+                        value={contactInput}
+                        onChange={(e) => setContactInput(e.target.value)}
+                        placeholder="prenom@entreprise.com"
+                        className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") saveContact();
+                          if (e.key === "Escape") setEditingContact(false);
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[12px] font-medium text-slate-600">
+                        Entreprise
+                      </label>
+                      <input
+                        type="text"
+                        value={contactCompanyInput}
+                        onChange={(e) => setContactCompanyInput(e.target.value)}
+                        placeholder="ex. BE WTR"
+                        className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") saveContact();
+                          if (e.key === "Escape") setEditingContact(false);
+                        }}
+                      />
+                    </div>
+                    {/* Nom complet + entreprise exacte : c'est la
+                        combinaison qui permet de retrouver la personne. Un
+                        prénom seul, ou une raison sociale approximative, ne
+                        remontent rien. */}
+                    <p className="text-[12px] leading-relaxed text-slate-500">
+                      Le nom complet (prénom + nom) suffit, même sans email. L&apos;orthographe de
+                      l&apos;entreprise n&apos;a pas besoin d&apos;être exacte.
                     </p>
-                    <p className="mt-1.5 text-[14px] leading-relaxed text-slate-900">
-                      {brief.historiqueRelationnel}
-                    </p>
-                  </div>
-                )}
-
-                {/* Historique des calls */}
-                {callHistory.length > 0 && (
-                  <div className="pt-2">
-                    <p className={`${LABEL} text-slate-500`}>
-                      Calls précédents
-                    </p>
-                    <div className="mt-2.5 divide-y divide-border overflow-hidden rounded-2xl border border-border">
-                      {callHistory.map((c) => (
-                        <Link
-                          key={c.id}
-                          href={`/feedback/${c.id}`}
-                          className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors group"
-                        >
-                          <span className="text-[13px] text-slate-700 group-hover:text-slate-900 transition-colors">
-                            {formatCallDate(c.date)}
-                          </span>
-                          <div className="flex items-center gap-2 shrink-0">
-                            {c.follow_up_sent_at && (
-                              <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-emerald-700">
-                                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                                  <path d="M1.5 8.67v8.58a3 3 0 003 3h15a3 3 0 003-3V8.67l-8.928 5.493a3 3 0 01-3.144 0L1.5 8.67z" />
-                                  <path d="M22.5 6.908V6.75a3 3 0 00-3-3h-15a3 3 0 00-3 3v.158l9.714 5.978a1.5 1.5 0 001.572 0L22.5 6.908z" />
-                                </svg>
-                                Envoyé
-                              </span>
-                            )}
-                            {c.sentiment && (
-                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${sentimentCls[c.sentiment] ?? "bg-slate-100 text-slate-600"}`}>
-                                {c.sentiment}
-                              </span>
-                            )}
-                            {c.global_score !== null && (
-                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold tabular-nums ${callScoreCls(c.global_score)}`}>
-                                {c.global_score.toFixed(1)}/5
-                              </span>
-                            )}
-                            <svg className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                            </svg>
-                          </div>
-                        </Link>
-                      ))}
+                    {contactError && <p className="text-[12px] text-rose-700">{contactError}</p>}
+                    <div className="flex gap-2 pt-0.5">
+                      <button
+                        onClick={() => setEditingContact(false)}
+                        className="inline-flex h-8 flex-1 items-center justify-center rounded-lg border border-border bg-white px-3 text-[12.5px] font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                      >
+                        Annuler
+                      </button>
+                      <button
+                        onClick={saveContact}
+                        disabled={(!contactInput.trim() && !contactNameInput.trim()) || contactSaving}
+                        className="inline-flex h-8 flex-1 items-center justify-center rounded-lg bg-[color:var(--primary)] px-3 text-[12.5px] font-medium text-white hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {contactSaving ? "Recherche…" : "Enregistrer"}
+                      </button>
                     </div>
                   </div>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setContactInput(brief.contact?.email ?? "");
+                      // Uniquement si le nom vient d'un enrichissement
+                      // réussi (un poste l'accompagne). Sinon il a été
+                      // DÉDUIT de l'adresse — « gautier@… » donne
+                      // « Gautier », un prénom seul, avec lequel la
+                      // recherche ne peut pas aboutir. Le pré-remplir
+                      // revenait à faire revalider une saisie condamnée.
+                      setContactNameInput(brief.contact?.title ? brief.contact.name : "");
+                      setContactCompanyInput(meeting.company);
+                      setContactError(null);
+                      setEditingContact(true);
+                    }}
+                    className="mt-3 inline-flex h-8 w-full items-center justify-center rounded-lg border border-border bg-white text-[12.5px] font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                  >
+                    {brief.contact ? "Modifier le contact" : "Ajouter un contact"}
+                  </button>
                 )}
-              </div>
+              
+              </Item>
 
-              {/* Une seule colonne sous `lg`. À trois colonnes sur 390 px, la
-                  principale tombait à ~195 px et la latérale à ~98 px : le texte
-                  se coupait tous les trois mots et les pastilles de vocabulaire
-                  s'empilaient une lettre par ligne. */}
-              <div className="grid grid-cols-1 gap-7 px-5 pb-7 pt-7 sm:px-7 lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-6">
-                {/* Main column */}
-                <div className="min-w-0 space-y-7">
-                  <Section title="Vue d'ensemble">
-                    <p className="text-[14px] leading-relaxed text-slate-900">{brief.companyOverview}</p>
-                    {(brief.revenue || brief.employees || meeting.website) && (
-                      <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 border-t border-border pt-3">
-                        {brief.revenue && (
-                          <div>
-                            <p className="text-[12px] text-slate-500">Revenus</p>
-                            <p className="text-[15px] font-semibold tabular-nums text-slate-900">{brief.revenue}</p>
-                          </div>
-                        )}
-                        {brief.employees && (
-                          <div>
-                            <p className="text-[12px] text-slate-500">Effectif</p>
-                            <p className="text-[15px] font-semibold tabular-nums text-slate-900">{brief.employees}</p>
-                          </div>
-                        )}
-                        {meeting.website && (
-                          <div className="min-w-0">
-                            <p className="text-[12px] text-slate-500">Site web</p>
-                            <p className="break-all text-[15px] font-semibold text-[color:var(--violet)]">{meeting.website}</p>
-                          </div>
-                        )}
+              <Item label="L'entreprise">
+                <p className="text-[14px] leading-relaxed text-slate-900">{brief.companyOverview}</p>
+                {(brief.revenue || brief.employees || meeting.website) && (
+                  <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 border-t border-border pt-3">
+                    {brief.revenue && (
+                      <div>
+                        <p className="text-[12px] text-slate-500">Revenus</p>
+                        <p className="text-[15px] font-semibold tabular-nums text-slate-900">{brief.revenue}</p>
                       </div>
                     )}
-                  </Section>
+                    {brief.employees && (
+                      <div>
+                        <p className="text-[12px] text-slate-500">Effectif</p>
+                        <p className="text-[15px] font-semibold tabular-nums text-slate-900">{brief.employees}</p>
+                      </div>
+                    )}
+                    {meeting.website && (
+                      <div className="min-w-0">
+                        <p className="text-[12px] text-slate-500">Site web</p>
+                        <p className="break-all text-[15px] font-semibold text-[color:var(--violet)]">{meeting.website}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              
+              </Item>
 
+              {((brief.actualites && brief.actualites.length > 0) || brief.recentNews.length > 0) && (
+                <Item label="Actualités récentes">
                   {brief.actualites && brief.actualites.length > 0 && (
-                    <Section title="Actualités récentes">
                       <div className="-mx-2.5 space-y-0.5">
                         {brief.actualites.map((article, i) => (
                           <a
@@ -1048,36 +1116,94 @@ export default function BriefClient({
                           </a>
                         ))}
                       </div>
-                    </Section>
+                    
                   )}
-
                   {brief.recentNews.length > 0 && (
-                    <Section title="Actualités (texte)">
-                      <div className="space-y-2.5">
-                        {brief.recentNews.map((news, i) => (
-                          <div key={i} className="flex items-start gap-3">
-                            <div className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-slate-100 text-[11px] font-bold tabular-nums text-slate-500">
-                              {i + 1}
+                    <div className="mt-3 first:mt-0">
+                        <div className="space-y-2.5">
+                          {brief.recentNews.map((news, i) => (
+                            <div key={i} className="flex items-start gap-3">
+                              <div className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-slate-100 text-[11px] font-bold tabular-nums text-slate-500">
+                                {i + 1}
+                              </div>
+                              <p className="text-[13.5px] leading-relaxed text-slate-900">{news}</p>
                             </div>
-                            <p className="text-[13.5px] leading-relaxed text-slate-900">{news}</p>
-                          </div>
+                          ))}
+                        </div>
+                    
+                    </div>
+                  )}
+                </Item>
+              )}
+
+              {(brief.historiqueRelationnel || callHistory.length > 0) && (
+                <Item label="Historique">
+                  {brief.historiqueRelationnel && (
+                    <p className="text-[14.5px] leading-relaxed text-slate-700">{brief.historiqueRelationnel}</p>
+                  )}
+                  {callHistory.length > 0 && (
+                    <div className="mt-4 first:mt-0">
+                      <p className="mb-2 text-[12.5px] font-medium text-slate-500">Calls précédents</p>
+  <div className="mt-2.5 divide-y divide-border overflow-hidden rounded-2xl border border-border">
+                        {callHistory.map((c) => (
+                          <Link
+                            key={c.id}
+                            href={`/feedback/${c.id}`}
+                            className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors group"
+                          >
+                            <span className="text-[13px] text-slate-700 group-hover:text-slate-900 transition-colors">
+                              {formatCallDate(c.date)}
+                            </span>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {c.follow_up_sent_at && (
+                                <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-emerald-700">
+                                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M1.5 8.67v8.58a3 3 0 003 3h15a3 3 0 003-3V8.67l-8.928 5.493a3 3 0 01-3.144 0L1.5 8.67z" />
+                                    <path d="M22.5 6.908V6.75a3 3 0 00-3-3h-15a3 3 0 00-3 3v.158l9.714 5.978a1.5 1.5 0 001.572 0L22.5 6.908z" />
+                                  </svg>
+                                  Envoyé
+                                </span>
+                              )}
+                              {c.sentiment && (
+                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${sentimentCls[c.sentiment] ?? "bg-slate-100 text-slate-600"}`}>
+                                  {c.sentiment}
+                                </span>
+                              )}
+                              {c.global_score !== null && (
+                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold tabular-nums ${callScoreCls(c.global_score)}`}>
+                                  {c.global_score.toFixed(1)}/5
+                                </span>
+                              )}
+                              <svg className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                              </svg>
+                            </div>
+                          </Link>
                         ))}
                       </div>
-                    </Section>
+                    </div>
                   )}
+                </Item>
+              )}
+            </Part>
 
-                  {brief.talkingPoints.length > 0 && (
-                    <Section title="Arguments commerciaux">
+            {(brief.painPoints.length > 0 ||
+              (brief.references && brief.references.length > 0) ||
+              brief.talkingPoints.length > 0 ||
+              (brief.competitorsUsed && brief.competitorsUsed.length > 0)) && (
+              <Part n={2} title="Les angles d'attaque">
+                {brief.painPoints.length > 0 && (
+                  <Item label="Pain points identifiés">
                       <div className="space-y-3.5">
-                        {brief.talkingPoints.map((p, i) => (
-                          <TalkingPointItem key={i} point={p} color={talkingPointColors[i % talkingPointColors.length]} />
+                        {brief.painPoints.map((p, i) => (
+                          <TalkingPointItem key={i} point={p} color={painPointColors[i % painPointColors.length]} />
                         ))}
                       </div>
-                    </Section>
-                  )}
-
-                  {brief.references && brief.references.length > 0 && (
-                    <Section title="Références clients">
+                    
+                  </Item>
+                )}
+                {brief.references && brief.references.length > 0 && (
+                  <Item label="Références clients">
                       <div className="space-y-3">
                         {brief.references.map((ref, i) => (
                           <div key={i} className="rounded-2xl border border-border p-4">
@@ -1092,155 +1218,21 @@ export default function BriefClient({
                           </div>
                         ))}
                       </div>
-                    </Section>
-                  )}
-
-                  {brief.painPoints.length > 0 && (
-                    <Section title="Pain points identifiés">
+                    
+                  </Item>
+                )}
+                {brief.talkingPoints.length > 0 && (
+                  <Item label="Arguments commerciaux">
                       <div className="space-y-3.5">
-                        {brief.painPoints.map((p, i) => (
-                          <TalkingPointItem key={i} point={p} color={painPointColors[i % painPointColors.length]} />
+                        {brief.talkingPoints.map((p, i) => (
+                          <TalkingPointItem key={i} point={p} color={talkingPointColors[i % talkingPointColors.length]} />
                         ))}
                       </div>
-                    </Section>
-                  )}
-                </div>
-
-                {/* Sidebar */}
-                <aside className="min-w-0 space-y-7 border-t border-border pt-7 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
-                  <Section title="Contacts">
-                    {/* brief.contact plutôt que meeting.contacts (toujours vide
-                        — jamais alimenté) : construit côté serveur à partir
-                        d'Apollo quand un contactEmail est connu, avec repli sur
-                        le seul email si l'enrichissement échoue ou n'est pas
-                        configuré (cf. lib/apollo.ts). */}
-                    {brief.contact ? (
-                      <ContactCard contact={brief.contact} notFound={contactEnriched === false} />
-                    ) : (
-                      !editingContact && (
-                        <p className="text-[13px] text-slate-500">Aucun contact identifié pour ce rendez-vous.</p>
-                      )
-                    )}
-
-                    {/* Saisie du contact — l'adresse est optionnelle à la
-                        création d'un RDV manuel, il faut donc pouvoir la
-                        renseigner ou la corriger ensuite. Met à jour la seule
-                        fiche contact, sans relancer la génération du brief
-                        (~54s et un appel Claude pour une donnée qui n'en dépend
-                        pas). */}
-                    {editingContact ? (
-                      <div className="mt-3 space-y-2.5">
-                        <div>
-                          <label className="mb-1 block text-[12px] font-medium text-slate-600">
-                            Nom et prénom
-                          </label>
-                          <input
-                            type="text"
-                            value={contactNameInput}
-                            onChange={(e) => setContactNameInput(e.target.value)}
-                            autoFocus
-                            placeholder="ex. Edmond Dantès"
-                            className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") saveContact();
-                              if (e.key === "Escape") setEditingContact(false);
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-[12px] font-medium text-slate-600">
-                            Email (optionnel)
-                          </label>
-                          <input
-                            type="email"
-                            value={contactInput}
-                            onChange={(e) => setContactInput(e.target.value)}
-                            placeholder="prenom@entreprise.com"
-                            className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") saveContact();
-                              if (e.key === "Escape") setEditingContact(false);
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-[12px] font-medium text-slate-600">
-                            Entreprise
-                          </label>
-                          <input
-                            type="text"
-                            value={contactCompanyInput}
-                            onChange={(e) => setContactCompanyInput(e.target.value)}
-                            placeholder="ex. BE WTR"
-                            className="w-full px-3 py-2 border border-border rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[color:var(--violet)] focus:border-[color:var(--violet)]"
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") saveContact();
-                              if (e.key === "Escape") setEditingContact(false);
-                            }}
-                          />
-                        </div>
-                        {/* Nom complet + entreprise exacte : c'est la
-                            combinaison qui permet de retrouver la personne. Un
-                            prénom seul, ou une raison sociale approximative, ne
-                            remontent rien. */}
-                        <p className="text-[12px] leading-relaxed text-slate-500">
-                          Le nom complet (prénom + nom) suffit, même sans email. L&apos;orthographe de
-                          l&apos;entreprise n&apos;a pas besoin d&apos;être exacte.
-                        </p>
-                        {contactError && <p className="text-[12px] text-rose-700">{contactError}</p>}
-                        <div className="flex gap-2 pt-0.5">
-                          <button
-                            onClick={() => setEditingContact(false)}
-                            className="inline-flex h-8 flex-1 items-center justify-center rounded-lg border border-border bg-white px-3 text-[12.5px] font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-                          >
-                            Annuler
-                          </button>
-                          <button
-                            onClick={saveContact}
-                            disabled={(!contactInput.trim() && !contactNameInput.trim()) || contactSaving}
-                            className="inline-flex h-8 flex-1 items-center justify-center rounded-lg bg-[color:var(--primary)] px-3 text-[12.5px] font-medium text-white hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {contactSaving ? "Recherche…" : "Enregistrer"}
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setContactInput(brief.contact?.email ?? "");
-                          // Uniquement si le nom vient d'un enrichissement
-                          // réussi (un poste l'accompagne). Sinon il a été
-                          // DÉDUIT de l'adresse — « gautier@… » donne
-                          // « Gautier », un prénom seul, avec lequel la
-                          // recherche ne peut pas aboutir. Le pré-remplir
-                          // revenait à faire revalider une saisie condamnée.
-                          setContactNameInput(brief.contact?.title ? brief.contact.name : "");
-                          setContactCompanyInput(meeting.company);
-                          setContactError(null);
-                          setEditingContact(true);
-                        }}
-                        className="mt-3 inline-flex h-8 w-full items-center justify-center rounded-lg border border-border bg-white text-[12.5px] font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
-                      >
-                        {brief.contact ? "Modifier le contact" : "Ajouter un contact"}
-                      </button>
-                    )}
-                  </Section>
-
-                  {brief.objectives.length > 0 && (
-                    <Section title="Objectifs du call">
-                      <div className="space-y-2">
-                        {brief.objectives.map((obj, i) => (
-                          <div key={i} className="flex items-start gap-2.5">
-                            <div className="mt-0.5 h-4 w-4 shrink-0 rounded border-2 border-border" />
-                            <p className="text-[13px] leading-snug text-slate-900">{obj}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </Section>
-                  )}
-
-                  {brief.competitorsUsed && brief.competitorsUsed.length > 0 && (
-                    <Section title="Outils utilisés actuellement">
+                    
+                  </Item>
+                )}
+                {brief.competitorsUsed && brief.competitorsUsed.length > 0 && (
+                  <Item label="Outils utilisés actuellement">
                       <div className="flex flex-wrap gap-1.5">
                         {brief.competitorsUsed.map((c) => (
                           <span key={c} className="rounded-full bg-slate-100 px-2.5 py-1 text-[12px] font-medium text-slate-600">
@@ -1248,11 +1240,35 @@ export default function BriefClient({
                           </span>
                         ))}
                       </div>
-                    </Section>
-                  )}
+                    
+                  </Item>
+                )}
+              </Part>
+            )}
 
-                  {brief.keywords && brief.keywords.length > 0 && (
-                    <Section title="Vocabulaire métier">
+            <Part n={3} title="Pendant l'appel">
+              {brief.suggestedOpeningLine && (
+                <Item label="Accroche suggérée" wide>
+                  <p className="text-[19px] font-medium leading-snug tracking-[-0.01em] text-slate-900 sm:text-[21px]">
+                    «&nbsp;{brief.suggestedOpeningLine}&nbsp;»
+                  </p>
+                </Item>
+              )}
+              {brief.objectives.length > 0 && (
+                <Item label="Objectifs du call">
+                      <div className="space-y-2">
+                        {brief.objectives.map((obj, i) => (
+                          <div key={i} className="flex items-start gap-2.5">
+                            <div className="mt-0.5 h-4 w-4 shrink-0 rounded border-2 border-border" />
+                            <p className="text-[14.5px] leading-snug text-slate-800">{obj}</p>
+                          </div>
+                        ))}
+                      </div>
+                    
+                </Item>
+              )}
+              {brief.keywords && brief.keywords.length > 0 && (
+                <Item label="Vocabulaire métier">
                       <div className="flex flex-wrap gap-1.5">
                         {brief.keywords.map((kw) => (
                           <span key={kw} className="rounded-full bg-[color:var(--lavender)] px-2.5 py-1 text-[12px] font-medium text-[color:var(--violet)]">
@@ -1260,14 +1276,17 @@ export default function BriefClient({
                           </span>
                         ))}
                       </div>
-                    </Section>
-                  )}
+                    
+                </Item>
+              )}
+            </Part>
 
-                  {/* Regenerate button */}
+            <div className="flex justify-end border-t border-border pt-6">
+              <div className="w-full sm:w-auto">
                   <button
                     onClick={() => generateBrief(true)}
                     disabled={isGenerating}
-                    className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg border border-border bg-white text-[13px] font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full border border-border bg-white px-5 text-[13.5px] font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto"
                   >
                     {isGenerating ? (
                       <>
@@ -1283,13 +1302,13 @@ export default function BriefClient({
                       </>
                     )}
                   </button>
-                </aside>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Empty state (no brief, not generating) */}
-          {!brief && !isGenerating && (
+        {!brief && !isGenerating && (
+          <div className="mt-8 rounded-[20px] border border-border bg-white">
             <div className="flex flex-col items-center justify-center px-5 py-16 text-center sm:px-7">
               <div className="mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-[color:var(--lavender)]">
                 <svg className="h-6 w-6 text-[color:var(--violet)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -1310,8 +1329,8 @@ export default function BriefClient({
                 Générer avec l&apos;IA
               </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </main>
     </div>
   );
