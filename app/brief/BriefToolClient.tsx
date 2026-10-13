@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -246,8 +246,8 @@ function CalendarEventCard({
       alt={event.summary}
       className={`${logoSize} shrink-0 border border-border bg-white object-contain p-1`}
       fallback={
-        <div className={`${logoSize} grid shrink-0 place-items-center bg-[color:var(--primary)]`}>
-          <span className={`${featured ? "text-[20px]" : "text-[15px]"} font-semibold text-white`}>
+        <div className={`${logoSize} grid shrink-0 place-items-center ${featured ? "bg-white" : "bg-[color:var(--lavender)]"}`}>
+          <span className={`${featured ? "text-[20px]" : "text-[15px]"} font-semibold text-[color:var(--violet)]`}>
             {(event.company || getCompanyFromDomain(event) || event.summary).charAt(0).toUpperCase()}
           </span>
         </div>
@@ -275,8 +275,12 @@ function CalendarEventCard({
       ) : (
         <button
           onClick={() => onPrepare(event)}
-          className={`inline-flex items-center gap-1.5 rounded-full bg-[color:var(--primary)] font-semibold text-white transition duration-200 hover:brightness-110 ${
-            featured ? "h-11 px-5 text-[14px]" : "h-10 px-4 text-[13.5px]"
+          // Bouton plein pour le prochain RDV seulement : un bouton bleu par
+          // ligne noyait la page dans le bleu (retour de Jean, 13/10/2026).
+          className={`inline-flex items-center gap-1.5 rounded-full font-semibold transition duration-200 ${
+            featured
+              ? "h-11 bg-[color:var(--primary)] px-5 text-[14px] text-white hover:brightness-110"
+              : "h-10 border border-border bg-white px-4 text-[13.5px] text-slate-900 hover:border-slate-300 hover:bg-slate-50"
           }`}
         >
           Préparer le brief
@@ -366,50 +370,65 @@ function CalendarEventCard({
   );
 }
 
-// Le bandeau de la semaine (maquette R2a, version claire choisie par Jean le
-// 13/10/2026) : les sept jours que couvre l'agenda, un trait par rendez-vous,
-// vert quand son brief est prêt. Un clic descend au jour.
-function WeekStrip({
-  events,
-  briefs,
-  activeKey,
-}: {
-  events: CalendarEvent[];
-  briefs: StoredBrief[];
-  activeKey: string | null;
-}) {
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    d.setDate(d.getDate() + i);
+// Le bandeau des jours (maquette R2a, version claire choisie par Jean le
+// 13/10/2026) : aujourd'hui au milieu, sept jours de part et d'autre, un
+// trait par rendez-vous, vert quand son brief est prêt. Un clic descend au
+// jour. Les jours passés restent visibles mais éteints : l'agenda ne remonte
+// que les rendez-vous à venir.
+const STRIP_RADIUS = 7;
+
+function WeekStrip({ events, briefs }: { events: CalendarEvent[]; briefs: StoredBrief[] }) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days = Array.from({ length: STRIP_RADIUS * 2 + 1 }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i - STRIP_RADIUS);
     return d;
   });
+  const todayKey = today.toDateString();
+  // Sur un écran étroit le bandeau défile : on le centre sur aujourd'hui.
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = scrollerRef.current;
+    const cell = el?.querySelector<HTMLElement>("[data-today]");
+    if (el && cell) el.scrollLeft = cell.offsetLeft - el.clientWidth / 2 + cell.clientWidth / 2;
+  }, []);
   return (
-    <div className="-mx-1 overflow-x-auto px-1 no-scrollbar">
-      <div className="grid min-w-[560px] grid-cols-7 gap-1.5 rounded-[22px] border border-border bg-white p-1.5">
+    <div ref={scrollerRef} className="-mx-1 overflow-x-auto px-1 no-scrollbar">
+      <div className="grid min-w-[660px] grid-cols-[repeat(15,minmax(0,1fr))] gap-1 rounded-[20px] border border-border bg-white p-1.5">
         {days.map((d) => {
           const key = d.toDateString();
+          const isToday = key === todayKey;
+          const past = d < today;
           const dayEvents = events.filter((e) => new Date(eventStartDate(e)).toDateString() === key);
-          const on = key === activeKey;
-          const weekday = d.toLocaleDateString("fr-FR", { weekday: "short" });
+          const weekday = isToday ? "Auj." : d.toLocaleDateString("fr-FR", { weekday: "short" });
           return (
             <button
               key={key}
               type="button"
+              data-today={isToday ? "" : undefined}
               disabled={dayEvents.length === 0}
               onClick={() => document.getElementById(dayAnchor(key))?.scrollIntoView({ behavior: "smooth", block: "start" })}
-              className={`rounded-2xl px-2 py-3 text-center transition-colors ${
-                on ? "bg-[color:var(--primary)] text-white" : "text-slate-900 enabled:hover:bg-slate-50"
-              } disabled:cursor-default`}
+              className={`rounded-xl px-1 py-2 text-center transition-colors disabled:cursor-default ${
+                isToday ? "bg-slate-900 text-white" : past ? "text-slate-300" : "text-slate-900 enabled:hover:bg-slate-50"
+              }`}
             >
-              <div className={`text-[12px] font-medium capitalize ${on ? "text-white/75" : "text-slate-400"}`}>{weekday}</div>
-              <div className="mt-0.5 text-[21px] font-semibold leading-tight tabular-nums">{d.getDate()}</div>
-              <div className="mt-2 flex h-1.5 flex-wrap justify-center gap-1">
+              <div
+                className={`text-[11px] font-medium capitalize ${isToday ? "text-white/70" : past ? "text-slate-300" : "text-slate-400"}`}
+              >
+                {weekday}
+              </div>
+              <div className="text-[16px] font-semibold leading-tight tabular-nums">{d.getDate()}</div>
+              <div className="mt-1.5 flex h-1 flex-wrap justify-center gap-0.5">
                 {dayEvents.slice(0, 4).map((e) => (
                   <span
                     key={e.id}
-                    className={`h-1.5 w-3.5 rounded-full ${
-                      briefs.some((b) => b.calendar_event_id === e.id) ? "bg-emerald-400" : on ? "bg-white/45" : "bg-slate-200"
+                    className={`h-1 w-2.5 rounded-full ${
+                      briefs.some((b) => b.calendar_event_id === e.id)
+                        ? "bg-emerald-400"
+                        : isToday
+                          ? "bg-white/50"
+                          : "bg-slate-300"
                     }`}
                   />
                 ))}
@@ -676,23 +695,32 @@ function AddMeetingModal({
   );
 }
 
+// Même silhouette que la vue chargée : bandeau des jours, prochain RDV mis en
+// avant, puis lignes d'un jour.
 function EventsSkeleton() {
   return (
-    <div className="space-y-2 animate-pulse">
-      {[1, 2, 3].map((i) => (
-        <div key={i} className="flex items-center gap-3 rounded-2xl border border-border bg-white px-3.5 py-3 sm:gap-5 sm:px-4">
-          <div className="w-12 shrink-0 space-y-1.5 sm:w-14">
-            <div className="h-5 bg-slate-100 rounded w-11 mx-auto" />
-            <div className="h-3 bg-slate-100 rounded w-9 mx-auto" />
-          </div>
-          <div className="h-10 w-px shrink-0 bg-border" />
-          <div className="min-w-0 flex-1 space-y-2">
-            <div className="h-4 bg-slate-100 rounded w-1/3" />
-            <div className="h-3 bg-slate-100 rounded w-1/2" />
-          </div>
-          <div className="hidden h-8 w-28 shrink-0 rounded-lg bg-slate-100 sm:block" />
-        </div>
-      ))}
+    <div className="animate-pulse" aria-hidden>
+      <div className="-mt-0 mb-6 h-[62px] rounded-[20px] border border-border bg-white" />
+      <div className="h-[150px] rounded-[24px] bg-slate-100" />
+      <div className="mt-10 border-b border-border pb-3">
+        <div className="h-5 w-44 rounded bg-slate-100" />
+      </div>
+      <ul className="divide-y divide-border">
+        {[1, 2, 3].map((i) => (
+          <li key={i} className="flex items-center gap-4 py-5 sm:gap-5">
+            <div className="w-14 shrink-0 space-y-1.5 sm:w-16">
+              <div className="h-5 w-12 rounded bg-slate-100" />
+              <div className="h-3 w-9 rounded bg-slate-100" />
+            </div>
+            <div className="h-10 w-10 shrink-0 rounded-xl bg-slate-100" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="h-4 w-1/3 rounded bg-slate-100" />
+              <div className="h-3 w-1/2 rounded bg-slate-100" />
+            </div>
+            <div className="hidden h-10 w-36 shrink-0 rounded-full bg-slate-100 sm:block" />
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -728,8 +756,8 @@ function RecentBriefsCard({ briefs }: { briefs: StoredBrief[] }) {
               alt={formatCompanyName(brief.company_name)}
               className="w-8 h-8 rounded-lg object-contain shrink-0 bg-white border border-border p-0.5"
               fallback={
-                <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--primary)]">
-                  <span className="text-[12px] font-bold text-white">
+                <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--lavender)]">
+                  <span className="text-[12px] font-bold text-[color:var(--violet)]">
                     {formatCompanyName(brief.company_name).charAt(0).toUpperCase()}
                   </span>
                 </div>
@@ -763,7 +791,6 @@ export default function BriefToolClient() {
   const provider = session?.provider ?? "google";
   const calendarLabel = provider === "azure-ad" ? "Microsoft Calendar" : "Google Calendar";
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[] | null>(null);
-  const [calendarLoading, setCalendarLoading] = useState(false);
   const [calendarError, setCalendarError] = useState<string | null>(null);
   const [modalEvent, setModalEvent] = useState<CalendarEvent | null>(null);
   const [modalDefaultCompany, setModalDefaultCompany] = useState("");
@@ -829,7 +856,6 @@ export default function BriefToolClient() {
   // Extrait pour être rejouable après l'ajout ou la suppression d'un RDV
   // manuel, sans dupliquer la logique de chargement/erreur.
   function loadCalendarEvents() {
-    setCalendarLoading(true);
     fetch("/api/calendar/events")
       .then((r) => r.json())
       .then((data) => {
@@ -840,8 +866,7 @@ export default function BriefToolClient() {
           setCalendarError((data as { error?: string }).error ?? "Erreur inconnue");
         }
       })
-      .catch(() => setCalendarError(`Impossible de charger les événements ${calendarLabel}.`))
-      .finally(() => setCalendarLoading(false));
+      .catch(() => setCalendarError(`Impossible de charger les événements ${calendarLabel}.`));
   }
 
   useEffect(() => {
@@ -873,6 +898,12 @@ export default function BriefToolClient() {
 
   const isAuthenticated = status === "authenticated";
   const showCalendar = isAuthenticated && calendarEvents !== null && !calendarError;
+  // Premier chargement : ni la session ni l'agenda ne sont encore connus. On
+  // montre un squelette À LA FORME de la vue finale — avant, les tuiles de
+  // chiffres (« 0 RDV à venir ») s'affichaient puis disparaissaient, et la
+  // page changeait de mise en page sous les yeux. Un rechargement après
+  // ajout ou suppression d'un RDV garde la liste affichée.
+  const initialLoading = status === "loading" || (isAuthenticated && calendarEvents === null && !calendarError);
 
   const calendarGroups = showCalendar ? groupByDay(calendarEvents, eventStartDate) : [];
   const upcomingCount = calendarEvents?.length ?? 0;
@@ -945,19 +976,10 @@ export default function BriefToolClient() {
       )}
 
       {/* Loading skeleton */}
-      {calendarLoading && (
-        <div className="space-y-8">
-          <div>
-            <div className="mb-2.5 animate-pulse">
-              <div className="h-3 bg-slate-100 rounded w-24" />
-            </div>
-            <EventsSkeleton />
-          </div>
-        </div>
-      )}
+      {initialLoading && <EventsSkeleton />}
 
       {/* Calendar events */}
-      {showCalendar && !calendarLoading && (
+      {showCalendar && (
         <div className="space-y-10">
           {calendarGroups.length === 0 ? (
             <EmptyState
@@ -1005,7 +1027,7 @@ export default function BriefToolClient() {
       )}
 
       {/* Empty state — not authenticated */}
-      {!isAuthenticated && !calendarLoading && status !== "loading" && (
+      {!isAuthenticated && status !== "loading" && (
         <EmptyState
           title="Aucun rendez-vous à venir pour l'instant."
           subtitle="Brief se synchronise avec Google Calendar ou Microsoft pour afficher vos prochains rendez-vous et préparer vos briefs automatiquement."
@@ -1021,11 +1043,15 @@ export default function BriefToolClient() {
         <div data-tour="brief-content" className="mb-7 flex flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.035em] text-slate-900 sm:text-[30px]">Vos prochains rendez-vous</h1>
-            <p className="mt-1 text-[14.5px] text-slate-500">
-              {upcomingCount} RDV à venir
-              {prepRate !== null && ` · ${prepRate} % déjà préparés`}
-              {showCalendar && ` · ${calendarLabel}`}
-            </p>
+            {initialLoading ? (
+              <div className="mt-2.5 h-3.5 w-56 animate-pulse rounded bg-slate-100" />
+            ) : (
+              <p className="mt-1 text-[14.5px] text-slate-500">
+                {upcomingCount} RDV à venir
+                {prepRate !== null && ` · ${prepRate} % déjà préparés`}
+                {showCalendar && ` · ${calendarLabel}`}
+              </p>
+            )}
           </div>
           <button
             data-tour="brief-add"
@@ -1048,7 +1074,7 @@ export default function BriefToolClient() {
           donc cette tuile comptait le même ensemble que « RDV à venir ». En
           mode « briefs enregistrés » la tuile garde du sens et reste
           affichée. */}
-      {!showCalendar && (
+      {!showCalendar && !initialLoading && (
         <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
           <StatTile compact index={0} accent="indigo" label="RDV à venir" value={upcomingCount} icon={<Calendar className="w-3.5 h-3.5" />} />
           <StatTile
@@ -1071,19 +1097,15 @@ export default function BriefToolClient() {
         </div>
       )}
 
-      {showCalendar && !calendarLoading && calendarGroups.length > 0 && (
+      {showCalendar && calendarGroups.length > 0 && (
         <div className="mb-6">
-          <WeekStrip
-            events={calendarEvents}
-            briefs={recentBriefs}
-            activeKey={nextEvent ? new Date(eventStartDate(nextEvent)).toDateString() : null}
-          />
+          <WeekStrip events={calendarEvents} briefs={recentBriefs} />
         </div>
       )}
 
       {feedContent}
 
-      {recentBriefs.length > 0 && (
+      {recentBriefs.length > 0 && !initialLoading && (
         <div className="mt-12">
           <RecentBriefsCard briefs={recentBriefs} />
         </div>
