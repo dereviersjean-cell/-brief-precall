@@ -32,9 +32,12 @@ type Status = "idle" | "loading" | "error";
 export default function KeyPointsBlock({
   callId,
   initialKeyPoints,
+  bare = false,
 }: {
   callId: string;
   initialKeyPoints: string | null;
+  /** Sans carte : posé directement sur la page (mise en page à bandeau). */
+  bare?: boolean;
 }) {
   const [keyPoints, setKeyPoints] = useState(initialKeyPoints);
   const [status, setStatus] = useState<Status>(initialKeyPoints ? "idle" : "loading");
@@ -60,7 +63,7 @@ export default function KeyPointsBlock({
   }, []);
 
   return (
-    <div className="rounded-2xl border border-border bg-white p-5 sm:p-6">
+    <div className={bare ? "" : "rounded-2xl border border-border bg-white p-5 sm:p-6"}>
       {/* Même en-tête que les autres cartes de la page : étiquette en petites
           capitales, sous-titre discret. */}
       <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">

@@ -515,10 +515,14 @@ function formatSentAt(iso: string) {
 // Only rendered when recall_bot_id + recording_id aren't both present — see the
 // call site, which shows the real video player instead once both exist (the
 // manager-facing video-url API now authorizes a manager rattaché au propriétaire).
-function ReadOnlyVideoStatus({ call }: { call: CallWithAnalysis }) {
-  const message = !call.recall_bot_id
+function readOnlyVideoMessage(call: CallWithAnalysis): string {
+  return !call.recall_bot_id
     ? "Aucun bot n'a été programmé pour cet appel."
     : "L'enregistrement n'a pas pu être récupéré (bot refusé ou échec technique).";
+}
+
+function ReadOnlyVideoStatus({ call }: { call: CallWithAnalysis }) {
+  const message = readOnlyVideoMessage(call);
 
   return (
     <div className={`${CARD} p-5`}>
@@ -677,21 +681,6 @@ export default function FeedbackDetailClient({
     : [];
   const displayName = formatContactDisplayName(call.company_name, call.contact_email);
 
-  const globalColor =
-    globalScore === null
-      ? "text-slate-400"
-      : globalScore >= 4
-      ? "text-emerald-700"
-      : globalScore >= 2.5
-      ? "text-amber-700"
-      : "text-rose-700";
-
-  const sentimentBg: Record<string, string> = {
-    positif: "bg-[color:var(--success-soft)] text-emerald-700",
-    neutre: "bg-slate-100 text-slate-600",
-    négatif: "bg-[color:var(--danger-soft)] text-rose-700",
-  };
-
   // Partagé entre la vue analysée et la vue « aucune parole » : sur un call
   // non analysé, l'enregistrement reste le seul moyen de vérifier ce qui
   // s'est passé (micro coupé, personne n'a parlé).
@@ -734,6 +723,60 @@ export default function FeedbackDetailClient({
     readOnly && <ReadOnlyVideoStatus call={call} />
   );
 
+  // Bandeau de la page analysée : l'enregistrement en grand (même
+  // chargement à la demande que recordingPanel), la frise des interventions
+  // dessous. Sans vidéo ni frise, la colonne de gauche disparaît.
+  const timelineTurns = allTurns
+    .filter((t) => t.speakerId !== null && t.startMs !== null && t.endMs !== null)
+    .map((t) => ({ speakerId: t.speakerId as string, displayName: t.displayName, startMs: t.startMs as number, endMs: t.endMs as number }));
+  const bandVideo = hasVideo ? (
+    videoStatus === "ready" && videoUrl ? (
+      <video
+        ref={videoRef}
+        controls
+        src={videoUrl}
+        onTimeUpdate={(e) => setCurrentTimeMs(Math.floor(e.currentTarget.currentTime * 1000))}
+        className="aspect-video w-full rounded-2xl bg-black"
+      />
+    ) : (
+      <button
+        type="button"
+        onClick={loadVideo}
+        disabled={videoStatus !== "idle"}
+        className="grid aspect-video w-full place-items-center rounded-2xl bg-black/40 ring-1 ring-white/10 transition-colors hover:bg-black/30 disabled:cursor-default"
+      >
+        <span className="flex flex-col items-center gap-3">
+          <span className="grid h-14 w-14 place-items-center rounded-full bg-white/90 text-slate-900">
+            <svg className="h-6 w-6 translate-x-0.5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </span>
+          <span className="text-[13px] font-medium text-white/80">
+            {videoStatus === "loading"
+              ? "Chargement…"
+              : videoStatus === "unavailable"
+              ? "Enregistrement non disponible."
+              : "Voir l'enregistrement"}
+          </span>
+        </span>
+      </button>
+    )
+  ) : readOnly ? (
+    <div className="grid aspect-video w-full place-items-center rounded-2xl bg-black/30 px-6 text-center text-[13.5px] text-white/60 ring-1 ring-white/10">
+      {readOnlyVideoMessage(call)}
+    </div>
+  ) : null;
+  const hasBandLeft = bandVideo !== null || timelineTurns.length > 0;
+
+  const sentimentDark: Record<string, string> = {
+    positif: "bg-emerald-400/15 text-emerald-300",
+    neutre: "bg-white/10 text-white/70",
+    négatif: "bg-rose-400/15 text-rose-300",
+  };
+  // Mêmes seuils que les scores de la page (4 et 2,5), en teintes claires
+  // pour le fond sombre.
+  const darkBar = (v: number) => (v >= 4 ? "bg-emerald-400" : v >= 2.5 ? "bg-amber-400" : "bg-rose-400");
+
   // Transcript vide : le webhook n'analyse plus un call sans parole
   // (countSpokenWords, lib/recall.ts). Le dire, plutôt que « Analyse non
   // disponible », qui laisse croire à une panne.
@@ -763,53 +806,36 @@ export default function FeedbackDetailClient({
           {backLabel}
         </Link>
 
-        {/* Header */}
-        <div className="rounded-[20px] border border-border bg-white px-5 py-5 sm:px-7 mb-5">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="min-w-0 break-words text-[22px] font-semibold leading-tight tracking-[-0.02em] text-slate-900">{displayName}</h1>
-                {call.meeting_stage && (
-                  <span
-                    title={call.meeting_title ?? undefined}
-                    className="inline-flex items-center rounded-full bg-[color:var(--lavender)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--violet)]"
-                  >
-                    {MEETING_STAGE_LABELS[call.meeting_stage]}
-                  </span>
-                )}
-              </div>
-              {call.contact_email && call.contact_email !== displayName && (
-                <p className="mt-0.5 break-all text-[13px] text-slate-500">{call.contact_email}</p>
-              )}
-              <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] text-slate-500">
-                <span>{formatDateTime(call.started_at ?? call.created_at)}</span>
-                {call.duration_seconds !== null && (
-                  <span className="flex items-center gap-1 tabular-nums">
-                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
-                    </svg>
-                    {formatDuration(call.duration_seconds)}
-                  </span>
-                )}
-                {call.participant_count !== null && (
-                  <span>{call.participant_count} {call.participant_count === 1 ? "participant" : "participants"}</span>
-                )}
-              </p>
-            </div>
-            <div className="text-right shrink-0">
-              {globalScore !== null && (
-                <p className={`text-[32px] font-semibold leading-none tracking-tight tabular-nums ${globalColor}`}>
-                  {globalScore.toFixed(1)}<span className="text-[15px] font-medium text-slate-400">/5</span>
-                </p>
-              )}
-              {a?.sentiment && (
-                <span className={`inline-block mt-2 text-[11.5px] font-semibold px-2 py-0.5 rounded-full ${sentimentBg[a.sentiment] ?? "bg-slate-100 text-slate-500"}`}>
-                  {a.sentiment}
-                </span>
-              )}
-            </div>
+        {/* En-tête : étape, date, durée, participants, puis le titre. La
+            note et le résumé de l'évaluation sont dans le bandeau sombre. */}
+        <header className="mb-6">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13.5px] text-slate-500">
+            {call.meeting_stage && (
+              <span
+                title={call.meeting_title ?? undefined}
+                className="inline-flex items-center rounded-full bg-[color:var(--lavender)] px-2.5 py-0.5 text-[12px] font-semibold text-[color:var(--violet)]"
+              >
+                {MEETING_STAGE_LABELS[call.meeting_stage]}
+              </span>
+            )}
+            <span>{formatDateTime(call.started_at ?? call.created_at)}</span>
+            {call.duration_seconds !== null && (
+              <span className="flex items-center gap-1 tabular-nums">
+                <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
+                </svg>
+                {formatDuration(call.duration_seconds)}
+              </span>
+            )}
+            {call.participant_count !== null && (
+              <span>{call.participant_count} {call.participant_count === 1 ? "participant" : "participants"}</span>
+            )}
           </div>
-        </div>
+          <h1 className="mt-3 break-words text-[28px] font-semibold leading-tight tracking-[-0.035em] text-slate-900 sm:text-[30px]">{displayName}</h1>
+          {call.contact_email && call.contact_email !== displayName && (
+            <p className="mt-1 break-all text-[13.5px] text-slate-500">{call.contact_email}</p>
+          )}
+        </header>
 
         {noSpeech ? (
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-5 items-start">
@@ -832,13 +858,78 @@ export default function FeedbackDetailClient({
             Analyse non disponible pour cet appel.
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-5 items-start">
-            {/* LEFT — tabbed content, scrolls with the page */}
-            <div className="min-w-0">
-              {/* Le sélecteur n'a de sens qu'avec deux onglets : seul, c'était
-                  une pastille isolée au-dessus du contenu. */}
-              {TABS.length > 1 && (
-              <div className="inline-flex items-center rounded-full bg-slate-100 p-1 mb-5">
+          <>
+            {/* Le bandeau (maquette P3c, choisie par Jean le 13/10/2026) :
+                l'enregistrement et qui a parlé à gauche ; la note, les scores
+                par dimension et les prochaines étapes à droite. L'essentiel
+                du call se lit sans faire défiler. */}
+            <section className="overflow-hidden rounded-[28px] bg-slate-900 text-white">
+              <div className={`grid grid-cols-1 ${hasBandLeft ? "lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]" : ""}`}>
+                {hasBandLeft && (
+                  <div className="p-4 sm:p-5">
+                    {bandVideo}
+                    {timelineTurns.length > 0 && (
+                      <div className={`px-1 ${bandVideo ? "pt-5" : "pt-1"}`}>
+                        <SpeakerTimelineBlock
+                          tone="dark"
+                          turns={timelineTurns}
+                          totalDurationMs={totalDurationMs}
+                          onSeek={seekTo}
+                          seekable={hasVideo}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div className={`flex flex-col gap-6 px-6 py-6 sm:px-8 ${hasBandLeft ? "border-t border-white/10 lg:border-l lg:border-t-0" : ""}`}>
+                  {(globalScore !== null || a.sentiment) && (
+                    <div className="flex flex-wrap items-baseline gap-3">
+                      {globalScore !== null && (
+                        <span className="text-[48px] font-semibold leading-none tracking-[-0.045em] tabular-nums">
+                          {globalScore.toFixed(1)}<span className="text-[18px] font-medium text-white/45">/5</span>
+                        </span>
+                      )}
+                      {a.sentiment && (
+                        <span className={`rounded-full px-2.5 py-0.5 text-[12px] font-semibold ${sentimentDark[a.sentiment] ?? "bg-white/10 text-white/70"}`}>
+                          {a.sentiment}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {effectiveScores.length > 0 && (
+                    <div className="space-y-2.5">
+                      {effectiveScores.map((dim) => (
+                        <div key={dim.key} className="grid grid-cols-[minmax(0,1fr)_90px_32px] items-center gap-3 text-[13px]">
+                          <span className="truncate text-white/80">{dim.label}</span>
+                          <div className="h-1.5 rounded-full bg-white/10">
+                            <div className={`h-full rounded-full ${darkBar(dim.score)}`} style={{ width: `${(dim.score / 5) * 100}%` }} />
+                          </div>
+                          <span className="text-right font-semibold tabular-nums">{dim.score.toFixed(1)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {(a.next_steps ?? []).length > 0 && (
+                    <div className="rounded-2xl bg-white/[0.07] p-5 ring-1 ring-white/10">
+                      <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-white/55">Prochaines étapes</h2>
+                      <ul className="mt-3 space-y-2">
+                        {(a.next_steps ?? []).map((step, i) => (
+                          <li key={i} className="flex gap-2.5 text-[14px] leading-relaxed text-white">
+                            <span className="w-3.5 shrink-0 text-center font-semibold text-[oklch(0.75_0.12_265)]">→</span>
+                            <span>{step}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            {/* Le sélecteur n'a de sens qu'avec deux onglets : seul, c'était
+                une pastille isolée au-dessus du contenu. */}
+            {TABS.length > 1 && (
+              <div className="mt-8 inline-flex items-center rounded-full bg-slate-100 p-1">
                 {TABS.map((t) => (
                   <button
                     key={t.key}
@@ -853,64 +944,34 @@ export default function FeedbackDetailClient({
                   </button>
                 ))}
               </div>
-              )}
+            )}
 
-              {activeTab === "overview" && (
-                <div className="space-y-5">
+            {activeTab === "overview" && (
+              <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+                {/* Gauche : ce qu'il faut retenir du call */}
+                <div className="min-w-0 space-y-9">
                   {/* Points clés — generated on demand (not by analyzeCall), cached
                       on call_analysis.key_points. */}
-                  <KeyPointsBlock callId={call.id} initialKeyPoints={a.key_points} />
-
-                  {/* Qui a parlé, quand — clickable, seeks the video on the right. */}
-                  <SpeakerTimelineBlock
-                    turns={allTurns
-                      .filter((t) => t.speakerId !== null && t.startMs !== null && t.endMs !== null)
-                      .map((t) => ({ speakerId: t.speakerId as string, displayName: t.displayName, startMs: t.startMs as number, endMs: t.endMs as number }))}
-                    totalDurationMs={totalDurationMs}
-                    onSeek={seekTo}
-                    seekable={hasVideo}
-                  />
+                  <KeyPointsBlock callId={call.id} initialKeyPoints={a.key_points} bare />
 
                   <ConversationAnalyticsBlock analytics={analytics} />
 
-                  {/* Scores par dimension — dynamique via le playbook_snapshot de
-                      l'analyse (ou les 4 labels historiques si absent) */}
-                  {effectiveScores.length > 0 && (
-                    <div className={`${CARD} p-5 sm:p-6`}>
-                      <h2 className={`${LABEL} mb-4`}>
-                        Scores par dimension
-                      </h2>
-                      <div className="space-y-4">
-                        {effectiveScores.map((dim) => (
-                          <ScoreBar
-                            key={dim.key}
-                            score={dim.score}
-                            label={dim.label}
-                            description={dim.description}
-                            weight={dim.weight}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Strengths + Weaknesses */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <div className={`${CARD} p-5`}>
-                      <h2 className={`${LABEL} mb-3`}>Points forts</h2>
+                  <div className="grid grid-cols-1 gap-6 border-t border-border pt-8 sm:grid-cols-2">
+                    <section>
+                      <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-emerald-700">Points forts</h2>
                       <List items={a.strengths ?? []} icon="✓" color="text-[color:var(--success)]" />
-                    </div>
-                    <div className={`${CARD} p-5`}>
-                      <h2 className={`${LABEL} mb-3`}>Axes d&apos;amélioration</h2>
+                    </section>
+                    <section>
+                      <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-700">Axes d&apos;amélioration</h2>
                       <List items={a.weaknesses ?? []} icon="△" color="text-[color:var(--warning)]" />
-                    </div>
+                    </section>
                   </div>
 
                   {/* Objections — module du parcours (semaine 5) : fermé, la
                       section n'existe pas. Les objections restent extraites et
                       apparaissent sur les calls passés le jour où il s'ouvre. */}
                   {isModuleEnabled("objections") && (a.objections ?? []).length > 0 && (
-                    <div className={`${CARD} p-5`}>
+                    <section className="border-t border-border pt-8">
                       <h2 className={`${LABEL} mb-3`}>Objections rencontrées</h2>
                       <ul className="space-y-2.5">
                         {(a.objections ?? []).map((o, i) => (
@@ -922,206 +983,236 @@ export default function FeedbackDetailClient({
                           />
                         ))}
                       </ul>
-                    </div>
-                  )}
-
-                  {/* Next steps */}
-                  {(a.next_steps ?? []).length > 0 && (
-                    <div className="rounded-2xl bg-[color:var(--lavender)] p-5">
-                      <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[color:var(--violet)] mb-3">Prochaines étapes</h2>
-                      <List items={a.next_steps ?? []} icon="→" color="text-[color:var(--violet)]" />
-                    </div>
+                    </section>
                   )}
                 </div>
-              )}
 
-              {activeTab === "email" && (
-                readOnly ? (
-                  <ReadOnlyEmailBlock call={call} />
-                ) : (
-                <div className={`${CARD} p-5 sm:p-6`}>
-                  {/* Le menu « Type de call » a été retiré le 29/09/2026 : il ne
-                      changeait rien à l'email (les modèles par type de call ne
-                      servaient qu'aux tâches). Décision de Jean : pas de
-                      modèles par type de call pour l'email de suivi. */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-                    <h2 className={LABEL}>Email de suivi suggéré</h2>
-                    {call.follow_up_email && !sentAt && (
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => {
-                            const text = `Objet : ${subject}\n\n${body}`;
-                            navigator.clipboard.writeText(text).then(() => {
-                              setCopied(true);
-                              setTimeout(() => setCopied(false), 2000);
-                            });
-                          }}
-                          className="h-8 rounded-full border border-border bg-white px-3 text-[12.5px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
-                        >
-                          {copied ? "Copié !" : "Copier"}
-                        </button>
-                        <button
-                          disabled={sendStatus === "sending" || !recipientIsUsable}
-                          title={recipientIsUsable ? undefined : "Indique l'adresse du destinataire"}
-                          onClick={async () => {
-                            const to = call.contact_email ?? followUpRecipient.trim();
-                            if (!window.confirm(`Envoyer cet email à ${to} ?`)) return;
-                            setSendStatus("sending");
-                            setSendError(null);
-                            try {
-                              const res = await fetch("/api/feedback/send-follow-up", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({
-                                  callId: call.id,
-                                  subject,
-                                  body,
-                                  // Envoyé seulement quand le call n'a pas de
-                                  // contact : le serveur fait primer l'adresse
-                                  // reçue, on ne veut pas écraser par mégarde
-                                  // celle qui vient de l'invitation.
-                                  ...(call.contact_email ? {} : { contactEmail: followUpRecipient.trim() }),
-                                }),
+                {/* Droite : le détail des scores, l'email, le transcript */}
+                <div className="min-w-0 space-y-8">
+                  {/* Scores par dimension — dynamique via le playbook_snapshot de
+                      l'analyse (ou les 4 labels historiques si absent) */}
+                  {effectiveScores.length > 0 && (
+                    <section>
+                      <h2 className={`${LABEL} mb-4`}>Scores par dimension</h2>
+                      <div className="space-y-4">
+                        {effectiveScores.map((dim) => (
+                          <ScoreBar
+                            key={dim.key}
+                            score={dim.score}
+                            label={dim.label}
+                            description={dim.description}
+                            weight={dim.weight}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  )}
+
+                  {followUpEnabled && (
+                    <section className={`${CARD} p-5`}>
+                      <h2 className={`${LABEL} mb-2.5`}>Email de suivi</h2>
+                      {call.follow_up_email ? (
+                        <>
+                          <p className="text-[14px] font-semibold text-slate-900">{call.follow_up_email.subject}</p>
+                          <p className="mt-1 line-clamp-2 text-[13.5px] leading-relaxed text-slate-600">{call.follow_up_email.body}</p>
+                        </>
+                      ) : (
+                        <p className="text-[13.5px] text-slate-400">Aucun email de suivi généré.</p>
+                      )}
+                      <button
+                        onClick={() => setTab("email")}
+                        className="mt-4 inline-flex h-9 items-center rounded-full bg-[color:var(--primary)] px-4 text-[13px] font-semibold text-white transition-[filter] hover:brightness-110"
+                      >
+                        Relire et envoyer
+                      </button>
+                    </section>
+                  )}
+
+                  <TranscriptSection
+                    callId={call.id}
+                    turns={allTurns}
+                    overrideMap={overrideMap}
+                    onOverrideMapChange={setOverrideMap}
+                    onSeek={seekTo}
+                    seekable={hasVideo}
+                    currentTimeMs={videoStatus === "ready" ? currentTimeMs : null}
+                  />
+                </div>
+              </div>
+            )}
+
+            {activeTab === "email" && (
+              <div className="mt-8 max-w-3xl">
+                {readOnly ? (
+                    <ReadOnlyEmailBlock call={call} />
+                  ) : (
+                  <div className={`${CARD} p-5 sm:p-6`}>
+                    {/* Le menu « Type de call » a été retiré le 29/09/2026 : il ne
+                        changeait rien à l'email (les modèles par type de call ne
+                        servaient qu'aux tâches). Décision de Jean : pas de
+                        modèles par type de call pour l'email de suivi. */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                      <h2 className={LABEL}>Email de suivi suggéré</h2>
+                      {call.follow_up_email && !sentAt && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              const text = `Objet : ${subject}\n\n${body}`;
+                              navigator.clipboard.writeText(text).then(() => {
+                                setCopied(true);
+                                setTimeout(() => setCopied(false), 2000);
                               });
-                              if (res.status === 401 || res.status === 403) {
-                                setSendStatus("auth-error");
-                                return;
-                              }
-                              if (!res.ok) {
-                                const detail = await res
-                                  .json()
-                                  .then((d: { error?: string }) => d.error ?? null)
-                                  .catch(() => null);
-                                setSendError(detail);
+                            }}
+                            className="h-8 rounded-full border border-border bg-white px-3 text-[12.5px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+                          >
+                            {copied ? "Copié !" : "Copier"}
+                          </button>
+                          <button
+                            disabled={sendStatus === "sending" || !recipientIsUsable}
+                            title={recipientIsUsable ? undefined : "Indique l'adresse du destinataire"}
+                            onClick={async () => {
+                              const to = call.contact_email ?? followUpRecipient.trim();
+                              if (!window.confirm(`Envoyer cet email à ${to} ?`)) return;
+                              setSendStatus("sending");
+                              setSendError(null);
+                              try {
+                                const res = await fetch("/api/feedback/send-follow-up", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({
+                                    callId: call.id,
+                                    subject,
+                                    body,
+                                    // Envoyé seulement quand le call n'a pas de
+                                    // contact : le serveur fait primer l'adresse
+                                    // reçue, on ne veut pas écraser par mégarde
+                                    // celle qui vient de l'invitation.
+                                    ...(call.contact_email ? {} : { contactEmail: followUpRecipient.trim() }),
+                                  }),
+                                });
+                                if (res.status === 401 || res.status === 403) {
+                                  setSendStatus("auth-error");
+                                  return;
+                                }
+                                if (!res.ok) {
+                                  const detail = await res
+                                    .json()
+                                    .then((d: { error?: string }) => d.error ?? null)
+                                    .catch(() => null);
+                                  setSendError(detail);
+                                  setSendStatus("error");
+                                  return;
+                                }
+                                const now = new Date().toISOString();
+                                setSentAt(now);
+                                setSendStatus("sent");
+                              } catch {
                                 setSendStatus("error");
-                                return;
                               }
-                              const now = new Date().toISOString();
-                              setSentAt(now);
-                              setSendStatus("sent");
-                            } catch {
-                              setSendStatus("error");
-                            }
-                          }}
-                          className="h-8 rounded-full bg-[color:var(--primary)] px-3.5 text-[12.5px] font-medium text-white transition-[filter] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {sendStatus === "sending" ? "Envoi…" : "Envoyer"}
-                        </button>
+                            }}
+                            className="h-8 rounded-full bg-[color:var(--primary)] px-3.5 text-[12.5px] font-medium text-white transition-[filter] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {sendStatus === "sending" ? "Envoi…" : "Envoyer"}
+                          </button>
+                        </div>
+                      )}
+                      {sentAt && (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="rounded-full bg-[color:var(--success-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-emerald-700">
+                            Envoyé le {formatSentAt(sentAt)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {sendStatus === "auth-error" && (
+                      <div className="mb-4 rounded-xl bg-[color:var(--warning-soft)] px-4 py-3 text-[13.5px] text-amber-700">
+                        Reconnecte-toi à Google pour envoyer cet email.{" "}
+                        <a href="/api/auth/signout" className="font-medium underline hover:text-amber-900">
+                          Se déconnecter
+                        </a>
                       </div>
                     )}
-                    {sentAt && (
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="rounded-full bg-[color:var(--success-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-emerald-700">
-                          Envoyé le {formatSentAt(sentAt)}
-                        </span>
+                    {sendStatus === "error" && (
+                      <p className="mb-4 text-[13.5px] text-rose-700">
+                        {sendError ?? "Erreur lors de l’envoi, réessaie."}
+                      </p>
+                    )}
+
+                    {call.follow_up_email ? (
+                      <>
+                        {!call.contact_email && !sentAt && (
+                          // Le call n'a pas de contact : l'invitation d'agenda ne
+                          // portait aucun participant externe. L'email est bien
+                          // rédigé, mais il n'a personne à qui aller — sans ce
+                          // champ, « Envoyer » échouait sur « Adresse email du
+                          // contact introuvable » sans aucun moyen d'y remédier.
+                          <div className="mb-3">
+                            <label htmlFor="follow-up-recipient" className={`block ${LABEL} mb-1.5`}>
+                              Destinataire
+                            </label>
+                            <input
+                              id="follow-up-recipient"
+                              type="email"
+                              value={followUpRecipient}
+                              onChange={(e) => setFollowUpRecipient(e.target.value)}
+                              placeholder="prenom.nom@entreprise.com"
+                              className="w-full rounded-xl border border-border bg-white px-3.5 py-2 text-[14px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)]"
+                            />
+                            <p className="mt-1.5 text-[12.5px] text-slate-500">
+                              Aucun participant externe n&apos;était identifié dans l&apos;invitation : indique l&apos;adresse à laquelle envoyer.
+                            </p>
+                          </div>
+                        )}
+                        <input
+                          type="text"
+                          value={subject}
+                          onChange={(e) => setSubject(e.target.value)}
+                          className="w-full rounded-xl border border-border bg-white px-3.5 py-2 text-[14px] font-semibold text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] mb-3"
+                          placeholder="Objet"
+                        />
+                        <textarea
+                          value={body}
+                          onChange={(e) => setBody(e.target.value)}
+                          rows={8}
+                          className="w-full rounded-xl border border-border bg-white px-3.5 py-3 text-[14px] text-slate-700 outline-none transition-colors focus:border-[color:var(--violet)] resize-none leading-relaxed"
+                        />
+                      </>
+                    ) : (
+                      // Affichait « en cours de génération… » alors que RIEN ne
+                      // tournait : à l'ingestion, l'email est sauté quand le call
+                      // n'a pas d'email de contact (invitation d'agenda sans
+                      // participant externe). Le message était donc faux, et il
+                      // n'existait aucun moyen de rattraper.
+                      <div className="space-y-3">
+                        <p className="text-[13.5px] leading-relaxed text-slate-600">
+                          Aucun email de suivi n&apos;a été généré pour ce call
+                          {call.contact_email ? "." : " : aucun participant externe n'était identifié dans l'invitation, donc aucun destinataire."}
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <input
+                            value={followUpRecipient}
+                            onChange={(e) => setFollowUpRecipient(e.target.value)}
+                            type="email"
+                            placeholder="Email du destinataire"
+                            className="h-9 flex-1 rounded-full border border-border bg-white px-3.5 text-[14px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)]"
+                          />
+                          <button
+                            onClick={generateFollowUp}
+                            disabled={followUpStatus === "loading" || !followUpRecipient.trim()}
+                            className="h-9 px-4 inline-flex items-center justify-center rounded-full bg-[color:var(--primary)] text-white text-[13px] font-medium hover:brightness-110 transition-[filter] disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                          >
+                            {followUpStatus === "loading" ? "Génération…" : "Générer l'email"}
+                          </button>
+                        </div>
+                        {followUpError && <p className="text-[13.5px] text-rose-700">{followUpError}</p>}
                       </div>
                     )}
                   </div>
-
-                  {sendStatus === "auth-error" && (
-                    <div className="mb-4 rounded-xl bg-[color:var(--warning-soft)] px-4 py-3 text-[13.5px] text-amber-700">
-                      Reconnecte-toi à Google pour envoyer cet email.{" "}
-                      <a href="/api/auth/signout" className="font-medium underline hover:text-amber-900">
-                        Se déconnecter
-                      </a>
-                    </div>
-                  )}
-                  {sendStatus === "error" && (
-                    <p className="mb-4 text-[13.5px] text-rose-700">
-                      {sendError ?? "Erreur lors de l’envoi, réessaie."}
-                    </p>
-                  )}
-
-                  {call.follow_up_email ? (
-                    <>
-                      {!call.contact_email && !sentAt && (
-                        // Le call n'a pas de contact : l'invitation d'agenda ne
-                        // portait aucun participant externe. L'email est bien
-                        // rédigé, mais il n'a personne à qui aller — sans ce
-                        // champ, « Envoyer » échouait sur « Adresse email du
-                        // contact introuvable » sans aucun moyen d'y remédier.
-                        <div className="mb-3">
-                          <label htmlFor="follow-up-recipient" className={`block ${LABEL} mb-1.5`}>
-                            Destinataire
-                          </label>
-                          <input
-                            id="follow-up-recipient"
-                            type="email"
-                            value={followUpRecipient}
-                            onChange={(e) => setFollowUpRecipient(e.target.value)}
-                            placeholder="prenom.nom@entreprise.com"
-                            className="w-full rounded-xl border border-border bg-white px-3.5 py-2 text-[14px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)]"
-                          />
-                          <p className="mt-1.5 text-[12.5px] text-slate-500">
-                            Aucun participant externe n&apos;était identifié dans l&apos;invitation : indique l&apos;adresse à laquelle envoyer.
-                          </p>
-                        </div>
-                      )}
-                      <input
-                        type="text"
-                        value={subject}
-                        onChange={(e) => setSubject(e.target.value)}
-                        className="w-full rounded-xl border border-border bg-white px-3.5 py-2 text-[14px] font-semibold text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] mb-3"
-                        placeholder="Objet"
-                      />
-                      <textarea
-                        value={body}
-                        onChange={(e) => setBody(e.target.value)}
-                        rows={8}
-                        className="w-full rounded-xl border border-border bg-white px-3.5 py-3 text-[14px] text-slate-700 outline-none transition-colors focus:border-[color:var(--violet)] resize-none leading-relaxed"
-                      />
-                    </>
-                  ) : (
-                    // Affichait « en cours de génération… » alors que RIEN ne
-                    // tournait : à l'ingestion, l'email est sauté quand le call
-                    // n'a pas d'email de contact (invitation d'agenda sans
-                    // participant externe). Le message était donc faux, et il
-                    // n'existait aucun moyen de rattraper.
-                    <div className="space-y-3">
-                      <p className="text-[13.5px] leading-relaxed text-slate-600">
-                        Aucun email de suivi n&apos;a été généré pour ce call
-                        {call.contact_email ? "." : " : aucun participant externe n'était identifié dans l'invitation, donc aucun destinataire."}
-                      </p>
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <input
-                          value={followUpRecipient}
-                          onChange={(e) => setFollowUpRecipient(e.target.value)}
-                          type="email"
-                          placeholder="Email du destinataire"
-                          className="h-9 flex-1 rounded-full border border-border bg-white px-3.5 text-[14px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)]"
-                        />
-                        <button
-                          onClick={generateFollowUp}
-                          disabled={followUpStatus === "loading" || !followUpRecipient.trim()}
-                          className="h-9 px-4 inline-flex items-center justify-center rounded-full bg-[color:var(--primary)] text-white text-[13px] font-medium hover:brightness-110 transition-[filter] disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-                        >
-                          {followUpStatus === "loading" ? "Génération…" : "Générer l'email"}
-                        </button>
-                      </div>
-                      {followUpError && <p className="text-[13.5px] text-rose-700">{followUpError}</p>}
-                    </div>
-                  )}
-                </div>
-                )
-              )}
-            </div>
-
-            {/* RIGHT — sticky video + transcript, stays in view while the
-                left column scrolls */}
-            <div className="lg:sticky lg:top-20 space-y-5">
-              {recordingPanel}
-
-              <TranscriptSection
-                callId={call.id}
-                turns={allTurns}
-                overrideMap={overrideMap}
-                onOverrideMapChange={setOverrideMap}
-                onSeek={seekTo}
-                seekable={hasVideo}
-                currentTimeMs={videoStatus === "ready" ? currentTimeMs : null}
-              />
-            </div>
-          </div>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
 
