@@ -61,10 +61,12 @@ export default function KeyPointsBlock({
 
   return (
     <div className="rounded-2xl border border-border bg-white p-5 sm:p-6">
-      <h2 className="text-[17px] font-semibold tracking-tight text-slate-900">
+      {/* Même en-tête que les autres cartes de la page : étiquette en petites
+          capitales, sous-titre discret. */}
+      <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
         Points clés
       </h2>
-      <p className="text-[13.5px] text-slate-500 mt-0.5 mb-4">Ce qu&apos;un dirigeant retiendra de cette réunion</p>
+      <p className="text-[13px] text-slate-500 mt-1 mb-4">Ce qu&apos;un dirigeant retiendra de cette réunion</p>
 
       {status === "loading" && (
         <div className="flex items-center gap-2 text-[13.5px] text-slate-500 py-1">

@@ -375,13 +375,25 @@ function ScoreBar({
   );
 }
 
+// Classes écrites en entier : Tailwind ne génère que celles qu'il lit.
+const DOT: Record<string, string> = {
+  "text-[color:var(--success)]": "bg-[color:var(--success)]",
+  "text-[color:var(--warning)]": "bg-[color:var(--warning)]",
+};
+
 function List({ items, icon, color }: { items: string[]; icon: string; color: string }) {
   if (items.length === 0) return <p className="text-slate-400 text-[13.5px]">Aucun élément.</p>;
   return (
     <ul className="space-y-2.5">
       {items.map((item, i) => (
         <li key={i} className="flex items-start gap-2.5">
-          <span className={`w-3.5 shrink-0 text-center text-[13px] font-semibold leading-relaxed ${color}`}>{icon}</span>
+          {/* Puces en pastilles de couleur, comme dans le brief ; la flèche
+              reste pour les prochaines étapes. */}
+          {icon === "→" ? (
+            <span className={`w-3.5 shrink-0 text-center text-[13px] font-semibold leading-relaxed ${color}`}>{icon}</span>
+          ) : (
+            <span aria-hidden className={`mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full ${DOT[color] ?? "bg-slate-400"}`} />
+          )}
           <span className="text-[13.5px] text-slate-700 leading-relaxed">{item}</span>
         </li>
       ))}
@@ -823,6 +835,9 @@ export default function FeedbackDetailClient({
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-5 items-start">
             {/* LEFT — tabbed content, scrolls with the page */}
             <div className="min-w-0">
+              {/* Le sélecteur n'a de sens qu'avec deux onglets : seul, c'était
+                  une pastille isolée au-dessus du contenu. */}
+              {TABS.length > 1 && (
               <div className="inline-flex items-center rounded-full bg-slate-100 p-1 mb-5">
                 {TABS.map((t) => (
                   <button
@@ -838,6 +853,7 @@ export default function FeedbackDetailClient({
                   </button>
                 ))}
               </div>
+              )}
 
               {activeTab === "overview" && (
                 <div className="space-y-5">

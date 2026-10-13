@@ -922,7 +922,7 @@ export default function BriefToolClient() {
 
       {/* Stats */}
       <div className={`grid grid-cols-1 gap-3 mb-6 sm:gap-4 ${showCalendar ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
-        <StatTile index={0} accent="indigo" label="RDV à venir" value={upcomingCount} icon={<Calendar className="w-3.5 h-3.5" />} />
+        <StatTile compact index={0} accent="indigo" label="RDV à venir" value={upcomingCount} icon={<Calendar className="w-3.5 h-3.5" />} />
         {/* « Avec participants externes » retirée le 21/08/2026 : lib/calendar.ts
             ne remonte QUE les événements ayant au moins un participant externe,
             donc cette tuile comptait le même ensemble que « RDV à venir ». Elle
@@ -932,6 +932,7 @@ export default function BriefToolClient() {
             et reste affichée. */}
         {!showCalendar && (
           <StatTile
+            compact
             index={1}
             accent="violet"
             label="Briefs enregistrés"
@@ -940,6 +941,7 @@ export default function BriefToolClient() {
           />
         )}
         <StatTile
+          compact
           index={2}
           accent="emerald"
           label="Taux de préparation"

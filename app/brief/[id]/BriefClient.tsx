@@ -919,8 +919,10 @@ export default function BriefClient({
 
                 {/* Historique relationnel */}
                 {brief.historiqueRelationnel && (
-                  <div className="rounded-2xl bg-[color:var(--warning-soft)] px-5 py-4">
-                    <p className={`${LABEL} flex items-center gap-1.5 text-amber-700`}>
+                  // Encadré neutre : l'historique est un contexte, pas une
+                  // alerte — l'ambre le faisait lire comme un avertissement.
+                  <div className="rounded-2xl bg-slate-100/70 px-5 py-4">
+                    <p className={`${LABEL} flex items-center gap-1.5`}>
                       <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>

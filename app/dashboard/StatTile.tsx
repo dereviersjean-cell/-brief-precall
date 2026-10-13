@@ -41,6 +41,7 @@ export default function StatTile({
   accent = "indigo",
   trend,
   index = 0,
+  compact = false,
 }: {
   label: string;
   value: number | null;
@@ -51,8 +52,40 @@ export default function StatTile({
   accent?: keyof typeof ACCENTS;
   trend?: { current: number; previous: number | null };
   index?: number;
+  /** Variante basse : icône, chiffre et étiquette sur une ligne. Pour les
+   * pages où les chiffres accompagnent le contenu au lieu d'en être le sujet
+   * (la liste des rendez-vous). */
+  compact?: boolean;
 }) {
   const colors = ACCENTS[accent] ?? ACCENTS.indigo;
+
+  if (compact) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: index * 0.07, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        className="flex items-center gap-3 bg-white rounded-2xl border border-border px-4 py-3"
+      >
+        {icon && (
+          <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${colors.bg} ${colors.text}`}>
+            {icon}
+          </span>
+        )}
+        <p className="text-[22px] font-semibold leading-none tracking-tight text-slate-900 tabular-nums">
+          {value !== null ? (
+            <>
+              <AnimatedNumber value={value} decimals={decimals} />
+              {suffix && <span className="text-[13px] font-medium text-slate-400 ml-0.5">{suffix}</span>}
+            </>
+          ) : (
+            <span className="text-slate-300">—</span>
+          )}
+        </p>
+        <p className="min-w-0 text-[13px] leading-snug text-slate-500">{label}</p>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
