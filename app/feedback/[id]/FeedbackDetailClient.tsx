@@ -117,8 +117,8 @@ function resolveTurns(call: CallWithAnalysis): ResolvedTurn[] {
 
 const SPEAKER_TIP_DISMISSED_KEY = "brief:transcript-speaker-tip-dismissed";
 
-// Lives in the sticky right column next to the video now (was a standalone
-// collapsible block) — turns/overrideMap are resolved once by the parent
+// Lives in its own « Transcript » tab (13/10/2026), as a readable
+// conversation — turns/overrideMap are resolved once by the parent
 // (FeedbackDetailClient) since SpeakerTimelineBlock needs the exact same
 // data. onSeek/seekable/currentTimeMs wire the video sync: click a row to
 // jump the video there, and the row matching current playback position gets
@@ -140,13 +140,12 @@ function TranscriptSection({
   seekable: boolean;
   currentTimeMs: number | null;
 }) {
-  const [open, setOpen] = useState(true);
   const [query, setQuery] = useState("");
   const [copied, setCopied] = useState(false);
   const [editingSpeakerId, setEditingSpeakerId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const [showTip, setShowTip] = useState(false);
-  const activeRowRef = useRef<HTMLDivElement>(null);
+  const activeRowRef = useRef<HTMLLIElement>(null);
 
   const hasTimestamps = turns.some((t) => t.startMs !== null);
 
@@ -217,124 +216,163 @@ function TranscriptSection({
     }
   }
 
+  // Une couleur par intervenant, rangés par temps de parole (ou par nombre
+  // d'interventions sans horodatage) : les mêmes que la frise du bandeau.
+  const speakerStats = new Map<string, { name: string; ms: number; count: number }>();
+  for (const t of turns) {
+    const key = t.speakerId ?? t.displayName;
+    const row = speakerStats.get(key) ?? { name: t.displayName, ms: 0, count: 0 };
+    row.name = t.displayName;
+    row.ms += t.startMs !== null && t.endMs !== null ? t.endMs - t.startMs : 0;
+    row.count += 1;
+    speakerStats.set(key, row);
+  }
+  const speakers = Array.from(speakerStats.entries()).sort((a, b) => b[1].ms - a[1].ms || b[1].count - a[1].count);
+  const totalMs = speakers.reduce((sum, [, v]) => sum + v.ms, 0);
+  const colorOf = (turn: ResolvedTurn) => {
+    const i = speakers.findIndex(([key]) => key === (turn.speakerId ?? turn.displayName));
+    return TRANSCRIPT_COLORS[Math.max(i, 0) % TRANSCRIPT_COLORS.length];
+  };
+
   return (
-    <div className={`${CARD} p-5`}>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between text-left"
-      >
-        <h2 className={LABEL}>Transcript</h2>
-        <svg
-          className={`w-4 h-4 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-      {open && (
-        <div className="mt-4">
-          {turns.length === 0 ? (
-            <p className="text-[13.5px] text-slate-400">Transcript non disponible</p>
-          ) : (
-            <>
-              <div className="flex items-center gap-2 mb-2.5">
-                <div className="relative flex-1">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <input
-                    type="text"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Rechercher dans le transcript…"
-                    className="h-9 w-full rounded-full border border-border bg-white pl-8 pr-3 text-[13px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)]"
-                  />
-                </div>
-                <button
-                  onClick={handleCopy}
-                  className="h-9 shrink-0 rounded-full border border-border bg-white px-3 text-[12.5px] font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
-                >
-                  {copied ? "✓ Copié" : "📋 Copier"}
-                </button>
-              </div>
-              {showTip && hasTimestamps && (
-                <p className="flex items-start justify-between gap-2 rounded-xl bg-[color:var(--lavender)] px-3 py-2 mb-3 text-[12.5px] leading-relaxed text-[color:var(--violet)]">
-                  <span>Cliquez sur un nom pour le corriger, ou sur une ligne pour aller à ce moment de la vidéo</span>
-                  <button onClick={dismissTip} className="shrink-0 text-[color:var(--violet)] opacity-70 transition-opacity hover:opacity-100">
-                    ✕
-                  </button>
-                </p>
-              )}
-              <p className="text-[12px] text-slate-400 tabular-nums mb-3">
-                {trimmedQuery
-                  ? `${filteredTurns.length} résultat${filteredTurns.length !== 1 ? "s" : ""} trouvé${filteredTurns.length !== 1 ? "s" : ""}`
-                  : `${turns.length} tour${turns.length !== 1 ? "s" : ""} de parole`}
-              </p>
-              <div className="max-h-[420px] overflow-y-auto pr-1">
-                {filteredTurns.map((turn, i) => {
-                  const isActive = i === activeIndex;
-                  const canSeek = seekable && turn.startMs !== null;
-                  return (
-                    <div
-                      key={i}
-                      ref={isActive ? activeRowRef : undefined}
-                      onClick={canSeek ? () => onSeek(turn.startMs as number) : undefined}
-                      className={`rounded-xl px-3 py-2.5 mb-1.5 transition-colors ${
-                        isActive ? "bg-[color:var(--lavender)] ring-1 ring-[color:var(--lavender-strong)]" : i % 2 === 0 ? "bg-slate-50" : "bg-white"
-                      } ${canSeek ? "cursor-pointer hover:bg-[color:var(--lavender)]/60" : ""}`}
-                    >
-                      <div className="flex items-center justify-between mb-1 gap-2">
-                        <div className="flex items-center gap-1.5 min-w-0" onClick={(e) => e.stopPropagation()}>
-                          {/* `editingSpeakerId !== null` : un transcript en texte brut
-                              (call importé, sans transcript_json) n'a pas
-                              d'identifiant d'intervenant. Sans cette garde,
-                              null === null ouvrait un champ vide à chaque tour
-                              de parole à la place du nom. */}
-                          {editingSpeakerId !== null && editingSpeakerId === turn.speakerId ? (
-                            <input
-                              autoFocus
-                              value={editDraft}
-                              onChange={(e) => setEditDraft(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") commitEdit();
-                                if (e.key === "Escape") setEditingSpeakerId(null);
-                              }}
-                              onBlur={commitEdit}
-                              className="text-[11px] font-semibold text-slate-900 uppercase tracking-[0.07em] border border-[color:var(--lavender-strong)] bg-white rounded-md px-1.5 py-0.5 outline-none focus:border-[color:var(--violet)]"
-                            />
-                          ) : (
-                            <>
-                              <span className="text-[11px] font-semibold text-slate-700 uppercase tracking-[0.07em] truncate">
-                                {turn.displayName}
-                              </span>
-                              {turn.speakerId && (
-                                <button
-                                  onClick={() => startEditing(turn)}
-                                  title="Corriger le nom du speaker"
-                                  className="shrink-0 text-slate-300 hover:text-slate-500 transition-colors"
-                                >
-                                  <Pencil className="w-3 h-3" />
-                                </button>
-                              )}
-                            </>
-                          )}
-                        </div>
-                        {turn.startMs !== null && (
-                          <span className="text-[11.5px] text-slate-400 tabular-nums shrink-0">{formatDuration(Math.floor(turn.startMs / 1000))}</span>
-                        )}
-                      </div>
-                      <p className="text-slate-700 text-[13.5px] leading-relaxed">{highlightMatches(turn.text, query)}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
+    <div className={`${CARD} overflow-hidden`}>
+      {/* Barre d'outils : recherche, copie, et les intervenants avec leur
+          temps de parole. */}
+      <div className="border-b border-border px-5 py-4 sm:px-6">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Rechercher dans le transcript…"
+              disabled={turns.length === 0}
+              className="h-10 w-full rounded-full border border-border bg-white pl-9 pr-3 text-[14px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] disabled:bg-slate-50"
+            />
+          </div>
+          <button
+            onClick={handleCopy}
+            disabled={turns.length === 0}
+            className="h-10 shrink-0 rounded-full border border-border bg-white px-4 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50"
+          >
+            {copied ? "✓ Copié" : "📋 Copier"}
+          </button>
         </div>
+        {turns.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+            {speakers.map(([key, v], i) => (
+              <span key={key} className="inline-flex items-center gap-2 text-[13px] text-slate-700">
+                <span className={`grid h-6 w-6 place-items-center rounded-full text-[10.5px] font-semibold ${TRANSCRIPT_COLORS[i % TRANSCRIPT_COLORS.length]}`}>
+                  {speakerInitials(v.name)}
+                </span>
+                {v.name}
+                {totalMs > 0 && <span className="tabular-nums text-slate-400">{Math.round((100 * v.ms) / totalMs)} %</span>}
+              </span>
+            ))}
+            <span className="ml-auto text-[12.5px] tabular-nums text-slate-400">
+              {trimmedQuery
+                ? `${filteredTurns.length} résultat${filteredTurns.length !== 1 ? "s" : ""} trouvé${filteredTurns.length !== 1 ? "s" : ""}`
+                : `${turns.length} tour${turns.length !== 1 ? "s" : ""} de parole`}
+            </span>
+          </div>
+        )}
+        {showTip && hasTimestamps && (
+          <p className="mt-3 flex items-start justify-between gap-2 rounded-xl bg-[color:var(--lavender)] px-3.5 py-2.5 text-[13px] leading-relaxed text-[color:var(--violet)]">
+            <span>Cliquez sur un nom pour le corriger, ou sur une ligne pour aller à ce moment de la vidéo</span>
+            <button onClick={dismissTip} className="shrink-0 text-[color:var(--violet)] opacity-70 transition-opacity hover:opacity-100">
+              ✕
+            </button>
+          </p>
+        )}
+      </div>
+
+      {turns.length === 0 ? (
+        <p className="px-6 py-10 text-center text-[14px] text-slate-400">Transcript non disponible</p>
+      ) : (
+        <ol className="divide-y divide-border/60">
+          {filteredTurns.map((turn, i) => {
+            const isActive = i === activeIndex;
+            const canSeek = seekable && turn.startMs !== null;
+            return (
+              <li
+                key={i}
+                ref={isActive ? activeRowRef : undefined}
+                onClick={canSeek ? () => onSeek(turn.startMs as number) : undefined}
+                className={`flex gap-3.5 px-5 py-4 transition-colors sm:px-6 ${
+                  isActive ? "bg-[color:var(--lavender)]" : ""
+                } ${canSeek ? "cursor-pointer hover:bg-slate-50" : ""}`}
+              >
+                <span className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full text-[11.5px] font-semibold ${colorOf(turn)}`}>
+                  {speakerInitials(turn.displayName)}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      {/* `editingSpeakerId !== null` : un transcript en texte brut
+                          (call importé, sans transcript_json) n'a pas
+                          d'identifiant d'intervenant. Sans cette garde,
+                          null === null ouvrait un champ vide à chaque tour
+                          de parole à la place du nom. */}
+                      {editingSpeakerId !== null && editingSpeakerId === turn.speakerId ? (
+                        <input
+                          autoFocus
+                          value={editDraft}
+                          onChange={(e) => setEditDraft(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") commitEdit();
+                            if (e.key === "Escape") setEditingSpeakerId(null);
+                          }}
+                          onBlur={commitEdit}
+                          className="rounded-md border border-[color:var(--lavender-strong)] bg-white px-2 py-0.5 text-[13.5px] font-semibold text-slate-900 outline-none focus:border-[color:var(--violet)]"
+                        />
+                      ) : (
+                        <>
+                          <span className="truncate text-[13.5px] font-semibold text-slate-900">{turn.displayName}</span>
+                          {turn.speakerId && (
+                            <button
+                              onClick={() => startEditing(turn)}
+                              title="Corriger le nom du speaker"
+                              className="shrink-0 text-slate-300 transition-colors hover:text-slate-500"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    {turn.startMs !== null && (
+                      <span className={`shrink-0 text-[12px] tabular-nums ${canSeek ? "text-[color:var(--violet)]" : "text-slate-400"}`}>
+                        {formatDuration(Math.floor(turn.startMs / 1000))}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-[14.5px] leading-relaxed text-slate-700">{highlightMatches(turn.text, query)}</p>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
       )}
     </div>
   );
+}
+
+// Pastilles des intervenants du transcript : même ordre de couleurs que la
+// frise « qui a parlé » (SpeakerTimelineBlock).
+const TRANSCRIPT_COLORS = [
+  "bg-[color:var(--violet)] text-white",
+  "bg-slate-700 text-white",
+  "bg-[color:var(--warning)] text-white",
+  "bg-teal-500 text-white",
+  "bg-[color:var(--danger)] text-white",
+  "bg-slate-400 text-white",
+];
+
+function speakerInitials(name: string): string {
+  const parts = name.replace(/[^\p{L}\s-]/gu, " ").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
 }
 
 function ScoreBar({
@@ -533,21 +571,33 @@ function ReadOnlyVideoStatus({ call }: { call: CallWithAnalysis }) {
 }
 
 function ReadOnlyEmailBlock({ call }: { call: CallWithAnalysis }) {
+  // Même présentation que le rédacteur, sans les champs ni les actions.
   return (
-    <div className={`${CARD} p-5 sm:p-6`}>
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+    <div className={`${CARD} overflow-hidden`}>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-slate-50 px-5 py-3 sm:px-6">
         <h2 className={LABEL}>Email de suivi</h2>
         {call.follow_up_sent_at && (
-          <span className="rounded-full bg-[color:var(--success-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-emerald-700">Envoyé le {formatSentAt(call.follow_up_sent_at)}</span>
+          <span className="rounded-full bg-[color:var(--success-soft)] px-2.5 py-0.5 text-[12px] font-semibold text-emerald-700">Envoyé le {formatSentAt(call.follow_up_sent_at)}</span>
         )}
       </div>
       {call.follow_up_email ? (
         <>
-          <p className="text-[14px] font-semibold text-slate-900 mb-2">{call.follow_up_email.subject}</p>
-          <p className="text-[13.5px] text-slate-600 whitespace-pre-wrap leading-relaxed">{call.follow_up_email.body}</p>
+          <div className="divide-y divide-border border-b border-border">
+            {call.contact_email && (
+              <div className="flex items-center gap-3 px-5 py-2.5 sm:px-6">
+                <span className="w-14 shrink-0 text-[13px] text-slate-400">À</span>
+                <span className="truncate text-[14px] text-slate-800">{call.contact_email}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-3 px-5 py-2.5 sm:px-6">
+              <span className="w-14 shrink-0 text-[13px] text-slate-400">Objet</span>
+              <span className="text-[14.5px] font-semibold text-slate-900">{call.follow_up_email.subject}</span>
+            </div>
+          </div>
+          <p className="whitespace-pre-wrap px-5 py-4 text-[15px] leading-[1.7] text-slate-800 sm:px-6">{call.follow_up_email.body}</p>
         </>
       ) : (
-        <p className="text-slate-400 text-[13.5px]">Aucun email de suivi généré.</p>
+        <p className="px-6 py-10 text-center text-[14px] text-slate-400">Aucun email de suivi généré.</p>
       )}
     </div>
   );
@@ -1049,18 +1099,102 @@ export default function FeedbackDetailClient({
             )}
 
             {activeTab === "email" && (
-              <div className="mt-8 max-w-3xl">
+              <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
                 {readOnly ? (
-                    <ReadOnlyEmailBlock call={call} />
-                  ) : (
-                  <div className={`${CARD} p-5 sm:p-6`}>
-                    {/* Le menu « Type de call » a été retiré le 29/09/2026 : il ne
-                        changeait rien à l'email (les modèles par type de call ne
-                        servaient qu'aux tâches). Décision de Jean : pas de
-                        modèles par type de call pour l'email de suivi. */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                  <ReadOnlyEmailBlock call={call} />
+                ) : call.follow_up_email ? (
+                  // Le rédacteur, présenté comme un email : destinataire et
+                  // objet en lignes d'en-tête, le corps en grand, les actions
+                  // en pied. Le menu « Type de call » a été retiré le
+                  // 29/09/2026 : il ne changeait rien à l'email (les modèles
+                  // par type de call ne servaient qu'aux tâches). Décision de
+                  // Jean : pas de modèles par type de call pour l'email de suivi.
+                  <div className={`${CARD} overflow-hidden`}>
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-slate-50 px-5 py-3 sm:px-6">
                       <h2 className={LABEL}>Email de suivi suggéré</h2>
-                      {call.follow_up_email && !sentAt && (
+                      {sentAt ? (
+                        <span className="rounded-full bg-[color:var(--success-soft)] px-2.5 py-0.5 text-[12px] font-semibold text-emerald-700">
+                          Envoyé le {formatSentAt(sentAt)}
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-[color:var(--warning-soft)] px-2.5 py-0.5 text-[12px] font-semibold text-amber-700">Brouillon</span>
+                      )}
+                    </div>
+
+                    <div className="divide-y divide-border border-b border-border">
+                      <div className="flex items-center gap-3 px-5 py-2.5 sm:px-6">
+                        <span className="w-14 shrink-0 text-[13px] text-slate-400">À</span>
+                        {call.contact_email ? (
+                          <span className="inline-flex min-w-0 items-center gap-2 rounded-full bg-slate-100 py-1 pl-1 pr-3 text-[13.5px] text-slate-800">
+                            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[color:var(--lavender)] text-[10.5px] font-semibold text-[color:var(--violet)]">
+                              {call.contact_email[0].toUpperCase()}
+                            </span>
+                            <span className="truncate">{call.contact_email}</span>
+                          </span>
+                        ) : sentAt ? (
+                          <span className="text-[14px] text-slate-800">{followUpRecipient}</span>
+                        ) : (
+                          // Le call n'a pas de contact : l'invitation d'agenda ne
+                          // portait aucun participant externe. L'email est bien
+                          // rédigé, mais il n'a personne à qui aller — sans ce
+                          // champ, « Envoyer » échouait sur « Adresse email du
+                          // contact introuvable » sans aucun moyen d'y remédier.
+                          <input
+                            id="follow-up-recipient"
+                            type="email"
+                            value={followUpRecipient}
+                            onChange={(e) => setFollowUpRecipient(e.target.value)}
+                            placeholder="prenom.nom@entreprise.com"
+                            aria-label="Destinataire"
+                            className="min-w-0 flex-1 bg-transparent py-1 text-[14px] text-slate-900 placeholder:text-slate-400 outline-none"
+                          />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 px-5 py-2.5 sm:px-6">
+                        <span className="w-14 shrink-0 text-[13px] text-slate-400">Objet</span>
+                        <input
+                          type="text"
+                          value={subject}
+                          onChange={(e) => setSubject(e.target.value)}
+                          readOnly={!!sentAt}
+                          className="min-w-0 flex-1 bg-transparent py-1 text-[14.5px] font-semibold text-slate-900 placeholder:text-slate-400 outline-none"
+                          placeholder="Objet"
+                        />
+                      </div>
+                    </div>
+                    {!call.contact_email && !sentAt && (
+                      <p className="border-b border-border bg-[color:var(--warning-soft)]/60 px-5 py-2 text-[12.5px] text-amber-800 sm:px-6">
+                        Aucun participant externe n&apos;était identifié dans l&apos;invitation : indique l&apos;adresse à laquelle envoyer.
+                      </p>
+                    )}
+
+                    <textarea
+                      value={body}
+                      onChange={(e) => setBody(e.target.value)}
+                      readOnly={!!sentAt}
+                      rows={14}
+                      className="block min-h-[340px] w-full resize-y bg-white px-5 py-4 text-[15px] leading-[1.7] text-slate-800 outline-none sm:px-6"
+                    />
+
+                    {sendStatus === "auth-error" && (
+                      <div className="border-t border-border bg-[color:var(--warning-soft)] px-5 py-3 text-[13.5px] text-amber-700 sm:px-6">
+                        Reconnecte-toi à Google pour envoyer cet email.{" "}
+                        <a href="/api/auth/signout" className="font-medium underline hover:text-amber-900">
+                          Se déconnecter
+                        </a>
+                      </div>
+                    )}
+                    {sendStatus === "error" && (
+                      <p className="border-t border-border bg-[color:var(--danger-soft)] px-5 py-3 text-[13.5px] text-rose-700 sm:px-6">
+                        {sendError ?? "Erreur lors de l’envoi, réessaie."}
+                      </p>
+                    )}
+
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-slate-50 px-5 py-3 sm:px-6">
+                      <span className="text-[12.5px] tabular-nums text-slate-400">
+                        {body.trim() ? body.trim().split(/\s+/).length : 0} mots
+                      </span>
+                      {!sentAt && (
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => {
@@ -1070,7 +1204,7 @@ export default function FeedbackDetailClient({
                                 setTimeout(() => setCopied(false), 2000);
                               });
                             }}
-                            className="h-8 rounded-full border border-border bg-white px-3 text-[12.5px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+                            className="h-9 rounded-full border border-border bg-white px-4 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
                           >
                             {copied ? "Copié !" : "Copier"}
                           </button>
@@ -1117,105 +1251,67 @@ export default function FeedbackDetailClient({
                                 setSendStatus("error");
                               }
                             }}
-                            className="h-8 rounded-full bg-[color:var(--primary)] px-3.5 text-[12.5px] font-medium text-white transition-[filter] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[color:var(--primary)] px-4 text-[13px] font-semibold text-white transition-[filter] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.27 3.13a59.77 59.77 0 0118.22 8.87 59.77 59.77 0 01-18.22 8.88L6 12zm0 0h7.5" />
+                            </svg>
                             {sendStatus === "sending" ? "Envoi…" : "Envoyer"}
                           </button>
                         </div>
                       )}
-                      {sentAt && (
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="rounded-full bg-[color:var(--success-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-emerald-700">
-                            Envoyé le {formatSentAt(sentAt)}
-                          </span>
-                        </div>
-                      )}
                     </div>
-
-                    {sendStatus === "auth-error" && (
-                      <div className="mb-4 rounded-xl bg-[color:var(--warning-soft)] px-4 py-3 text-[13.5px] text-amber-700">
-                        Reconnecte-toi à Google pour envoyer cet email.{" "}
-                        <a href="/api/auth/signout" className="font-medium underline hover:text-amber-900">
-                          Se déconnecter
-                        </a>
-                      </div>
-                    )}
-                    {sendStatus === "error" && (
-                      <p className="mb-4 text-[13.5px] text-rose-700">
-                        {sendError ?? "Erreur lors de l’envoi, réessaie."}
-                      </p>
-                    )}
-
-                    {call.follow_up_email ? (
-                      <>
-                        {!call.contact_email && !sentAt && (
-                          // Le call n'a pas de contact : l'invitation d'agenda ne
-                          // portait aucun participant externe. L'email est bien
-                          // rédigé, mais il n'a personne à qui aller — sans ce
-                          // champ, « Envoyer » échouait sur « Adresse email du
-                          // contact introuvable » sans aucun moyen d'y remédier.
-                          <div className="mb-3">
-                            <label htmlFor="follow-up-recipient" className={`block ${LABEL} mb-1.5`}>
-                              Destinataire
-                            </label>
-                            <input
-                              id="follow-up-recipient"
-                              type="email"
-                              value={followUpRecipient}
-                              onChange={(e) => setFollowUpRecipient(e.target.value)}
-                              placeholder="prenom.nom@entreprise.com"
-                              className="w-full rounded-xl border border-border bg-white px-3.5 py-2 text-[14px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)]"
-                            />
-                            <p className="mt-1.5 text-[12.5px] text-slate-500">
-                              Aucun participant externe n&apos;était identifié dans l&apos;invitation : indique l&apos;adresse à laquelle envoyer.
-                            </p>
-                          </div>
-                        )}
-                        <input
-                          type="text"
-                          value={subject}
-                          onChange={(e) => setSubject(e.target.value)}
-                          className="w-full rounded-xl border border-border bg-white px-3.5 py-2 text-[14px] font-semibold text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] mb-3"
-                          placeholder="Objet"
-                        />
-                        <textarea
-                          value={body}
-                          onChange={(e) => setBody(e.target.value)}
-                          rows={8}
-                          className="w-full rounded-xl border border-border bg-white px-3.5 py-3 text-[14px] text-slate-700 outline-none transition-colors focus:border-[color:var(--violet)] resize-none leading-relaxed"
-                        />
-                      </>
-                    ) : (
-                      // Affichait « en cours de génération… » alors que RIEN ne
-                      // tournait : à l'ingestion, l'email est sauté quand le call
-                      // n'a pas d'email de contact (invitation d'agenda sans
-                      // participant externe). Le message était donc faux, et il
-                      // n'existait aucun moyen de rattraper.
-                      <div className="space-y-3">
-                        <p className="text-[13.5px] leading-relaxed text-slate-600">
-                          Aucun email de suivi n&apos;a été généré pour ce call
-                          {call.contact_email ? "." : " : aucun participant externe n'était identifié dans l'invitation, donc aucun destinataire."}
-                        </p>
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          <input
-                            value={followUpRecipient}
-                            onChange={(e) => setFollowUpRecipient(e.target.value)}
-                            type="email"
-                            placeholder="Email du destinataire"
-                            className="h-9 flex-1 rounded-full border border-border bg-white px-3.5 text-[14px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)]"
-                          />
-                          <button
-                            onClick={generateFollowUp}
-                            disabled={followUpStatus === "loading" || !followUpRecipient.trim()}
-                            className="h-9 px-4 inline-flex items-center justify-center rounded-full bg-[color:var(--primary)] text-white text-[13px] font-medium hover:brightness-110 transition-[filter] disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-                          >
-                            {followUpStatus === "loading" ? "Génération…" : "Générer l'email"}
-                          </button>
-                        </div>
-                        {followUpError && <p className="text-[13.5px] text-rose-700">{followUpError}</p>}
-                      </div>
-                    )}
                   </div>
+                ) : (
+                  // Affichait « en cours de génération… » alors que RIEN ne
+                  // tournait : à l'ingestion, l'email est sauté quand le call
+                  // n'a pas d'email de contact (invitation d'agenda sans
+                  // participant externe). Le message était donc faux, et il
+                  // n'existait aucun moyen de rattraper.
+                  <div className={`${CARD} px-6 py-10 text-center sm:px-10`}>
+                    <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-[color:var(--lavender)] text-[color:var(--violet)]">
+                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                      </svg>
+                    </span>
+                    <p className="mx-auto mt-4 max-w-[46ch] text-[14.5px] leading-relaxed text-slate-600">
+                      Aucun email de suivi n&apos;a été généré pour ce call
+                      {call.contact_email ? "." : " : aucun participant externe n'était identifié dans l'invitation, donc aucun destinataire."}
+                    </p>
+                    <div className="mx-auto mt-5 flex max-w-md flex-col gap-2 sm:flex-row">
+                      <input
+                        value={followUpRecipient}
+                        onChange={(e) => setFollowUpRecipient(e.target.value)}
+                        type="email"
+                        placeholder="Email du destinataire"
+                        className="h-10 flex-1 rounded-full border border-border bg-white px-4 text-[14px] text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)]"
+                      />
+                      <button
+                        onClick={generateFollowUp}
+                        disabled={followUpStatus === "loading" || !followUpRecipient.trim()}
+                        className="h-10 shrink-0 rounded-full bg-[color:var(--primary)] px-5 text-[13.5px] font-semibold text-white transition-[filter] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {followUpStatus === "loading" ? "Génération…" : "Générer l'email"}
+                      </button>
+                    </div>
+                    {followUpError && <p className="mt-3 text-[13.5px] text-rose-700">{followUpError}</p>}
+                  </div>
+                )}
+
+                {/* À côté, de quoi relire l'email : les prochaines étapes
+                    convenues pendant le call. */}
+                {(a.next_steps ?? []).length > 0 && (
+                  <aside className="space-y-3 lg:pt-1">
+                    <h3 className={LABEL}>Prochaines étapes</h3>
+                    <ul className="space-y-2.5 rounded-2xl bg-[color:var(--lavender)] p-5">
+                      {(a.next_steps ?? []).map((step, i) => (
+                        <li key={i} className="flex gap-2.5 text-[14px] leading-relaxed text-slate-800">
+                          <span className="w-3.5 shrink-0 text-center font-semibold text-[color:var(--violet)]">→</span>
+                          <span>{step}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </aside>
                 )}
               </div>
             )}
