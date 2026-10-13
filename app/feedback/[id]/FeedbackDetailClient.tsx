@@ -553,7 +553,7 @@ function ReadOnlyEmailBlock({ call }: { call: CallWithAnalysis }) {
   );
 }
 
-type Tab = "overview" | "email";
+type Tab = "overview" | "email" | "transcript";
 
 export default function FeedbackDetailClient({
   call,
@@ -789,6 +789,10 @@ export default function FeedbackDetailClient({
   const TABS: { key: Tab; label: string }[] = [
     { key: "overview", label: "Overview" },
     ...(followUpEnabled ? [{ key: "email" as const, label: "Email de suivi" }] : []),
+    // Le transcript a son onglet (demande de Jean, 13/10/2026) : dans la
+    // colonne de droite, il allongeait la page sans être lu à chaque fois.
+    // La vidéo reste dans le bandeau : un clic sur une ligne y saute toujours.
+    { key: "transcript" as const, label: "Transcript" },
   ];
   const activeTab: Tab = tab === "email" && !followUpEnabled ? "overview" : tab;
 
@@ -926,8 +930,6 @@ export default function FeedbackDetailClient({
               </div>
             </section>
 
-            {/* Le sélecteur n'a de sens qu'avec deux onglets : seul, c'était
-                une pastille isolée au-dessus du contenu. */}
             {TABS.length > 1 && (
               <div className="mt-8 inline-flex items-center rounded-full bg-slate-100 p-1">
                 {TABS.map((t) => (
@@ -987,7 +989,7 @@ export default function FeedbackDetailClient({
                   )}
                 </div>
 
-                {/* Droite : le détail des scores, l'email, le transcript */}
+                {/* Droite : le détail des scores, l'email */}
                 <div className="min-w-0 space-y-8">
                   {/* Scores par dimension — dynamique via le playbook_snapshot de
                       l'analyse (ou les 4 labels historiques si absent) */}
@@ -1028,16 +1030,21 @@ export default function FeedbackDetailClient({
                     </section>
                   )}
 
-                  <TranscriptSection
-                    callId={call.id}
-                    turns={allTurns}
-                    overrideMap={overrideMap}
-                    onOverrideMapChange={setOverrideMap}
-                    onSeek={seekTo}
-                    seekable={hasVideo}
-                    currentTimeMs={videoStatus === "ready" ? currentTimeMs : null}
-                  />
                 </div>
+              </div>
+            )}
+
+            {activeTab === "transcript" && (
+              <div className="mt-8 max-w-3xl">
+                <TranscriptSection
+                  callId={call.id}
+                  turns={allTurns}
+                  overrideMap={overrideMap}
+                  onOverrideMapChange={setOverrideMap}
+                  onSeek={seekTo}
+                  seekable={hasVideo}
+                  currentTimeMs={videoStatus === "ready" ? currentTimeMs : null}
+                />
               </div>
             )}
 
