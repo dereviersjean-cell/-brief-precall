@@ -611,14 +611,16 @@ export default function FeedbackDetailClient({
   readOnly = false,
   backHref = "/feedback",
   backLabel = "Retour aux feedbacks",
+  initialTab = "overview",
 }: {
   call: CallWithAnalysis;
   analytics: ConversationAnalytics | null;
   readOnly?: boolean;
   backHref?: string;
   backLabel?: string;
+  initialTab?: Tab;
 }) {
-  const [tab, setTab] = useState<Tab>("overview");
+  const [tab, setTab] = useState<Tab>(initialTab);
   const { isEnabled: isModuleEnabled } = useModules();
   const [copied, setCopied] = useState(false);
   const [subject, setSubject] = useState(call.follow_up_email?.subject ?? "");

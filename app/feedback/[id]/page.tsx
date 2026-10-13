@@ -7,10 +7,16 @@ import FeedbackDetailClient from "./FeedbackDetailClient";
 
 export default async function FeedbackDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string | string[] }>;
 }) {
   const { id } = await params;
+  // `?tab=email` : les boutons de relance de la liste mènent directement à
+  // l'onglet Email de suivi plutôt qu'à la vue d'ensemble.
+  const { tab } = await searchParams;
+  const initialTab = tab === "email" || tab === "transcript" ? tab : "overview";
   // Id malformé (URL bricolée, lien depuis un écran de démonstration) :
   // 404 plutôt que de laisser Postgres lever une 22P02 en erreur serveur.
   if (!isUuid(id)) notFound();
@@ -37,5 +43,5 @@ export default async function FeedbackDetailPage({
     ? computeConversationAnalytics(call.transcript_json, call.speaker_names_override, await getUserName(call.user_id))
     : null;
 
-  return <FeedbackDetailClient call={call} analytics={analytics} />;
+  return <FeedbackDetailClient call={call} analytics={analytics} initialTab={initialTab} />;
 }
