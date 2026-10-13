@@ -375,12 +375,10 @@ export function ManagerSection() {
 
 // ─── Témoignages ─────────────────────────────────────────────────────────────
 
-// Développés le 12/10/2026 à la demande de Jean : un carrousel de grands
-// témoignages (portrait + citation) puis trois cartes à chiffre clé, sur le
-// modèle de lemlist et PayFit. Seul celui de Camille Duval est réel ; les
-// autres sont INVENTÉS pour la maquette interne et retirés du build de
-// production (cf. testimonials-data.ts). Tant qu'il en reste à l'écran, un
-// bandeau le dit, pour que personne ne les prenne pour de vrais clients.
+// Un carrousel de grands témoignages (portrait + citation) puis six cartes,
+// sur le modèle de lemlist et PayFit. Tous réels (cf. testimonials-data.ts) ;
+// un témoignage de maquette porterait `fictional` et serait retiré du build
+// de production. Tant qu'il en reste à l'écran, un bandeau le dit.
 export function Testimonials() {
   const featured = visibleTestimonials(FEATURED);
   const cards = visibleTestimonials(CARDS);
@@ -390,7 +388,7 @@ export function Testimonials() {
       <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-28">
         {mock && (
           <p className="mb-8 inline-flex items-center gap-2 rounded-full bg-land-sun-soft px-3 py-1.5 text-[12.5px] font-medium text-land-sun-ink">
-            Maquette interne{NB}: témoignages fictifs, sauf Camille Duval. À remplacer avant la mise en ligne.
+            Maquette interne{NB}: certains témoignages sont fictifs et n&apos;apparaissent pas en production.
           </p>
         )}
         {featured.length + cards.length > 1 && (
@@ -406,17 +404,11 @@ export function Testimonials() {
               <li key={t.name} className="land-lift flex flex-col rounded-[24px] border border-land-line bg-land-surface p-6">
                 {/* Entreprise en tête de carte, à la place d'un logo client. */}
                 <div className="flex items-center gap-2 text-[13.5px] font-semibold text-land-ink">
-                  <CompanyMark name={t.company} color={t.color} size={24} />
-                  {t.company}
+                  <CompanyMark color={t.color} size={24} />
+                  {t.company[0].toUpperCase() + t.company.slice(1)}
                 </div>
-                {t.metric && (
-                  <div className="mt-6 border-b border-land-line pb-5">
-                    <div className="text-[44px] font-semibold leading-none tracking-[-0.04em] text-land-accent">{t.metric.value}</div>
-                    <div className="mt-2 text-[14px] leading-snug text-land-muted">{t.metric.label}</div>
-                  </div>
-                )}
                 <blockquote className="mt-5 flex-1 text-[16.5px] leading-relaxed text-land-ink">
-                  « {t.quote[0]} <span className="text-land-muted">{t.quote[1]} »</span>
+                  «{"\u00a0"}{t.quote[0]} <span className="text-land-muted">{t.quote[1]}{"\u00a0"}»</span>
                 </blockquote>
                 <div className="mt-6 flex items-center gap-3">
                   <span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full bg-land-sunken">
@@ -431,6 +423,7 @@ export function Testimonials() {
             ))}
           </ul>
         )}
+        <p className="mt-8 text-[13px] text-land-faint">Portraits d&apos;illustration, avec l&apos;accord de chaque personne citée.</p>
       </div>
     </section>
   );
@@ -808,7 +801,7 @@ export function AccompanimentTeaser() {
                 <span className="text-land-faint">Ensuite, on structure votre équipe et on configure Brief pour elle.</span>
               </h2>
               <p className="mt-4 max-w-[58ch] text-[17px] leading-relaxed text-land-muted">
-                Un coach de l&apos;équipe Brief vous accompagne huit semaines, un point par semaine, une brique à la fois.
+                Un expert de l&apos;équipe Brief vous accompagne huit semaines, un point par semaine, une brique à la fois.
               </p>
             </div>
             <Link

@@ -21,7 +21,7 @@ import { NB } from "./team-data";
 // de la section « 4 leviers » d'uptoo.fr : une grille 2 × 2, chaque levier
 // illustré sur un aplat pastel, puis le parcours.
 // L'outil (briefs, analyse et suivi des calls) est la porte d'entrée ; le
-// reste se déploie avec un coach, un point par semaine — c'est le parcours
+// reste se déploie avec un expert, un point par semaine — c'est le parcours
 // réel de lib/parcours.ts (huit semaines, une brique ouverte par semaine).
 // Les tâches n'y figurent pas : le module est masqué sur la landing.
 // Aucun chiffre de résultat : Brief n'en a pas de mesuré à montrer.
@@ -125,7 +125,7 @@ export function Accompaniment() {
         </h2>
         <p className="mt-6 max-w-[60ch] text-[18px] leading-relaxed text-land-muted md:text-[20px]">
           Vos commerciaux commencent par ce qui sert dès la première semaine : les briefs, l&apos;analyse et le suivi
-          des calls. Ensuite, un coach de l&apos;équipe Brief vous accompagne, un point chaque semaine : il structure avec
+          des calls. Ensuite, un expert de l&apos;équipe Brief vous accompagne, un point chaque semaine : il structure avec
           vous votre organisation commerciale et configure Brief autour de vos besoins, de votre méthode de vente aux
           outils de l&apos;équipe. Une brique à la fois, au rythme de l&apos;équipe.
         </p>
@@ -170,9 +170,9 @@ export function Accompaniment() {
           {/* 2. Le coaching */}
           <Lever
             tone="bg-land-coral-soft"
-            tag="Avec votre coach"
+            tag="Avec votre expert"
             title="Coachez vos équipes"
-            body="Chaque semaine, votre coach prépare le point à partir des vrais calls de l'équipe : le call exemplaire à réécouter, les objections qui résistent, puis l'entraînement de vos commerciaux sur ces objections-là."
+            body="Chaque semaine, votre expert prépare le point à partir des vrais calls de l'équipe : le call exemplaire à réécouter, les objections qui résistent, puis l'entraînement de vos commerciaux sur ces objections-là."
             href={SALES_CONTACT.bookingUrl}
             external
           >
@@ -195,9 +195,9 @@ export function Accompaniment() {
           {/* 3. La méthode */}
           <Lever
             tone="bg-land-sun-soft"
-            tag="Avec votre coach"
+            tag="Avec votre expert"
             title="Structurez votre méthode"
-            body="Votre coach construit avec vous la grille de l'équipe et les consignes de chaque étape R1, R2, R3, puis installe les rituels : le point hebdomadaire, le bilan du vendredi, les réponses de référence aux objections."
+            body="Votre expert construit avec vous la grille de l'équipe et les consignes de chaque étape R1, R2, R3, puis installe les rituels : le point hebdomadaire, le bilan du vendredi, les réponses de référence aux objections."
             href="/produit#manager"
           >
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
@@ -218,7 +218,7 @@ export function Accompaniment() {
                 ))}
               </div>
             </div>
-            <Cursor label="Votre coach" className="left-[10%] top-[18%] sm:left-[14%]" />
+            <Cursor label="Votre expert" className="left-[10%] top-[18%] sm:left-[14%]" />
             <Cursor label="Directeur commercial" dark={false} className="bottom-[5%] right-[5%] sm:right-[8%]" />
           </Lever>
 
@@ -229,9 +229,9 @@ export function Accompaniment() {
               canaux d'envoi (préférences de notification), modules ouverts. */}
           <Lever
             tone="bg-land-lilac-soft"
-            tag="Avec votre coach"
+            tag="Avec votre expert"
             title="Configurez Brief pour votre équipe"
-            body="Votre coach règle Brief avec vous, à partir de vos besoins : votre grille et vos étapes, vos catégories d'objections, le ton de vos emails de suivi, les outils où tout doit arriver. Au bout de huit semaines, on fait le bilan et on décide ensemble du rythme de suivi."
+            body="Votre expert règle Brief avec vous, à partir de vos besoins : votre grille et vos étapes, vos catégories d'objections, le ton de vos emails de suivi, les outils où tout doit arriver. Au bout de huit semaines, on fait le bilan et on décide ensemble du rythme de suivi."
             href={SALES_CONTACT.bookingUrl}
             external
           >
@@ -279,7 +279,7 @@ export function Accompaniment() {
                 <span className="h-2.5 w-2.5 rounded-full bg-land-accent" /> L&apos;outil
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-land-coral" /> Avec votre coach
+                <span className="h-2.5 w-2.5 rounded-full bg-land-coral" /> Avec votre expert
               </span>
             </div>
           </div>
@@ -310,7 +310,7 @@ export function Accompaniment() {
               rel="noopener noreferrer"
               className="inline-flex h-11 items-center gap-2 rounded-full bg-land-accent px-5 text-[15px] font-medium text-white transition-[filter] hover:brightness-110"
             >
-              Parler à un coach <ArrowUpRight className="h-4 w-4" aria-hidden />
+              Parler à un expert <ArrowUpRight className="h-4 w-4" aria-hidden />
             </a>
             <Link
               href="/login"

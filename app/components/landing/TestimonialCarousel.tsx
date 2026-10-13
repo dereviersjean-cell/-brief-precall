@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { Building2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { Testimonial } from "./testimonials-data";
 
@@ -16,14 +17,16 @@ import type { Testimonial } from "./testimonials-data";
 // Tous les témoignages sont empilés dans la même cellule de grille : la
 // hauteur est celle du plus long, rien ne saute en changeant.
 
-export function CompanyMark({ name, color, size = 22 }: { name: string; color: string; size?: number }) {
+// Pastille d'entreprise : les entreprises sont décrites (« ESN de 200
+// personnes »), pas nommées, donc une icône plutôt qu'une initiale.
+export function CompanyMark({ color, size = 22 }: { color: string; size?: number }) {
   return (
     <span
       aria-hidden
-      className="grid shrink-0 place-items-center rounded-md font-bold text-white"
-      style={{ backgroundColor: color, width: size, height: size, fontSize: size * 0.5 }}
+      className="grid shrink-0 place-items-center rounded-md text-white"
+      style={{ backgroundColor: color, width: size, height: size }}
     >
-      {name[0].toUpperCase()}
+      <Building2 style={{ width: size * 0.56, height: size * 0.56 }} strokeWidth={2.2} />
     </span>
   );
 }
@@ -72,10 +75,10 @@ export function TestimonialCarousel({ items }: { items: Testimonial[] }) {
             </div>
             <div className="land-quote-text">
               <blockquote className="text-[28px] font-semibold leading-[1.18] tracking-[-0.03em] text-land-ink md:text-[38px] lg:text-[44px]">
-                « {t.quote[0]} <span className="text-land-faint">{t.quote[1]} »</span>
+                «{"\u00a0"}{t.quote[0]} <span className="text-land-faint">{t.quote[1]}{"\u00a0"}»</span>
               </blockquote>
               <figcaption className="mt-8 flex items-center gap-3 border-t border-land-line pt-6">
-                <CompanyMark name={t.company} color={t.color} size={36} />
+                <CompanyMark color={t.color} size={36} />
                 <span>
                   <span className="block text-[17px] font-semibold text-land-ink">{t.name}</span>
                   <span className="block text-[15px] text-land-muted">
