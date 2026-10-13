@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { SiteChrome } from "@/app/components/landing/SiteChrome";
 import { PageHero } from "@/app/components/landing/sections";
 import { LEGAL_LINK, LegalSection, LegalTable } from "@/app/components/landing/legal";
@@ -25,7 +26,14 @@ const CONTACT = (
   </a>
 );
 
+// Page masquée (Jean, 13/10/2026) tant que la société n'existe pas : elle
+// répond 404, n'est plus liée nulle part ni listée dans le sitemap. Pour la
+// remettre : PUBLISHED = true, puis rétablir les liens du pied de page
+// (SiteChrome.tsx), de la page de connexion et l'entrée du sitemap.
+const PUBLISHED = false;
+
 export default function LegalNoticePage() {
+  if (!PUBLISHED) notFound();
   return (
     <SiteChrome>
       <PageHero
@@ -60,8 +68,8 @@ export default function LegalNoticePage() {
               ]}
             />
             <p>
-              La liste complète des prestataires et de ce que chacun traite figure dans notre{" "}
-              <Link href="/confidentialite#prestataires" className={LEGAL_LINK}>
+              Ce que chaque traitement implique pour vos données figure dans notre{" "}
+              <Link href="/confidentialite" className={LEGAL_LINK}>
                 politique de confidentialité
               </Link>
               .

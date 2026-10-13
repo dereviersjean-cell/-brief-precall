@@ -110,9 +110,6 @@ export default async function LoginPage({
 
         <div className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-land-faint">
           <span>© {new Date().getFullYear()} Brief</span>
-          <Link href="/mentions-legales" className="transition-colors hover:text-land-ink">
-            Mentions légales
-          </Link>
           <Link href="/confidentialite" className="transition-colors hover:text-land-ink">
             Confidentialité
           </Link>

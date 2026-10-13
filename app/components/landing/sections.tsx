@@ -920,8 +920,7 @@ export function PageHero({
 }
 
 // ─── Page Sécurité ───────────────────────────────────────────────────────────
-// Tout ce qui suit est aligné sur la politique de confidentialité (qui porte
-// la liste des prestataires, retirée d'ici le 13/10/2026) et sur le
+// Tout ce qui suit est aligné sur la politique de confidentialité et sur le
 // code (12/10/2026) : base Supabase et application Vercel à Paris, Recall en
 // région Europe (Francfort), vidéo jamais conservée par Brief, scope Gmail
 // limité à l'envoi (Mail.Send côté Microsoft), message d'annonce du bot,

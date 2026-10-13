@@ -33,29 +33,12 @@ const SECTIONS = [
   { id: "qui", title: "Qui sommes-nous" },
   { id: "donnees", title: "Les données que nous collectons" },
   { id: "usages", title: "Pourquoi nous les utilisons" },
-  { id: "prestataires", title: "Avec qui nous les partageons" },
   { id: "hebergement", title: "Hébergement et localisation" },
   { id: "conservation", title: "Durées de conservation" },
   { id: "droits", title: "Vos droits" },
   { id: "securite", title: "Sécurité" },
   { id: "cookies", title: "Cookies" },
   { id: "modifications", title: "Modifications" },
-];
-
-const PROVIDERS: [string, string][] = [
-  ["Anthropic", "Génération des briefs, analyse des transcriptions, rédaction des brouillons d'email (modèles Claude)."],
-  ["Recall.ai", "Enregistrement et transcription des visios, en région Europe."],
-  ["Supabase", "Hébergement de la base de données de l'application, à Paris."],
-  ["Vercel", "Hébergement de l'application, à Paris."],
-  ["Voyage AI", "Indexation sémantique de votre bibliothèque d'objections et de vos références clients."],
-  ["Resend", "Envoi des emails transactionnels de Brief (notifications, résumés hebdomadaires)."],
-  ["Stripe", "Facturation de votre organisation."],
-  ["Pappers", "Données légales publiques sur les entreprises françaises."],
-  ["Apollo.io", "Enrichissement de la fiche du contact que vous vous apprêtez à appeler (poste, ancienneté, entreprise)."],
-  ["Serper", "Recherche d'actualités publiques sur l'entreprise du prospect."],
-  ["Inngest", "Exécution des traitements de fond (synchronisation des agendas, envois programmés)."],
-  ["Sentry", "Remontée des erreurs techniques de l'application."],
-  ["HubSpot, Pipedrive, Notion, Slack", "Uniquement si vous ou votre organisation connectez ces outils."],
 ];
 
 const RETENTION: [string, string][] = [
@@ -159,17 +142,14 @@ export default function PrivacyPolicyPage() {
               servent jamais à entraîner des modèles d&apos;intelligence artificielle génériques : elles servent
               uniquement à générer, pour vous, les briefs, analyses et brouillons décrits ci-dessus.
             </div>
-          </LegalSection>
-
-          <LegalSection id="prestataires" title="Avec qui nous les partageons">
+            {/* La liste nominative des prestataires a été retirée (Jean,
+                13/10/2026). On garde les catégories de sous-traitants : le RGPD
+                (art. 13) et la vérification OAuth de Google demandent de dire
+                avec qui les données sont partagées. */}
             <p>
-              Nous ne vendons aucune donnée. Certains traitements sont confiés à des prestataires, chacun n&apos;ayant
-              accès qu&apos;aux données nécessaires à sa tâche :
-            </p>
-            <LegalTable rows={PROVIDERS} />
-            <p>
-              Nous pouvons également communiquer des données si la loi nous y oblige, ou pour protéger nos droits, notre
-              sécurité ou celle de nos utilisateurs.
+              Nous ne vendons aucune donnée. Certains traitements sont confiés à des sous-traitants techniques
+              (hébergement, transcription des visios, intelligence artificielle, envoi d&apos;emails), uniquement pour
+              faire fonctionner Brief. Nous pouvons aussi communiquer des données si la loi nous y oblige.
             </p>
           </LegalSection>
 

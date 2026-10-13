@@ -75,7 +75,6 @@ function Footer() {
               {l.label}
             </Link>
           ))}
-          <Link href="/mentions-legales" className={FOOTER_LINK}>Mentions légales</Link>
           <Link href="/confidentialite" className={FOOTER_LINK}>Confidentialité</Link>
           <a href="mailto:contact@brief-ai.fr" className={FOOTER_LINK}>Nous contacter</a>
         </nav>

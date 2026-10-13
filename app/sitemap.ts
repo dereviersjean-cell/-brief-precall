@@ -13,6 +13,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${APP_URL}/integrations`, lastModified, changeFrequency: "monthly", priority: 0.7 },
     { url: `${APP_URL}/securite`, lastModified, changeFrequency: "monthly", priority: 0.7 },
     { url: `${APP_URL}/confidentialite`, lastModified, changeFrequency: "yearly", priority: 0.5 },
-    { url: `${APP_URL}/mentions-legales`, lastModified, changeFrequency: "yearly", priority: 0.5 },
   ];
 }
