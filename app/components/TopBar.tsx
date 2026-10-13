@@ -6,7 +6,8 @@ import { Bell, ChevronRight } from "lucide-react";
 import GlobalSearch from "./GlobalSearch";
 import { useModules } from "./ModulesProvider";
 
-// Porté du mockup Lovable (app-shell.tsx TopBar), juillet 2026. Le champ de
+// Porté du mockup Lovable (app-shell.tsx TopBar), juillet 2026, puis aligné
+// sur la barre de navigation du site public (octobre 2026). Le champ de
 // recherche est resté désactivé jusqu'au 31/07/2026 — il est maintenant
 // fonctionnel (GlobalSearch.tsx).
 const LABELS: Record<string, string> = {
@@ -68,9 +69,9 @@ export default function TopBar() {
   const fullAccess = useModules().briefsOnly === false;
 
   return (
-    <div className="brief-ui sticky top-0 z-10 border-b border-border/80 bg-white/70 backdrop-blur-xl">
+    <div className="brief-ui sticky top-0 z-10 border-b border-border/70 bg-[color:var(--background)]/80 backdrop-blur-xl backdrop-saturate-150">
       <div className="h-14 flex items-center gap-4 pl-16 pr-4 lg:px-10">
-        <nav className="flex items-center gap-1.5 text-[12.5px] text-slate-500 min-w-0">
+        <nav className="flex items-center gap-1.5 text-[13.5px] text-slate-500 min-w-0">
           {crumbs.map((c, i) => (
             <span key={i} className="flex items-center gap-1.5 min-w-0">
               {i > 0 && <ChevronRight className="h-3 w-3 shrink-0 text-slate-300" />}
@@ -91,7 +92,7 @@ export default function TopBar() {
               href="/notifications"
               title="Notifications"
               data-tour="nav-notifications"
-              className="grid h-9 w-9 place-items-center rounded-lg border border-border bg-white/60 text-slate-600 hover:bg-white hover:text-slate-900 transition-colors"
+              className="grid h-9 w-9 place-items-center rounded-full border border-border bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
             >
               <Bell className="h-4 w-4" />
             </Link>

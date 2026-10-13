@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Geist } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 
@@ -26,6 +27,10 @@ export const metadata: Metadata = {
   },
 };
 
+// Geist, la police du site public, pour toute l'app (refonte visuelle
+// d'octobre 2026). Exposée en variable CSS, lue par --marketing-sans.
+const brief = Geist({ subsets: ["latin"], variable: "--font-brief", display: "swap" });
+
 export const viewport: Viewport = {
   themeColor: "#FFFFFF",
 };
@@ -36,19 +41,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className="h-full">
-      <head>
-        {/* Only consumed by pages/components using the .brief-ui class in
-            globals.css — loading them here is the simplest option, and
-            harmless since nothing else references these font families. */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap"
-        />
-      </head>
-      <body className="min-h-full flex flex-col bg-slate-50 text-slate-900 antialiased">
+    <html lang="fr" className={`h-full ${brief.variable}`}>
+      <body className="min-h-full flex flex-col bg-background text-ink antialiased">
         <Providers>{children}</Providers>
       </body>
     </html>

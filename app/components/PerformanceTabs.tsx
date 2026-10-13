@@ -45,7 +45,7 @@ export default function PerformanceTabs() {
     // de revenir. z-index juste en dessous de la TopBar pour passer dessous
     // et non par-dessus. Même fond translucide flouté qu'elle, sinon le
     // contenu se voit au travers en défilant.
-    <nav data-tour="performance-tabs" className="sticky top-14 z-[9] flex items-center gap-1 overflow-x-auto no-scrollbar border-b border-border bg-white/70 px-4 backdrop-blur-xl lg:px-10">
+    <nav data-tour="performance-tabs" className="sticky top-14 z-[9] flex items-center gap-1 overflow-x-auto no-scrollbar border-b border-border bg-[color:var(--background)]/80 px-4 backdrop-blur-xl lg:px-10">
       {tabs.map((tab) => {
         const active = tab.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(tab.href);
         const Icon = tab.icon;
@@ -61,7 +61,7 @@ export default function PerformanceTabs() {
           >
             <Icon className="h-3.5 w-3.5" strokeWidth={active ? 2.25 : 1.75} />
             {tab.label}
-            {active && <span className="absolute inset-x-2 -bottom-px h-[2px] rounded-full brand-gradient" />}
+            {active && <span className="absolute inset-x-2 -bottom-px h-[2px] rounded-full bg-[color:var(--primary)]" />}
           </Link>
         );
       })}

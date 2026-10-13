@@ -1,12 +1,11 @@
 @import "tailwindcss";
 
 body {
-  /* Hardcoded (not var()) on purpose — frees up --background/--foreground
-     below for the marketing-only palette without touching the rest of the
-     app's look. */
-  background: #f8fafc;
-  color: #0f172a;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* Fond, encre et police de toute l'app = ceux du site public (refonte
+     visuelle d'octobre 2026, cf. bloc « Brief UI design tokens »). */
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--marketing-sans);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -34,31 +33,36 @@ body {
 :root {
   --radius: 0.625rem;
 
-  /* Palette canonique Brief — bleu B2B (mockup Lovable, juillet 2026) */
-  --background: oklch(0.985 0.005 250);
-  --foreground: oklch(0.22 0.04 260);
+  /* Palette canonique Brief = celle du site public (refonte d'octobre 2026) :
+     mêmes valeurs que les tokens `.landing` en mode clair (--land-bg,
+     --land-ink, --land-accent…), pour qu'on ne change pas d'univers en se
+     connectant. L'app reste en clair : ses écrans utilisent encore beaucoup
+     de classes `slate-*` en dur, un mode sombre partiel serait pire que rien.
+     Jusqu'au 13/10/2026 : palette du mockup Lovable (juillet 2026). */
+  --background: oklch(0.987 0.002 265);
+  --foreground: oklch(0.19 0.02 266);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.22 0.04 260);
+  --card-foreground: oklch(0.19 0.02 266);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.22 0.04 260);
-  --primary: oklch(0.52 0.2 258); /* bleu roi #2A5CE0 */
-  --primary-foreground: oklch(0.99 0.005 250);
-  --secondary: oklch(0.965 0.01 260);
-  --secondary-foreground: oklch(0.28 0.05 265);
-  --muted: oklch(0.965 0.01 260);
-  --muted-foreground: oklch(0.52 0.03 257);
-  --accent: oklch(0.968 0.028 255);
-  --accent-foreground: oklch(0.45 0.18 258);
+  --popover-foreground: oklch(0.19 0.02 266);
+  --primary: oklch(0.52 0.2 265); /* bleu roi #2A5CE0, = --land-accent */
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.968 0.004 265);
+  --secondary-foreground: oklch(0.3 0.02 266);
+  --muted: oklch(0.968 0.004 265);
+  --muted-foreground: oklch(0.49 0.018 266);
+  --accent: oklch(0.955 0.025 265);
+  --accent-foreground: oklch(0.45 0.19 265);
   --destructive: oklch(0.62 0.22 27);
-  --destructive-foreground: oklch(0.99 0.005 250);
-  --border: oklch(0.92 0.01 258);
-  --input: oklch(0.92 0.01 258);
-  --ring: oklch(0.6 0.17 258);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.912 0.006 266);
+  --input: oklch(0.912 0.006 266);
+  --ring: oklch(0.6 0.17 265);
 
   /* Alias conservés pour compat avec le code existant + les primitives portées */
-  --violet: oklch(0.52 0.2 258);
-  --lavender: oklch(0.968 0.028 255);
-  --lavender-strong: oklch(0.9 0.055 255);
+  --violet: oklch(0.52 0.2 265);
+  --lavender: oklch(0.955 0.025 265);
+  --lavender-strong: oklch(0.9 0.05 265);
   --success: oklch(0.72 0.17 155);
   --success-soft: oklch(0.95 0.05 155);
   --warning: oklch(0.78 0.16 65);
@@ -66,13 +70,15 @@ body {
   --danger: oklch(0.68 0.2 20);
   --danger-soft: oklch(0.96 0.04 20);
 
-  --shadow-xs: 0 1px 0 0 oklch(0.2 0.04 260 / 0.04);
-  --shadow-sm: 0 1px 2px 0 oklch(0.2 0.04 260 / 0.05), 0 1px 3px -1px oklch(0.2 0.04 260 / 0.04);
-  --shadow-md: 0 4px 12px -4px oklch(0.35 0.14 258 / 0.12), 0 2px 6px -2px oklch(0.2 0.04 260 / 0.05);
-  --shadow-glow: 0 20px 60px -20px oklch(0.52 0.2 258 / 0.32);
-  --gradient-brand: linear-gradient(135deg, oklch(0.48 0.2 262) 0%, oklch(0.58 0.18 240) 100%);
-  --gradient-canvas: radial-gradient(1200px 600px at 100% -10%, oklch(0.94 0.045 255 / 0.6), transparent 60%),
-    radial-gradient(900px 500px at -10% 20%, oklch(0.94 0.035 235 / 0.55), transparent 60%);
+  /* Ombres neutres et à plat, comme sur le site : plus de halo bleu. */
+  --shadow-xs: 0 1px 0 0 oklch(0.19 0.02 266 / 0.04);
+  --shadow-sm: 0 1px 2px 0 oklch(0.19 0.02 266 / 0.05), 0 1px 3px -1px oklch(0.19 0.02 266 / 0.04);
+  --shadow-md: 0 1px 2px oklch(0.19 0.02 266 / 0.04), 0 12px 24px -12px oklch(0.19 0.02 266 / 0.16);
+  --shadow-glow: 0 1px 2px oklch(0.19 0.02 266 / 0.06);
+  /* Le site n'a pas de dégradé : `brand-gradient` (126 usages) devient un
+     aplat de la couleur d'accent, et le fond `app-canvas` un fond uni. */
+  --gradient-brand: linear-gradient(var(--primary), var(--primary));
+  --gradient-canvas: none;
 
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
@@ -97,8 +103,28 @@ body {
   --marketing-lavender-deep: var(--lavender-strong);
   --marketing-border: var(--border);
   --marketing-muted-fg: var(--muted-foreground);
-  --marketing-sans: "Inter Tight", ui-sans-serif, system-ui, sans-serif;
-  --marketing-serif: "Instrument Serif", ui-serif, Georgia, serif;
+  /* Geist, la police du site, chargée par app/layout.tsx (next/font). */
+  --marketing-sans: var(--font-brief), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Gris de l'app : 2 000 classes `slate-*` en dur. Plutôt que de les
+   réécrire, on redéfinit l'échelle `slate` de Tailwind sur les neutres du
+   site (même teinte 266, chroma plus faible : un gris froid, moins bleuté).
+   Les repères : 50 = --land-bg, 100 = --land-sunken, 200 = --land-line,
+   500 = --land-faint, 600 = --land-muted, 900 = --land-ink. Le site public
+   n'utilise pas `slate` (tokens `land-*`), il n'est pas touché. */
+@theme {
+  --color-slate-50: oklch(0.987 0.002 265);
+  --color-slate-100: oklch(0.968 0.004 265);
+  --color-slate-200: oklch(0.912 0.006 266);
+  --color-slate-300: oklch(0.86 0.008 266);
+  --color-slate-400: oklch(0.7 0.012 266);
+  --color-slate-500: oklch(0.55 0.014 266);
+  --color-slate-600: oklch(0.49 0.018 266);
+  --color-slate-700: oklch(0.37 0.02 266);
+  --color-slate-800: oklch(0.28 0.02 266);
+  --color-slate-900: oklch(0.19 0.02 266);
+  --color-slate-950: oklch(0.14 0.02 266);
 }
 
 @theme inline {
@@ -154,7 +180,6 @@ body {
 
 .brief-ui {
   font-family: var(--marketing-sans);
-  font-feature-settings: "ss01", "cv11";
   -webkit-font-smoothing: antialiased;
 }
 .brief-ui h1,
@@ -164,11 +189,12 @@ body {
   font-family: var(--marketing-sans);
   letter-spacing: -0.03em;
 }
+/* Ancien mot en serif italique des titres (« Feedback post-call »). Le site
+   n'a pas de serif : le mot garde seulement sa couleur d'accent, comme les
+   verbes colorés des titres du site (« Préparer. »). */
 .italic-serif {
-  font-family: var(--marketing-serif);
-  font-style: italic;
-  font-weight: 400;
-  letter-spacing: -0.01em;
+  font-family: inherit;
+  font-style: normal;
 }
 
 @keyframes float-slow {

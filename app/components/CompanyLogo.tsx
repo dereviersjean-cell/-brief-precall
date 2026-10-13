@@ -52,8 +52,15 @@ export default function CompanyLogo({
       onError={() => (usingSrc ? setSrcFailed(true) : setFailed(true))}
       // Image déjà en cache avant que React n'écoute onLoad : l'événement ne
       // viendrait jamais et le logo resterait invisible.
+      // Même chose pour un échec : un logo introuvable avant l'hydratation ne
+      // déclenche jamais onError, et la case restait vide au lieu de montrer
+      // l'initiale.
       ref={(img) => {
-        if (img?.complete && img.naturalWidth > 0 && !loaded) setLoaded(true);
+        if (!img?.complete) return;
+        if (img.naturalWidth > 0) {
+          if (!loaded) setLoaded(true);
+        } else if (usingSrc) setSrcFailed(true);
+        else setFailed(true);
       }}
       onLoad={() => setLoaded(true)}
       // Invisible jusqu'au chargement : pas d'icône d'image cassée le temps

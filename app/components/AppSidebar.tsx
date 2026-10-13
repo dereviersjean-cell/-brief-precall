@@ -22,10 +22,11 @@ function daysRemaining(iso: string): number {
   return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / (24 * 60 * 60 * 1000)));
 }
 
-// Style porté du mockup Lovable (app-shell.tsx), juillet 2026 — nav/routes
-// inchangées, uniquement le visuel (tokens app/globals.css : var(--violet),
-// var(--lavender), brand-gradient). Largeur gardée à w-60 (pas 248px comme
-// le mockup) pour ne pas devoir retoucher le ml-60 de tous les layout.tsx.
+// Visuel aligné sur le site public (octobre 2026) et sur sa réplique de la
+// barre latérale (app/components/landing/AppSidebar.tsx) : fond blanc uni,
+// logo en aplat, entrée active sur fond d'accent pâle, pas de dégradé ni de
+// halo. Nav/routes inchangées. Largeur gardée à w-60 pour ne pas devoir
+// retoucher le ml-60 de tous les layout.tsx.
 
 function NavLink({
   href,
@@ -49,16 +50,13 @@ function NavLink({
     <Link
       href={href}
       data-tour={tourId}
-      className={`group relative flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm transition-all ${
+      className={`group relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-[14px] transition-colors ${
         active
           ? "bg-[color:var(--lavender)] text-[color:var(--violet)] font-medium"
-          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
       }`}
     >
-      {active && (
-        <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full brand-gradient" />
-      )}
-      <Icon className="h-[15px] w-[15px] shrink-0" strokeWidth={active ? 2.25 : 1.75} />
+      <Icon className="h-4 w-4 shrink-0" strokeWidth={active ? 2.25 : 1.75} />
       <span className="flex-1">{label}</span>
       {badge != null && badge > 0 && (
         <span className="inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-[color:var(--danger)] text-white text-[9px] font-bold leading-none shrink-0">
@@ -78,9 +76,9 @@ function LockedNavItem({ label, icon: Icon }: { label: string; icon: LucideIcon 
     <div
       aria-disabled="true"
       title="Disponible avec l'accès complet"
-      className="flex cursor-not-allowed select-none items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm text-slate-400"
+      className="flex cursor-not-allowed select-none items-center gap-2.5 rounded-lg px-3 py-2 text-[14px] text-slate-400"
     >
-      <Icon className="h-[15px] w-[15px] shrink-0" strokeWidth={1.75} />
+      <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
       <span className="flex-1">{label}</span>
       <Lock className="h-3 w-3 shrink-0" />
     </div>
@@ -89,7 +87,7 @@ function LockedNavItem({ label, icon: Icon }: { label: string; icon: LucideIcon 
 
 function NavGroupLabel({ children }: { children: string }) {
   return (
-    <div className="px-3.5 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+    <div className="px-3 pb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-slate-500">
       {children}
     </div>
   );
@@ -175,7 +173,7 @@ export default function AppSidebar() {
       <button
         onClick={() => setMobileOpen(true)}
         aria-label="Ouvrir le menu"
-        className="brief-ui fixed top-3 left-3 z-30 grid h-10 w-10 place-items-center rounded-lg border border-border bg-white/90 backdrop-blur text-slate-600 shadow-[var(--shadow-sm)] lg:hidden"
+        className="brief-ui fixed top-3 left-3 z-30 grid h-10 w-10 place-items-center rounded-lg border border-border bg-white text-slate-600 shadow-[var(--shadow-sm)] lg:hidden"
       >
         <Menu className="h-5 w-5" />
       </button>
@@ -190,21 +188,20 @@ export default function AppSidebar() {
       )}
 
       <aside
-        className={`brief-ui fixed left-0 top-0 h-full w-60 bg-white/80 backdrop-blur-xl border-r border-border flex flex-col z-40 transition-transform duration-200 lg:translate-x-0 ${
+        className={`brief-ui fixed left-0 top-0 h-full w-60 bg-white border-r border-border flex flex-col z-40 transition-transform duration-200 lg:translate-x-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-5 pt-5 pb-4 shrink-0">
         <Link href={fullAccess ? "/dashboard" : "/brief"} className="flex items-center gap-2.5 min-w-0 flex-1">
-          <div className="relative grid h-9 w-9 place-items-center rounded-xl brand-gradient text-white text-sm font-semibold shadow-[var(--shadow-glow)] shrink-0">
+          <div className="grid h-8 w-8 place-items-center rounded-lg bg-[color:var(--primary)] text-white text-[14px] font-semibold shrink-0">
             B
-            <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-white" />
           </div>
           <div className="min-w-0 leading-tight">
-            <div className="text-[15px] font-semibold tracking-tight text-slate-900">Brief</div>
+            <div className="text-[16px] font-semibold tracking-tight text-slate-900">Brief</div>
             {orgStatus?.organizationName && (
-              <div className="text-[10.5px] text-slate-500 truncate">{orgStatus.organizationName}</div>
+              <div className="text-[11px] text-slate-500 truncate">{orgStatus.organizationName}</div>
             )}
           </div>
         </Link>
@@ -259,11 +256,11 @@ export default function AppSidebar() {
       </nav>
 
       {/* Bottom — help, settings, sign out, user */}
-      <div className="px-3 py-3 space-y-1.5 shrink-0">
+      <div className="px-3 py-3 space-y-0.5 shrink-0 border-t border-border">
         {briefsOnly && <TalkToSales variant="compact" />}
 
         {orgStatus?.billingStatus === "trialing" && orgStatus.trialEndsAt && (
-          <div className="relative overflow-hidden rounded-xl border border-border bg-gradient-to-br from-[color:var(--lavender)] to-white p-3">
+          <div className="mb-2 rounded-xl bg-[color:var(--lavender)] p-3">
             <div className="flex items-center gap-2 text-[11px] font-medium text-[color:var(--violet)]">
               <Sparkles className="h-3.5 w-3.5" /> Essai actif
             </div>
@@ -279,11 +276,11 @@ export default function AppSidebar() {
         {fullAccess && (
         <Link
           href="/help"
-          className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-[11.5px] font-medium hover:bg-slate-50 transition-colors ${
-            helpActive ? "text-[color:var(--violet)]" : "text-slate-600"
+          className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13.5px] transition-colors ${
+            helpActive ? "bg-[color:var(--lavender)] font-medium text-[color:var(--violet)]" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
           }`}
         >
-          <HelpCircle className="h-3 w-3" />
+          <HelpCircle className="h-4 w-4" strokeWidth={1.75} />
           Aide
         </Link>
         )}
@@ -292,30 +289,30 @@ export default function AppSidebar() {
             rediriger, et elle est hors des pages ouvertes en accès « briefs ». */}
         <Link
           href="/settings/general"
-          className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-[11.5px] font-medium hover:bg-slate-50 transition-colors ${
-            settingsActive ? "text-[color:var(--violet)]" : "text-slate-600"
+          className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13.5px] transition-colors ${
+            settingsActive ? "bg-[color:var(--lavender)] font-medium text-[color:var(--violet)]" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
           }`}
         >
-          <Settings className="h-3 w-3" />
+          <Settings className="h-4 w-4" strokeWidth={1.75} />
           Paramètres
         </Link>
 
         <button
           onClick={() => signOut({ callbackUrl: "/" })}
-          className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-[11.5px] font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+          className="w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13.5px] text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
         >
-          <LogOut className="h-3 w-3" />
+          <LogOut className="h-4 w-4" strokeWidth={1.75} />
           Déconnexion
         </button>
 
         {/* User card */}
-        <div className="flex items-center gap-2 rounded-xl border border-border bg-white p-2 mt-1">
-          <div className="grid h-7 w-7 place-items-center rounded-lg brand-gradient text-white text-[10px] font-semibold shrink-0">
+        <div className="mt-2 flex items-center gap-2.5 border-t border-border px-1 pt-3">
+          <div className="grid h-8 w-8 place-items-center rounded-full bg-[color:var(--lavender)] text-[color:var(--violet)] text-[11px] font-semibold shrink-0">
             {userInitials}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[11.5px] font-medium text-slate-900 leading-none truncate">{userName}</p>
-            {userEmail && <p className="text-[10px] text-slate-500 mt-0.5 truncate">{userEmail}</p>}
+            <p className="text-[13px] font-medium text-slate-900 leading-tight truncate">{userName}</p>
+            {userEmail && <p className="text-[11.5px] text-slate-500 truncate">{userEmail}</p>}
           </div>
         </div>
       </div>

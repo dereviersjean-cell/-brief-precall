@@ -31,7 +31,7 @@ export function Button({
   }[size];
   const variants = {
     primary:
-      "brand-gradient text-white shadow-[var(--shadow-glow)] hover:brightness-110 active:brightness-95",
+      "bg-[color:var(--primary)] text-white hover:brightness-110 active:brightness-95",
     secondary:
       "bg-white border border-border text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-[var(--shadow-xs)]",
     outline:
