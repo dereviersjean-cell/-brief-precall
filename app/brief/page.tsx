@@ -19,11 +19,12 @@ export default async function BriefToolPage() {
 async function loadInitial(): Promise<BriefPageInitial | null> {
   const session = await getServerSession(authOptions);
   const auth = await requireActiveUser(session);
-  // Sans session ou sans jeton d'agenda, le composant client garde son
-  // comportement d'origine (bannière de connexion, lecture côté navigateur).
-  if (!auth.ok || !session?.accessToken) return null;
+  // Sans session, le composant client garde son comportement d'origine
+  // (bannière de connexion). Sans jeton d'agenda (compte email), seuls les
+  // RDV ajoutés à la main sont lus.
+  if (!auth.ok || !session) return null;
   const [calendar, briefs] = await Promise.all([
-    loadUpcomingEvents(session as typeof session & { accessToken: string }, auth.userId),
+    loadUpcomingEvents(session, auth.userId),
     getBriefsByUser(auth.userId).catch(() => []),
   ]);
   return {

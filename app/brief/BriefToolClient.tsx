@@ -812,6 +812,8 @@ export default function BriefToolClient({ initial = null }: { initial?: BriefPag
   const { data: session, status } = useSession();
   const provider = session?.provider ?? "google";
   const calendarLabel = provider === "azure-ad" ? "Microsoft Calendar" : "Google Calendar";
+  // Compte créé par email (sans Google ni Microsoft) : pas d'agenda relié.
+  const noCalendar = provider === "email";
   // Repris du cache de la visite précédente : en revenant d'un autre onglet,
   // la page s'affiche aussitôt, puis se met à jour en arrière-plan.
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[] | null>(initial ? initial.events : pageCache.events);
@@ -981,6 +983,37 @@ export default function BriefToolClient({ initial = null }: { initial?: BriefPag
         </div>
       )}
 
+      {/* Compte email : l'agenda n'est pas relié. Les RDV ajoutés à la main
+          s'affichent ; relier Google ou Outlook avec la même adresse rattache
+          l'agenda à ce compte (resolveUserForLogin). */}
+      {noCalendar && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-white px-5 py-4 ring-1 ring-[color:var(--lavender-strong)]">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[color:var(--lavender)]">
+              <Calendar className="w-4 h-4 text-[color:var(--violet)]" />
+            </span>
+            <p className="text-[13.5px] text-slate-700">
+              Votre agenda n&apos;est pas relié. Ajoutez vos rendez-vous à la main, ou connectez votre agenda pour
+              les voir apparaître ici.
+            </p>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            <button
+              onClick={() => signIn("google", { callbackUrl: "/brief" })}
+              className="inline-flex h-9 items-center rounded-full border border-border bg-white px-4 text-[13px] font-medium text-slate-800 hover:bg-slate-50"
+            >
+              Google Agenda
+            </button>
+            <button
+              onClick={() => signIn("azure-ad", { callbackUrl: "/brief" })}
+              className="inline-flex h-9 items-center rounded-full border border-border bg-white px-4 text-[13px] font-medium text-slate-800 hover:bg-slate-50"
+            >
+              Outlook
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Connect Google Calendar banner */}
       {!isAuthenticated && status !== "loading" && (
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-[color:var(--lavender)] px-5 py-4">
@@ -1032,7 +1065,11 @@ export default function BriefToolClient({ initial = null }: { initial?: BriefPag
           {calendarGroups.length === 0 ? (
             <EmptyState
               title="Aucun rendez-vous à venir pour l'instant."
-              subtitle={`Aucun événement ${calendarLabel} avec des participants extérieurs dans les 7 prochains jours.`}
+              subtitle={
+                noCalendar
+                  ? "Ajoutez un rendez-vous à la main pour préparer son brief."
+                  : `Aucun événement ${calendarLabel} avec des participants extérieurs dans les 7 prochains jours.`
+              }
             />
           ) : (
             <>
@@ -1097,7 +1134,7 @@ export default function BriefToolClient({ initial = null }: { initial?: BriefPag
               ) : (
                 <p className="mt-1 text-[13px] text-slate-500">
                   {upcomingCount} RDV à venir
-                  {showCalendar && ` · ${calendarLabel}`}
+                  {showCalendar && !noCalendar && ` · ${calendarLabel}`}
                 </p>
               )}
             </div>

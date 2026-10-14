@@ -181,6 +181,34 @@ export async function sendInvitationEmail(params: {
 // n'est enregistrée, et rien dans l'app ne le montrait tant que personne
 // n'allait voir. Envoyé UNE fois, au passage à « disconnected » détecté par
 // la synchronisation des 5 minutes (lib/calendar-health.ts).
+// Code de connexion à usage unique (connexion sans SSO, 14/10/2026). Sert
+// aussi à créer un compte et à définir ou changer son mot de passe : c'est la
+// preuve qu'on reçoit les emails de cette adresse.
+export async function sendLoginCodeEmail(params: { to: string; code: string }): Promise<void> {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const spaced = `${params.code.slice(0, 3)} ${params.code.slice(3)}`;
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px; color: #0f172a;">
+      <h1 style="font-size: 20px; margin: 0 0 16px;">Votre code de connexion à Brief</h1>
+      <p style="font-size: 14px; color: #475569; line-height: 1.6; margin: 0 0 20px;">Saisissez ce code sur la page de connexion :</p>
+      <p style="font-size: 32px; font-weight: 700; letter-spacing: 6px; margin: 0 0 20px; color: #2A5CE0;">${spaced}</p>
+      <p style="font-size: 13px; color: #64748b; line-height: 1.6; margin: 0;">
+        Il est valable 10 minutes et ne sert qu'une fois. Si vous n'avez rien demandé, ignorez cet email :
+        personne ne peut se connecter sans ce code.
+      </p>
+    </div>
+  `;
+  const { error } = await resend.emails.send({
+    from: process.env.RESEND_FROM_EMAIL!,
+    to: params.to,
+    subject: `${spaced} — votre code de connexion à Brief`,
+    html,
+  });
+  if (error) {
+    throw new Error(`sendLoginCodeEmail failed: ${error.message}`);
+  }
+}
+
 export async function sendCalendarDisconnectedEmail(params: {
   to: string;
   firstName: string | null;

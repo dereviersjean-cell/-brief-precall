@@ -6,6 +6,7 @@ import { ArrowLeft, Check, FileCheck2, MessageSquareWarning, Mic } from "lucide-
 import { BRIEFS_ACCESS_DAILY_LIMIT } from "@/lib/sales-contact";
 import { GoogleSignInButton } from "./GoogleSignInButton";
 import { MicrosoftSignInButton } from "./MicrosoftSignInButton";
+import { EmailSignIn } from "./EmailSignIn";
 import { safeInternalPath } from "@/lib/safe-path";
 
 export const metadata: Metadata = {
@@ -94,6 +95,14 @@ export default async function LoginPage({
               <GoogleSignInButton callbackUrl={destination} />
               <MicrosoftSignInButton callbackUrl={destination} />
             </div>
+
+            {/* Sans Google ni Microsoft : mot de passe ou code par email. */}
+            <div className="my-6 flex items-center gap-3 text-[13px] text-land-faint">
+              <span className="h-px flex-1 bg-land-line" />
+              ou avec votre email
+              <span className="h-px flex-1 bg-land-line" />
+            </div>
+            <EmailSignIn callbackUrl={destination} />
 
             <ul className="mt-8 space-y-2.5 border-t border-land-line pt-6 text-[14px] text-land-muted">
               <li className="flex items-center gap-2.5">

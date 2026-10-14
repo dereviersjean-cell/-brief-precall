@@ -14,10 +14,10 @@ export async function GET() {
   const auth = await requireActiveUser(session);
   if (!auth.ok) return auth.response;
 
-  if (!session?.accessToken) {
+  if (!session) {
     return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
   }
 
-  const result = await loadUpcomingEvents(session as typeof session & { accessToken: string }, auth.userId);
+  const result = await loadUpcomingEvents(session, auth.userId);
   return result.ok ? NextResponse.json(result.events) : NextResponse.json({ error: result.error }, { status: result.status });
 }

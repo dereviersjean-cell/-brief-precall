@@ -1,6 +1,10 @@
 import { type AuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import AzureADProvider from "next-auth/providers/azure-ad";
+import CredentialsProvider from "next-auth/providers/credentials";
+import { consumeLoginCode, looksLikeEmail, normalizeEmail, signInWithPassword, signInWithVerifiedEmail } from "./email-auth";
+import { passwordProblem } from "./password";
+import { checkSharedRateLimit } from "./rate-limit";
 import { resolveUserForLogin, saveGoogleTokens, getGoogleTokens, getUserRole, touchUserLastSeen, type AuthProvider } from "./db";
 import { refreshGoogleAccessToken } from "./gmail";
 import { MICROSOFT_LOGIN_SCOPES, refreshMicrosoftAccessToken } from "./microsoft";
@@ -99,6 +103,44 @@ export const authOptions: AuthOptions = {
         },
       },
     }),
+    // Connexion sans SSO (14/10/2026) — lib/email-auth.ts. Ces comptes n'ont
+    // pas de jeton d'agenda : la page Brief leur montre les RDV ajoutés à la
+    // main, et ils peuvent relier Google ou Outlook plus tard (même adresse →
+    // même compte, cf. resolveUserForLogin).
+    CredentialsProvider({
+      id: "email-password",
+      name: "Email et mot de passe",
+      credentials: { email: { type: "email" }, password: { type: "password" } },
+      async authorize(credentials) {
+        const email = normalizeEmail(credentials?.email ?? "");
+        const password = credentials?.password ?? "";
+        if (!looksLikeEmail(email) || !password) return null;
+        // 10 essais par adresse et par quart d'heure, comptés entre instances :
+        // rien d'autre ne ralentirait un essai de mots de passe en série.
+        const limit = await checkSharedRateLimit(`password:${email}`, { max: 10, windowMs: 15 * 60 * 1000 });
+        if (!limit.allowed) throw new Error("TooManyAttempts");
+        const result = await signInWithPassword(email, password);
+        if (!result.ok) throw new Error(result.reason === "disabled" ? "AccountDisabled" : "InvalidPassword");
+        return { id: result.userId, email, name: result.name, role: result.role } as never;
+      },
+    }),
+    CredentialsProvider({
+      id: "email-code",
+      name: "Code par email",
+      credentials: { email: { type: "email" }, code: { type: "text" }, newPassword: { type: "password" } },
+      async authorize(credentials) {
+        const email = normalizeEmail(credentials?.email ?? "");
+        const code = credentials?.code ?? "";
+        const newPassword = credentials?.newPassword?.trim() ? credentials.newPassword : null;
+        if (!looksLikeEmail(email)) return null;
+        if (newPassword && passwordProblem(newPassword)) throw new Error("WeakPassword");
+        const valid = await consumeLoginCode(email, code);
+        if (!valid) throw new Error("InvalidCode");
+        const result = await signInWithVerifiedEmail(email, newPassword);
+        if (!result.ok) throw new Error("AccountDisabled");
+        return { id: result.userId, email, name: result.name, role: result.role } as never;
+      },
+    }),
     AzureADProvider({
       clientId: process.env.AZURE_AD_CLIENT_ID!,
       clientSecret: process.env.AZURE_AD_CLIENT_SECRET!,
@@ -116,6 +158,9 @@ export const authOptions: AuthOptions = {
     // (returning false here prevents a session from ever being created).
     async signIn({ user, account }) {
       if (!account || !user?.email || !user?.id) return false;
+      // Email + mot de passe ou code : authorize() a déjà vérifié, résolu et
+      // au besoin créé le compte (lib/email-auth.ts).
+      if (account.type === "credentials") return true;
       const provider = toAuthProvider(account.provider);
       if (!provider) return false;
 
@@ -144,6 +189,18 @@ export const authOptions: AuthOptions = {
     },
 
     async jwt({ token, account, user }) {
+      // Connexion par email : pas de jeton d'agenda, le compte est déjà résolu.
+      if (account?.type === "credentials" && user?.id) {
+        token.provider = "email";
+        token.supabaseUserId = user.id;
+        token.role = ((user as { role?: string | null }).role ?? undefined) as typeof token.role;
+        token.roleRefreshedAt = Date.now();
+        delete token.accessToken;
+        delete token.refreshToken;
+        await recordLastSeen(user.id);
+        return token;
+      }
+
       // First login — account is present
       if (account) {
         token.accessToken = account.access_token;

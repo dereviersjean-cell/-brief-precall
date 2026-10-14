@@ -14,7 +14,9 @@ function eventStart(e: CalendarEvent): number {
   return new Date(e.start.dateTime ?? e.start.date ?? 0).getTime();
 }
 
-export async function loadUpcomingEvents(session: Session & { accessToken: string }, userId: string): Promise<UpcomingEventsResult> {
+// Sans jeton d'agenda (compte créé par email, sans Google ni Outlook), seuls
+// les RDV ajoutés à la main sont lus — pas d'erreur.
+export async function loadUpcomingEvents(session: Session, userId: string): Promise<UpcomingEventsResult> {
   const auth = { userId };
   const provider = session.provider ?? "google";
   const userEmail = session.user?.email ?? "";
@@ -26,7 +28,8 @@ export async function loadUpcomingEvents(session: Session & { accessToken: strin
   //
   // Les deux lectures partent ensemble : l'agenda Google/Microsoft est le
   // plus lent, inutile de le faire attendre derrière la base.
-  const calendarPromise = getUpcomingMeetings(session.accessToken, provider, userEmail).then(
+  const accessToken = session.accessToken;
+  const calendarPromise = (accessToken ? getUpcomingMeetings(accessToken, provider, userEmail) : Promise.resolve([] as CalendarEvent[])).then(
     (events) => ({ ok: true as const, events }),
     (err: unknown) => ({ ok: false as const, err })
   );
