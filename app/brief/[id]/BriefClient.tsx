@@ -28,14 +28,19 @@ const LABEL = "text-[11px] font-semibold uppercase tracking-[0.08em]";
 
 // Un des trois temps du brief : numéro, titre, puis ses rubriques sur deux
 // colonnes (une seule sous `md`).
+// Chaque partie sur sa carte blanche, posée sur le fond teinté de la page :
+// la mise en page D sans cadre faisait un seul aplat de la même couleur
+// (retour de Jean, 14/10/2026).
 function Part({ n, title, children }: { n: number; title: string; children: ReactNode }) {
   return (
-    <section className="border-t border-border pt-8 first:border-t-0 first:pt-0">
-      <div className="flex items-baseline gap-3">
-        <span className="text-[13px] font-semibold tabular-nums text-[color:var(--violet)]">0{n}</span>
+    <section className="rounded-[24px] bg-white p-5 shadow-[0_1px_2px_rgba(42,92,224,0.05),0_12px_32px_-20px_rgba(42,92,224,0.3)] ring-1 ring-[color:var(--lavender-strong)] sm:p-8">
+      <div className="flex items-center gap-3">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[#2A5CE0] to-[#7B5CFF] text-[12.5px] font-semibold tabular-nums text-white">
+          0{n}
+        </span>
         <h2 className="text-[20px] font-semibold tracking-[-0.02em] text-slate-900">{title}</h2>
       </div>
-      <div className="mt-5 grid grid-cols-1 gap-x-10 gap-y-8 md:grid-cols-2">{children}</div>
+      <div className="mt-6 grid grid-cols-1 gap-x-10 gap-y-8 md:grid-cols-2">{children}</div>
     </section>
   );
 }
@@ -820,7 +825,11 @@ export default function BriefClient({
     : { label: "Aucun brief", bg: "bg-slate-100", fg: "text-slate-600", dot: "bg-slate-400" };
 
   return (
-    <div className="min-h-screen bg-background">
+    // Fond teinté en haut de page, comme la liste des rendez-vous.
+    <div
+      className="min-h-screen"
+      style={{ background: "linear-gradient(180deg, oklch(0.965 0.022 270) 0px, var(--background) 520px)" }}
+    >
       {/* Topbar */}
       {/* `top-14` et non `top-0` : la TopBar du layout est elle-même
           `sticky top-0 z-10`. Deux barres collantes au même décalage et au même
@@ -886,7 +895,7 @@ export default function BriefClient({
             qu'on garde sous les yeux pendant l'appel. Chaque temps en deux
             colonnes, de petites étiquettes, pas de cartes : la page se lit
             comme un document bien rangé. */}
-        <header className="border-b border-border pb-8">
+        <header className="pb-2">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13.5px] text-slate-500">
             <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[12px] font-semibold ${badge.bg} ${badge.fg}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
@@ -1020,7 +1029,7 @@ export default function BriefClient({
         )}
 
         {brief && !isGenerating && (
-          <div className="mt-10 space-y-10">
+          <div className="mt-8 space-y-5">
             <Part n={1} title="Le prospect">
               <Item label="Contact">
                 {/* brief.contact plutôt que meeting.contacts (toujours vide

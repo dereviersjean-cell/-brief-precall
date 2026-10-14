@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -116,6 +116,36 @@ function getCompanyFromDomain(event: CalendarEvent): string | null {
 // déconnexion, qui repartent de zéro — aucun risque de montrer l'agenda d'un
 // autre compte.
 const pageCache: { events: CalendarEvent[] | null; briefs: StoredBrief[] | null } = { events: null, briefs: null };
+
+// Copie de ce cache dans le navigateur, pour qu'un rechargement ou une
+// reconnexion n'affiche pas un squelette le temps que Google réponde (retour
+// de Jean, 14/10/2026). Rattachée à l'adresse du compte : si la session qui
+// arrive est celle d'un autre, la copie est jetée avant tout affichage durable.
+// Effacée à la déconnexion (AppSidebar) et périmée au bout de 24 h.
+export const AGENDA_STORAGE_KEY = "brief:agenda";
+const AGENDA_STORAGE_MAX_AGE_MS = 24 * 3600 * 1000;
+type StoredAgenda = { email: string; at: number; events: CalendarEvent[]; briefs: StoredBrief[] };
+
+function readStoredAgenda(): StoredAgenda | null {
+  try {
+    const raw = localStorage.getItem(AGENDA_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredAgenda;
+    if (!parsed?.email || !Array.isArray(parsed.events) || Date.now() - parsed.at > AGENDA_STORAGE_MAX_AGE_MS) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredAgenda(value: StoredAgenda | null) {
+  try {
+    if (value) localStorage.setItem(AGENDA_STORAGE_KEY, JSON.stringify(value));
+    else localStorage.removeItem(AGENDA_STORAGE_KEY);
+  } catch {
+    // Stockage indisponible (navigation privée) : la page marche sans.
+  }
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -313,6 +343,9 @@ function CalendarEventCard({
           )}
           {existingBrief ? (
             <Link
+              // Préchargé en entier : le brief existe déjà, l'ouvrir doit être
+              // instantané plutôt que de passer par son écran de chargement.
+              prefetch
               href={`/brief/${existingBrief.calendar_event_id ?? existingBrief.id}?company=${encodeURIComponent(existingBrief.company_name ?? "")}&cached=true&contactEmail=${encodeURIComponent(existingBrief.contact_email ?? "")}&title=${encodeURIComponent(existingBrief.meeting_title ?? "")}`}
               className="inline-flex h-10 items-center gap-1.5 rounded-full border border-border bg-white/70 px-4 text-[13.5px] font-semibold text-slate-900 transition-colors hover:bg-white"
             >
@@ -752,6 +785,7 @@ function RecentBriefsCard({ briefs }: { briefs: StoredBrief[] }) {
         {briefs.map((brief) => (
           <Link
             key={brief.id}
+            prefetch
             href={`/brief/${brief.calendar_event_id ?? brief.id}?company=${encodeURIComponent(brief.company_name ?? "")}&cached=true&contactEmail=${encodeURIComponent(brief.contact_email ?? "")}&title=${encodeURIComponent(brief.meeting_title ?? "")}`}
             className="group inline-flex items-center gap-3 rounded-2xl border border-border bg-white py-2.5 pl-2.5 pr-4 transition-colors hover:border-slate-300"
           >
@@ -802,6 +836,8 @@ export default function BriefToolClient() {
   const [modalEvent, setModalEvent] = useState<CalendarEvent | null>(null);
   const [modalDefaultCompany, setModalDefaultCompany] = useState("");
   const [recentBriefs, setRecentBriefs] = useState<StoredBrief[]>(pageCache.briefs ?? []);
+  // Vrai tant que l'écran montre la copie locale et pas encore l'agenda frais.
+  const fromStorageRef = useRef(false);
   const [showAddMeetingModal, setShowAddMeetingModal] = useState(false);
   const { briefsOnly } = useModules();
 
@@ -867,6 +903,7 @@ export default function BriefToolClient() {
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) {
+          fromStorageRef.current = false;
           setCalendarEvents(data);
           setCalendarError(null);
         } else {
@@ -878,10 +915,38 @@ export default function BriefToolClient() {
 
   // Lancé dès l'affichage, sans attendre que la session soit relue : les deux
   // requêtes partent ensemble au lieu de se suivre. La route vérifie la
-  // session elle-même.
+  // session elle-même. Pendant ce temps, la copie locale de la dernière
+  // visite s'affiche (lue après le montage : le serveur ne la connaît pas, la
+  // lire au premier rendu ferait diverger les deux rendus).
   useEffect(() => {
+    if (pageCache.events === null) {
+      Promise.resolve().then(() => {
+        const stored = readStoredAgenda();
+        if (!stored || pageCache.events !== null) return;
+        fromStorageRef.current = true;
+        setCalendarEvents((prev) => prev ?? stored.events);
+        setRecentBriefs((prev) => (prev.length > 0 ? prev : stored.briefs));
+      });
+    }
     loadCalendarEvents();
   }, []);
+
+  // La copie locale appartient à un compte : si la session est celle d'un
+  // autre, on la jette — et on retire de l'écran ce qu'elle avait affiché
+  // tant que l'agenda frais n'est pas arrivé.
+  const sessionEmail = session?.user?.email ?? null;
+  useEffect(() => {
+    if (!sessionEmail) return;
+    const stored = readStoredAgenda();
+    if (stored && stored.email !== sessionEmail) {
+      writeStoredAgenda(null);
+      if (fromStorageRef.current) {
+        fromStorageRef.current = false;
+        setCalendarEvents(null);
+        setRecentBriefs([]);
+      }
+    }
+  }, [sessionEmail]);
 
   useEffect(() => {
     pageCache.events = calendarEvents;
@@ -913,6 +978,12 @@ export default function BriefToolClient() {
   }
 
   const isAuthenticated = status === "authenticated";
+
+  // Copie locale tenue à jour une fois l'agenda frais reçu et le compte connu.
+  useEffect(() => {
+    if (!sessionEmail || calendarEvents === null || fromStorageRef.current) return;
+    writeStoredAgenda({ email: sessionEmail, at: Date.now(), events: calendarEvents, briefs: recentBriefs });
+  }, [sessionEmail, calendarEvents, recentBriefs]);
   const showCalendar = calendarEvents !== null && !calendarError;
   // Premier chargement : ni la session ni l'agenda ne sont encore connus. On
   // montre un squelette À LA FORME de la vue finale — avant, les tuiles de

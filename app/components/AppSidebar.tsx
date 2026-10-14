@@ -298,7 +298,15 @@ export default function AppSidebar() {
         </Link>
 
         <button
-          onClick={() => signOut({ callbackUrl: "/" })}
+          onClick={() => {
+            // La copie locale de l'agenda (page Brief) ne doit pas survivre à
+            // la déconnexion : le compte suivant sur ce navigateur ne la
+            // verrait pas — elle est vérifiée — mais autant ne rien laisser.
+            try {
+              localStorage.removeItem("brief:agenda");
+            } catch {}
+            signOut({ callbackUrl: "/" });
+          }}
           className="w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13.5px] text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
         >
           <LogOut className="h-4 w-4" strokeWidth={1.75} />
