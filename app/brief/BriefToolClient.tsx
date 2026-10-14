@@ -6,9 +6,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { Calendar, Plus, ArrowRight, X, Check, CircleDashed, ChevronLeft, ChevronRight } from "lucide-react";
-import FadeIn from "@/app/dashboard/FadeIn";
 import CompanyLogo from "@/app/components/CompanyLogo";
 import TalkToSales from "@/app/components/TalkToSales";
+import { EventsSkeleton } from "./BriefSkeleton";
 import { useModules } from "@/app/components/ModulesProvider";
 import { BRIEFS_ACCESS_DAILY_LIMIT, SALES_CONTACT } from "@/lib/sales-contact";
 import { GENERIC_EMAIL_DOMAINS, companyDomainFromEmail } from "@/lib/company-domain";
@@ -110,6 +110,12 @@ function getCompanyFromDomain(event: CalendarEvent): string | null {
   if (!hit) return null;
   return domainToCompany(hit.email.split("@")[1] ?? "");
 }
+
+// Cache de page, en mémoire du navigateur : il survit aux navigations dans
+// l'app (changer d'onglet puis revenir) mais pas à un rechargement ni à une
+// déconnexion, qui repartent de zéro — aucun risque de montrer l'agenda d'un
+// autre compte.
+const pageCache: { events: CalendarEvent[] | null; briefs: StoredBrief[] | null } = { events: null, briefs: null };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -221,14 +227,12 @@ function CalendarEventCard({
   onDelete,
   existingBrief,
   nextLabel,
-  index,
 }: {
   event: CalendarEvent;
   onPrepare: (event: CalendarEvent) => void;
   onDelete?: (eventId: string) => void;
   existingBrief?: StoredBrief;
   nextLabel: string | null;
-  index: number;
 }) {
   const start = eventStartDate(event);
   const duration = eventDuration(event);
@@ -241,10 +245,9 @@ function CalendarEventCard({
       : event.contactName ?? "Aucun participant externe";
 
   return (
-    <motion.li
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: Math.min(index * 0.04, 0.3), duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+    // Pas d'animation d'entrée : décalées ligne par ligne, elles retardaient
+    // l'affichage d'une demi-seconde à chaque visite (retour de Jean, 14/10).
+    <li
       className="relative rounded-[18px] transition-shadow hover:shadow-[0_14px_32px_-16px_rgba(15,23,42,0.3)]"
       style={{ background: tint.bg, boxShadow: `inset 0 0 0 1px ${tint.ring}` }}
     >
@@ -326,7 +329,7 @@ function CalendarEventCard({
           )}
         </div>
       </div>
-    </motion.li>
+    </li>
   );
 }
 
@@ -704,40 +707,6 @@ function AddMeetingModal({
   );
 }
 
-// Même silhouette que la vue chargée : en-têtes de jour et cartes.
-function EventsSkeleton() {
-  return (
-    <div className="animate-pulse space-y-9" aria-hidden>
-      {[3, 2].map((n, g) => (
-        <div key={g}>
-          <div className="flex items-center gap-3 py-2">
-            <div className="h-11 w-11 rounded-2xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.06)]" />
-            <div className="space-y-1.5">
-              <div className="h-4 w-36 rounded bg-slate-100" />
-              <div className="h-3 w-14 rounded bg-slate-100" />
-            </div>
-          </div>
-          <div className="ml-[22px] mt-2 space-y-3 border-l border-dashed border-slate-200 pl-4 sm:pl-[34px]">
-            {Array.from({ length: n }).map((_, i) => (
-              <div key={i} className="flex items-center gap-5 rounded-[18px] bg-white/70 px-5 py-4 ring-1 ring-slate-100">
-                <div className="w-14 space-y-1.5 sm:w-[84px]">
-                  <div className="h-4 w-12 rounded bg-slate-100" />
-                  <div className="h-3 w-9 rounded bg-slate-100" />
-                </div>
-                <div className="min-w-0 flex-1 space-y-2">
-                  <div className="h-4 w-1/3 rounded bg-slate-100" />
-                  <div className="h-3 w-1/2 rounded bg-slate-100" />
-                </div>
-                <div className="hidden h-10 w-36 rounded-full bg-slate-100 sm:block" />
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="rounded-2xl border border-border bg-white px-6 py-12 text-center">
@@ -803,11 +772,13 @@ export default function BriefToolClient() {
   const { data: session, status } = useSession();
   const provider = session?.provider ?? "google";
   const calendarLabel = provider === "azure-ad" ? "Microsoft Calendar" : "Google Calendar";
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[] | null>(null);
+  // Repris du cache de la visite précédente : en revenant d'un autre onglet,
+  // la page s'affiche aussitôt, puis se met à jour en arrière-plan.
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[] | null>(pageCache.events);
   const [calendarError, setCalendarError] = useState<string | null>(null);
   const [modalEvent, setModalEvent] = useState<CalendarEvent | null>(null);
   const [modalDefaultCompany, setModalDefaultCompany] = useState("");
-  const [recentBriefs, setRecentBriefs] = useState<StoredBrief[]>([]);
+  const [recentBriefs, setRecentBriefs] = useState<StoredBrief[]>(pageCache.briefs ?? []);
   const [showAddMeetingModal, setShowAddMeetingModal] = useState(false);
   const { briefsOnly } = useModules();
 
@@ -882,10 +853,19 @@ export default function BriefToolClient() {
       .catch(() => setCalendarError(`Impossible de charger les événements ${calendarLabel}.`));
   }
 
+  // Lancé dès l'affichage, sans attendre que la session soit relue : les deux
+  // requêtes partent ensemble au lieu de se suivre. La route vérifie la
+  // session elle-même.
   useEffect(() => {
-    if (status !== "authenticated") return;
     loadCalendarEvents();
-  }, [status]);
+  }, []);
+
+  useEffect(() => {
+    pageCache.events = calendarEvents;
+  }, [calendarEvents]);
+  useEffect(() => {
+    pageCache.briefs = recentBriefs;
+  }, [recentBriefs]);
 
   function handleMeetingAdded(event: CalendarEvent) {
     setShowAddMeetingModal(false);
@@ -910,13 +890,13 @@ export default function BriefToolClient() {
   }
 
   const isAuthenticated = status === "authenticated";
-  const showCalendar = isAuthenticated && calendarEvents !== null && !calendarError;
+  const showCalendar = calendarEvents !== null && !calendarError;
   // Premier chargement : ni la session ni l'agenda ne sont encore connus. On
   // montre un squelette À LA FORME de la vue finale — avant, les tuiles de
   // chiffres (« 0 RDV à venir ») s'affichaient puis disparaissaient, et la
   // page changeait de mise en page sous les yeux. Un rechargement après
   // ajout ou suppression d'un RDV garde la liste affichée.
-  const initialLoading = status === "loading" || (isAuthenticated && calendarEvents === null && !calendarError);
+  const initialLoading = calendarEvents === null && !calendarError;
 
   const calendarGroups = showCalendar ? groupByDay(calendarEvents, eventStartDate) : [];
   const upcomingCount = calendarEvents?.length ?? 0;
@@ -1020,11 +1000,10 @@ export default function BriefToolClient() {
                     count={dayEvents.length}
                   />
                   <ul className="ml-[22px] mt-2 space-y-3 border-l border-dashed border-slate-200 pl-4 sm:pl-[34px]">
-                    {dayEvents.map((e, i) => (
+                    {dayEvents.map((e) => (
                       <CalendarEventCard
                         key={e.id}
                         event={e}
-                        index={i}
                         onPrepare={handlePrepare}
                         onDelete={handleDeleteManualMeeting}
                         existingBrief={recentBriefs.find((b) => b.calendar_event_id === e.id)}
@@ -1056,7 +1035,7 @@ export default function BriefToolClient() {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[300px_minmax(0,1fr)]">
         {/* Panneau gauche : titre, mois, préparation, ajout. */}
         <aside className="min-w-0 space-y-4 lg:sticky lg:top-20 lg:self-start">
-          <FadeIn>
+          <div>
             <div data-tour="brief-content">
               <h1 className="text-[26px] font-semibold leading-tight tracking-[-0.04em] text-slate-900">
                 Vos prochains <span className="whitespace-nowrap">rendez-vous</span>
@@ -1070,7 +1049,7 @@ export default function BriefToolClient() {
                 </p>
               )}
             </div>
-          </FadeIn>
+          </div>
           {/* Le mois prend un écran entier sur téléphone : il reste réservé
               au grand écran, la liste suffit en dessous. */}
           {/* Pendant le chargement, des squelettes de même taille : le mois

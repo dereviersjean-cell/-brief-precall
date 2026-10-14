@@ -30,6 +30,13 @@ export async function GET() {
   // Google/Microsoft — un échec de leur lecture (table absente si la
   // migration n'est pas encore passée en prod) ne doit pas faire tomber tout
   // le calendrier, et inversement.
+  //
+  // Les deux lectures partent ensemble : l'agenda Google/Microsoft est le
+  // plus lent, inutile de le faire attendre derrière la base.
+  const calendarPromise = getUpcomingMeetings(session.accessToken, provider, userEmail).then(
+    (events) => ({ ok: true as const, events }),
+    (err: unknown) => ({ ok: false as const, err })
+  );
   const manualMeetings = await listUpcomingManualMeetingsForUser(auth.userId).catch((err) => {
     console.error("[calendar/events] listUpcomingManualMeetingsForUser failed:", err);
     return [];
@@ -51,28 +58,28 @@ export async function GET() {
     contactName: m.contactName ?? undefined,
   }));
 
-  try {
-    const events = await getUpcomingMeetings(session.accessToken, provider, userEmail);
-    const merged = [...events, ...manualEvents].sort((a, b) => eventStart(a) - eventStart(b));
+  const calendar = await calendarPromise;
+  if (calendar.ok) {
+    const merged = [...calendar.events, ...manualEvents].sort((a, b) => eventStart(a) - eventStart(b));
     return NextResponse.json(merged);
-  } catch (err) {
-    // Le calendrier réel a échoué (token expiré, scope manquant...) : montrer
-    // au moins les RDV manuels plutôt que de tout perdre derrière une erreur
-    // qui ne les concerne pas.
-    if (manualEvents.length > 0) {
-      return NextResponse.json(manualEvents);
-    }
-    const message = err instanceof Error ? err.message : "Erreur calendrier";
-    // Accès expiré ou révoqué chez Google / Microsoft : le message brut de
-    // l'API (en anglais, avec un lien développeur) n'aide pas l'utilisateur.
-    const authExpired = /invalid authentication credentials|invalid_grant|unauthenticated|\b401\b|InvalidAuthenticationToken/i.test(message);
-    return NextResponse.json(
-      {
-        error: authExpired
-          ? "Votre connexion à votre agenda a expiré. Reconnectez-vous pour afficher vos prochains rendez-vous."
-          : "Impossible de charger vos rendez-vous pour le moment. Réessayez dans quelques minutes.",
-      },
-      { status: authExpired ? 401 : 500 }
-    );
   }
+  const err = calendar.err;
+  // Le calendrier réel a échoué (token expiré, scope manquant...) : montrer
+  // au moins les RDV manuels plutôt que de tout perdre derrière une erreur
+  // qui ne les concerne pas.
+  if (manualEvents.length > 0) {
+    return NextResponse.json(manualEvents);
+  }
+  const message = err instanceof Error ? err.message : "Erreur calendrier";
+  // Accès expiré ou révoqué chez Google / Microsoft : le message brut de
+  // l'API (en anglais, avec un lien développeur) n'aide pas l'utilisateur.
+  const authExpired = /invalid authentication credentials|invalid_grant|unauthenticated|\b401\b|InvalidAuthenticationToken/i.test(message);
+  return NextResponse.json(
+    {
+      error: authExpired
+        ? "Votre connexion à votre agenda a expiré. Reconnectez-vous pour afficher vos prochains rendez-vous."
+        : "Impossible de charger vos rendez-vous pour le moment. Réessayez dans quelques minutes.",
+    },
+    { status: authExpired ? 401 : 500 }
+  );
 }
