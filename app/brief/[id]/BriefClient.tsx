@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Meeting, Brief, Contact, TalkingPoint, NewsItem } from "@/lib/types";
+import { Meeting, Brief, Contact, NewsItem } from "@/lib/types";
 import type { CallHistoryItem } from "@/lib/db";
-import { Target, MapPin, Clock, History, Building2, Mail, ExternalLink } from "lucide-react";
+import { Target, MapPin, Clock, History, Building2, Mail, ExternalLink, Lightbulb, Trophy } from "lucide-react";
 import { StatusChip } from "@/app/components/ui/ui-bits";
 import CompanyLogo from "@/app/components/CompanyLogo";
 import TalkToSales from "@/app/components/TalkToSales";
@@ -26,44 +26,30 @@ function formatDateTime(iso: string) {
 // encadrés à dire en rendez-vous, neutre pour les sections.
 const LABEL = "text-[11px] font-semibold uppercase tracking-[0.08em]";
 
-// Un des trois temps du brief : numéro, titre, puis ses rubriques sur deux
-// colonnes (une seule sous `md`).
-// Chaque partie sur sa carte blanche, posée sur le fond teinté de la page :
-// la mise en page D sans cadre faisait un seul aplat de la même couleur
-// (retour de Jean, 14/10/2026).
-function Part({ n, title, children }: { n: number; title: string; children: ReactNode }) {
+// Une tuile de la grille T1 : carte blanche sur le fond teinté, étiquette en
+// petites capitales, contenu serré.
+const TILE =
+  "rounded-[20px] bg-white ring-1 ring-[color:var(--lavender-strong)] shadow-[0_1px_2px_rgba(42,92,224,0.05),0_10px_28px_-20px_rgba(42,92,224,0.35)]";
+
+function Tile({ label, icon, className = "", children }: { label: string; icon?: ReactNode; className?: string; children: ReactNode }) {
   return (
-    <section className="rounded-[24px] bg-white p-5 shadow-[0_1px_2px_rgba(42,92,224,0.05),0_12px_32px_-20px_rgba(42,92,224,0.3)] ring-1 ring-[color:var(--lavender-strong)] sm:p-8">
-      <div className="flex items-center gap-3">
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[#2A5CE0] to-[#7B5CFF] text-[12.5px] font-semibold tabular-nums text-white">
-          0{n}
-        </span>
-        <h2 className="text-[20px] font-semibold tracking-[-0.02em] text-slate-900">{title}</h2>
-      </div>
-      <div className="mt-6 grid grid-cols-1 gap-x-10 gap-y-8 md:grid-cols-2">{children}</div>
+    <section className={`${TILE} min-w-0 p-5 ${className}`}>
+      <h3 className={`${LABEL} flex items-center gap-1.5 text-slate-500`}>
+        {icon}
+        {label}
+      </h3>
+      <div className="mt-3">{children}</div>
     </section>
   );
 }
 
-function Item({ label, wide = false, children }: { label: string; wide?: boolean; children: ReactNode }) {
-  return (
-    <div className={`min-w-0 ${wide ? "md:col-span-2" : ""}`}>
-      <h3 className="text-[11.5px] font-semibold uppercase tracking-[0.09em] text-slate-500">{label}</h3>
-      <div className="mt-2.5">{children}</div>
-    </div>
-  );
-}
-
-function TalkingPointItem({ point, color }: { point: TalkingPoint; color: string }) {
-  return (
-    <div className="flex items-start gap-3">
-      <div className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${color}`} />
-      <div className="min-w-0">
-        <p className="text-[14px] font-semibold leading-snug text-slate-900">{point.title}</p>
-        <p className="mt-0.5 text-[13.5px] leading-relaxed text-slate-600">{point.detail}</p>
-      </div>
-    </div>
-  );
+// « Contexte… Question : … » → [contexte, question]. Sans « Question : », tout
+// le texte reste en contexte.
+function splitPainQuestion(detail: string): [string, string | null] {
+  const m = detail.match(/^([\s\S]*?)\s*Question\s*:\s*([\s\S]+)$/i);
+  if (!m) return [detail, null];
+  const q = m[2].trim();
+  return [m[1].trim(), q.charAt(0).toUpperCase() + q.slice(1)];
 }
 
 function Spinner() {
@@ -485,8 +471,6 @@ function GeneratingProgress({
   );
 }
 
-const talkingPointColors = ["bg-[color:var(--violet)]"];
-const painPointColors = ["bg-[color:var(--warning)]"];
 
 interface ApiResponse {
   overview: string;
@@ -546,7 +530,7 @@ function callScoreCls(score: number) {
 }
 
 function formatCallDate(iso: string) {
-  return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+  return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
 }
 
 export default function BriefClient({
@@ -1029,19 +1013,40 @@ export default function BriefClient({
         )}
 
         {brief && !isGenerating && (
-          <div className="mt-8 space-y-5">
-            <Part n={1} title="Le prospect">
-              <Item label="Contact">
-                {/* brief.contact plutôt que meeting.contacts (toujours vide
-                    — jamais alimenté) : construit côté serveur à partir
-                    d'Apollo quand un contactEmail est connu, avec repli sur
-                    le seul email si l'enrichissement échoue ou n'est pas
-                    configuré (cf. lib/apollo.ts). */}
-                {/* brief.contact plutôt que meeting.contacts (toujours vide
-                    — jamais alimenté) : construit côté serveur à partir
-                    d'Apollo quand un contactEmail est connu, avec repli sur
-                    le seul email si l'enrichissement échoue ou n'est pas
-                    configuré (cf. lib/apollo.ts). */}
+          // Mise en page T1 « Cockpit » (choisie par Jean le 14/10/2026) : une
+          // grille de tuiles serrées, l'essentiel en haut — l'accroche en
+          // grand sur un dégradé, les objectifs à côté — puis le prospect et
+          // les angles. Une rubrique vide disparaît et sa voisine prend la
+          // place : un brief pauvre reste dense au lieu d'étaler du blanc.
+          <div className="mt-7 grid grid-cols-1 gap-4 lg:grid-cols-3">
+            {/* Ligne 1 : accroche + objectifs */}
+            {brief.suggestedOpeningLine && (
+              <section
+                className={`relative overflow-hidden rounded-[22px] p-6 text-white sm:p-7 ${brief.objectives.length > 0 ? "lg:col-span-2" : "lg:col-span-3"}`}
+                style={{ background: "linear-gradient(135deg,#2A5CE0 0%,#4B3FD6 60%,#7B5CFF 100%)" }}
+              >
+                <div className="pointer-events-none absolute -right-16 -top-20 h-60 w-60 rounded-full bg-white/15 blur-3xl" />
+                <p className={`${LABEL} relative text-white/70`}>Accroche suggérée</p>
+                <p className="relative mt-3 text-[19px] font-medium leading-snug tracking-[-0.015em] sm:text-[21px]">
+                  «&nbsp;{brief.suggestedOpeningLine}&nbsp;»
+                </p>
+              </section>
+            )}
+            {brief.objectives.length > 0 && (
+              <Tile label="Objectifs du call" icon={<Target className="h-3.5 w-3.5 text-[color:var(--violet)]" />} className={brief.suggestedOpeningLine ? "" : "lg:col-span-3"}>
+                <div className="space-y-2.5">
+                  {brief.objectives.map((obj, i) => (
+                    <div key={i} className="flex items-start gap-2.5">
+                      <div className="mt-0.5 h-[18px] w-[18px] shrink-0 rounded-md ring-1 ring-slate-300" />
+                      <p className="text-[14px] leading-snug text-slate-800">{obj}</p>
+                    </div>
+                  ))}
+                </div>
+              </Tile>
+            )}
+
+            {/* Ligne 2 : le prospect */}
+            <Tile label="Contact">
                 {brief.contact ? (
                   <ContactCard contact={brief.contact} notFound={contactEnriched === false} />
                 ) : (
@@ -1153,10 +1158,12 @@ export default function BriefClient({
                   </button>
                 )}
               
-              </Item>
-
-              <Item label="L'entreprise">
-                <p className="text-[14px] leading-relaxed text-slate-900">{brief.companyOverview}</p>
+            </Tile>
+            <Tile
+              label="L'entreprise"
+              className={(brief.historiqueRelationnel || callHistory.length > 0 || (brief.actualites && brief.actualites.length > 0) || brief.recentNews.length > 0) ? "" : "lg:col-span-2"}
+            >
+                <p className="text-[13.5px] leading-relaxed text-slate-700">{brief.companyOverview}</p>
                 {(brief.revenue || brief.employees || meeting.website) && (
                   <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 border-t border-border pt-3">
                     {brief.revenue && (
@@ -1180,10 +1187,64 @@ export default function BriefClient({
                   </div>
                 )}
               
-              </Item>
-
-              {((brief.actualites && brief.actualites.length > 0) || brief.recentNews.length > 0) && (
-                <Item label="Actualités récentes">
+              </Tile>
+            {(brief.historiqueRelationnel || callHistory.length > 0 || (brief.actualites && brief.actualites.length > 0) || brief.recentNews.length > 0) && (
+              <Tile label={brief.historiqueRelationnel || callHistory.length > 0 ? "Historique" : "Actualités récentes"}>
+                {(brief.historiqueRelationnel || callHistory.length > 0) && (
+                  <div>
+                  {brief.historiqueRelationnel && (
+                    <p className="text-[14.5px] leading-relaxed text-slate-700">{brief.historiqueRelationnel}</p>
+                  )}
+                  {callHistory.length > 0 && (
+                    <div className="mt-4 first:mt-0">
+                      <p className="mb-2 text-[12.5px] font-medium text-slate-500">Calls précédents</p>
+  <div className="mt-2.5 divide-y divide-border overflow-hidden rounded-2xl border border-border">
+                        {callHistory.map((c) => (
+                          <Link
+                            key={c.id}
+                            href={`/feedback/${c.id}`}
+                            className="flex items-center justify-between gap-2 px-3 py-2.5 hover:bg-slate-50 transition-colors group"
+                          >
+                            <span className="whitespace-nowrap text-[13px] text-slate-700 group-hover:text-slate-900 transition-colors">
+                              {formatCallDate(c.date)}
+                            </span>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {c.follow_up_sent_at && (
+                                // Icône seule : la tuile est étroite, le libellé
+                                // passe au survol.
+                                <span title="Email de suivi envoyé" className="inline-flex items-center text-emerald-700">
+                                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M1.5 8.67v8.58a3 3 0 003 3h15a3 3 0 003-3V8.67l-8.928 5.493a3 3 0 01-3.144 0L1.5 8.67z" />
+                                    <path d="M22.5 6.908V6.75a3 3 0 00-3-3h-15a3 3 0 00-3 3v.158l9.714 5.978a1.5 1.5 0 001.572 0L22.5 6.908z" />
+                                  </svg>
+                                </span>
+                              )}
+                              {c.sentiment && (
+                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${sentimentCls[c.sentiment] ?? "bg-slate-100 text-slate-600"}`}>
+                                  {c.sentiment}
+                                </span>
+                              )}
+                              {c.global_score !== null && (
+                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold tabular-nums ${callScoreCls(c.global_score)}`}>
+                                  {c.global_score.toFixed(1)}/5
+                                </span>
+                              )}
+                              <svg className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                              </svg>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                )}
+                {(brief.historiqueRelationnel || callHistory.length > 0) && ((brief.actualites && brief.actualites.length > 0) || brief.recentNews.length > 0) && (
+                  <p className={`${LABEL} mt-5 mb-2.5 text-slate-500`}>Actualités récentes</p>
+                )}
+                {((brief.actualites && brief.actualites.length > 0) || brief.recentNews.length > 0) && (
+                  <div>
                   {brief.actualites && brief.actualites.length > 0 && (
                       <div className="-mx-2.5 space-y-0.5">
                         {brief.actualites.map((article, i) => (
@@ -1234,77 +1295,57 @@ export default function BriefClient({
                     
                     </div>
                   )}
-                </Item>
-              )}
+                </div>
+                )}
+              </Tile>
+            )}
 
-              {(brief.historiqueRelationnel || callHistory.length > 0) && (
-                <Item label="Historique">
-                  {brief.historiqueRelationnel && (
-                    <p className="text-[14.5px] leading-relaxed text-slate-700">{brief.historiqueRelationnel}</p>
-                  )}
-                  {callHistory.length > 0 && (
-                    <div className="mt-4 first:mt-0">
-                      <p className="mb-2 text-[12.5px] font-medium text-slate-500">Calls précédents</p>
-  <div className="mt-2.5 divide-y divide-border overflow-hidden rounded-2xl border border-border">
-                        {callHistory.map((c) => (
-                          <Link
-                            key={c.id}
-                            href={`/feedback/${c.id}`}
-                            className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors group"
-                          >
-                            <span className="text-[13px] text-slate-700 group-hover:text-slate-900 transition-colors">
-                              {formatCallDate(c.date)}
-                            </span>
-                            <div className="flex items-center gap-2 shrink-0">
-                              {c.follow_up_sent_at && (
-                                <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-emerald-700">
-                                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M1.5 8.67v8.58a3 3 0 003 3h15a3 3 0 003-3V8.67l-8.928 5.493a3 3 0 01-3.144 0L1.5 8.67z" />
-                                    <path d="M22.5 6.908V6.75a3 3 0 00-3-3h-15a3 3 0 00-3 3v.158l9.714 5.978a1.5 1.5 0 001.572 0L22.5 6.908z" />
-                                  </svg>
-                                  Envoyé
-                                </span>
-                              )}
-                              {c.sentiment && (
-                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${sentimentCls[c.sentiment] ?? "bg-slate-100 text-slate-600"}`}>
-                                  {c.sentiment}
-                                </span>
-                              )}
-                              {c.global_score !== null && (
-                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold tabular-nums ${callScoreCls(c.global_score)}`}>
-                                  {c.global_score.toFixed(1)}/5
-                                </span>
-                              )}
-                              <svg className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                              </svg>
-                            </div>
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </Item>
-              )}
-            </Part>
-
-            {(brief.painPoints.length > 0 ||
-              (brief.references && brief.references.length > 0) ||
-              brief.talkingPoints.length > 0 ||
-              (brief.competitorsUsed && brief.competitorsUsed.length > 0)) && (
-              <Part n={2} title="Les angles d'attaque">
-                {brief.painPoints.length > 0 && (
-                  <Item label="Pain points identifiés">
-                      <div className="space-y-3.5">
-                        {brief.painPoints.map((p, i) => (
-                          <TalkingPointItem key={i} point={p} color={painPointColors[i % painPointColors.length]} />
-                        ))}
-                      </div>
-                    
-                  </Item>
+            {/* Ligne 3 : les angles d'attaque */}
+            {brief.painPoints.length > 0 && (
+              <Tile
+                label="Pain points à creuser"
+                icon={<Lightbulb className="h-3.5 w-3.5 text-amber-500" />}
+                className={
+                  brief.talkingPoints.length > 0 || (brief.references && brief.references.length > 0) || (brief.competitorsUsed && brief.competitorsUsed.length > 0)
+                    ? "lg:col-span-2"
+                    : "lg:col-span-3"
+                }
+              >
+                <ol className="grid gap-3 sm:grid-cols-2">
+                  {brief.painPoints.map((p, i) => {
+                    // Le générateur écrit « contexte… Question : … » : on met
+                    // la question à poser en avant, le contexte en dessous.
+                    const [context, question] = splitPainQuestion(p.detail);
+                    return (
+                      <li key={i} className="rounded-2xl bg-[color:var(--warning-soft)]/60 p-4">
+                        <p className="text-[12px] font-semibold tabular-nums text-amber-700">0{i + 1}</p>
+                        <p className="mt-0.5 text-[14px] font-semibold leading-snug text-slate-900">{p.title}</p>
+                        {question && <p className="mt-1.5 text-[13.5px] font-medium leading-snug text-slate-800">→ {question}</p>}
+                        {context && <p className="mt-1.5 text-[12.5px] leading-relaxed text-slate-600">{context}</p>}
+                      </li>
+                    );
+                  })}
+                </ol>
+              </Tile>
+            )}
+            {(brief.talkingPoints.length > 0 || (brief.references && brief.references.length > 0) || (brief.competitorsUsed && brief.competitorsUsed.length > 0)) && (
+              <Tile
+                label="Pour convaincre"
+                icon={<Trophy className="h-3.5 w-3.5 text-emerald-600" />}
+                className={brief.painPoints.length > 0 ? "" : "lg:col-span-3"}
+              >
+                {brief.talkingPoints.length > 0 && (
+                  <div className="space-y-2.5">
+                    {brief.talkingPoints.map((p, i) => (
+                      <p key={i} className="text-[13.5px] leading-snug">
+                        <span className="font-semibold text-slate-900">{p.title}</span>
+                        <span className="text-slate-600"> — {p.detail}</span>
+                      </p>
+                    ))}
+                  </div>
                 )}
                 {brief.references && brief.references.length > 0 && (
-                  <Item label="Références clients">
+                  <div className={brief.talkingPoints.length > 0 ? "mt-4" : ""}>
                       <div className="space-y-3">
                         {brief.references.map((ref, i) => (
                           <div key={i} className="rounded-2xl border border-border p-4">
@@ -1320,68 +1361,41 @@ export default function BriefClient({
                         ))}
                       </div>
                     
-                  </Item>
-                )}
-                {brief.talkingPoints.length > 0 && (
-                  <Item label="Arguments commerciaux">
-                      <div className="space-y-3.5">
-                        {brief.talkingPoints.map((p, i) => (
-                          <TalkingPointItem key={i} point={p} color={talkingPointColors[i % talkingPointColors.length]} />
-                        ))}
-                      </div>
-                    
-                  </Item>
+                  </div>
                 )}
                 {brief.competitorsUsed && brief.competitorsUsed.length > 0 && (
-                  <Item label="Outils utilisés actuellement">
-                      <div className="flex flex-wrap gap-1.5">
-                        {brief.competitorsUsed.map((c) => (
-                          <span key={c} className="rounded-full bg-slate-100 px-2.5 py-1 text-[12px] font-medium text-slate-600">
-                            {c}
-                          </span>
-                        ))}
-                      </div>
-                    
-                  </Item>
+                  <div className="mt-4">
+                    <p className={`${LABEL} mb-2 text-slate-500`}>Outils utilisés actuellement</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {brief.competitorsUsed.map((c) => (
+                        <span key={c} className="rounded-full bg-slate-100 px-2.5 py-1 text-[12px] font-medium text-slate-600">
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 )}
-              </Part>
+              </Tile>
             )}
 
-            <Part n={3} title="Pendant l'appel">
-              {brief.suggestedOpeningLine && (
-                <Item label="Accroche suggérée" wide>
-                  <p className="text-[19px] font-medium leading-snug tracking-[-0.01em] text-slate-900 sm:text-[21px]">
-                    «&nbsp;{brief.suggestedOpeningLine}&nbsp;»
-                  </p>
-                </Item>
-              )}
-              {brief.objectives.length > 0 && (
-                <Item label="Objectifs du call">
-                      <div className="space-y-2">
-                        {brief.objectives.map((obj, i) => (
-                          <div key={i} className="flex items-start gap-2.5">
-                            <div className="mt-0.5 h-4 w-4 shrink-0 rounded border-2 border-border" />
-                            <p className="text-[14.5px] leading-snug text-slate-800">{obj}</p>
-                          </div>
-                        ))}
-                      </div>
-                    
-                </Item>
-              )}
-              {brief.keywords && brief.keywords.length > 0 && (
-                <Item label="Vocabulaire métier">
-                      <div className="flex flex-wrap gap-1.5">
-                        {brief.keywords.map((kw) => (
-                          <span key={kw} className="rounded-full bg-[color:var(--lavender)] px-2.5 py-1 text-[12px] font-medium text-[color:var(--violet)]">
-                            {kw}
-                          </span>
-                        ))}
-                      </div>
-                    
-                </Item>
-              )}
-            </Part>
+            {/* Vocabulaire sur une ligne */}
+            {brief.keywords && brief.keywords.length > 0 && (
+              <section className={`${TILE} flex flex-wrap items-center gap-3 p-4 lg:col-span-3`}>
+                <span className={`${LABEL} text-slate-500`}>Vocabulaire métier</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {brief.keywords.map((kw) => (
+                    <span key={kw} className="rounded-full bg-[color:var(--lavender)] px-2.5 py-1 text-[12.5px] font-medium text-[color:var(--violet)]">
+                      {kw}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+        )}
 
+        {brief && !isGenerating && (
+          <div className="mt-8">
             <div className="flex justify-end border-t border-border pt-6">
               <div className="w-full sm:w-auto">
                   <button
