@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
-import { getBriefsByUser } from "@/lib/db";
+import { getBriefsByUser, getUserProfile } from "@/lib/db";
 import { loadUpcomingEvents } from "@/lib/upcoming-events";
 import BriefToolClient, { type BriefPageInitial } from "./BriefToolClient";
 
@@ -23,13 +23,19 @@ async function loadInitial(): Promise<BriefPageInitial | null> {
   // (bannière de connexion). Sans jeton d'agenda (compte email), seuls les
   // RDV ajoutés à la main sont lus.
   if (!auth.ok || !session) return null;
-  const [calendar, briefs] = await Promise.all([
+  const [calendar, briefs, profile] = await Promise.all([
     loadUpcomingEvents(session, auth.userId),
     getBriefsByUser(auth.userId).catch(() => []),
+    getUserProfile(auth.userId).catch(() => null),
   ]);
   return {
     events: calendar.ok ? calendar.events : null,
     error: calendar.ok ? null : calendar.error,
     briefs: (briefs ?? []) as BriefPageInitial["briefs"],
+    // Ce que l'onboarding a appris : sert l'accueil personnalisé (WelcomeKit).
+    profile: profile
+      ? { companyName: profile.company_name, offer: profile.product_description, icp: profile.icp, sector: profile.sector }
+      : null,
+    firstName: session.user?.name?.trim().split(/\s+/)[0] ?? null,
   };
 }

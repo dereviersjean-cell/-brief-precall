@@ -9,6 +9,7 @@ import { Calendar, Plus, ArrowRight, X, Check, CircleDashed, ChevronLeft, Chevro
 import CompanyLogo from "@/app/components/CompanyLogo";
 import TalkToSales from "@/app/components/TalkToSales";
 import { EventsSkeleton } from "./BriefSkeleton";
+import WelcomeKit, { type WelcomeProfile } from "./WelcomeKit";
 import { useModules } from "@/app/components/ModulesProvider";
 import { BRIEFS_ACCESS_DAILY_LIMIT, SALES_CONTACT } from "@/lib/sales-contact";
 import { GENERIC_EMAIL_DOMAINS, companyDomainFromEmail } from "@/lib/company-domain";
@@ -805,7 +806,14 @@ function RecentBriefsCard({ briefs }: { briefs: StoredBrief[] }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 // Lu côté serveur par app/brief/page.tsx : la page arrive déjà remplie.
-export type BriefPageInitial = { events: CalendarEvent[] | null; error: string | null; briefs: StoredBrief[] };
+export type BriefPageInitial = {
+  events: CalendarEvent[] | null;
+  error: string | null;
+  briefs: StoredBrief[];
+  // Ce que l'inscription a appris, pour l'accueil personnalisé (WelcomeKit).
+  profile?: WelcomeProfile | null;
+  firstName?: string | null;
+};
 
 export default function BriefToolClient({ initial = null }: { initial?: BriefPageInitial | null }) {
   const router = useRouter();
@@ -956,6 +964,8 @@ export default function BriefToolClient({ initial = null }: { initial?: BriefPag
   const initialLoading = calendarEvents === null && !calendarError;
 
   const calendarGroups = showCalendar ? groupByDay(calendarEvents, eventStartDate) : [];
+  // Pas encore de rendez-vous : l'accueil personnalisé remplace la page vide.
+  const welcome = showCalendar && calendarGroups.length === 0;
   const upcomingCount = calendarEvents?.length ?? 0;
 
   const preparedCount = calendarEvents
@@ -974,7 +984,7 @@ export default function BriefToolClient({ initial = null }: { initial?: BriefPag
     <>
       {/* Inscription libre (accès « briefs ») : ce qui existe au-delà, et à
           qui en parler. */}
-      {briefsOnly && (
+      {briefsOnly && !welcome && (
         <div className="mb-6">
           <TalkToSales
             variant="banner"
@@ -986,7 +996,7 @@ export default function BriefToolClient({ initial = null }: { initial?: BriefPag
       {/* Compte email : l'agenda n'est pas relié. Les RDV ajoutés à la main
           s'affichent ; relier Google ou Outlook avec la même adresse rattache
           l'agenda à ce compte (resolveUserForLogin). */}
-      {noCalendar && (
+      {noCalendar && !welcome && (
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-white px-5 py-4 ring-1 ring-[color:var(--lavender-strong)]">
           <div className="flex min-w-0 items-center gap-3">
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[color:var(--lavender)]">
@@ -1063,14 +1073,16 @@ export default function BriefToolClient({ initial = null }: { initial?: BriefPag
       {showCalendar && (
         <div className="space-y-9">
           {calendarGroups.length === 0 ? (
-            <EmptyState
-              title="Aucun rendez-vous à venir pour l'instant."
-              subtitle={
-                noCalendar
-                  ? "Ajoutez un rendez-vous à la main pour préparer son brief."
-                  : `Aucun événement ${calendarLabel} avec des participants extérieurs dans les 7 prochains jours.`
-              }
-            />
+            <div className="space-y-5">
+              <WelcomeKit firstName={initial?.firstName ?? null} profile={initial?.profile ?? null} showCalendarStep={noCalendar} />
+              {/* Accès « briefs » : le contact commercial, sous l'accueil. */}
+              {briefsOnly && (
+                <TalkToSales
+                  variant="banner"
+                  description={`Votre accès comprend ${BRIEFS_ACCESS_DAILY_LIMIT} briefs par jour. Enregistrement et analyse de vos rendez-vous, emails de suivi, coaching de l'équipe : ${SALES_CONTACT.firstName} vous montre le reste de Brief en 30 minutes.`}
+                />
+              )}
+            </div>
           ) : (
             <>
               {!calendarGroups.some(([key]) => key === parisDayKey(new Date())) && (

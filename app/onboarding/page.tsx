@@ -215,7 +215,11 @@ export default function OnboardingPage() {
   // champ : la règle vit ici, pas dans la route.
   function filledProfile(): Record<string, string> {
     const profile: Record<string, string> = {};
-    const productDescription = (valueProposition || whatYouSell).trim();
+    // L'offre ET la promesse : la promesse écrasait l'offre jusqu'au
+    // 14/10/2026, alors que les deux nourrissent les briefs.
+    const productDescription = [whatYouSell.trim(), valueProposition.trim() ? `Promesse : ${valueProposition.trim()}` : ""]
+      .filter(Boolean)
+      .join("\n");
     if (companyName.trim()) profile.company_name = companyName.trim();
     if (productDescription) profile.product_description = productDescription;
     if (icp.trim()) profile.icp = icp.trim();
