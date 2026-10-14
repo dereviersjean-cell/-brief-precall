@@ -34,6 +34,9 @@ export function EmailSignIn({ callbackUrl = "/brief" }: { callbackUrl?: string }
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  // Adresse sans compte (connexion, oubli) ou déjà prise (création) : le
+  // message propose l'action qui débloque, sans code envoyé.
+  const [suggest, setSuggest] = useState<CodeIntent | null>(null);
 
   async function finish(provider: "email-password" | "email-code", credentials: Record<string, string>) {
     setBusy(true);
@@ -57,15 +60,24 @@ export function EmailSignIn({ callbackUrl = "/brief" }: { callbackUrl?: string }
     setBusy(true);
     setError(null);
     setInfo(null);
+    setSuggest(null);
     const res = await fetch("/api/auth/email-code", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email.trim() }),
+      body: JSON.stringify({ email: email.trim(), intent: nextIntent }),
     }).catch(() => null);
     setBusy(false);
     if (!res || !res.ok) {
       const data = (await res?.json().catch(() => null)) as { error?: string } | null;
-      setError(data?.error ?? "Impossible d'envoyer le code pour le moment.");
+      if (data?.error === "no_account") {
+        setError("Aucun compte n'est associé à cette adresse.");
+        setSuggest("signup");
+      } else if (data?.error === "account_exists") {
+        setError("Un compte existe déjà avec cette adresse.");
+        setSuggest("login");
+      } else {
+        setError(data?.error ?? "Impossible d'envoyer le code pour le moment.");
+      }
       return;
     }
     setIntent(nextIntent);
@@ -165,7 +177,21 @@ export function EmailSignIn({ callbackUrl = "/brief" }: { callbackUrl?: string }
         onChange={(e) => setPassword(e.target.value)}
         aria-label="Mot de passe"
       />
-      {error && <p className="text-[13.5px] text-land-coral-ink">{error}</p>}
+      {error && (
+        <div className="rounded-2xl bg-land-coral-soft px-4 py-3 text-[13.5px] text-land-coral-ink">
+          {error}
+          {suggest && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void requestCode(suggest)}
+              className="mt-1.5 block font-semibold text-land-ink underline underline-offset-4 disabled:opacity-50"
+            >
+              {suggest === "signup" ? "Créer un compte avec cette adresse" : "Recevoir un code de connexion"}
+            </button>
+          )}
+        </div>
+      )}
       <button
         type="submit"
         disabled={busy || !email || !password}

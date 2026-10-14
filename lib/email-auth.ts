@@ -105,6 +105,13 @@ async function findUserByEmail(email: string): Promise<UserRow | null> {
   return data as UserRow | null;
 }
 
+// Un compte existe-t-il pour cette adresse ? Sert à refuser un code de
+// connexion ou de réinitialisation pour une adresse inconnue, et une création
+// pour une adresse déjà prise (retour de Jean, 14/10/2026).
+export async function emailHasAccount(rawEmail: string): Promise<boolean> {
+  return (await findUserByEmail(normalizeEmail(rawEmail))) !== null;
+}
+
 // Après un code valide : retrouve le compte de l'adresse, ou le crée
 // (inscription ouverte, même règle que resolveUserForLogin : sans
 // organisation, le middleware l'envoie à l'onboarding). Un nouveau mot de
