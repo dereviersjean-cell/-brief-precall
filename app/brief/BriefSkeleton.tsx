@@ -42,17 +42,17 @@ export function BriefPageSkeleton() {
   return (
     <div style={{ background: "linear-gradient(180deg, oklch(0.97 0.02 270) 0px, var(--background) 420px)" }}>
       <div className="mx-auto w-full max-w-[1240px] px-4 py-6 sm:px-6 sm:py-10">
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[300px_minmax(0,1fr)]">
-          <aside className="min-w-0 space-y-4">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[248px_minmax(0,1fr)] xl:gap-10">
+          <aside className="min-w-0 space-y-3">
             <div>
-              <h1 className="text-[26px] font-semibold leading-tight tracking-[-0.04em] text-slate-900">
+              <h1 className="text-[22px] font-semibold leading-tight tracking-[-0.035em] text-slate-900">
                 Vos prochains <span className="whitespace-nowrap">rendez-vous</span>
               </h1>
               <div className="mt-2.5 h-3.5 w-48 animate-pulse rounded bg-slate-100" />
             </div>
-            <div className="hidden h-[330px] animate-pulse rounded-[24px] bg-white/70 ring-1 ring-[color:var(--lavender-strong)] lg:block" />
-            <div className="h-[108px] animate-pulse rounded-[24px] bg-white/70 ring-1 ring-[color:var(--lavender-strong)]" />
-            <div className="h-11 rounded-full bg-[color:var(--primary)] opacity-60" />
+            <div className="hidden h-[290px] animate-pulse rounded-[20px] bg-white/70 ring-1 ring-[color:var(--lavender-strong)] lg:block" />
+            <div className="h-[62px] animate-pulse rounded-[20px] bg-white/70 ring-1 ring-[color:var(--lavender-strong)] lg:hidden" />
+            <div className="h-10 rounded-full bg-gradient-to-r from-[#2A5CE0] to-[#6A4BE8] opacity-60" />
           </aside>
           <div className="min-w-0">
             <EventsSkeleton />

@@ -198,16 +198,22 @@ function timeUntil(iso: string): string | null {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-// Teinte pastel propre à chaque entreprise (maquette S2a, inspirée d'Amie,
-// choisie par Jean le 14/10/2026) : on n'a pas la couleur de la marque, on en
-// dérive une, stable, du nom — la même entreprise garde la même teinte d'un
-// jour à l'autre.
-const TINT_HUES = [265, 220, 190, 160, 85, 45, 20, 330, 300];
-function tintFor(key: string): { bg: string; ring: string } {
+// Dégradé pastel propre à chaque entreprise (maquette S2a, choisie par Jean
+// le 14/10/2026, puis passée en dégradés sans rose le même jour) : on n'a pas
+// la couleur de la marque, on en dérive une, stable, du nom — la même
+// entreprise garde la même teinte d'un jour à l'autre. Teintes froides et
+// ambre seulement : indigo, bleu, ciel, sarcelle, émeraude, violet, ambre.
+const TINT_HUES = [265, 240, 215, 190, 160, 290, 75];
+function tintFor(key: string): { bg: string; ring: string; ink: string } {
   let h = 0;
   for (const c of key.toLowerCase()) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   const hue = TINT_HUES[h % TINT_HUES.length];
-  return { bg: `oklch(0.975 0.022 ${hue})`, ring: `oklch(0.93 0.035 ${hue})` };
+  const next = hue + 28;
+  return {
+    bg: `linear-gradient(110deg, oklch(0.955 0.04 ${hue}) 0%, oklch(0.975 0.025 ${next}) 45%, oklch(0.995 0.006 ${next}) 100%)`,
+    ring: `oklch(0.92 0.035 ${hue})`,
+    ink: `oklch(0.5 0.14 ${hue})`,
+  };
 }
 
 function initialsOf(label: string): string {
@@ -253,27 +259,31 @@ function CalendarEventCard({
     >
       {/* Sous `sm`, les actions passent sur une seconde ligne : sur 375 px,
           l'heure, le titre et le bouton ne tiennent pas côte à côte. */}
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-3 px-5 py-4 sm:flex-nowrap sm:pl-6">
-        <div className="w-14 shrink-0 sm:w-[84px]">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3.5 sm:flex-nowrap sm:px-5">
+        <div className="w-12 shrink-0 sm:w-[64px]">
           <div className="text-[15px] font-semibold tabular-nums text-slate-900">{formatTime(start)}</div>
           <div className="text-[12px] tabular-nums text-slate-400">{duration > 0 ? `${duration} min` : "—"}</div>
         </div>
-        <div className="min-w-0 flex-1 basis-[180px]">
+        {/* Le logo de l'entreprise rencontrée, en grand : c'est lui qu'on
+            reconnaît d'un coup d'œil. Trouvé par le serveur à partir du domaine
+            du participant et du nom de l'entreprise (app/api/company-logo, mis
+            en cache) ; l'initiale, teintée comme la carte, sinon. */}
+        <CompanyLogo
+          domain={companyDomainFromEmail(getCompanyAttendee(event)?.email)}
+          name={event.company || getCompanyFromDomain(event)}
+          alt={companyLabel}
+          className="h-11 w-11 shrink-0 rounded-xl bg-white object-contain p-1.5 shadow-[0_1px_3px_rgba(15,23,42,0.08)] ring-1 ring-white"
+          fallback={
+            <span
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white text-[17px] font-semibold shadow-[0_1px_3px_rgba(15,23,42,0.08)]"
+              style={{ color: tint.ink }}
+            >
+              {companyLabel.charAt(0).toUpperCase()}
+            </span>
+          }
+        />
+        <div className="min-w-0 flex-1 basis-[160px]">
           <div className="flex min-w-0 items-center gap-2">
-            {/* Le logo de l'entreprise du participant externe, trouvé par le
-                serveur à partir de son domaine et du nom de l'entreprise
-                (app/api/company-logo, mis en cache). */}
-            <CompanyLogo
-              domain={companyDomainFromEmail(getCompanyAttendee(event)?.email)}
-              name={event.company}
-              alt={event.summary}
-              className="h-[22px] w-[22px] shrink-0 rounded-md border border-white bg-white object-contain p-0.5"
-              fallback={
-                <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md bg-white text-[11px] font-semibold text-[color:var(--violet)]">
-                  {companyLabel.charAt(0).toUpperCase()}
-                </span>
-              }
-            />
             <h3 className="min-w-0 truncate text-[15.5px] font-semibold leading-snug text-slate-900">{event.summary}</h3>
             {nextLabel && (
               <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[11.5px] font-semibold text-[color:var(--violet)]">{nextLabel}</span>
@@ -333,11 +343,47 @@ function CalendarEventCard({
   );
 }
 
-// Mini-calendrier du mois (maquette S2a) : aujourd'hui en bleu, un point sous
-// chaque jour qui a des rendez-vous — vert quand tous ont leur brief. Un clic
-// descend au jour. Les mois se feuillettent, mais l'agenda ne remonte que les
-// sept prochains jours : les autres mois restent sans point.
-function MonthCalendar({ events, briefs }: { events: CalendarEvent[]; briefs: StoredBrief[] }) {
+// Préparation de la semaine : une barre plutôt qu'un grand anneau, pour que
+// la colonne de gauche reste étroite (retour de Jean, 14/10/2026).
+function PrepBar({ ready, total }: { ready: number; total: number }) {
+  const pct = total > 0 ? Math.round((ready / total) * 100) : 0;
+  return (
+    <div>
+      <div className="flex items-baseline justify-between text-[12.5px]">
+        <span className="font-semibold text-slate-900">Préparation</span>
+        <span className="tabular-nums text-slate-500">
+          {total === 0 ? "aucun RDV" : `${ready}/${total} brief${ready > 1 ? "s" : ""} prêt${ready > 1 ? "s" : ""}`}
+        </span>
+      </div>
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-[#2A5CE0] to-[#7B5CFF] transition-[width] duration-500"
+          style={{ width: `${Math.max(pct, total > 0 && ready > 0 ? 6 : 0)}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+const PANEL =
+  "rounded-[20px] bg-white/85 shadow-[0_1px_2px_rgba(42,92,224,0.06),0_8px_24px_-14px_rgba(42,92,224,0.2)] ring-1 ring-[color:var(--lavender-strong)] backdrop-blur";
+
+// Mini-calendrier du mois (maquette S2a), compact : aujourd'hui en bleu, un
+// point sous chaque jour qui a des rendez-vous — vert quand tous ont leur
+// brief. Un clic descend au jour. Les mois se feuillettent, mais l'agenda ne
+// remonte que les sept prochains jours : les autres mois restent sans point.
+// La préparation vit en pied de la même carte.
+function MonthCalendar({
+  events,
+  briefs,
+  ready,
+  total,
+}: {
+  events: CalendarEvent[];
+  briefs: StoredBrief[];
+  ready: number;
+  total: number;
+}) {
   const [offset, setOffset] = useState(0);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -346,24 +392,24 @@ function MonthCalendar({ events, briefs }: { events: CalendarEvent[]; briefs: St
   const lead = (first.getDay() + 6) % 7;
   const title = first.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
   return (
-    <div className="rounded-[24px] bg-white/80 p-4 shadow-[0_1px_2px_rgba(42,92,224,0.06),0_8px_24px_-12px_rgba(42,92,224,0.18)] ring-1 ring-[color:var(--lavender-strong)] backdrop-blur">
-      <div className="flex items-center justify-between px-1">
-        <span className="text-[14px] font-semibold text-slate-900 first-letter:uppercase">{title}</span>
-        <span className="flex gap-0.5 text-slate-400">
-          <button type="button" aria-label="Mois précédent" onClick={() => setOffset((o) => o - 1)} className="grid h-7 w-7 place-items-center rounded-full hover:bg-slate-100 hover:text-slate-700">
-            <ChevronLeft className="h-4 w-4" />
+    <div className={`${PANEL} p-3`}>
+      <div className="flex items-center justify-between pl-1.5">
+        <span className="text-[13px] font-semibold text-slate-900 first-letter:uppercase">{title}</span>
+        <span className="flex text-slate-400">
+          <button type="button" aria-label="Mois précédent" onClick={() => setOffset((o) => o - 1)} className="grid h-6 w-6 place-items-center rounded-full hover:bg-slate-100 hover:text-slate-700">
+            <ChevronLeft className="h-3.5 w-3.5" />
           </button>
-          <button type="button" aria-label="Mois suivant" onClick={() => setOffset((o) => o + 1)} className="grid h-7 w-7 place-items-center rounded-full hover:bg-slate-100 hover:text-slate-700">
-            <ChevronRight className="h-4 w-4" />
+          <button type="button" aria-label="Mois suivant" onClick={() => setOffset((o) => o + 1)} className="grid h-6 w-6 place-items-center rounded-full hover:bg-slate-100 hover:text-slate-700">
+            <ChevronRight className="h-3.5 w-3.5" />
           </button>
         </span>
       </div>
-      <div className="mt-3 grid grid-cols-7 text-center text-[11px] font-medium text-slate-400">
+      <div className="mt-2 grid grid-cols-7 text-center text-[10.5px] font-medium text-slate-400">
         {["L", "M", "M", "J", "V", "S", "D"].map((d, i) => (
           <span key={i}>{d}</span>
         ))}
       </div>
-      <div className="mt-1 grid grid-cols-7 gap-y-0.5 text-center text-[13px]">
+      <div className="mt-0.5 grid grid-cols-7 text-center text-[12px]">
         {Array.from({ length: lead }).map((_, i) => (
           <span key={`v${i}`} />
         ))}
@@ -380,12 +426,12 @@ function MonthCalendar({ events, briefs }: { events: CalendarEvent[]; briefs: St
               type="button"
               disabled={dayEvents.length === 0}
               onClick={() => document.getElementById(dayAnchor(key))?.scrollIntoView({ behavior: "smooth", block: "start" })}
-              className="relative grid h-9 place-items-center disabled:cursor-default"
+              className="relative grid h-7 place-items-center disabled:cursor-default"
             >
               <span
-                className={`grid h-8 w-8 place-items-center rounded-full tabular-nums transition-colors ${
+                className={`grid h-6 w-6 place-items-center rounded-full tabular-nums transition-colors ${
                   isTodayCell
-                    ? "bg-[color:var(--primary)] font-semibold text-white shadow-[0_6px_14px_-4px_rgba(42,92,224,0.6)]"
+                    ? "bg-gradient-to-br from-[#2A5CE0] to-[#6A4BE8] font-semibold text-white shadow-[0_4px_10px_-3px_rgba(42,92,224,0.6)]"
                     : past
                       ? "text-slate-300"
                       : dayEvents.length > 0
@@ -396,37 +442,14 @@ function MonthCalendar({ events, briefs }: { events: CalendarEvent[]; briefs: St
                 {d.getDate()}
               </span>
               {dayEvents.length > 0 && (
-                <span className={`absolute bottom-0.5 h-1 w-1 rounded-full ${allReady ? "bg-emerald-500" : "bg-[color:var(--violet)]"}`} />
+                <span className={`absolute bottom-0 h-1 w-1 rounded-full ${allReady ? "bg-emerald-500" : "bg-[color:var(--violet)]"}`} />
               )}
             </button>
           );
         })}
       </div>
-    </div>
-  );
-}
-
-function PrepRing({ ready, total }: { ready: number; total: number }) {
-  const pct = total > 0 ? ready / total : 0;
-  const C = 2 * Math.PI * 34;
-  return (
-    <div className="flex items-center gap-4 rounded-[24px] bg-white/80 p-4 shadow-[0_1px_2px_rgba(42,92,224,0.06),0_8px_24px_-12px_rgba(42,92,224,0.18)] ring-1 ring-[color:var(--lavender-strong)] backdrop-blur">
-      <span className="relative grid h-[76px] w-[76px] shrink-0 place-items-center">
-        <svg viewBox="0 0 80 80" className="absolute inset-0 -rotate-90" aria-hidden>
-          <circle cx="40" cy="40" r="34" fill="none" strokeWidth="7" className="stroke-slate-100" />
-          {total > 0 && (
-            <circle cx="40" cy="40" r="34" fill="none" strokeWidth="7" strokeLinecap="round" className="stroke-[color:var(--primary)]" strokeDasharray={`${pct * C} ${C}`} />
-          )}
-        </svg>
-        <span className="text-[18px] font-semibold tabular-nums text-slate-900">{total > 0 ? `${Math.round(pct * 100)}%` : "—"}</span>
-      </span>
-      <div className="min-w-0">
-        <div className="text-[14px] font-semibold text-slate-900">Préparation</div>
-        <div className="mt-0.5 text-[13px] leading-snug text-slate-500">
-          {total === 0
-            ? "Aucun rendez-vous à venir"
-            : `${ready} brief${ready > 1 ? "s" : ""} prêt${ready > 1 ? "s" : ""} sur ${total} rendez-vous à venir`}
-        </div>
+      <div className="mt-3 border-t border-slate-100 px-1.5 pt-3">
+        <PrepBar ready={ready} total={total} />
       </div>
     </div>
   );
@@ -439,7 +462,7 @@ function DayHeader({ date, today, count }: { date: Date; today: boolean; count: 
       <span
         className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-[18px] font-semibold tabular-nums ${
           today
-            ? "bg-[color:var(--lavender)] text-[color:var(--violet)] ring-1 ring-[color:var(--violet)]/30"
+            ? "bg-gradient-to-br from-[#2A5CE0] to-[#6A4BE8] text-white shadow-[0_6px_16px_-8px_rgba(76,63,214,0.8)]"
             : "bg-white text-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.06)]"
         }`}
       >
@@ -1032,18 +1055,19 @@ export default function BriefToolClient() {
     // Haut de page légèrement lavande (maquette S2a).
     <div style={{ background: "linear-gradient(180deg, oklch(0.97 0.02 270) 0px, var(--background) 420px)" }}>
     <div className="mx-auto w-full max-w-[1240px] px-4 py-6 sm:px-6 sm:py-10">
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[300px_minmax(0,1fr)]">
-        {/* Panneau gauche : titre, mois, préparation, ajout. */}
-        <aside className="min-w-0 space-y-4 lg:sticky lg:top-20 lg:self-start">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[248px_minmax(0,1fr)] xl:gap-10">
+        {/* Panneau gauche, volontairement étroit : titre, mois et préparation
+            dans une seule carte, ajout. */}
+        <aside className="min-w-0 space-y-3 lg:sticky lg:top-20 lg:self-start">
           <div>
             <div data-tour="brief-content">
-              <h1 className="text-[26px] font-semibold leading-tight tracking-[-0.04em] text-slate-900">
+              <h1 className="text-[22px] font-semibold leading-tight tracking-[-0.035em] text-slate-900">
                 Vos prochains <span className="whitespace-nowrap">rendez-vous</span>
               </h1>
               {initialLoading ? (
                 <div className="mt-2.5 h-3.5 w-48 animate-pulse rounded bg-slate-100" />
               ) : (
-                <p className="mt-1 text-[14px] text-slate-500">
+                <p className="mt-1 text-[13px] text-slate-500">
                   {upcomingCount} RDV à venir
                   {showCalendar && ` · ${calendarLabel}`}
                 </p>
@@ -1057,15 +1081,23 @@ export default function BriefToolClient() {
               préparation dirait « aucun rendez-vous » avant d'avoir lu l'agenda. */}
           {initialLoading ? (
             <>
-              <div className="hidden h-[330px] animate-pulse rounded-[24px] bg-white/70 ring-1 ring-[color:var(--lavender-strong)] lg:block" />
-              <div className="h-[108px] animate-pulse rounded-[24px] bg-white/70 ring-1 ring-[color:var(--lavender-strong)]" />
+              <div className="hidden h-[290px] animate-pulse rounded-[20px] bg-white/70 ring-1 ring-[color:var(--lavender-strong)] lg:block" />
+              <div className="h-[62px] animate-pulse rounded-[20px] bg-white/70 ring-1 ring-[color:var(--lavender-strong)] lg:hidden" />
             </>
           ) : (
             <>
               <div className="hidden lg:block">
-                <MonthCalendar events={showCalendar ? calendarEvents : []} briefs={recentBriefs} />
+                <MonthCalendar
+                  events={showCalendar ? calendarEvents : []}
+                  briefs={recentBriefs}
+                  ready={showCalendar ? preparedCount : 0}
+                  total={showCalendar ? upcomingCount : 0}
+                />
               </div>
-              <PrepRing ready={showCalendar ? preparedCount : 0} total={showCalendar ? upcomingCount : 0} />
+              {/* Sur téléphone, le mois est masqué : la préparation seule. */}
+              <div className={`${PANEL} px-4 py-3 lg:hidden`}>
+                <PrepBar ready={showCalendar ? preparedCount : 0} total={showCalendar ? upcomingCount : 0} />
+              </div>
             </>
           )}
           <button
@@ -1075,7 +1107,7 @@ export default function BriefToolClient() {
                 ? setShowAddMeetingModal(true)
                 : signIn(provider === "azure-ad" ? "azure-ad" : "google", { callbackUrl: "/brief" })
             }
-            className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[color:var(--primary)] text-[14px] font-semibold text-white shadow-[0_10px_24px_-10px_rgba(42,92,224,0.7)] transition duration-200 hover:brightness-110"
+            className="flex h-10 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#2A5CE0] to-[#6A4BE8] text-[13.5px] font-semibold text-white shadow-[0_10px_24px_-12px_rgba(76,63,214,0.8)] transition duration-200 hover:brightness-110"
           >
             <Plus className="h-4 w-4" />
             Ajouter un RDV
