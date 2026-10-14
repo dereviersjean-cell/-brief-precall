@@ -79,8 +79,11 @@ function Spinner() {
 // étape reste active jusqu'à la fin réelle, et la barre progresse en continu
 // sur une courbe qui ralentit sans jamais se figer — un délai de 90s sur une
 // entreprise peu documentée reste visiblement "en cours", pas "bloqué".
-const STEP_2_AT_S = 3;
-const STEP_3_AT_S = 12;
+// Recalé le 14/10/2026 sur Sonnet 5.5 (~27 s typiques, cf. CLAUDE.md) : la
+// rédaction n'apparaissait qu'au bout de 12 s auparavant, si bien que l'écran
+// affichait « Rédaction » pendant les deux tiers de l'attente.
+const STEP_2_AT_S = 4;
+const STEP_3_AT_S = 22;
 // Choisi pour que la barre atteigne ~80% vers 30s (la durée typique
 // observée) tout en continuant, très lentement, au-delà — jamais un plateau
 // figé même largement passé cette durée.
@@ -258,7 +261,41 @@ function ContactCard({ contact, notFound }: { contact: Contact; notFound: boolea
   );
 }
 
-function GeneratingProgress({ company, isRegenerating = false }: { company: string; isRegenerating?: boolean }) {
+// Écran de génération (refait le 14/10/2026, même registre que la page des
+// rendez-vous) : le logo de l'entreprise au centre d'un anneau en dégradé qui
+// tourne, un chronomètre, les trois étapes en frise, et la silhouette du brief
+// qui se construit partie par partie. Les étapes et la barre suivent le temps
+// écoulé, pas un vrai signal du serveur : la génération est un seul appel, on
+// ne sait pas où elle en est. D'où une barre qui ralentit sans jamais
+// s'arrêter, et un message honnête au-delà de 20 s.
+const GEN_STEPS = [
+  { label: "Entreprise", detail: "Données légales et actualités" },
+  // La phase la plus longue de loin (recherche web réelle).
+  { label: "Recherche web", detail: "Lecture du site et de la presse" },
+  { label: "Rédaction", detail: "Angles d'attaque et accroche" },
+];
+
+// Les trois parties du brief, dans l'ordre où elles s'affichent une fois prêt.
+const GEN_PARTS = [
+  { n: "01", title: "Le prospect", lines: [72, 90, 56], step: 0 },
+  { n: "02", title: "Les angles d'attaque", lines: [84, 64, 78], step: 1 },
+  { n: "03", title: "Pendant l'appel", lines: [60, 88, 70], step: 2 },
+];
+
+function formatElapsed(s: number): string {
+  const total = Math.floor(s);
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+
+function GeneratingProgress({
+  company,
+  isRegenerating = false,
+  logoDomain = null,
+}: {
+  company: string;
+  isRegenerating?: boolean;
+  logoDomain?: string | null;
+}) {
   const [elapsedS, setElapsedS] = useState(0);
 
   useEffect(() => {
@@ -269,124 +306,175 @@ function GeneratingProgress({ company, isRegenerating = false }: { company: stri
 
   const currentStep = elapsedS < STEP_2_AT_S ? 0 : elapsedS < STEP_3_AT_S ? 1 : 2;
 
-  const steps = [
-    {
-      label: "Recherche des informations sur l'entreprise...",
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 15.803a7.5 7.5 0 0010.607 10.607z" />
-        </svg>
-      ),
-    },
-    {
-      // La phase la plus longue de loin (recherche web réelle) — le libellé
-      // le dit explicitement plutôt que de laisser croire à une progression
-      // linéaire par étapes égales.
-      label: "Recherche web et analyse approfondie...",
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 15.803a7.5 7.5 0 0010.607 10.607zM12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5" />
-        </svg>
-      ),
-    },
-    {
-      label: "Rédaction de votre brief...",
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
-        </svg>
-      ),
-    },
-  ];
-
   // Courbe asymptotique (1 - e^-t/τ) : progresse vite au début, ralentit
   // ensuite, ne s'arrête jamais tout à fait — contrairement à des paliers
   // fixes qui restent bloqués à 90% pendant 40s+ sur une génération lente.
   const progressWidth = Math.min(PROGRESS_CAP, 100 * (1 - Math.exp(-elapsedS / PROGRESS_TAU_S)));
 
   return (
-    <div className="flex flex-col items-center justify-center px-5 py-14 sm:px-7 sm:py-16">
-      <div className="w-full max-w-md mx-auto">
-        <div className="text-center mb-8">
-          <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-[color:var(--lavender)]">
-            <svg className="h-6 w-6 text-[color:var(--violet)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
-            </svg>
-          </div>
-          <h2 className="text-[20px] font-semibold tracking-[-0.02em] text-slate-900">
-            {isRegenerating ? "Régénération de votre brief" : "Génération de votre brief"}
-          </h2>
-          <p className="mt-1 text-[14px] text-slate-500">Analyse de {company} en cours...</p>
-          {/* Honnête plutôt que rassurant à tort : au-delà d'un délai
-              raisonnable, dire que ça peut prendre du temps évite de laisser
-              croire à un blocage — voir le commentaire au-dessus sur pourquoi
-              la durée varie autant (recherche web réelle, pas un minutage
-              fixe). */}
-          {elapsedS > LONG_WAIT_HINT_AT_S && (
-            <p className="mt-2 text-[12.5px] text-slate-500">
-              Peut prendre jusqu&apos;à une minute pour une entreprise peu documentée en ligne.
-            </p>
-          )}
-        </div>
+    <div
+      className="relative overflow-hidden px-5 py-10 sm:px-10 sm:py-12"
+      style={{
+        background:
+          "radial-gradient(600px 260px at 50% -40px, oklch(0.93 0.06 268 / 0.9), transparent 70%), radial-gradient(420px 220px at 90% 110%, oklch(0.95 0.05 300 / 0.7), transparent 70%), white",
+      }}
+    >
+      <style>{`
+        @keyframes brief-gen-shimmer { from { background-position: 200% 0 } to { background-position: -200% 0 } }
+        @keyframes brief-gen-halo { 0%,100% { transform: scale(1); opacity: .55 } 50% { transform: scale(1.12); opacity: .9 } }
+      `}</style>
 
-        <div className="mb-6 h-1 overflow-hidden rounded-full bg-slate-100">
+      {/* Logo dans son anneau */}
+      <div className="mx-auto grid h-[104px] w-[104px] place-items-center">
+        <div className="relative grid h-[104px] w-[104px] place-items-center">
+          <span
+            className="absolute inset-0 rounded-full blur-xl motion-reduce:animate-none"
+            style={{
+              background: "radial-gradient(circle, rgba(91,63,214,0.35), transparent 70%)",
+              animation: "brief-gen-halo 2.8s ease-in-out infinite",
+            }}
+          />
+          <span
+            className="absolute inset-0 rounded-full animate-[spin_2.4s_linear_infinite] motion-reduce:animate-none"
+            style={{
+              background: "conic-gradient(from 0deg, #2A5CE0, #7B5CFF, rgba(123,92,255,0) 70%, #2A5CE0)",
+              WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px))",
+              mask: "radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px))",
+            }}
+          />
+          <CompanyLogo
+            domain={logoDomain}
+            name={company}
+            alt={company}
+            className="relative h-[72px] w-[72px] rounded-full bg-white object-contain p-3 shadow-[0_10px_30px_-12px_rgba(42,92,224,0.6)]"
+            fallback={
+              <span className="relative grid h-[72px] w-[72px] place-items-center rounded-full bg-white text-[26px] font-semibold text-[color:var(--violet)] shadow-[0_10px_30px_-12px_rgba(42,92,224,0.6)]">
+                {company.charAt(0).toUpperCase()}
+              </span>
+            }
+          />
+        </div>
+      </div>
+
+      <div className="mt-6 text-center">
+        <h2 className="text-[22px] font-semibold tracking-[-0.03em] text-slate-900 sm:text-[24px]">
+          {isRegenerating ? "On remet à jour votre brief" : "On prépare votre rendez-vous"}
+        </h2>
+        <p className="mt-1 text-[14px] text-slate-500">
+          avec <span className="font-semibold text-slate-700">{company}</span> ·{" "}
+          <span className="tabular-nums">{formatElapsed(elapsedS)}</span>
+          <span className="text-slate-400"> / ~1 min</span>
+        </p>
+        {/* Honnête plutôt que rassurant à tort : la durée dépend de la
+            recherche web, pas d'un minutage fixe. */}
+        {elapsedS > LONG_WAIT_HINT_AT_S && (
+          <p className="mt-2 text-[12.5px] text-slate-500">
+            Peut prendre jusqu&apos;à une minute pour une entreprise peu documentée en ligne.
+          </p>
+        )}
+      </div>
+
+      {/* Barre */}
+      <div className="mx-auto mt-7 max-w-xl">
+        <div className="h-2 overflow-hidden rounded-full bg-white shadow-[inset_0_0_0_1px_rgba(42,92,224,0.12)]">
           <div
-            className="h-full rounded-full bg-[color:var(--primary)] transition-all duration-300 ease-out"
-            style={{ width: `${progressWidth}%` }}
+            className="h-full rounded-full transition-[width] duration-300 ease-out motion-reduce:!animate-none"
+            style={{
+              width: `${progressWidth}%`,
+              backgroundImage: "linear-gradient(90deg, #2A5CE0, #7B5CFF, #9DB6FF, #7B5CFF, #2A5CE0)",
+              backgroundSize: "200% 100%",
+              animation: "brief-gen-shimmer 2.2s linear infinite",
+            }}
           />
         </div>
 
-        <div className="space-y-2">
-          {steps.map((step, i) => {
-            const isCompleted = i < currentStep;
-            const isActive = i === currentStep;
-
+        {/* Étapes en frise */}
+        <ol className="mt-5 grid grid-cols-3 gap-2">
+          {GEN_STEPS.map((step, i) => {
+            const done = i < currentStep;
+            const active = i === currentStep;
             return (
-              <div
-                key={i}
-                className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors duration-500 ${
-                  isActive ? "bg-[color:var(--lavender)]" : ""
+              <li
+                key={step.label}
+                className={`rounded-2xl px-3 py-2.5 transition-colors duration-500 ${
+                  active ? "bg-white shadow-[0_6px_20px_-12px_rgba(42,92,224,0.5)] ring-1 ring-[color:var(--lavender-strong)]" : ""
                 }`}
               >
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors duration-500 ${
-                    isCompleted
-                      ? "bg-[color:var(--success-soft)] text-emerald-700"
-                      : isActive
-                      ? "bg-white text-[color:var(--violet)]"
-                      : "bg-slate-100 text-slate-400"
-                  }`}
-                >
-                  {isCompleted ? (
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
-                  ) : (
-                    step.icon
-                  )}
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10.5px] font-semibold transition-colors duration-500 ${
+                      done
+                        ? "bg-emerald-500 text-white"
+                        : active
+                          ? "bg-gradient-to-br from-[#2A5CE0] to-[#7B5CFF] text-white"
+                          : "bg-slate-100 text-slate-400"
+                    }`}
+                  >
+                    {done ? (
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                    ) : (
+                      i + 1
+                    )}
+                  </span>
+                  {/* Sur téléphone, seul le libellé de l'étape en cours : les
+                      trois ne tiennent pas côte à côte. */}
+                  <span className={`truncate text-[13px] font-semibold ${done || active ? "text-slate-900" : "text-slate-400"} ${active ? "" : "max-sm:hidden"}`}>
+                    {step.label}
+                  </span>
                 </div>
-
-                <span
-                  className={`flex-1 text-[13.5px] transition-colors duration-500 ${
-                    isCompleted
-                      ? "text-slate-500"
-                      : isActive
-                      ? "text-slate-900 font-medium"
-                      : "text-slate-400"
-                  }`}
-                >
-                  {step.label}
-                </span>
-
-                {isActive && (
-                  <div className="shrink-0 text-[color:var(--violet)]">
-                    <Spinner />
-                  </div>
-                )}
-              </div>
+                <p className={`mt-1 hidden truncate text-[12px] sm:block ${active ? "text-slate-500" : "text-slate-400"}`}>{step.detail}</p>
+              </li>
             );
           })}
-        </div>
+        </ol>
+      </div>
+
+      {/* Silhouette du brief qui se construit */}
+      <div className="mx-auto mt-9 grid max-w-3xl gap-3 sm:grid-cols-3">
+        {GEN_PARTS.map((part) => {
+          // Aucune partie n'est annoncée « terminée » : la génération est un
+          // seul appel, on ne sait pas ce qui est réellement écrit. Les
+          // parties s'allument au fil des étapes, c'est tout.
+          const state = part.step < currentStep ? "lit" : part.step === currentStep ? "active" : "todo";
+          return (
+            <div
+              key={part.n}
+              className={`rounded-[18px] bg-white/80 p-4 ring-1 transition-all duration-700 ${
+                state === "active"
+                  ? "ring-[color:var(--lavender-strong)] shadow-[0_12px_30px_-18px_rgba(42,92,224,0.55)]"
+                  : state === "lit"
+                    ? "ring-[color:var(--lavender-strong)]"
+                    : "opacity-55 ring-slate-100"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] font-semibold tabular-nums text-[color:var(--violet)]">{part.n}</span>
+              </div>
+              <div className="mt-1 text-[13.5px] font-semibold text-slate-900">{part.title}</div>
+              <div className="mt-3 space-y-2">
+                {part.lines.map((w, j) => (
+                  <div
+                    key={j}
+                    className="h-2 rounded-full motion-reduce:!animate-none"
+                    style={{
+                      width: `${w}%`,
+                      backgroundImage:
+                        state === "active"
+                          ? "linear-gradient(90deg, oklch(0.93 0.03 268), oklch(0.85 0.08 275), oklch(0.93 0.03 268))"
+                          : state === "lit"
+                            ? "linear-gradient(90deg, oklch(0.9 0.05 268), oklch(0.93 0.035 280))"
+                            : "linear-gradient(90deg, oklch(0.95 0.005 268), oklch(0.95 0.005 268))",
+                      backgroundSize: "200% 100%",
+                      animation: state === "active" ? `brief-gen-shimmer 1.6s linear ${j * 0.15}s infinite` : undefined,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -922,8 +1010,12 @@ export default function BriefClient({
             deux cas — remplace le brief existant plutôt que de le griser en
             fond, puisqu'il est de toute façon sur le point d'être remplacé. */}
         {isGenerating && (
-          <div className="mt-8 overflow-hidden rounded-[20px] border border-border bg-white">
-            <GeneratingProgress company={meeting.company} isRegenerating={!!brief} />
+          <div className="mt-8 overflow-hidden rounded-[28px] ring-1 ring-[color:var(--lavender-strong)]">
+            <GeneratingProgress
+              company={brief?.contact?.company?.name ?? meeting.company}
+              isRegenerating={!!brief}
+              logoDomain={companyDomainFromEmail(contactEmail)}
+            />
           </div>
         )}
 
