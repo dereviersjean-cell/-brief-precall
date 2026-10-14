@@ -17,81 +17,116 @@ const SECTOR_SUGGESTIONS = [
   "Autre",
 ];
 
-// Chaque étape annonce d'abord CE QUE FAIT Brief, puis demande ce dont il a
-// besoin pour le faire. L'onboarding précédent enchaînait quatre questions
-// sans jamais dire à quoi elles servaient : on y répondait vite pour passer à
-// la suite, et on arrivait sur un tableau de bord vide sans comprendre.
-// Les trois piliers sont ceux de la landing (Préparer / Débriefer /
-// Progresser) — mêmes mots, mêmes repères.
+// Chaque étape dit d'abord POURQUOI Brief demande l'information, puis la
+// demande. L'onboarding d'origine enchaînait quatre questions sans dire à quoi
+// elles servaient : on y répondait vite pour passer à la suite, et on arrivait
+// sur un tableau de bord vide sans comprendre. Textes et mise en page refaits
+// le 14/10/2026 (« professionnel, bon wording, moderne », Jean) : une frise
+// nommée, une question nette, la raison en une ligne, des exemples cliquables.
 const STEPS = [
   {
     step: 1,
-    pillar: "Préparer",
-    promise: "Avant chaque rendez-vous, Brief prépare un dossier sur le prospect.",
-    title: "Qu'est-ce que vous vendez ?",
-    subtitle: "Pour que vos briefs parlent de votre offre, et pas d'une offre générique.",
+    label: "Votre offre",
+    title: "Que vendez-vous ?",
+    subtitle: "En une ou deux phrases, comme vous le présenteriez à un prospect.",
+    why: "Chaque brief relie l'actualité et les enjeux du prospect à ce que vous vendez.",
   },
   {
     step: 2,
-    pillar: "Préparer",
-    promise: "Brief compare chaque prospect à votre cible pour vous dire s'il y ressemble.",
-    title: "À qui vous le vendez ?",
-    subtitle: "Décrivez votre client idéal et choisissez votre secteur.",
+    label: "Votre cible",
+    title: "Qui est votre client idéal ?",
+    subtitle: "Fonction, taille d'entreprise, secteur : le profil des clients que vous voulez signer.",
+    why: "Brief vous signale si un prospect correspond à votre cible, et sur quoi.",
   },
   {
     step: 3,
-    pillar: "Préparer",
-    promise: "Ces éléments alimentent vos briefs et vos emails de suivi.",
+    label: "Votre entreprise",
     title: "Comment vous présentez-vous ?",
-    subtitle: "Le nom sous lequel vos prospects vous connaissent, et votre promesse.",
+    subtitle: "Le nom sous lequel vos prospects vous connaissent, et ce qui vous distingue.",
+    why: "Vos briefs s'appuient sur votre promesse pour proposer l'accroche et les arguments.",
   },
   {
     step: 4,
-    pillar: "Débriefer",
-    promise:
-      "Un assistant rejoint vos visios, prend des notes, et vous envoie le compte-rendu, les objections et un email de suivi prêt à relire.",
-    title: "Connectez votre agenda",
-    subtitle: "C'est l'étape qui déclenche tout : sans elle, aucun rendez-vous n'est repéré.",
+    label: "Agenda",
+    title: "Reliez votre agenda",
+    subtitle: "Brief repère vos rendez-vous à venir et prépare leur brief sans que vous ayez à le demander.",
+    why: "Un assistant rejoint aussi vos visios, prend des notes et vous envoie le compte-rendu.",
   },
   {
     step: 5,
-    pillar: "Progresser",
-    promise: "Vos cas clients enrichissent vos briefs : Brief cite ceux qui ressemblent le plus au prospect.",
+    label: "Références",
     title: "Vos références clients",
-    subtitle: "Importez vos cas clients : ils deviennent des arguments dans vos briefs.",
+    subtitle: "Vos cas clients deviennent des arguments : Brief cite ceux qui ressemblent le plus au prospect.",
+    why: "Un fichier ou un simple copier-coller suffit ; vous pourrez compléter plus tard.",
   },
 ];
 
-// Promesse affichée au-dessus de chaque étape. Celles des étapes 3 et 4
-// citaient les emails de suivi et les objections, qu'un client en début de
-// parcours n'a pas encore : elles ne les nomment que si le module est ouvert.
-function promiseFor(step: number, followUp: boolean, objections: boolean): string {
-  if (step === 3) {
-    return followUp ? "Ces éléments alimentent vos briefs et vos emails de suivi." : "Ces éléments alimentent vos briefs.";
+const EXAMPLES: Record<number, string[]> = {
+  1: [
+    "Un logiciel de devis pour les artisans du bâtiment",
+    "Du conseil en recrutement de profils commerciaux",
+    "Des emballages durables pour l'agroalimentaire",
+  ],
+  2: [
+    "Directeurs commerciaux de PME de 20 à 200 salariés",
+    "DAF d'ETI industrielles",
+    "Dirigeants de réseaux d'agences",
+  ],
+};
+
+// La raison affichée sous la question. Celles des étapes 3 et 4 citaient les
+// emails de suivi et les objections, qu'un client en début de parcours n'a pas
+// encore : elles ne les nomment que si le module est ouvert.
+function whyFor(step: number, followUp: boolean, objections: boolean): string {
+  if (step === 3 && followUp) {
+    return "Vos briefs et vos emails de suivi s'appuient sur votre promesse pour proposer l'accroche et les arguments.";
   }
   if (step === 4) {
     const extras = [objections ? "les objections" : null, followUp ? "un email de suivi prêt à relire" : null].filter(Boolean);
-    return `Un assistant rejoint vos visios, prend des notes, et vous envoie le compte-rendu${
+    return `Un assistant rejoint aussi vos visios, prend des notes et vous envoie le compte-rendu${
       extras.length ? `, ${extras.join(" et ")}` : ""
     }.`;
   }
-  return STEPS[step - 1]?.promise ?? "";
+  return STEPS[step - 1]?.why ?? "";
 }
 
-// ─── Progress bar ─────────────────────────────────────────────────────────────
+const FIELD =
+  "w-full rounded-2xl border border-slate-200 bg-white px-4 text-[15px] text-slate-900 placeholder:text-slate-400 outline-none transition-[border-color,box-shadow] focus:border-[color:var(--violet)] focus:ring-4 focus:ring-[color:var(--violet)]/10";
 
-function ProgressBar({ current, total }: { current: number; total: number }) {
+// Frise nommée des étapes : on sait où l'on est et ce qui reste.
+function Stepper({ current, total }: { current: number; total: number }) {
   return (
-    <div className="flex items-center gap-1.5 mb-8">
-      {Array.from({ length: total }).map((_, i) => (
-        <div
-          key={i}
-          className={`h-1 flex-1 rounded-full transition-colors duration-300 ${
-            i < current ? "bg-[color:var(--primary)]" : "bg-slate-200"
-          }`}
-        />
-      ))}
-    </div>
+    <ol className="mb-6 flex items-center gap-2 sm:gap-3">
+      {STEPS.slice(0, total).map((s, i) => {
+        const done = s.step < current;
+        const active = s.step === current;
+        return (
+          <li key={s.step} className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+            <span
+              className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-[12px] font-semibold transition-colors ${
+                done
+                  ? "bg-emerald-500 text-white"
+                  : active
+                    ? "bg-gradient-to-br from-[#2A5CE0] to-[#6A4BE8] text-white shadow-[0_6px_14px_-6px_rgba(76,63,214,0.8)]"
+                    : "bg-white text-slate-400 ring-1 ring-slate-200"
+              }`}
+            >
+              {done ? (
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                </svg>
+              ) : (
+                s.step
+              )}
+            </span>
+            <span className={`hidden truncate text-[13px] font-medium sm:block ${active ? "text-slate-900" : "text-slate-400"}`}>
+              {s.label}
+            </span>
+            {i < total - 1 && <span className={`h-px flex-1 ${done ? "bg-emerald-300" : "bg-slate-200"}`} />}
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 
@@ -290,8 +325,8 @@ export default function OnboardingPage() {
     }
   }
 
-  const { title, subtitle, pillar } = STEPS[step - 1];
-  const promise = promiseFor(step, isEnabled("follow_up"), isEnabled("objections"));
+  const { title, subtitle, label } = STEPS[step - 1];
+  const why = whyFor(step, isEnabled("follow_up"), isEnabled("objections"));
 
   return (
     // Fond teinté en haut de page, comme le reste de l'app.
@@ -319,73 +354,73 @@ export default function OnboardingPage() {
         </div>
       </header>
 
-      <main className="flex-1 flex items-center justify-center px-4 py-8 sm:py-12">
+      <main className="flex flex-1 items-center justify-center px-4 py-8 sm:py-12">
         {!accountLoaded ? null : showWelcome ? (
           <WelcomeStep firstName={firstName} onStart={() => setWelcomeDone(true)} />
         ) : (
-        <div className="w-full max-w-4xl">
-          {/* Progress */}
-          <ProgressBar current={step} total={totalSteps} />
+        <div className="w-full max-w-5xl">
+          <Stepper current={step} total={totalSteps} />
 
-          {/* Step indicator */}
-          <p className="text-[12px] font-semibold text-[color:var(--violet)] uppercase tracking-[0.08em] mb-3">
-            {pillar} · étape {step} sur {totalSteps}
-          </p>
-
-          <div className={showPreview ? "grid gap-6 lg:grid-cols-[1fr_320px] lg:items-start" : ""}>
-          {/* Card */}
-          <div className="bg-white rounded-2xl border border-border p-5 sm:p-8">
-            {/* La promesse AVANT la question : on explique ce que Brief fera,
-                puis on demande ce dont il a besoin pour le faire. */}
-            <p className="mb-6 rounded-2xl bg-[color:var(--lavender)] px-4 py-3 text-[13.5px] leading-relaxed text-slate-700">
-              {promise}
+          <div className={showPreview ? "grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start" : ""}>
+          <div className="rounded-[28px] bg-white p-6 shadow-[0_1px_2px_rgba(42,92,224,0.06),0_24px_60px_-30px_rgba(42,92,224,0.45)] ring-1 ring-[color:var(--lavender-strong)] sm:p-10">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-[color:var(--violet)]">
+              Étape {step} sur {totalSteps} · {label}
             </p>
-            <h1 className="text-[24px] sm:text-[28px] leading-[1.15] font-semibold tracking-[-0.03em] text-slate-900 mb-1.5">{title}</h1>
-            <p className="text-[14.5px] leading-relaxed text-slate-500 mb-6">{subtitle}</p>
+            <h1 className="mt-2 text-[28px] font-semibold leading-[1.1] tracking-[-0.035em] text-slate-900 sm:text-[34px]">{title}</h1>
+            <p className="mt-2 text-[15.5px] leading-relaxed text-slate-500">{subtitle}</p>
 
-            {/* ── Step 1 ── */}
+            <div
+              className="mt-7"
+              // Entrée passe à l'étape suivante dans un champ d'une ligne.
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.target as HTMLElement).tagName === "INPUT" && !isLast && !companyMissing) {
+                  e.preventDefault();
+                  advance();
+                }
+              }}
+            >
+            {/* ── Étape 1 — l'offre ── */}
             {step === 1 && (
-              <textarea
-                value={whatYouSell}
-                onChange={(e) => setWhatYouSell(e.target.value)}
-                autoFocus
-                rows={4}
-                placeholder="Ex : Un logiciel de gestion de devis pour les artisans du bâtiment"
-                className="w-full px-3.5 py-3 bg-white border border-border rounded-xl text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-2 focus:ring-[color:var(--violet)]/15 resize-none leading-relaxed"
-              />
+              <div>
+                <textarea
+                  value={whatYouSell}
+                  onChange={(e) => setWhatYouSell(e.target.value)}
+                  autoFocus
+                  rows={3}
+                  placeholder="Ex. : un logiciel de devis pour les artisans du bâtiment, qui divise par trois le temps de chiffrage."
+                  className={`${FIELD} resize-none py-3.5 leading-relaxed`}
+                />
+                <Examples items={EXAMPLES[1]} onPick={setWhatYouSell} />
+              </div>
             )}
 
-            {/* ── Step 2 ── */}
+            {/* ── Étape 2 — la cible ── */}
             {step === 2 && (
-              <div className="space-y-5">
+              <div className="space-y-6">
                 <div>
-                  <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
-                    Votre client idéal
-                  </label>
+                  <label className="mb-2 block text-[13.5px] font-medium text-slate-700">Profil de votre client idéal</label>
                   <input
                     type="text"
                     value={icp}
                     onChange={(e) => setIcp(e.target.value)}
                     autoFocus
-                    placeholder="Ex : Directeurs commerciaux de PME de 10 à 50 personnes dans l'industrie"
-                    className="w-full px-3.5 py-2.5 bg-white border border-border rounded-xl text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-2 focus:ring-[color:var(--violet)]/15"
+                    placeholder="Ex. : directeurs commerciaux de PME industrielles de 20 à 200 salariés"
+                    className={`${FIELD} h-12`}
                   />
+                  <Examples items={EXAMPLES[2]} onPick={setIcp} />
                 </div>
-
                 <div>
-                  <label className="block text-[13px] font-medium text-slate-700 mb-2">
-                    Secteur
-                  </label>
+                  <label className="mb-2.5 block text-[13.5px] font-medium text-slate-700">Secteur principal</label>
                   <div className="flex flex-wrap gap-2">
                     {SECTOR_SUGGESTIONS.map((s) => (
                       <button
                         key={s}
                         type="button"
                         onClick={() => setSector(s === sector ? "" : s)}
-                        className={`text-[13px] px-3.5 py-1.5 rounded-full border font-medium transition-colors ${
+                        className={`h-10 rounded-full px-4 text-[14px] font-medium transition ${
                           sector === s
-                            ? "bg-[color:var(--primary)] text-white border-[color:var(--primary)]"
-                            : "bg-white text-slate-600 border-border hover:border-slate-300 hover:text-slate-900"
+                            ? "bg-gradient-to-r from-[#2A5CE0] to-[#6A4BE8] text-white shadow-[0_8px_18px_-10px_rgba(76,63,214,0.8)]"
+                            : "bg-white text-slate-600 ring-1 ring-slate-200 hover:text-slate-900 hover:ring-slate-300"
                         }`}
                       >
                         {s}
@@ -396,11 +431,11 @@ export default function OnboardingPage() {
               </div>
             )}
 
-            {/* ── Step 3 ── */}
+            {/* ── Étape 3 — l'entreprise ── */}
             {step === 3 && (
-              <div className="space-y-4">
+              <div className="space-y-5">
                 <div>
-                  <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
+                  <label className="mb-2 block text-[13.5px] font-medium text-slate-700">
                     {account.needsCompany ? "Nom de votre entreprise" : "Nom commercial"}
                   </label>
                   <input
@@ -410,24 +445,21 @@ export default function OnboardingPage() {
                     autoFocus
                     required={account.needsCompany}
                     maxLength={200}
-                    placeholder="Ex : Acme Solutions"
-                    className="w-full px-3.5 py-2.5 bg-white border border-border rounded-xl text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-2 focus:ring-[color:var(--violet)]/15"
+                    placeholder="Ex. : Acme Solutions"
+                    className={`${FIELD} h-12`}
                   />
                   {account.needsCompany && (
-                    <p className="mt-1.5 text-[12px] text-slate-500">Obligatoire : votre compte Brief est rattaché à cette entreprise.</p>
+                    <p className="mt-2 text-[12.5px] text-slate-500">Obligatoire : votre compte Brief est rattaché à cette entreprise.</p>
                   )}
                 </div>
-
                 <div>
-                  <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
-                    Votre proposition de valeur en une phrase
-                  </label>
+                  <label className="mb-2 block text-[13.5px] font-medium text-slate-700">Votre promesse, en une phrase</label>
                   <input
                     type="text"
                     value={valueProposition}
                     onChange={(e) => setValueProposition(e.target.value)}
-                    placeholder="Ex : Nous aidons les artisans à créer des devis professionnels en 2 minutes"
-                    className="w-full px-3.5 py-2.5 bg-white border border-border rounded-xl text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-2 focus:ring-[color:var(--violet)]/15"
+                    placeholder="Ex. : des devis professionnels en 2 minutes, depuis le chantier."
+                    className={`${FIELD} h-12`}
                   />
                 </div>
               </div>
@@ -437,13 +469,12 @@ export default function OnboardingPage() {
             {step === 4 && (
               <div className="space-y-4">
                 {calendarConnected ? (
-                  <p className="rounded-2xl bg-[color:var(--success-soft)] px-4 py-3 text-[13.5px] leading-relaxed text-emerald-800">
-                    Agenda connecté. Vos prochains rendez-vous en visio seront enregistrés et analysés
-                    automatiquement.
+                  <p className="rounded-2xl bg-[color:var(--success-soft)] px-4 py-3.5 text-[14px] leading-relaxed text-emerald-800">
+                    Agenda relié. Vos prochains rendez-vous en visio seront enregistrés et analysés automatiquement.
                   </p>
                 ) : (
                   <>
-                    <div className="flex flex-wrap gap-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
                       {/* Le profil est enregistré AVANT de partir chez Google ou Microsoft :
                           l'OAuth quitte la page, et sans ça les trois premières
                           étapes seraient perdues. Le `return` ramène ici plutôt
@@ -451,19 +482,21 @@ export default function OnboardingPage() {
                       <a
                         href="/api/recall/google-oauth/start?return=/onboarding%3Fstep%3D4"
                         onClick={connectCalendar}
-                        className="inline-flex h-11 w-full sm:w-auto items-center justify-center gap-2 rounded-full border border-border bg-white px-5 text-[14px] font-medium text-slate-900 hover:border-slate-900 transition-colors"
+                        className="flex h-14 items-center justify-center gap-2.5 rounded-2xl bg-white text-[15px] font-medium text-slate-900 ring-1 ring-slate-200 transition hover:ring-slate-400"
                       >
-                        Connecter Google Agenda
+                        <span className="grid h-7 w-7 place-items-center rounded-lg bg-[#EAF1FE] text-[13px] font-bold text-[#1A73E8]">G</span>
+                        Google Agenda
                       </a>
                       <a
                         href="/api/recall/microsoft-oauth/start?return=/onboarding%3Fstep%3D4"
                         onClick={connectCalendar}
-                        className="inline-flex h-11 w-full sm:w-auto items-center justify-center gap-2 rounded-full border border-border bg-white px-5 text-[14px] font-medium text-slate-900 hover:border-slate-900 transition-colors"
+                        className="flex h-14 items-center justify-center gap-2.5 rounded-2xl bg-white text-[15px] font-medium text-slate-900 ring-1 ring-slate-200 transition hover:ring-slate-400"
                       >
-                        Connecter Outlook
+                        <span className="grid h-7 w-7 place-items-center rounded-lg bg-[#E6F2FB] text-[13px] font-bold text-[#0F6CBD]">O</span>
+                        Outlook
                       </a>
                     </div>
-                    <p className="text-[12.5px] leading-relaxed text-slate-500">
+                    <p className="text-[13px] leading-relaxed text-slate-500">
                       Brief lit uniquement vos rendez-vous à venir pour savoir quand se joindre. Vous pourrez le
                       déconnecter à tout moment.
                     </p>
@@ -476,41 +509,26 @@ export default function OnboardingPage() {
             {step === 5 && (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => { setRefMode("upload"); setRefFile(null); }}
-                    className={`flex flex-col items-start gap-1.5 p-4 rounded-2xl border text-left transition-colors ${
-                      refMode === "upload"
-                        ? "border-[color:var(--violet)] bg-[color:var(--lavender)] ring-1 ring-[color:var(--violet)]"
-                        : "border-border hover:border-slate-300 bg-white"
-                    }`}
-                  >
-                    <div className="w-8 h-8 bg-white border border-border rounded-lg flex items-center justify-center">
-                      <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                      </svg>
-                    </div>
-                    <p className="text-[13.5px] font-semibold text-slate-900">Importer un fichier</p>
-                    <p className="text-[12px] text-slate-500">PDF, Word, Excel</p>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => { setRefMode("text"); setRefFile(null); }}
-                    className={`flex flex-col items-start gap-1.5 p-4 rounded-2xl border text-left transition-colors ${
-                      refMode === "text"
-                        ? "border-[color:var(--violet)] bg-[color:var(--lavender)] ring-1 ring-[color:var(--violet)]"
-                        : "border-border hover:border-slate-300 bg-white"
-                    }`}
-                  >
-                    <div className="w-8 h-8 bg-white border border-border rounded-lg flex items-center justify-center">
-                      <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                    </div>
-                    <p className="text-[13.5px] font-semibold text-slate-900">Saisie libre</p>
-                    <p className="text-[12px] text-slate-500">Copier-coller du texte</p>
-                  </button>
+                  {(
+                    [
+                      ["upload", "Importer un fichier", "PDF, Word, Excel"],
+                      ["text", "Copier-coller", "Un texte libre suffit"],
+                    ] as const
+                  ).map(([mode, title, hint]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => { setRefMode(mode); setRefFile(null); }}
+                      className={`rounded-2xl p-4 text-left transition ${
+                        refMode === mode
+                          ? "bg-[color:var(--lavender)] ring-2 ring-[color:var(--violet)]"
+                          : "bg-white ring-1 ring-slate-200 hover:ring-slate-300"
+                      }`}
+                    >
+                      <p className="text-[14px] font-semibold text-slate-900">{title}</p>
+                      <p className="mt-0.5 text-[12.5px] text-slate-500">{hint}</p>
+                    </button>
+                  ))}
                 </div>
 
                 {refMode === "upload" && (
@@ -523,16 +541,9 @@ export default function OnboardingPage() {
                       onChange={(e) => setRefFile(e.target.files?.[0] ?? null)}
                     />
                     {refFile ? (
-                      <div className="flex items-center gap-3 px-4 py-3 bg-[color:var(--lavender)] rounded-xl">
-                        <svg className="w-4 h-4 text-[color:var(--violet)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <p className="text-sm text-[color:var(--violet)] font-medium flex-1 truncate">{refFile.name}</p>
-                        <button
-                          type="button"
-                          onClick={() => setRefFile(null)}
-                          className="text-[12.5px] font-medium text-[color:var(--violet)] hover:underline"
-                        >
+                      <div className="flex items-center gap-3 rounded-2xl bg-[color:var(--lavender)] px-4 py-3">
+                        <p className="flex-1 truncate text-[14px] font-medium text-[color:var(--violet)]">{refFile.name}</p>
+                        <button type="button" onClick={() => setRefFile(null)} className="text-[13px] font-medium text-[color:var(--violet)] hover:underline">
                           Changer
                         </button>
                       </div>
@@ -540,12 +551,10 @@ export default function OnboardingPage() {
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="w-full flex flex-col items-center gap-2 px-4 py-7 border border-dashed border-slate-300 rounded-2xl bg-white hover:border-[color:var(--violet)] hover:bg-[color:var(--lavender)] transition-colors text-slate-500 text-[13.5px]"
+                        className="flex w-full flex-col items-center gap-1 rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-8 text-[14px] text-slate-500 transition-colors hover:border-[color:var(--violet)] hover:bg-[color:var(--lavender)]"
                       >
-                        <svg className="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                        </svg>
-                        Cliquez pour sélectionner un fichier
+                        <span className="font-medium text-slate-700">Choisir un fichier</span>
+                        <span className="text-[12.5px]">PDF, Word ou Excel</span>
                       </button>
                     )}
                   </div>
@@ -557,65 +566,72 @@ export default function OnboardingPage() {
                     onChange={(e) => setRefText(e.target.value)}
                     autoFocus
                     rows={5}
-                    placeholder="Collez ici vos références clients : nom du client, secteur, problème résolu, résultats obtenus..."
-                    className="w-full px-3.5 py-3 bg-white border border-border rounded-xl text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-[color:var(--violet)] focus:ring-2 focus:ring-[color:var(--violet)]/15 resize-none leading-relaxed"
+                    placeholder="Pour chaque client : son nom, son secteur, le problème résolu, les résultats obtenus."
+                    className={`${FIELD} resize-none py-3.5 leading-relaxed`}
                   />
                 )}
               </div>
             )}
+            </div>
+
+            {/* Pourquoi on le demande : une ligne, sous la question. */}
+            <p className="mt-6 flex items-start gap-2 text-[13.5px] leading-relaxed text-slate-500">
+              <svg className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--violet)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+              </svg>
+              <span>{why}</span>
+            </p>
 
             {/* ── Navigation ── */}
-            <div className="flex items-center justify-between gap-3 mt-8">
-              {!isLast ? (
-                <>
-                  {companyMissing ? (
-                    <span />
-                  ) : (
-                    <button
-                      onClick={advance}
-                      className="text-[13px] text-slate-500 hover:text-slate-900 transition-colors"
-                    >
-                      Passer
-                    </button>
-                  )}
+            <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-6">
+              <div className="flex items-center gap-4">
+                {step > 1 && (
                   <button
-                    onClick={advance}
-                    disabled={companyMissing}
-                    className="inline-flex h-10 items-center gap-2 rounded-lg bg-[color:var(--primary)] px-5 text-[14px] font-medium text-white hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => setStep((s) => s - 1)}
+                    className="inline-flex h-11 items-center gap-1.5 rounded-full px-1 text-[14px] font-medium text-slate-600 transition-colors hover:text-slate-900"
                   >
-                    Continuer
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                     </svg>
+                    Retour
                   </button>
-                </>
-              ) : (
-                <div className="flex items-center justify-between gap-3 w-full">
-                  {/* Dernière étape. Références : « Terminer » tant que rien
-                      n'est choisi — le bouton n'est plus grisé sans raison
-                      apparente —, « Importer et terminer » dès qu'un fichier
-                      ou un texte est là. Sans le module Références, la
-                      dernière étape est l'agenda : « Terminer ». */}
-                  {step === 5 && hasRefContent ? (
-                    <button
-                      onClick={() => handleFinish(false)}
-                      disabled={saving || refLoading}
-                      className="text-[13px] text-slate-500 hover:text-slate-900 transition-colors disabled:opacity-50"
-                    >
-                      Passer cette étape
-                    </button>
-                  ) : (
-                    <span />
-                  )}
+                )}
+                {!isLast && !companyMissing && (
+                  <button onClick={advance} className="text-[14px] text-slate-400 transition-colors hover:text-slate-700">
+                    Passer
+                  </button>
+                )}
+                {/* Dernière étape. Références : « Terminer » tant que rien
+                    n'est choisi, « Importer et terminer » dès qu'un fichier ou
+                    un texte est là. */}
+                {isLast && step === 5 && hasRefContent && (
                   <button
-                    onClick={step === 5 && hasRefContent ? handleImport : () => handleFinish(false)}
-                    disabled={saving || refLoading || companyMissing}
-                    className="inline-flex h-10 items-center gap-2 rounded-lg bg-[color:var(--primary)] px-5 text-[14px] font-medium text-white hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => handleFinish(false)}
+                    disabled={saving || refLoading}
+                    className="text-[14px] text-slate-400 transition-colors hover:text-slate-700 disabled:opacity-50"
                   >
-                    {refLoading ? "Import en cours…" : step === 5 && hasRefContent ? "Importer et terminer →" : "Terminer →"}
+                    Passer cette étape
                   </button>
-                </div>
-              )}
+                )}
+              </div>
+              <button
+                onClick={!isLast ? advance : step === 5 && hasRefContent ? handleImport : () => handleFinish(false)}
+                disabled={companyMissing || (isLast && (saving || refLoading))}
+                className="inline-flex h-12 items-center gap-2 rounded-full bg-gradient-to-r from-[#2A5CE0] to-[#6A4BE8] px-6 text-[15px] font-semibold text-white shadow-[0_12px_28px_-12px_rgba(76,63,214,0.85)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {!isLast
+                  ? "Continuer"
+                  : refLoading
+                    ? "Import en cours…"
+                    : saving
+                      ? "Enregistrement…"
+                      : step === 5 && hasRefContent
+                        ? "Importer et terminer"
+                        : "Accéder à Brief"}
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
             </div>
             {saveError && <p className="mt-3 text-[13px] text-rose-700">{saveError}</p>}
           </div>
@@ -625,8 +641,9 @@ export default function OnboardingPage() {
               attendue. Masqué en mobile, où il pousserait le formulaire hors
               de l'écran. */}
           {showPreview && (
-            <div className="hidden lg:block">
+            <div className="hidden lg:block lg:sticky lg:top-8">
               <BriefPreview
+                step={step}
                 whatYouSell={whatYouSell}
                 icp={icp}
                 sector={sector}
@@ -636,21 +653,29 @@ export default function OnboardingPage() {
             </div>
           )}
           </div>
-
-          {/* Step dots */}
-          <div className="flex items-center justify-center gap-2 mt-6">
-            {STEPS.slice(0, totalSteps).map((s) => (
-              <div
-                key={s.step}
-                className={`w-1.5 h-1.5 rounded-full transition-all ${
-                  s.step === step ? "bg-[color:var(--primary)] w-4" : "bg-slate-300"
-                }`}
-              />
-            ))}
-          </div>
         </div>
         )}
       </main>
+    </div>
+  );
+}
+
+// Exemples cliquables sous un champ : on voit le niveau de détail attendu, et
+// un clic remplit le champ pour l'ajuster.
+function Examples({ items, onPick }: { items: string[]; onPick: (v: string) => void }) {
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      <span className="text-[12.5px] text-slate-400">Exemples :</span>
+      {items.map((item) => (
+        <button
+          key={item}
+          type="button"
+          onClick={() => onPick(item)}
+          className="rounded-full bg-slate-50 px-3 py-1 text-[12.5px] text-slate-600 ring-1 ring-slate-200 transition hover:bg-[color:var(--lavender)] hover:text-[color:var(--violet)] hover:ring-[color:var(--lavender-strong)]"
+        >
+          {item}
+        </button>
+      ))}
     </div>
   );
 }
