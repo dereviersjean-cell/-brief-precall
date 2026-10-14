@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { ArrowRight, Briefcase, Users } from "lucide-react";
+import CompanyCard from "./CompanyCard";
+import type { RegistryCompany } from "@/lib/company-registry";
 
 // Deuxième écran d'une inscription libre, juste après la bienvenue (14/10/2026,
 // demande de Jean) : le nom de l'entreprise, son site et le rôle de la
@@ -37,13 +39,22 @@ export default function CompanyStep({
 }: {
   initialCompany: string;
   initialWebsite: string;
-  onDone: (result: { companyName: string; website: string; role: CompanyRole; prefill: PrefillResult | null }) => void;
+  onDone: (result: {
+    companyName: string;
+    website: string;
+    role: CompanyRole;
+    prefill: PrefillResult | null;
+    registry: RegistryCompany | null;
+  }) => void;
 }) {
   const [companyName, setCompanyName] = useState(initialCompany);
   const [website, setWebsite] = useState(initialWebsite);
   const [role, setRole] = useState<CompanyRole>("commercial");
   const [loading, setLoading] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  // La fiche du registre arrive en une fraction de seconde : on la montre
+  // pendant que l'IA lit le site.
+  const [registry, setRegistry] = useState<RegistryCompany | null>(null);
 
   useEffect(() => {
     if (!loading) return;
@@ -58,6 +69,13 @@ export default function CompanyStep({
     setElapsed(0);
     setLoading(true);
     let prefill: PrefillResult | null = null;
+    const registryPromise = fetch(`/api/onboarding/company?name=${encodeURIComponent(name)}`)
+      .then((r) => (r.ok ? (r.json() as Promise<{ company: RegistryCompany | null }>) : { company: null }))
+      .then((d) => {
+        setRegistry(d.company);
+        return d.company;
+      })
+      .catch(() => null);
     try {
       const res = await fetch("/api/onboarding/prefill", {
         method: "POST",
@@ -68,7 +86,8 @@ export default function CompanyStep({
     } catch {
       // Sans proposition, l'onboarding continue à la main.
     }
-    onDone({ companyName: name, website: website.trim(), role, prefill });
+    const found = await registryPromise;
+    onDone({ companyName: name, website: website.trim(), role, prefill, registry: found });
   }
 
   const card =
@@ -81,6 +100,14 @@ export default function CompanyStep({
     const pct = Math.min(94, 100 * (1 - Math.exp(-elapsed / 9)));
     return (
       <div className={`${card} text-center`}>
+        {/* La fiche trouvée au registre prend la place de l'anneau : on voit
+            tout de suite que Brief a reconnu l'entreprise. */}
+        {registry ? (
+          <div className="text-left">
+            <p className="mb-3 text-center text-[12px] font-semibold uppercase tracking-[0.1em] text-emerald-600">Entreprise trouvée</p>
+            <CompanyCard company={registry} website={website.trim() || null} />
+          </div>
+        ) : (
         <div className="mx-auto grid h-20 w-20 place-items-center">
           <span
             className="absolute h-20 w-20 animate-[spin_2.4s_linear_infinite] rounded-full motion-reduce:animate-none"
@@ -94,6 +121,7 @@ export default function CompanyStep({
             {companyName.trim().charAt(0).toUpperCase()}
           </span>
         </div>
+        )}
         <h1 className="mt-6 text-[26px] font-semibold tracking-[-0.03em] text-slate-900">On prépare votre profil</h1>
         <p className="mt-1.5 text-[15px] text-slate-500">
           Brief lit ce qu&apos;on trouve en ligne sur <span className="font-semibold text-slate-700">{companyName.trim()}</span>.
@@ -199,7 +227,7 @@ export default function CompanyStep({
         <button
           type="button"
           disabled={!companyName.trim()}
-          onClick={() => onDone({ companyName: companyName.trim(), website: website.trim(), role, prefill: null })}
+          onClick={() => onDone({ companyName: companyName.trim(), website: website.trim(), role, prefill: null, registry: null })}
           className="text-[14px] text-slate-400 transition-colors hover:text-slate-700 disabled:opacity-40"
         >
           Je préfère tout remplir moi-même

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import BriefPreview from "./BriefPreview";
 import WelcomeStep from "./WelcomeStep";
 import CompanyStep, { type CompanyRole, type PrefillResult } from "./CompanyStep";
+import CompanyCard from "./CompanyCard";
+import type { RegistryCompany } from "@/lib/company-registry";
 import { companyDomainFromEmail } from "@/lib/company-domain";
 import { useSession } from "next-auth/react";
 import { useModules } from "@/app/components/ModulesProvider";
@@ -181,6 +183,7 @@ export default function OnboardingPage() {
   // Ce que Brief a proposé, pour signaler les champs pré-remplis tant qu'ils
   // n'ont pas été modifiés.
   const [prefill, setPrefill] = useState<PrefillState | null>(null);
+  const [registry, setRegistry] = useState<{ company: RegistryCompany; website: string | null } | null>(null);
 
   const [whatYouSell, setWhatYouSell] = useState("");
   const [icp, setIcp] = useState("");
@@ -393,6 +396,7 @@ export default function OnboardingPage() {
             onDone={(r) => {
               setCompanyName(r.companyName);
               setRole(r.role);
+              setRegistry(r.registry ? { company: r.registry, website: r.website || null } : null);
               if (r.prefill?.found) {
                 setWhatYouSell(r.prefill.whatYouSell);
                 setIcp(r.prefill.icp);
@@ -414,6 +418,12 @@ export default function OnboardingPage() {
             </p>
             <h1 className="mt-2 text-[28px] font-semibold leading-[1.1] tracking-[-0.035em] text-slate-900 sm:text-[34px]">{title}</h1>
             <p className="mt-2 text-[15.5px] leading-relaxed text-slate-500">{subtitle}</p>
+            {/* La fiche du registre, en tête de la première question. */}
+            {step === 1 && registry && (
+              <div className="mt-6">
+                <CompanyCard company={registry.company} website={registry.website} />
+              </div>
+            )}
             <PrefillNotice
               step={step}
               prefill={prefill}
@@ -442,7 +452,7 @@ export default function OnboardingPage() {
                   placeholder="Ex. : un logiciel de devis pour les artisans du bâtiment, qui divise par trois le temps de chiffrage."
                   className={`${FIELD} resize-none py-3.5 leading-relaxed`}
                 />
-                <Examples items={EXAMPLES[1]} onPick={setWhatYouSell} />
+                {!whatYouSell.trim() && <Examples items={EXAMPLES[1]} onPick={setWhatYouSell} />}
               </div>
             )}
 
@@ -459,7 +469,7 @@ export default function OnboardingPage() {
                     placeholder="Ex. : directeurs commerciaux de PME industrielles de 20 à 200 salariés"
                     className={`${FIELD} h-12`}
                   />
-                  <Examples items={EXAMPLES[2]} onPick={setIcp} />
+                  {!icp.trim() && <Examples items={EXAMPLES[2]} onPick={setIcp} />}
                 </div>
                 <div>
                   <label className="mb-2.5 block text-[13.5px] font-medium text-slate-700">Secteur principal</label>
