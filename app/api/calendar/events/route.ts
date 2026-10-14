@@ -2,12 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
-import { getUpcomingMeetings, CalendarEvent } from "@/lib/calendar";
-import { listUpcomingManualMeetingsForUser } from "@/lib/db";
-
-function eventStart(e: CalendarEvent): number {
-  return new Date(e.start.dateTime ?? e.start.date ?? 0).getTime();
-}
+import { loadUpcomingEvents } from "@/lib/upcoming-events";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -23,63 +18,6 @@ export async function GET() {
     return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
   }
 
-  const provider = session.provider ?? "google";
-  const userEmail = session.user?.email ?? "";
-
-  // Les RDV ajoutés manuellement (migration 012) appartiennent à Brief, pas à
-  // Google/Microsoft — un échec de leur lecture (table absente si la
-  // migration n'est pas encore passée en prod) ne doit pas faire tomber tout
-  // le calendrier, et inversement.
-  //
-  // Les deux lectures partent ensemble : l'agenda Google/Microsoft est le
-  // plus lent, inutile de le faire attendre derrière la base.
-  const calendarPromise = getUpcomingMeetings(session.accessToken, provider, userEmail).then(
-    (events) => ({ ok: true as const, events }),
-    (err: unknown) => ({ ok: false as const, err })
-  );
-  const manualMeetings = await listUpcomingManualMeetingsForUser(auth.userId).catch((err) => {
-    console.error("[calendar/events] listUpcomingManualMeetingsForUser failed:", err);
-    return [];
-  });
-  const manualEvents: Array<
-    CalendarEvent & { manual: true; company: string; contactName?: string }
-  > = manualMeetings.map((m) => ({
-    id: m.id,
-    summary: m.title,
-    company: m.companyName,
-    manual: true,
-    start: { dateTime: m.meetingTime },
-    end: { dateTime: new Date(new Date(m.meetingTime).getTime() + 60 * 60000).toISOString() },
-    attendees: m.contactEmail
-      ? [{ email: m.contactEmail, name: m.contactName ?? undefined }]
-      : [],
-    // `attendees` exige une adresse : le nom seul, qui suffit pourtant à
-    // l'annuaire (nom + entreprise), n'y tiendrait pas. Il voyage donc à part.
-    contactName: m.contactName ?? undefined,
-  }));
-
-  const calendar = await calendarPromise;
-  if (calendar.ok) {
-    const merged = [...calendar.events, ...manualEvents].sort((a, b) => eventStart(a) - eventStart(b));
-    return NextResponse.json(merged);
-  }
-  const err = calendar.err;
-  // Le calendrier réel a échoué (token expiré, scope manquant...) : montrer
-  // au moins les RDV manuels plutôt que de tout perdre derrière une erreur
-  // qui ne les concerne pas.
-  if (manualEvents.length > 0) {
-    return NextResponse.json(manualEvents);
-  }
-  const message = err instanceof Error ? err.message : "Erreur calendrier";
-  // Accès expiré ou révoqué chez Google / Microsoft : le message brut de
-  // l'API (en anglais, avec un lien développeur) n'aide pas l'utilisateur.
-  const authExpired = /invalid authentication credentials|invalid_grant|unauthenticated|\b401\b|InvalidAuthenticationToken/i.test(message);
-  return NextResponse.json(
-    {
-      error: authExpired
-        ? "Votre connexion à votre agenda a expiré. Reconnectez-vous pour afficher vos prochains rendez-vous."
-        : "Impossible de charger vos rendez-vous pour le moment. Réessayez dans quelques minutes.",
-    },
-    { status: authExpired ? 401 : 500 }
-  );
+  const result = await loadUpcomingEvents(session as typeof session & { accessToken: string }, auth.userId);
+  return result.ok ? NextResponse.json(result.events) : NextResponse.json({ error: result.error }, { status: result.status });
 }

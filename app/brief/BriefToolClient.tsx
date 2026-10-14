@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -117,43 +117,32 @@ function getCompanyFromDomain(event: CalendarEvent): string | null {
 // autre compte.
 const pageCache: { events: CalendarEvent[] | null; briefs: StoredBrief[] | null } = { events: null, briefs: null };
 
-// Copie de ce cache dans le navigateur, pour qu'un rechargement ou une
-// reconnexion n'affiche pas un squelette le temps que Google réponde (retour
-// de Jean, 14/10/2026). Rattachée à l'adresse du compte : si la session qui
-// arrive est celle d'un autre, la copie est jetée avant tout affichage durable.
-// Effacée à la déconnexion (AppSidebar) et périmée au bout de 24 h.
-export const AGENDA_STORAGE_KEY = "brief:agenda";
-const AGENDA_STORAGE_MAX_AGE_MS = 24 * 3600 * 1000;
-type StoredAgenda = { email: string; at: number; events: CalendarEvent[]; briefs: StoredBrief[] };
-
-function readStoredAgenda(): StoredAgenda | null {
-  try {
-    const raw = localStorage.getItem(AGENDA_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as StoredAgenda;
-    if (!parsed?.email || !Array.isArray(parsed.events) || Date.now() - parsed.at > AGENDA_STORAGE_MAX_AGE_MS) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function writeStoredAgenda(value: StoredAgenda | null) {
-  try {
-    if (value) localStorage.setItem(AGENDA_STORAGE_KEY, JSON.stringify(value));
-    else localStorage.removeItem(AGENDA_STORAGE_KEY);
-  } catch {
-    // Stockage indisponible (navigation privée) : la page marche sans.
-  }
-}
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+// Toutes les dates de cette page en heure de Paris : elle est rendue par le
+// serveur (UTC sur Vercel) puis reprise par le navigateur. Sans fuseau fixé,
+// les heures (« 08:00 » contre « 10:00 ») et le découpage par jour
+// différeraient entre les deux rendus.
+const TZ = "Europe/Paris";
+const PARIS_KEY = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" });
+
+// « AAAA-MM-JJ » du jour, à Paris.
+function parisDayKey(d: Date | string): string {
+  return PARIS_KEY.format(typeof d === "string" ? new Date(d) : d);
+}
+
+// Le jour `n` jours après `key` (calcul sur la date seule, sans heure).
+function shiftDayKey(key: string, n: number): string {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("fr-FR", {
     weekday: "long",
     day: "numeric",
     month: "long",
+    timeZone: TZ,
   });
 }
 
@@ -162,40 +151,22 @@ function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("fr-FR", {
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: TZ,
   });
 }
 
-function isToday(iso: string) {
-  const d = new Date(iso);
-  const now = new Date();
-  return (
-    d.getDate() === now.getDate() &&
-    d.getMonth() === now.getMonth() &&
-    d.getFullYear() === now.getFullYear()
-  );
-}
-
-function isTomorrow(iso: string) {
-  const d = new Date(iso);
-  const t = new Date();
-  t.setDate(t.getDate() + 1);
-  return (
-    d.getDate() === t.getDate() &&
-    d.getMonth() === t.getMonth() &&
-    d.getFullYear() === t.getFullYear()
-  );
-}
-
 function dayLabel(iso: string) {
-  if (isToday(iso)) return "Aujourd'hui";
-  if (isTomorrow(iso)) return "Demain";
+  const key = parisDayKey(iso);
+  const today = parisDayKey(new Date());
+  if (key === today) return "Aujourd'hui";
+  if (key === shiftDayKey(today, 1)) return "Demain";
   return formatDate(iso);
 }
 
 function groupByDay<T>(items: T[], getDate: (item: T) => string): [string, T[]][] {
   const groups: Record<string, T[]> = {};
   for (const item of items) {
-    const key = new Date(getDate(item)).toDateString();
+    const key = parisDayKey(getDate(item));
     if (!groups[key]) groups[key] = [];
     groups[key].push(item);
   }
@@ -316,7 +287,10 @@ function CalendarEventCard({
           <div className="flex min-w-0 items-center gap-2">
             <h3 className="min-w-0 truncate text-[15.5px] font-semibold leading-snug text-slate-900">{event.summary}</h3>
             {nextLabel && (
-              <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[11.5px] font-semibold text-[color:var(--violet)]">{nextLabel}</span>
+              // Compte à rebours calculé au serveur puis au navigateur, à
+              // quelques instants d'écart : une minute de différence au
+              // passage d'un seuil n'est pas une erreur.
+              <span suppressHydrationWarning className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[11.5px] font-semibold text-[color:var(--violet)]">{nextLabel}</span>
             )}
           </div>
           <div className="mt-1.5 flex min-w-0 items-center gap-2 text-[13px] text-slate-500">
@@ -418,12 +392,16 @@ function MonthCalendar({
   total: number;
 }) {
   const [offset, setOffset] = useState(0);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const first = new Date(today.getFullYear(), today.getMonth() + offset, 1);
-  const daysInMonth = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
-  const lead = (first.getDay() + 6) % 7;
-  const title = first.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  // Calendrier construit sur les dates parisiennes (voir TZ) : mêmes cases
+  // au serveur et au navigateur.
+  const todayKey = parisDayKey(new Date());
+  const [ty, tm] = todayKey.split("-").map(Number);
+  const first = new Date(Date.UTC(ty, tm - 1 + offset, 1));
+  const year = first.getUTCFullYear();
+  const month = first.getUTCMonth();
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const lead = (first.getUTCDay() + 6) % 7;
+  const title = first.toLocaleDateString("fr-FR", { month: "long", year: "numeric", timeZone: "UTC" });
   return (
     <div className={`${PANEL} p-3`}>
       <div className="flex items-center justify-between pl-1.5">
@@ -447,11 +425,10 @@ function MonthCalendar({
           <span key={`v${i}`} />
         ))}
         {Array.from({ length: daysInMonth }, (_, i) => {
-          const d = new Date(first.getFullYear(), first.getMonth(), i + 1);
-          const key = d.toDateString();
-          const isTodayCell = d.getTime() === today.getTime();
-          const past = d < today;
-          const dayEvents = events.filter((e) => new Date(eventStartDate(e)).toDateString() === key);
+          const key = new Date(Date.UTC(year, month, i + 1)).toISOString().slice(0, 10);
+          const isTodayCell = key === todayKey;
+          const past = key < todayKey;
+          const dayEvents = events.filter((e) => parisDayKey(eventStartDate(e)) === key);
           const allReady = dayEvents.length > 0 && dayEvents.every((e) => briefs.some((b) => b.calendar_event_id === e.id));
           return (
             <button
@@ -472,7 +449,7 @@ function MonthCalendar({
                         : "text-slate-600"
                 }`}
               >
-                {d.getDate()}
+                {i + 1}
               </span>
               {dayEvents.length > 0 && (
                 <span className={`absolute bottom-0 h-1 w-1 rounded-full ${allReady ? "bg-emerald-500" : "bg-[color:var(--violet)]"}`} />
@@ -488,7 +465,7 @@ function MonthCalendar({
   );
 }
 
-function DayHeader({ date, today, count }: { date: Date; today: boolean; count: number }) {
+function DayHeader({ dayKey, today, count }: { dayKey: string; today: boolean; count: number }) {
   return (
     // Collé sous la TopBar (h-14), z-index en dessous d'elle.
     <div className="sticky top-14 z-[5] -mx-2 flex items-center gap-3 px-2 py-2 backdrop-blur-md">
@@ -499,10 +476,12 @@ function DayHeader({ date, today, count }: { date: Date; today: boolean; count: 
             : "bg-white text-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.06)]"
         }`}
       >
-        {date.getDate()}
+        {Number(dayKey.slice(8))}
       </span>
       <div>
-        <h2 className="text-[16px] font-semibold text-slate-900 first-letter:uppercase">{dayLabel(date.toISOString())}</h2>
+        {/* Midi à Paris pour ce jour : dayLabel reste sur le bon jour quel que
+            soit le fuseau qui calcule. */}
+        <h2 className="text-[16px] font-semibold text-slate-900 first-letter:uppercase">{dayLabel(`${dayKey}T10:00:00Z`)}</h2>
         <div className="text-[12.5px] text-slate-500">{count === 0 ? "Aucun rendez-vous" : `${count} RDV`}</div>
       </div>
     </div>
@@ -812,6 +791,7 @@ function RecentBriefsCard({ briefs }: { briefs: StoredBrief[] }) {
                   month: "long",
                   hour: "2-digit",
                   minute: "2-digit",
+                  timeZone: TZ,
                 })}
               </span>
             </span>
@@ -824,20 +804,34 @@ function RecentBriefsCard({ briefs }: { briefs: StoredBrief[] }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function BriefToolClient() {
+// Lu côté serveur par app/brief/page.tsx : la page arrive déjà remplie.
+export type BriefPageInitial = { events: CalendarEvent[] | null; error: string | null; briefs: StoredBrief[] };
+
+export default function BriefToolClient({ initial = null }: { initial?: BriefPageInitial | null }) {
   const router = useRouter();
   const { data: session, status } = useSession();
   const provider = session?.provider ?? "google";
   const calendarLabel = provider === "azure-ad" ? "Microsoft Calendar" : "Google Calendar";
   // Repris du cache de la visite précédente : en revenant d'un autre onglet,
   // la page s'affiche aussitôt, puis se met à jour en arrière-plan.
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[] | null>(pageCache.events);
-  const [calendarError, setCalendarError] = useState<string | null>(null);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[] | null>(initial ? initial.events : pageCache.events);
+  const [calendarError, setCalendarError] = useState<string | null>(initial?.error ?? null);
+
   const [modalEvent, setModalEvent] = useState<CalendarEvent | null>(null);
   const [modalDefaultCompany, setModalDefaultCompany] = useState("");
-  const [recentBriefs, setRecentBriefs] = useState<StoredBrief[]>(pageCache.briefs ?? []);
-  // Vrai tant que l'écran montre la copie locale et pas encore l'agenda frais.
-  const fromStorageRef = useRef(false);
+  const [recentBriefs, setRecentBriefs] = useState<StoredBrief[]>(initial ? initial.briefs.slice(0, 5) : pageCache.briefs ?? []);
+  // Relu par le serveur (retour sur la page, RouterFreshness) : les nouvelles
+  // données remplacent l'état — motif « ajuster l'état pendant le rendu ».
+  const [prevInitial, setPrevInitial] = useState(initial);
+  if (initial !== prevInitial) {
+    setPrevInitial(initial);
+    if (initial) {
+      setCalendarEvents(initial.events);
+      setCalendarError(initial.error);
+      setRecentBriefs(initial.briefs.slice(0, 5));
+    }
+  }
+  const serverLoaded = initial !== null;
   const [showAddMeetingModal, setShowAddMeetingModal] = useState(false);
   const { briefsOnly } = useModules();
 
@@ -888,13 +882,14 @@ export default function BriefToolClient() {
   }
 
   useEffect(() => {
+    if (serverLoaded) return;
     fetch("/api/briefs")
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) setRecentBriefs(data.slice(0, 5));
       })
       .catch(() => {});
-  }, []);
+  }, [serverLoaded]);
 
   // Extrait pour être rejouable après l'ajout ou la suppression d'un RDV
   // manuel, sans dupliquer la logique de chargement/erreur.
@@ -903,7 +898,6 @@ export default function BriefToolClient() {
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) {
-          fromStorageRef.current = false;
           setCalendarEvents(data);
           setCalendarError(null);
         } else {
@@ -913,40 +907,12 @@ export default function BriefToolClient() {
       .catch(() => setCalendarError(`Impossible de charger les événements ${calendarLabel}.`));
   }
 
-  // Lancé dès l'affichage, sans attendre que la session soit relue : les deux
-  // requêtes partent ensemble au lieu de se suivre. La route vérifie la
-  // session elle-même. Pendant ce temps, la copie locale de la dernière
-  // visite s'affiche (lue après le montage : le serveur ne la connaît pas, la
-  // lire au premier rendu ferait diverger les deux rendus).
+  // Sans données serveur (pas de jeton d'agenda, erreur de lecture), lecture
+  // depuis le navigateur, lancée dès l'affichage.
   useEffect(() => {
-    if (pageCache.events === null) {
-      Promise.resolve().then(() => {
-        const stored = readStoredAgenda();
-        if (!stored || pageCache.events !== null) return;
-        fromStorageRef.current = true;
-        setCalendarEvents((prev) => prev ?? stored.events);
-        setRecentBriefs((prev) => (prev.length > 0 ? prev : stored.briefs));
-      });
-    }
+    if (serverLoaded) return;
     loadCalendarEvents();
-  }, []);
-
-  // La copie locale appartient à un compte : si la session est celle d'un
-  // autre, on la jette — et on retire de l'écran ce qu'elle avait affiché
-  // tant que l'agenda frais n'est pas arrivé.
-  const sessionEmail = session?.user?.email ?? null;
-  useEffect(() => {
-    if (!sessionEmail) return;
-    const stored = readStoredAgenda();
-    if (stored && stored.email !== sessionEmail) {
-      writeStoredAgenda(null);
-      if (fromStorageRef.current) {
-        fromStorageRef.current = false;
-        setCalendarEvents(null);
-        setRecentBriefs([]);
-      }
-    }
-  }, [sessionEmail]);
+  }, [serverLoaded]);
 
   useEffect(() => {
     pageCache.events = calendarEvents;
@@ -979,11 +945,6 @@ export default function BriefToolClient() {
 
   const isAuthenticated = status === "authenticated";
 
-  // Copie locale tenue à jour une fois l'agenda frais reçu et le compte connu.
-  useEffect(() => {
-    if (!sessionEmail || calendarEvents === null || fromStorageRef.current) return;
-    writeStoredAgenda({ email: sessionEmail, at: Date.now(), events: calendarEvents, briefs: recentBriefs });
-  }, [sessionEmail, calendarEvents, recentBriefs]);
   const showCalendar = calendarEvents !== null && !calendarError;
   // Premier chargement : ni la session ni l'agenda ne sont encore connus. On
   // montre un squelette À LA FORME de la vue finale — avant, les tuiles de
@@ -1075,9 +1036,9 @@ export default function BriefToolClient() {
             />
           ) : (
             <>
-              {!calendarGroups.some(([key]) => key === new Date().toDateString()) && (
+              {!calendarGroups.some(([key]) => key === parisDayKey(new Date())) && (
                 <section>
-                  <DayHeader date={new Date()} today count={0} />
+                  <DayHeader dayKey={parisDayKey(new Date())} today count={0} />
                   {nextEvent && (
                     <div className="ml-[58px] mt-2 rounded-2xl border border-dashed border-[color:var(--lavender-strong)] px-5 py-4 text-[13.5px] text-slate-500">
                       Journée libre — le prochain rendez-vous est {dayLabel(eventStartDate(nextEvent)).toLowerCase()} à{" "}
@@ -1088,11 +1049,7 @@ export default function BriefToolClient() {
               )}
               {calendarGroups.map(([dayKey, dayEvents]) => (
                 <section key={dayKey} id={dayAnchor(dayKey)} className="scroll-mt-20">
-                  <DayHeader
-                    date={new Date(eventStartDate(dayEvents[0]))}
-                    today={dayKey === new Date().toDateString()}
-                    count={dayEvents.length}
-                  />
+                  <DayHeader dayKey={dayKey} today={dayKey === parisDayKey(new Date())} count={dayEvents.length} />
                   <ul className="ml-[22px] mt-2 space-y-3 border-l border-dashed border-slate-200 pl-4 sm:pl-[34px]">
                     {dayEvents.map((e) => (
                       <CalendarEventCard

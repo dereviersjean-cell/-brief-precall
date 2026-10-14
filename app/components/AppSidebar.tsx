@@ -49,6 +49,10 @@ function NavLink({
   return (
     <Link
       href={href}
+      // La page Brief se lit entièrement côté serveur (agenda compris) et n'a
+      // pas d'écran de chargement : préchargée en entier, le clic l'affiche
+      // aussitôt.
+      prefetch={href === "/brief" ? true : undefined}
       data-tour={tourId}
       className={`group relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-[14px] transition-colors ${
         active
@@ -299,9 +303,8 @@ export default function AppSidebar() {
 
         <button
           onClick={() => {
-            // La copie locale de l'agenda (page Brief) ne doit pas survivre à
-            // la déconnexion : le compte suivant sur ce navigateur ne la
-            // verrait pas — elle est vérifiée — mais autant ne rien laisser.
+            // Ancienne copie locale de l'agenda (retirée le 14/10/2026, la page
+            // est désormais remplie par le serveur) : on nettoie ce qui reste.
             try {
               localStorage.removeItem("brief:agenda");
             } catch {}
