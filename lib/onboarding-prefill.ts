@@ -41,8 +41,8 @@ Règles :
 - icp : le client idéal en une phrase — fonction du décideur, type et taille d'entreprise, secteur. Ex. « Directeurs commerciaux de PME industrielles de 20 à 200 salariés ».
 - sector : le secteur DES CLIENTS visés, parmi exactement : SaaS B2B, Industrie, BTP, Finance, RH, Marketing, Autre.
 - value_proposition : la promesse en une phrase courte, concrète, sans superlatifs.
-- Appuie-toi uniquement sur ce que tu trouves. Commence par le site de l'entreprise, sa page LinkedIn ou la presse : source="web".
-- Si l'entreprise n'apparaît QUE dans les registres officiels (annuaire-entreprises.data.gouv.fr, Pappers, societe.com…) — souvent une société récente —, pars de son activité déclarée (code NAF, libellé d'activité, objet social) pour une proposition prudente et générale : source="registre". N'invente ni produit précis, ni chiffre, ni client.
+- Appuie-toi uniquement sur ce que tu trouves. Le site de l'entreprise fait foi : s'il est fourni, lis-le en priorité. Sinon cherche son site, sa page LinkedIn ou la presse — y compris sous le nom de marque, souvent plus court que la raison sociale (« Arvest Wine » → la marque « Arvest »). source="web".
+- Le code d'activité (NAF) des registres est un indice FAIBLE : les jeunes sociétés s'immatriculent souvent sous un code générique sans rapport avec leur offre réelle (une plateforme logicielle classée « commerce de gros »). Ne t'en sers qu'en dernier recours, si ni site ni page ni presse ne décrivent l'activité : proposition prudente et générale, source="registre". N'invente ni produit précis, ni chiffre, ni client.
 - Si tu ne trouves pas l'entreprise avec certitude (homonymes, rien de probant), réponds found=false et laisse les autres champs vides : une proposition inventée serait pire que rien.`;
 
 function textOf(message: Anthropic.Message): string {
@@ -79,8 +79,20 @@ function clean(value: unknown, max: number): string {
 
 const EMPTY: OnboardingPrefill = { found: false, source: null, whatYouSell: "", icp: "", sector: "", valueProposition: "" };
 
-export async function generateOnboardingPrefill(params: { companyName: string; website: string | null }): Promise<OnboardingPrefill> {
-  const prompt = `Entreprise : ${params.companyName}${params.website ? `\nSite web : ${params.website}` : ""}`;
+export async function generateOnboardingPrefill(params: {
+  companyName: string;
+  website: string | null;
+  // Ce que le registre sait déjà (dirigeants, sociétés liées) : aide à
+  // retrouver la marque derrière la raison sociale.
+  registryHint?: string | null;
+}): Promise<OnboardingPrefill> {
+  const prompt = [
+    `Entreprise : ${params.companyName}`,
+    params.website ? `Site web : ${params.website}` : null,
+    params.registryHint ? `Registre : ${params.registryHint}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
   let message = await ask(MODEL, prompt);
   if (message.stop_reason === "refusal") {
     reportWarning("onboarding-prefill.refusal", `Refus du modèle pour « ${params.companyName} »`);

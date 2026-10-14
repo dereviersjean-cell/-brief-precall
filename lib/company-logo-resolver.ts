@@ -32,7 +32,7 @@ async function logoForHost(host: string, trace: LogoTraceStep[]): Promise<string
 
 // Le site officiel de l'entreprise d'après une recherche web (Serper, déjà
 // utilisé pour les actualités). Premier résultat dont le domaine porte le nom.
-async function findCompanyHost(name: string, trace: LogoTraceStep[]): Promise<string | null> {
+export async function findCompanyHost(name: string, trace: LogoTraceStep[]): Promise<string | null> {
   const key = process.env.SERPER_API_KEY;
   if (!key) {
     trace.push({ step: "recherche web", detail: "SERPER_API_KEY absente" });

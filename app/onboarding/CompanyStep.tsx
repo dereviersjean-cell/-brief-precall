@@ -16,6 +16,8 @@ export type CompanyRole = "commercial" | "manager";
 export type PrefillResult = {
   found: boolean;
   source?: "web" | "registre" | null;
+  // Le site retenu par le serveur quand l'utilisateur n'en a pas donné.
+  website?: string | null;
   whatYouSell: string;
   icp: string;
   sector: string;
@@ -87,7 +89,7 @@ export default function CompanyStep({
       // Sans proposition, l'onboarding continue à la main.
     }
     const found = await registryPromise;
-    onDone({ companyName: name, website: website.trim(), role, prefill, registry: found });
+    onDone({ companyName: name, website: website.trim() || prefill?.website || "", role, prefill, registry: found });
   }
 
   const card =

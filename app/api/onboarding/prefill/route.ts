@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
 import { enforceAiGenerationLimit, requestIp, retryAfterMinutes } from "@/lib/rate-limit";
 import { generateOnboardingPrefill } from "@/lib/onboarding-prefill";
+import { findCompanyHost } from "@/lib/company-logo-resolver";
+import { lookupCompanyRegistry } from "@/lib/company-registry";
 import { reportError } from "@/lib/monitoring";
 
 // Recherche web + réponse : une vingtaine de secondes en général.
@@ -33,8 +35,25 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const prefill = await generateOnboardingPrefill({ companyName, website: validWebsite });
-    return NextResponse.json(prefill);
+    // Le site d'abord : sans lui, l'IA ne trouvait parfois que les registres,
+    // dont le code d'activité trompe (Arvest Wine, plateforme de données sur le
+    // vin, immatriculée « commerce de gros de boissons »). Même recherche que
+    // pour les logos ; domaine retenu seulement s'il porte le nom.
+    const [foundHost, registry] = await Promise.all([
+      validWebsite ? Promise.resolve(validWebsite) : findCompanyHost(companyName, []).catch(() => null),
+      lookupCompanyRegistry(companyName).catch(() => null),
+    ]);
+    const registryHint = registry
+      ? [registry.foundedOn ? `créée le ${registry.foundedOn}` : null, registry.leader ? `dirigeant : ${registry.leader} (${registry.leaderRole ?? ""})` : null]
+          .filter(Boolean)
+          .join(", ")
+      : null;
+    const prefill = await generateOnboardingPrefill({ companyName, website: foundHost, registryHint });
+    // Le site retenu revient à l'écran : c'est lui que cite le bandeau
+    // « Proposé par Brief d'après … », et qui donne le logo de la fiche.
+    // Seulement si l'entreprise est confirmée : la recherche peut associer un
+    // site sans rapport (« … Quimper » → tech-quimper.bzh), que l'IA écarte.
+    return NextResponse.json({ ...prefill, website: prefill.found && prefill.source === "web" ? foundHost : null });
   } catch (err) {
     reportError("onboarding.prefill", err, { companyName });
     // L'onboarding continue à la main : on ne bloque jamais l'inscription.
