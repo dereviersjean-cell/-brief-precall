@@ -9,6 +9,12 @@ export const GENERIC_EMAIL_DOMAINS = new Set([
   "orange.fr", "wanadoo.fr", "free.fr", "sfr.fr", "laposte.net",
 ]);
 
+// « https://www.arvestwine.com/ » → « arvestwine.com » : la forme qu'on
+// affiche et qu'on envoie au serveur, quelle que soit la saisie.
+export function cleanWebsite(value: string): string {
+  return value.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/[/?#].*$/, "");
+}
+
 export function companyDomainFromEmail(email: string | null | undefined): string | null {
   const domain = email?.split("@")[1]?.trim().toLowerCase();
   if (!domain || GENERIC_EMAIL_DOMAINS.has(domain)) return null;

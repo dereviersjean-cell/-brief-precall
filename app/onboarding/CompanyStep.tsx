@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ArrowRight, Briefcase, Users } from "lucide-react";
 import CompanyCard from "./CompanyCard";
 import type { RegistryCompany } from "@/lib/company-registry";
+import { cleanWebsite } from "@/lib/company-domain";
 
 // Deuxième écran d'une inscription libre, juste après la bienvenue (14/10/2026,
 // demande de Jean) : le nom de l'entreprise, son site et le rôle de la
@@ -82,7 +83,7 @@ export default function CompanyStep({
       const res = await fetch("/api/onboarding/prefill", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyName: name, website: website.trim() }),
+        body: JSON.stringify({ companyName: name, website: cleanWebsite(website) }),
       });
       if (res.ok) prefill = (await res.json()) as PrefillResult;
     } catch {

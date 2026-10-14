@@ -7,7 +7,7 @@ import WelcomeStep from "./WelcomeStep";
 import CompanyStep, { type CompanyRole, type PrefillResult } from "./CompanyStep";
 import CompanyCard from "./CompanyCard";
 import type { RegistryCompany } from "@/lib/company-registry";
-import { companyDomainFromEmail } from "@/lib/company-domain";
+import { cleanWebsite, companyDomainFromEmail } from "@/lib/company-domain";
 import { useSession } from "next-auth/react";
 import { useModules } from "@/app/components/ModulesProvider";
 
@@ -268,7 +268,8 @@ export default function OnboardingPage() {
 
   // Rien trouvé : l'utilisateur ajoute son site et relance, sans revenir en
   // arrière. Les réponses déjà saisies ne sont pas écrasées.
-  async function retryPrefill(website: string): Promise<void> {
+  async function retryPrefill(rawWebsite: string): Promise<void> {
+    const website = cleanWebsite(rawWebsite);
     const res = await fetch("/api/onboarding/prefill", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -396,14 +397,16 @@ export default function OnboardingPage() {
             onDone={(r) => {
               setCompanyName(r.companyName);
               setRole(r.role);
-              setRegistry(r.registry ? { company: r.registry, website: r.website || null } : null);
+              setRegistry(r.registry ? { company: r.registry, website: cleanWebsite(r.website) || null } : null);
               if (r.prefill?.found) {
                 setWhatYouSell(r.prefill.whatYouSell);
                 setIcp(r.prefill.icp);
                 setSector(r.prefill.sector);
                 setValueProposition(r.prefill.valueProposition);
               }
-              setPrefill(r.prefill ? { ...r.prefill, source: r.website || r.companyName, origin: r.prefill.source ?? null } : null);
+              setPrefill(
+                r.prefill ? { ...r.prefill, source: cleanWebsite(r.website) || r.companyName, origin: r.prefill.source ?? null } : null
+              );
               setCompanyDone(true);
             }}
           />

@@ -59,7 +59,8 @@ export default function BriefPreview({
         <Line label="Ce que vous vendez" value={whatYouSell} placeholder="Sert à cadrer vos arguments" active={step === 1} />
         <Line
           label="Votre client idéal"
-          value={[icp, sector].filter(Boolean).join(" · ")}
+          // « Autre » ne dit rien du client : on ne l'affiche pas.
+          value={[icp, sector === "Autre" ? "" : sector].filter(Boolean).join(" · ")}
           placeholder="Sert à repérer si le prospect y ressemble"
           active={step === 2}
         />
