@@ -94,58 +94,58 @@ export default function WelcomeKit({
   return (
     <div className="space-y-5">
       {/* Bonjour + ce que Brief sait de l'entreprise */}
-      <section
-        className="relative overflow-hidden rounded-[26px] p-6 text-white sm:p-8"
-        style={{ background: "linear-gradient(135deg,#2A5CE0 0%,#4B3FD6 60%,#7B5CFF 100%)" }}
-      >
-        <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-white/15 blur-3xl" />
+      {/* En-tête clair : le bleu plein partout rendait la page difficile à lire
+          (retour de Jean, 14/10/2026). Un seul bouton de couleur sur la page :
+          « Préparer le brief ». */}
+      <section className="relative overflow-hidden rounded-[26px] bg-white p-6 shadow-[0_1px_2px_rgba(42,92,224,0.06),0_16px_40px_-26px_rgba(42,92,224,0.35)] ring-1 ring-[color:var(--lavender-strong)] sm:p-8">
+        <div className="pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full bg-[color:var(--lavender)] blur-3xl" />
         <div className="relative flex flex-wrap items-start gap-5">
           {company && (
             <CompanyLogo
               name={company}
               alt={company}
-              className="h-16 w-16 shrink-0 rounded-2xl bg-white object-contain p-2.5 shadow-[0_14px_30px_-12px_rgba(0,0,0,0.4)]"
+              className="relative h-16 w-16 shrink-0 rounded-2xl bg-white object-contain p-2.5 shadow-[0_10px_24px_-14px_rgba(15,23,42,0.45)] ring-1 ring-slate-100"
               fallback={
-                <span className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-white text-[26px] font-semibold text-[color:var(--violet)] shadow-[0_14px_30px_-12px_rgba(0,0,0,0.4)]">
+                <span className="relative grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-[color:var(--lavender)] text-[26px] font-semibold text-[color:var(--violet)]">
                   {company.charAt(0).toUpperCase()}
                 </span>
               }
             />
           )}
           <div className="min-w-0 flex-1">
-            <p className="text-[14px] font-medium text-white/75">Bonjour{firstName ? ` ${firstName}` : ""} 👋</p>
-            <h2 className="mt-1 text-[26px] font-semibold leading-tight tracking-[-0.03em] sm:text-[30px]">
+            <p className="text-[14px] font-medium text-slate-500">Bonjour{firstName ? ` ${firstName}` : ""} 👋</p>
+            <h2 className="mt-1 text-[26px] font-semibold leading-tight tracking-[-0.03em] text-slate-900 sm:text-[30px]">
               {company ? `Brief est prêt pour ${company}.` : "Brief est prêt."}
             </h2>
-            {facts.length > 0 && <p className="mt-1.5 text-[13.5px] text-white/70">{facts.join(" · ")}</p>}
+            {facts.length > 0 && <p className="mt-1.5 text-[13.5px] text-slate-500">{facts.join(" · ")}</p>}
           </div>
         </div>
 
         {(offer || profile?.icp || promise) && (
           <div className="relative mt-6 grid gap-3 sm:grid-cols-2">
             {offer && (
-              <div className="rounded-2xl bg-white/12 p-4 ring-1 ring-white/20 backdrop-blur sm:col-span-2">
-                <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-white/60">Ce que vous vendez</p>
-                <p className="mt-1 line-clamp-3 text-[14.5px] leading-relaxed">{offer}</p>
+              <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100 sm:col-span-2">
+                <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-slate-400">Ce que vous vendez</p>
+                <p className="mt-1 line-clamp-3 text-[14.5px] leading-relaxed text-slate-800">{offer}</p>
               </div>
             )}
             {profile?.icp && (
-              <div className="rounded-2xl bg-white/12 p-4 ring-1 ring-white/20 backdrop-blur">
-                <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-white/60">Votre cible</p>
-                <p className="mt-1 line-clamp-3 text-[14px] leading-relaxed">{profile.icp}</p>
+              <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100">
+                <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-slate-400">Votre cible</p>
+                <p className="mt-1 line-clamp-3 text-[14px] leading-relaxed text-slate-800">{profile.icp}</p>
               </div>
             )}
             {promise && (
-              <div className="rounded-2xl bg-white/12 p-4 ring-1 ring-white/20 backdrop-blur">
-                <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-white/60">Votre promesse</p>
-                <p className="mt-1 line-clamp-3 text-[14px] leading-relaxed">{promise}</p>
+              <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100">
+                <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-slate-400">Votre promesse</p>
+                <p className="mt-1 line-clamp-3 text-[14px] leading-relaxed text-slate-800">{promise}</p>
               </div>
             )}
           </div>
         )}
         <Link
           href="/settings/general"
-          className="relative mt-5 inline-flex items-center gap-1.5 text-[13px] font-medium text-white/80 underline-offset-4 hover:text-white hover:underline"
+          className="relative mt-5 inline-flex items-center gap-1.5 text-[13px] font-medium text-slate-500 underline-offset-4 hover:text-slate-900 hover:underline"
         >
           <Pencil className="h-3.5 w-3.5" /> Ajuster mon profil
         </Link>
@@ -157,7 +157,7 @@ export default function WelcomeKit({
         className="rounded-[24px] bg-white p-6 shadow-[0_1px_2px_rgba(42,92,224,0.06),0_16px_40px_-26px_rgba(42,92,224,0.45)] ring-1 ring-[color:var(--lavender-strong)] sm:p-7"
       >
         <div className="flex items-start gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-[#2A5CE0] to-[#6A4BE8] text-white shadow-[0_8px_18px_-10px_rgba(76,63,214,0.8)]">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[color:var(--lavender)] text-[color:var(--violet)]">
             <Sparkles className="h-[18px] w-[18px]" />
           </span>
           <div>

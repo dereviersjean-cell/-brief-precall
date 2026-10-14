@@ -7,11 +7,10 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { Calendar, Plus, ArrowRight, X, Check, CircleDashed, ChevronLeft, ChevronRight } from "lucide-react";
 import CompanyLogo from "@/app/components/CompanyLogo";
-import TalkToSales from "@/app/components/TalkToSales";
 import { EventsSkeleton } from "./BriefSkeleton";
 import WelcomeKit, { type WelcomeProfile } from "./WelcomeKit";
+import FreePlanPanel from "@/app/components/FreePlanPanel";
 import { useModules } from "@/app/components/ModulesProvider";
-import { BRIEFS_ACCESS_DAILY_LIMIT, SALES_CONTACT } from "@/lib/sales-contact";
 import { GENERIC_EMAIL_DOMAINS, companyDomainFromEmail } from "@/lib/company-domain";
 
 interface CalendarEvent {
@@ -984,12 +983,11 @@ export default function BriefToolClient({ initial = null }: { initial?: BriefPag
     <>
       {/* Inscription libre (accès « briefs ») : ce qui existe au-delà, et à
           qui en parler. */}
+      {/* Version gratuite : une ligne au-dessus des rendez-vous ; le panneau
+          complet vit sous l'accueil d'un compte qui démarre. */}
       {briefsOnly && !welcome && (
         <div className="mb-6">
-          <TalkToSales
-            variant="banner"
-            description={`Votre accès comprend ${BRIEFS_ACCESS_DAILY_LIMIT} briefs par jour. Enregistrement et analyse de vos rendez-vous, emails de suivi, coaching de l'équipe : ${SALES_CONTACT.firstName} vous montre le reste de Brief en 30 minutes.`}
-          />
+          <FreePlanPanel compact />
         </div>
       )}
 
@@ -1076,12 +1074,7 @@ export default function BriefToolClient({ initial = null }: { initial?: BriefPag
             <div className="space-y-5">
               <WelcomeKit firstName={initial?.firstName ?? null} profile={initial?.profile ?? null} showCalendarStep={noCalendar} />
               {/* Accès « briefs » : le contact commercial, sous l'accueil. */}
-              {briefsOnly && (
-                <TalkToSales
-                  variant="banner"
-                  description={`Votre accès comprend ${BRIEFS_ACCESS_DAILY_LIMIT} briefs par jour. Enregistrement et analyse de vos rendez-vous, emails de suivi, coaching de l'équipe : ${SALES_CONTACT.firstName} vous montre le reste de Brief en 30 minutes.`}
-                />
-              )}
+              {briefsOnly && <FreePlanPanel />}
             </div>
           ) : (
             <>
@@ -1184,7 +1177,9 @@ export default function BriefToolClient({ initial = null }: { initial?: BriefPag
                 ? setShowAddMeetingModal(true)
                 : signIn(provider === "azure-ad" ? "azure-ad" : "google", { callbackUrl: "/brief" })
             }
-            className="flex h-10 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#2A5CE0] to-[#6A4BE8] text-[13.5px] font-semibold text-white shadow-[0_10px_24px_-12px_rgba(76,63,214,0.8)] transition duration-200 hover:brightness-110"
+            // Bouton secondaire : un seul bouton de couleur par écran, sinon le
+            // bleu partout ne guide plus l'œil (retour de Jean, 14/10/2026).
+            className="flex h-10 w-full items-center justify-center gap-2 rounded-full bg-white text-[13.5px] font-semibold text-slate-800 ring-1 ring-slate-200 transition duration-200 hover:ring-slate-300"
           >
             <Plus className="h-4 w-4" />
             Ajouter un RDV

@@ -10,6 +10,8 @@ import { fetchJsonOnce } from "@/lib/fetch-once";
 import type { ChromeState } from "@/lib/chrome-state";
 import { useModules } from "./ModulesProvider";
 import TalkToSales from "./TalkToSales";
+import CompanyLogo from "./CompanyLogo";
+import { companyDomainFromEmail } from "@/lib/company-domain";
 
 type OrgStatus = {
   organizationName: string | null;
@@ -199,13 +201,38 @@ export default function AppSidebar() {
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-5 pt-5 pb-4 shrink-0">
         <Link href={fullAccess ? "/dashboard" : "/brief"} className="flex items-center gap-2.5 min-w-0 flex-1">
-          <div className="grid h-8 w-8 place-items-center rounded-lg bg-[color:var(--primary)] text-white text-[14px] font-semibold shrink-0">
-            B
-          </div>
+          {/* Le logo de l'entreprise du client, son nom en titre (demande de
+              Jean, 14/10/2026) ; « Brief » passe en sous-titre, avec la
+              mention de la version gratuite le cas échéant. Repli sur le « B »
+              tant que l'entreprise n'est pas connue ou sans logo trouvé. */}
+          {orgStatus?.organizationName ? (
+            <CompanyLogo
+              domain={companyDomainFromEmail(userEmail)}
+              name={orgStatus.organizationName}
+              alt={orgStatus.organizationName}
+              className="h-9 w-9 shrink-0 rounded-xl bg-white object-contain p-1 ring-1 ring-slate-200"
+              fallback={
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[color:var(--lavender)] text-[15px] font-semibold text-[color:var(--violet)]">
+                  {orgStatus.organizationName.charAt(0).toUpperCase()}
+                </div>
+              }
+            />
+          ) : (
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-[color:var(--primary)] text-white text-[14px] font-semibold shrink-0">
+              B
+            </div>
+          )}
           <div className="min-w-0 leading-tight">
-            <div className="text-[16px] font-semibold tracking-tight text-slate-900">Brief</div>
+            <div className="truncate text-[15px] font-semibold tracking-tight text-slate-900">
+              {orgStatus?.organizationName ?? "Brief"}
+            </div>
             {orgStatus?.organizationName && (
-              <div className="text-[11px] text-slate-500 truncate">{orgStatus.organizationName}</div>
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                Brief
+                {briefsOnly && (
+                  <span className="rounded-full bg-amber-100 px-1.5 py-px text-[10px] font-semibold text-amber-800">Version gratuite</span>
+                )}
+              </div>
             )}
           </div>
         </Link>

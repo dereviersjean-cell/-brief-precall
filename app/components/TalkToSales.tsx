@@ -29,7 +29,7 @@ export default function TalkToSales({
           href={bookingUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-2 flex items-center justify-center gap-1.5 rounded-lg bg-[color:var(--primary)] px-3 py-1.5 text-[11.5px] font-medium text-white transition hover:brightness-110"
+          className="mt-2 flex items-center justify-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[11.5px] font-semibold text-slate-800 ring-1 ring-slate-200 transition hover:ring-slate-300"
         >
           <CalendarDays className="h-3 w-3" />
           Prendre rendez-vous
