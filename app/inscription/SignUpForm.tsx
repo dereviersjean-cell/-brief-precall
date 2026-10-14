@@ -37,7 +37,7 @@ export function SignUpForm({ initialEmail = "", callbackUrl = "/brief" }: { init
     const res = await fetch("/api/auth/email-code", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email.trim(), intent: "signup" }),
+      body: JSON.stringify({ email: email.trim(), intent: "signup", name: name.trim() }),
     }).catch(() => null);
     setBusy(false);
     if (res?.ok) return true;

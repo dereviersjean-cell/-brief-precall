@@ -17,7 +17,7 @@ const PER_EMAIL = { max: 5, windowMs: 15 * 60 * 1000 };
 const PER_IP = { max: 20, windowMs: 60 * 60 * 1000 };
 
 export async function POST(request: Request) {
-  const body = (await request.json().catch(() => null)) as { email?: unknown; intent?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as { email?: unknown; intent?: unknown; name?: unknown } | null;
   const email = typeof body?.email === "string" ? normalizeEmail(body.email) : "";
   const intent = body?.intent === "signup" ? "signup" : body?.intent === "reset" ? "reset" : "login";
   if (!looksLikeEmail(email)) {
@@ -44,7 +44,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "no_account" }, { status: 404 });
     }
     const code = await createLoginCode(email);
-    await sendLoginCodeEmail({ to: email, code });
+    // Le prénom, saisi sur /inscription, ne sert qu'à saluer dans l'email.
+    const firstName = intent === "signup" && typeof body?.name === "string" ? body.name.trim().split(/\s+/)[0]?.slice(0, 40) || null : null;
+    await sendLoginCodeEmail({ to: email, code, intent, firstName });
   } catch (err) {
     reportError("auth.email-code", err);
     return NextResponse.json(

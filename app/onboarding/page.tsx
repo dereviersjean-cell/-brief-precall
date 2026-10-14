@@ -294,7 +294,11 @@ export default function OnboardingPage() {
   const promise = promiseFor(step, isEnabled("follow_up"), isEnabled("objections"));
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    // Fond teinté en haut de page, comme le reste de l'app.
+    <div
+      className="min-h-screen flex flex-col"
+      style={{ background: "linear-gradient(180deg, oklch(0.965 0.022 270) 0px, var(--background) 520px)" }}
+    >
       {/* Header */}
       <header>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">

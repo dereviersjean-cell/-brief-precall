@@ -181,29 +181,83 @@ export async function sendInvitationEmail(params: {
 // n'est enregistrée, et rien dans l'app ne le montrait tant que personne
 // n'allait voir. Envoyé UNE fois, au passage à « disconnected » détecté par
 // la synchronisation des 5 minutes (lib/calendar-health.ts).
-// Code de connexion à usage unique (connexion sans SSO, 14/10/2026). Sert
-// aussi à créer un compte et à définir ou changer son mot de passe : c'est la
-// preuve qu'on reçoit les emails de cette adresse.
-export async function sendLoginCodeEmail(params: { to: string; code: string }): Promise<void> {
-  const resend = new Resend(process.env.RESEND_API_KEY);
+// Code à usage unique (connexion sans SSO, 14/10/2026). Trois usages, trois
+// tons : la bienvenue d'une inscription (illustration, prénom), une
+// connexion, un nouveau mot de passe. Mise en page en tableaux et styles en
+// ligne : c'est ce que Gmail et Outlook affichent fidèlement.
+export type LoginCodeIntent = "signup" | "login" | "reset";
+
+export function buildLoginCodeEmail(params: { code: string; intent: LoginCodeIntent; firstName?: string | null }): {
+  subject: string;
+  html: string;
+} {
   const spaced = `${params.code.slice(0, 3)} ${params.code.slice(3)}`;
-  const html = `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px; color: #0f172a;">
-      <h1 style="font-size: 20px; margin: 0 0 16px;">Votre code de connexion à Brief</h1>
-      <p style="font-size: 14px; color: #475569; line-height: 1.6; margin: 0 0 20px;">Saisissez ce code sur la page de connexion :</p>
-      <p style="font-size: 32px; font-weight: 700; letter-spacing: 6px; margin: 0 0 20px; color: #2A5CE0;">${spaced}</p>
-      <p style="font-size: 13px; color: #64748b; line-height: 1.6; margin: 0;">
-        Il est valable 10 minutes et ne sert qu'une fois. Si vous n'avez rien demandé, ignorez cet email :
-        personne ne peut se connecter sans ce code.
-      </p>
-    </div>
-  `;
-  const { error } = await resend.emails.send({
-    from: process.env.RESEND_FROM_EMAIL!,
-    to: params.to,
-    subject: `${spaced} — votre code de connexion à Brief`,
-    html,
-  });
+  const first = params.firstName ? escapeHtml(params.firstName) : null;
+  const copy = {
+    signup: {
+      subject: `Bienvenue sur Brief 🚀 — votre code ${spaced}`,
+      title: first ? `Bienvenue à bord, ${first} !` : "Bienvenue à bord !",
+      lead: "Plus qu'une étape : saisissez ce code pour confirmer votre adresse et créer votre compte.",
+      after: "Ensuite, trois questions pour personnaliser vos briefs, et votre premier rendez-vous est prêt en deux minutes.",
+    },
+    login: {
+      subject: `${spaced} — votre code de connexion à Brief`,
+      title: "Votre code de connexion",
+      lead: "Saisissez ce code sur la page de connexion de Brief.",
+      after: null,
+    },
+    reset: {
+      subject: `${spaced} — nouveau mot de passe Brief`,
+      title: "Choisissez un nouveau mot de passe",
+      lead: "Saisissez ce code sur la page de connexion, avec votre nouveau mot de passe.",
+      after: null,
+    },
+  }[params.intent];
+
+  const banner =
+    params.intent === "signup"
+      ? `<tr><td style="padding:0;"><img src="${APP_URL}/email/welcome-rocket.jpg" width="560" alt="" style="display:block;width:100%;max-width:560px;height:auto;border:0;border-radius:24px 24px 0 0;" /></td></tr>`
+      : `<tr><td style="padding:28px 36px 0;"><table role="presentation" cellpadding="0" cellspacing="0"><tr>
+           <td style="width:32px;height:32px;border-radius:10px;background:#2A5CE0;background-image:linear-gradient(135deg,#2A5CE0,#6A4BE8);color:#ffffff;font:600 15px/32px -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;text-align:center;">B</td>
+           <td style="padding-left:10px;font:600 16px -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#0f172a;">Brief</td>
+         </tr></table></td></tr>`;
+
+  const html = `<!doctype html>
+<html lang="fr"><body style="margin:0;padding:0;background:#F3F5FB;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F3F5FB;padding:32px 12px;">
+  <tr><td align="center">
+    <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;background:#ffffff;border-radius:24px;box-shadow:0 12px 40px -24px rgba(42,92,224,0.45);">
+      ${banner}
+      <tr><td style="padding:32px 36px 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#0f172a;">
+        <h1 style="margin:0 0 10px;font-size:26px;line-height:1.2;font-weight:700;letter-spacing:-0.02em;">${copy.title}</h1>
+        <p style="margin:0;font-size:15px;line-height:1.6;color:#475569;">${copy.lead}</p>
+      </td></tr>
+      <tr><td style="padding:20px 36px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EEF2FF;background-image:linear-gradient(135deg,#EEF2FF,#F3EEFF);border-radius:18px;">
+          <tr><td align="center" style="padding:22px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:40px;font-weight:700;letter-spacing:8px;color:#2A5CE0;">${spaced}</td></tr>
+          <tr><td align="center" style="padding:0 12px 18px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;color:#6A4BE8;">Valable 10 minutes · usage unique</td></tr>
+        </table>
+      </td></tr>
+      ${
+        copy.after
+          ? `<tr><td style="padding:0 36px 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.6;color:#475569;">${copy.after}</td></tr>`
+          : ""
+      }
+      <tr><td style="padding:16px 36px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;line-height:1.6;color:#94a3b8;">
+        Vous n'avez rien demandé ? Ignorez simplement cet email : personne ne peut utiliser votre adresse sans ce code.
+      </td></tr>
+    </table>
+    <p style="margin:18px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:12px;color:#94a3b8;">Brief — chaque rendez-vous préparé en deux minutes.</p>
+  </td></tr>
+</table>
+</body></html>`;
+  return { subject: copy.subject, html };
+}
+
+export async function sendLoginCodeEmail(params: { to: string; code: string; intent: LoginCodeIntent; firstName?: string | null }): Promise<void> {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const { subject, html } = buildLoginCodeEmail(params);
+  const { error } = await resend.emails.send({ from: process.env.RESEND_FROM_EMAIL!, to: params.to, subject, html });
   if (error) {
     throw new Error(`sendLoginCodeEmail failed: ${error.message}`);
   }
