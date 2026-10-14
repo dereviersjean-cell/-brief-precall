@@ -127,7 +127,7 @@ export const authOptions: AuthOptions = {
     CredentialsProvider({
       id: "email-code",
       name: "Code par email",
-      credentials: { email: { type: "email" }, code: { type: "text" }, newPassword: { type: "password" } },
+      credentials: { email: { type: "email" }, code: { type: "text" }, newPassword: { type: "password" }, name: { type: "text" } },
       async authorize(credentials) {
         const email = normalizeEmail(credentials?.email ?? "");
         const code = credentials?.code ?? "";
@@ -136,7 +136,9 @@ export const authOptions: AuthOptions = {
         if (newPassword && passwordProblem(newPassword)) throw new Error("WeakPassword");
         const valid = await consumeLoginCode(email, code);
         if (!valid) throw new Error("InvalidCode");
-        const result = await signInWithVerifiedEmail(email, newPassword);
+        // Le nom n'est retenu qu'à la création (page /inscription).
+        const name = credentials?.name?.trim().slice(0, 120) || null;
+        const result = await signInWithVerifiedEmail(email, newPassword, name);
         if (!result.ok) throw new Error("AccountDisabled");
         return { id: result.userId, email, name: result.name, role: result.role } as never;
       },

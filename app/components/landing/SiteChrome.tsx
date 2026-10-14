@@ -50,7 +50,7 @@ function Nav() {
           <Link href="/login" className="hidden lg:inline-flex text-[14px] font-medium text-land-muted hover:text-land-ink transition-colors">
             Se connecter
           </Link>
-          <Link href="/login" className={BTN_NAV}>
+          <Link href="/inscription" className={BTN_NAV}>
             Essayer gratuitement
           </Link>
           <MobileMenu links={NAV_LINKS} />

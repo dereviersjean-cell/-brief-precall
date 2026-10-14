@@ -78,7 +78,7 @@ export function Hero() {
                 </p>
                 <div className="mt-7 flex flex-wrap items-center gap-3">
                   <Link
-                    href="/login"
+                    href="/inscription"
                     className="inline-flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-white px-6 text-[16px] font-semibold text-land-ink transition-transform hover:-translate-y-0.5 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                   >
                     Essayer gratuitement <ArrowRight className="h-4 w-4" />
@@ -773,7 +773,7 @@ export function FinalCTA() {
           </ol>
           <div className="mt-10 flex flex-wrap gap-3">
             <Link
-              href="/login"
+              href="/inscription"
               className="inline-flex h-12 items-center gap-2 whitespace-nowrap rounded-full bg-white px-6 text-[16px] font-semibold text-land-ink transition-transform hover:-translate-y-0.5 active:scale-[0.98]"
             >
               Essayer gratuitement <ArrowRight className="h-4 w-4" />

@@ -19,6 +19,7 @@ export const config = {
     // connecté vers l'app (voir plus bas). Aucun garde, aucune requête en base.
     "/",
     "/login",
+    "/inscription",
     "/dashboard/:path*",
     "/brief/:path*",
     "/feedback/:path*",
@@ -186,10 +187,10 @@ export async function middleware(request: NextRequest) {
   // erreur de connexion (`/login?error=`) s'affiche toujours.
   const entryPath = request.nextUrl.pathname;
   const entryParams = request.nextUrl.searchParams;
-  if (entryPath === "/" || entryPath === "/login") {
+  if (entryPath === "/" || entryPath === "/login" || entryPath === "/inscription") {
     const showSite = entryPath === "/" && entryParams.has("site");
     if (supabaseUserId && !showSite && !entryParams.has("error")) {
-      const destination = entryPath === "/login" ? safeInternalPath(entryParams.get("callbackUrl") ?? undefined, "/brief") : "/brief";
+      const destination = entryPath !== "/" ? safeInternalPath(entryParams.get("callbackUrl") ?? undefined, "/brief") : "/brief";
       return NextResponse.redirect(new URL(destination, request.url));
     }
     return NextResponse.next();

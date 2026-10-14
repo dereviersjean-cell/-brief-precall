@@ -116,7 +116,7 @@ export async function emailHasAccount(rawEmail: string): Promise<boolean> {
 // (inscription ouverte, même règle que resolveUserForLogin : sans
 // organisation, le middleware l'envoie à l'onboarding). Un nouveau mot de
 // passe, s'il est fourni, est enregistré au passage.
-export async function signInWithVerifiedEmail(rawEmail: string, newPassword: string | null): Promise<EmailLoginResult> {
+export async function signInWithVerifiedEmail(rawEmail: string, newPassword: string | null, name: string | null = null): Promise<EmailLoginResult> {
   const email = normalizeEmail(rawEmail);
   const existing = await findUserByEmail(email);
   const passwordHash = newPassword ? await hashPassword(newPassword) : null;
@@ -132,7 +132,7 @@ export async function signInWithVerifiedEmail(rawEmail: string, newPassword: str
 
   const { data, error } = await supabaseAdmin
     .from("users")
-    .insert({ email, ...(passwordHash ? { password_hash: passwordHash } : {}) })
+    .insert({ email, ...(name ? { name } : {}), ...(passwordHash ? { password_hash: passwordHash } : {}) })
     .select("id, role, name")
     .single();
   if (error) throw error;

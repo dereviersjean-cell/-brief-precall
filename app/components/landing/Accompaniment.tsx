@@ -321,7 +321,7 @@ export function Accompaniment() {
               Parler à un expert <ArrowUpRight className="h-4 w-4" aria-hidden />
             </a>
             <Link
-              href="/login"
+              href="/inscription"
               className="inline-flex h-11 items-center gap-2 rounded-full border border-land-line px-5 text-[15px] font-medium text-land-ink transition-colors hover:bg-land-sunken"
             >
               Commencer par l&apos;outil <ArrowRight className="h-4 w-4" aria-hidden />

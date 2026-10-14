@@ -4,13 +4,13 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 
 // Connexion sans Google ni Microsoft (14/10/2026) : email + mot de passe, ou
-// code à 6 chiffres reçu par email. Le code sert aussi à créer un compte et à
-// définir ou changer son mot de passe — c'est la preuve qu'on reçoit les
-// emails de l'adresse (voir lib/email-auth.ts). Le serveur ne dit jamais si
-// une adresse a déjà un compte.
+// code à 6 chiffres reçu par email, qui sert aussi à définir ou changer son
+// mot de passe (preuve qu'on reçoit les emails de l'adresse, voir
+// lib/email-auth.ts). La création de compte est une page à part :
+// /inscription (SignUpForm).
 
 type Mode = "password" | "code";
-type CodeIntent = "login" | "signup" | "reset";
+type CodeIntent = "login" | "reset";
 
 const ERRORS: Record<string, string> = {
   InvalidPassword: "Email ou mot de passe incorrect.",
@@ -36,7 +36,7 @@ export function EmailSignIn({ callbackUrl = "/brief" }: { callbackUrl?: string }
   const [info, setInfo] = useState<string | null>(null);
   // Adresse sans compte (connexion, oubli) ou déjà prise (création) : le
   // message propose l'action qui débloque, sans code envoyé.
-  const [suggest, setSuggest] = useState<CodeIntent | null>(null);
+  const [noAccount, setNoAccount] = useState(false);
 
   async function finish(provider: "email-password" | "email-code", credentials: Record<string, string>) {
     setBusy(true);
@@ -60,7 +60,7 @@ export function EmailSignIn({ callbackUrl = "/brief" }: { callbackUrl?: string }
     setBusy(true);
     setError(null);
     setInfo(null);
-    setSuggest(null);
+    setNoAccount(false);
     const res = await fetch("/api/auth/email-code", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -71,10 +71,7 @@ export function EmailSignIn({ callbackUrl = "/brief" }: { callbackUrl?: string }
       const data = (await res?.json().catch(() => null)) as { error?: string } | null;
       if (data?.error === "no_account") {
         setError("Aucun compte n'est associé à cette adresse.");
-        setSuggest("signup");
-      } else if (data?.error === "account_exists") {
-        setError("Un compte existe déjà avec cette adresse.");
-        setSuggest("login");
+        setNoAccount(true);
       } else {
         setError(data?.error ?? "Impossible d'envoyer le code pour le moment.");
       }
@@ -87,12 +84,7 @@ export function EmailSignIn({ callbackUrl = "/brief" }: { callbackUrl?: string }
   }
 
   if (mode === "code") {
-    const passwordLabel =
-      intent === "signup"
-        ? "Choisissez un mot de passe (facultatif)"
-        : intent === "reset"
-          ? "Nouveau mot de passe"
-          : "Définir un mot de passe (facultatif)";
+    const passwordLabel = intent === "reset" ? "Nouveau mot de passe" : "Définir un mot de passe (facultatif)";
     return (
       <form
         className="space-y-3"
@@ -137,7 +129,7 @@ export function EmailSignIn({ callbackUrl = "/brief" }: { callbackUrl?: string }
           disabled={busy || code.replace(/\s/g, "").length !== 6}
           className="h-12 w-full rounded-full bg-land-ink text-[15px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
         >
-          {busy ? "Vérification…" : intent === "signup" ? "Créer mon compte" : "Valider"}
+          {busy ? "Vérification…" : "Valider"}
         </button>
         <div className="flex items-center justify-between pt-1">
           <button type="button" className={LINK} onClick={() => setMode("password")}>
@@ -180,15 +172,13 @@ export function EmailSignIn({ callbackUrl = "/brief" }: { callbackUrl?: string }
       {error && (
         <div className="rounded-2xl bg-land-coral-soft px-4 py-3 text-[13.5px] text-land-coral-ink">
           {error}
-          {suggest && (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void requestCode(suggest)}
-              className="mt-1.5 block font-semibold text-land-ink underline underline-offset-4 disabled:opacity-50"
+          {noAccount && (
+            <a
+              href={`/inscription?email=${encodeURIComponent(email.trim())}`}
+              className="mt-1.5 block font-semibold text-land-ink underline underline-offset-4"
             >
-              {suggest === "signup" ? "Créer un compte avec cette adresse" : "Recevoir un code de connexion"}
-            </button>
+              Créer un compte
+            </a>
           )}
         </div>
       )}
@@ -207,12 +197,6 @@ export function EmailSignIn({ callbackUrl = "/brief" }: { callbackUrl?: string }
           Mot de passe oublié ?
         </button>
       </div>
-      <p className="pt-2 text-[14px] text-land-muted">
-        Pas encore de compte ?{" "}
-        <button type="button" className={LINK} disabled={busy} onClick={() => void requestCode("signup")}>
-          Créer un compte avec cet email
-        </button>
-      </p>
     </form>
   );
 }
