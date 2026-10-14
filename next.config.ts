@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { ROUTER_STALE_SECONDS } from "./lib/router-cache";
 
 const nextConfig: NextConfig = {
   // Pas de cache Turbopack persistant entre deux builds de production.
@@ -10,6 +11,13 @@ const nextConfig: NextConfig = {
   // qu'un déploiement qui ment sur son contenu.
   experimental: {
     turbopackFileSystemCacheForBuild: false,
+    // Retour instantané sur une page déjà visitée (demande de Jean, 14/10/2026) :
+    // le navigateur garde chaque page en mémoire au lieu de la redemander au
+    // serveur à chaque clic dans la barre latérale. Par défaut Next ne garde
+    // rien pour une page dynamique (0 s) — toutes les nôtres le sont.
+    // RouterFreshness relit la page en arrière-plan quand elle sort de ce
+    // cache, pour que l'écran ne reste pas figé.
+    staleTimes: { dynamic: ROUTER_STALE_SECONDS },
   },
   // Les polices du générateur de PDF sont lues à l'exécution via un chemin
   // construit (path.join(process.cwd(), …)). Le traçage de fichiers de Next
