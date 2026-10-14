@@ -2014,7 +2014,10 @@ export async function getAccessForUser(userId: string): Promise<UserAccess> {
 //
 // Lève si la migration 024 n'est pas passée : jamais d'accès complet par
 // défaut à une inscription libre.
-export async function attachSelfServeOrganization(userId: string, companyName: string): Promise<string> {
+// `role` : choisi par l'inscrit dans l'onboarding (14/10/2026). Il n'a de
+// portée qu'ici, à la création de SA propre entreprise — jamais pour rejoindre
+// une équipe existante, où le rôle reste l'affaire du manager ou de l'admin.
+export async function attachSelfServeOrganization(userId: string, companyName: string, role: UserRole = "commercial"): Promise<string> {
   const { data: created, error: createError } = await supabaseAdmin
     .from("organizations")
     .insert({ name: companyName, access_level: "briefs", enabled_modules: [] })
@@ -2025,7 +2028,7 @@ export async function attachSelfServeOrganization(userId: string, companyName: s
 
   const { data: attached, error: attachError } = await supabaseAdmin
     .from("users")
-    .update({ organization_id: orgId, role: "commercial" })
+    .update({ organization_id: orgId, role })
     .eq("id", userId)
     .is("organization_id", null)
     .select("organization_id");

@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
   if (!auth.ok) return auth.response;
   const userId = auth.userId;
 
-  let body: { company_name?: unknown; product_description?: unknown; icp?: unknown; sector?: unknown };
+  let body: { company_name?: unknown; product_description?: unknown; icp?: unknown; sector?: unknown; role?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -53,7 +53,10 @@ export async function POST(request: NextRequest) {
       if (!companyName) {
         return NextResponse.json({ error: "Indiquez le nom de votre entreprise pour continuer." }, { status: 400 });
       }
-      await attachSelfServeOrganization(userId, companyName.slice(0, 200));
+      // Le rôle choisi dans l'onboarding n'est pris en compte qu'ici : à la
+      // création de sa propre entreprise. Ailleurs il est ignoré.
+      const role = (body as { role?: unknown }).role === "manager" ? "manager" : "commercial";
+      await attachSelfServeOrganization(userId, companyName.slice(0, 200), role);
     }
 
     await upsertUserProfile(userId, { company_name, product_description, icp, sector });

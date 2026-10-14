@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import BriefPreview from "./BriefPreview";
 import WelcomeStep from "./WelcomeStep";
+import CompanyStep, { type CompanyRole, type PrefillResult } from "./CompanyStep";
+import { companyDomainFromEmail } from "@/lib/company-domain";
 import { useSession } from "next-auth/react";
 import { useModules } from "@/app/components/ModulesProvider";
 
@@ -171,6 +173,14 @@ export default function OnboardingPage() {
   const firstName = session?.user?.name?.trim().split(/\s+/)[0] ?? null;
   const [welcomeDone, setWelcomeDone] = useState(false);
   const showWelcome = account.needsCompany && !welcomeDone && step === 1;
+  // Puis « Présentez votre entreprise » : nom, site, rôle, et la proposition
+  // de profil par Brief (CompanyStep).
+  const [companyDone, setCompanyDone] = useState(false);
+  const showCompany = account.needsCompany && welcomeDone && !companyDone && step === 1;
+  const [role, setRole] = useState<CompanyRole>("commercial");
+  // Ce que Brief a proposé, pour signaler les champs pré-remplis tant qu'ils
+  // n'ont pas été modifiés.
+  const [prefill, setPrefill] = useState<(PrefillResult & { source: string }) | null>(null);
 
   const [whatYouSell, setWhatYouSell] = useState("");
   const [icp, setIcp] = useState("");
@@ -265,7 +275,7 @@ export default function OnboardingPage() {
         headers: { "Content-Type": "application/json" },
         // « Passer » envoie un profil vide : la ligne est créée (sinon /brief
         // renverrait ici), sans rien effacer de ce qui existe déjà.
-        body: JSON.stringify(skip ? {} : filledProfile()),
+        body: JSON.stringify(skip ? {} : { ...filledProfile(), role }),
       });
       // Sans entreprise enregistrée, le middleware ramènerait ici : on reste
       // et on dit pourquoi. Sinon best-effort, comme avant.
@@ -293,7 +303,7 @@ export default function OnboardingPage() {
       await fetch("/api/onboarding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(filledProfile()),
+        body: JSON.stringify({ ...filledProfile(), role }),
       });
 
       const payload: Record<string, string> = {
@@ -357,6 +367,23 @@ export default function OnboardingPage() {
       <main className="flex flex-1 items-center justify-center px-4 py-8 sm:py-12">
         {!accountLoaded ? null : showWelcome ? (
           <WelcomeStep firstName={firstName} onStart={() => setWelcomeDone(true)} />
+        ) : showCompany ? (
+          <CompanyStep
+            initialCompany={companyName}
+            initialWebsite={companyDomainFromEmail(session?.user?.email) ?? ""}
+            onDone={(r) => {
+              setCompanyName(r.companyName);
+              setRole(r.role);
+              if (r.prefill?.found) {
+                setWhatYouSell(r.prefill.whatYouSell);
+                setIcp(r.prefill.icp);
+                setSector(r.prefill.sector);
+                setValueProposition(r.prefill.valueProposition);
+              }
+              setPrefill(r.prefill ? { ...r.prefill, source: r.website || r.companyName } : null);
+              setCompanyDone(true);
+            }}
+          />
         ) : (
         <div className="w-full max-w-5xl">
           <Stepper current={step} total={totalSteps} />
@@ -368,6 +395,7 @@ export default function OnboardingPage() {
             </p>
             <h1 className="mt-2 text-[28px] font-semibold leading-[1.1] tracking-[-0.035em] text-slate-900 sm:text-[34px]">{title}</h1>
             <p className="mt-2 text-[15.5px] leading-relaxed text-slate-500">{subtitle}</p>
+            <PrefillNotice step={step} prefill={prefill} values={{ whatYouSell, icp, sector, valueProposition }} />
 
             <div
               className="mt-7"
@@ -677,5 +705,42 @@ function Examples({ items, onPick }: { items: string[]; onPick: (v: string) => v
         </button>
       ))}
     </div>
+  );
+}
+
+// Bandeau des étapes pré-remplies : Brief dit d'où vient la proposition et
+// invite à la corriger. Il disparaît dès que la réponse a été modifiée — elle
+// n'est plus la sienne. Si rien n'a été trouvé, l'étape 1 le dit simplement.
+function PrefillNotice({
+  step,
+  prefill,
+  values,
+}: {
+  step: number;
+  prefill: (PrefillResult & { source: string }) | null;
+  values: { whatYouSell: string; icp: string; sector: string; valueProposition: string };
+}) {
+  if (!prefill || step > 3) return null;
+  if (!prefill.found) {
+    if (step !== 1) return null;
+    return (
+      <p className="mt-5 rounded-2xl bg-slate-50 px-4 py-3 text-[13.5px] leading-relaxed text-slate-600 ring-1 ring-slate-100">
+        Nous n&apos;avons pas trouvé assez d&apos;informations publiques sur {prefill.source} : quelques mots suffisent.
+      </p>
+    );
+  }
+  const unchanged =
+    (step === 1 && values.whatYouSell && values.whatYouSell === prefill.whatYouSell) ||
+    (step === 2 && values.icp && values.icp === prefill.icp) ||
+    (step === 3 && values.valueProposition && values.valueProposition === prefill.valueProposition);
+  if (!unchanged) return null;
+  return (
+    <p className="mt-5 flex items-start gap-2.5 rounded-2xl bg-[color:var(--lavender)] px-4 py-3 text-[13.5px] leading-relaxed text-slate-700 ring-1 ring-[color:var(--lavender-strong)]">
+      <span aria-hidden className="mt-px">✨</span>
+      <span>
+        <span className="font-semibold text-slate-900">Proposé par Brief</span> d&apos;après {prefill.source}. Vérifiez, ajustez
+        si besoin, puis continuez.
+      </span>
+    </p>
   );
 }
