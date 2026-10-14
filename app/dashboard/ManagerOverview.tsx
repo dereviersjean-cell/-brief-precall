@@ -91,7 +91,7 @@ export default async function ManagerOverview({ userId, userName }: { userId: st
                 </Button>
                 <Link
                   href="/brief"
-                  className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-[filter] hover:brightness-110"
+                  className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[#2A5CE0] to-[#6A4BE8] px-4 text-[13px] font-medium text-white shadow-[0_8px_20px_-12px_rgba(76,63,214,0.8)] transition-[filter] hover:brightness-110"
                 >
                   <Sparkles className="h-3.5 w-3.5" /> Nouveau brief
                 </Link>

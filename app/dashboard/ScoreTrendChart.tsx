@@ -25,7 +25,7 @@ export default function ScoreTrendChart({ weeks, title }: { weeks: ScoreTrendWee
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="rounded-2xl border border-border bg-white p-4 sm:p-5"
+      className="rounded-[20px] bg-white ring-1 ring-[color:var(--lavender-strong)] shadow-[0_1px_2px_rgba(42,92,224,0.05),0_10px_28px_-20px_rgba(42,92,224,0.35)] p-4 sm:p-5"
     >
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">{title}</h2>
@@ -113,6 +113,9 @@ function ScoreChart({ weeks }: { weeks: ScoreTrendWeek[] }) {
         {showAverage && (
           <span className="inline-flex items-center gap-1.5">
             <span className="h-0 w-4 border-t-2 border-dotted border-amber-400" /> Moyenne
+            {/* La valeur vit dans la légende : posée sur le tracé, sa pastille
+                recouvrait le dernier point de la courbe. */}
+            {showAverage && <span className="font-semibold tabular-nums text-amber-700">{avg.toFixed(1)}</span>}
           </span>
         )}
         {points.length < weeks.length && (
@@ -148,8 +151,8 @@ function ScoreChart({ weeks }: { weeks: ScoreTrendWeek[] }) {
           </g>
         ))}
 
-        {/* Moyenne : trait ambré, lisible sur la grille grise, avec sa valeur
-            dans une pastille plutôt qu'un texte flottant. */}
+        {/* Moyenne : trait ambré, lisible sur la grille grise ; sa valeur
+            est dans la légende. */}
         {showAverage && (
           <>
         <line
@@ -162,12 +165,7 @@ function ScoreChart({ weeks }: { weeks: ScoreTrendWeek[] }) {
           strokeDasharray="2 4"
           strokeLinecap="round"
         />
-        <g transform={`translate(${w - pad.r - 54}, ${y(avg) - 18})`}>
-          <rect width="54" height="16" rx="8" fill="var(--warning-soft)" />
-          <text x="27" y="11" textAnchor="middle" fontSize="10" fontWeight={600} fill="oklch(0.5 0.11 60)">
-            moy. {avg.toFixed(1)}
-          </text>
-        </g>
+
           </>
         )}
 

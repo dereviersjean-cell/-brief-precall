@@ -34,14 +34,15 @@ export function Button({
   className?: string;
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   const base =
-    "inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--violet)]/40";
+    "inline-flex items-center justify-center gap-1.5 rounded-full font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--violet)]/40";
   const sizes = {
     sm: "h-8 px-2.5 text-[12px]",
     md: "h-9 px-3.5 text-[13px]",
   }[size];
   const variants = {
+    // Dégradé bleu vers violet, comme « Ajouter un RDV » sur la page Brief.
     primary:
-      "bg-[color:var(--primary)] text-white hover:brightness-110 active:brightness-95",
+      "bg-gradient-to-r from-[#2A5CE0] to-[#6A4BE8] text-white shadow-[0_8px_20px_-12px_rgba(76,63,214,0.8)] hover:brightness-110 active:brightness-95",
     secondary:
       "bg-white border border-border text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-[var(--shadow-xs)]",
     outline:
@@ -59,6 +60,11 @@ export function Button({
   );
 }
 
+// La surface commune des cartes (harmonisée le 14/10/2026 sur le style de la
+// page Brief) : liseré lavande et ombre bleutée plutôt qu'une bordure grise.
+export const SURFACE =
+  "rounded-[20px] bg-white ring-1 ring-[color:var(--lavender-strong)] shadow-[0_1px_2px_rgba(42,92,224,0.05),0_10px_28px_-20px_rgba(42,92,224,0.35)]";
+
 export function Card({
   children,
   className = "",
@@ -70,7 +76,7 @@ export function Card({
 }) {
   return (
     <div
-      className={`rounded-2xl border border-border bg-white ${
+      className={`${SURFACE} ${
         padded ? "p-6" : ""
       } ${className}`}
     >

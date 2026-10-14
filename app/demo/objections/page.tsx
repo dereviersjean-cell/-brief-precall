@@ -75,7 +75,7 @@ export default async function DemoObjectionsPage({
   const period = resolvePeriod(await searchParams);
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-10">
+    <div className="mx-auto max-w-6xl px-6 py-10">
       <FadeIn>
         <div className="mb-8">
           <PageHeader

@@ -1,4 +1,4 @@
-import { BookOpen, Gauge, Layers, ListChecks } from "lucide-react";
+import { Gauge, Layers, ListChecks } from "lucide-react";
 import { PageHeader } from "@/app/components/ui/PageHeader";
 import { Card } from "@/app/components/ui/ui-bits";
 import FadeIn from "@/app/dashboard/FadeIn";
@@ -16,7 +16,7 @@ export default function DemoPlaybookPage() {
   const totalWeight = demoPlaybook.dimensions.reduce((sum, d) => sum + d.weight, 0);
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-10">
+    <div className="mx-auto max-w-6xl px-6 py-10">
       <FadeIn>
         <div className="mb-6">
           <PageHeader
@@ -65,7 +65,7 @@ export default function DemoPlaybookPage() {
               <ul className="mt-4 space-y-1.5 border-t border-slate-100 pt-3">
                 {dimension.criteria.map((criterion) => (
                   <li key={criterion.id} className="flex gap-2 text-sm text-slate-700">
-                    <BookOpen className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-300" />
+                    <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--violet)]/60" />
                     {criterion.question}
                   </li>
                 ))}

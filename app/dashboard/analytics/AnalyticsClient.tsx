@@ -159,7 +159,7 @@ const TONE_DOT: Record<Tone, string> = {
 const TONE_BAR: Record<Tone, string> = {
   good: "bg-emerald-500",
   warn: "bg-amber-400",
-  neutral: "bg-[color:var(--primary)]",
+  neutral: "bg-gradient-to-r from-[#2A5CE0] to-[#7B5CFF]",
 };
 
 export default function AnalyticsClient({
@@ -190,7 +190,7 @@ export default function AnalyticsClient({
 
   return (
     <div>
-      <div className="mb-4 inline-flex items-center gap-1 rounded-xl border border-border bg-white p-1">
+      <div className="mb-4 inline-flex items-center gap-1 rounded-full bg-white p-1 ring-1 ring-[color:var(--lavender-strong)]">
         {(
           [
             ["activity", "Activité", Activity],
@@ -204,7 +204,7 @@ export default function AnalyticsClient({
               setFamily(value);
               setSelectedKey((value === "activity" ? ACTIVITY_METRICS : INTERACTION_METRICS)[0].key);
             }}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12.5px] font-medium transition-colors ${
+            className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-medium transition-colors ${
               family === value
                 ? "bg-[color:var(--lavender)] text-[color:var(--violet)]"
                 : "text-slate-500 hover:text-slate-900"
@@ -216,7 +216,7 @@ export default function AnalyticsClient({
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-white">
+      <div className="overflow-hidden rounded-[20px] bg-white ring-1 ring-[color:var(--lavender-strong)] shadow-[0_1px_2px_rgba(42,92,224,0.05),0_10px_28px_-20px_rgba(42,92,224,0.35)]">
         <div data-tour="analytics-tiles" className="grid grid-cols-2 divide-x divide-y divide-border border-b border-border sm:grid-cols-3 lg:grid-cols-5">
           {metrics.map((m) => {
             const value = m.value(analytics.teamAverage);

@@ -65,7 +65,7 @@ export default function StatTile({
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.07, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="flex items-center gap-3 bg-white rounded-2xl border border-border px-4 py-3"
+        className="flex items-center gap-3 rounded-[20px] bg-white ring-1 ring-[color:var(--lavender-strong)] shadow-[0_1px_2px_rgba(42,92,224,0.05),0_10px_28px_-20px_rgba(42,92,224,0.35)] px-4 py-3"
       >
         {icon && (
           <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${colors.bg} ${colors.text}`}>
@@ -92,7 +92,7 @@ export default function StatTile({
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.07, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="bg-white rounded-2xl border border-border p-5"
+      className="rounded-[20px] bg-white ring-1 ring-[color:var(--lavender-strong)] shadow-[0_1px_2px_rgba(42,92,224,0.05),0_10px_28px_-20px_rgba(42,92,224,0.35)] p-5"
     >
       <div className="flex items-center justify-between mb-3">
         <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-[0.07em]">{label}</p>

@@ -16,7 +16,8 @@ export default function DemoLayout({ children }: { children: ReactNode }) {
         <TopBar />
         <DemoBanner />
         <PerformanceTabs />
-        {children}
+        {/* Même fond que app/dashboard/layout.tsx. */}
+        <div style={{ background: "linear-gradient(180deg, oklch(0.965 0.022 270) 0px, var(--background) 520px)" }}>{children}</div>
         <GuidedTour />
       </div>
     </div>

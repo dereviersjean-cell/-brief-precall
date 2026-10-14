@@ -90,7 +90,7 @@ export default function MeetingStagesSection({
   }
 
   return (
-    <section className="mt-8 rounded-2xl border border-border bg-white p-4 sm:p-5">
+    <section className="mt-8 rounded-[20px] bg-white ring-1 ring-[color:var(--lavender-strong)] shadow-[0_1px_2px_rgba(42,92,224,0.05),0_10px_28px_-20px_rgba(42,92,224,0.35)] p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-2.5">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--lavender)] text-[color:var(--violet)]">

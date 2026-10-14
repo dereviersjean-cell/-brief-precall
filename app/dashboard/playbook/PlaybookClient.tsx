@@ -175,7 +175,7 @@ function DimensionCard({
   const isLast = total <= 1;
 
   return (
-    <div className="rounded-2xl border border-border bg-white p-4 sm:p-5">
+    <div className="rounded-[20px] bg-white ring-1 ring-[color:var(--lavender-strong)] shadow-[0_1px_2px_rgba(42,92,224,0.05),0_10px_28px_-20px_rgba(42,92,224,0.35)] p-4 sm:p-5">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <InlineText
@@ -326,7 +326,7 @@ function AddDimensionModal({
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 px-4" onClick={onClose}>
-      <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-2xl border border-border bg-white p-6 shadow-[var(--shadow-md)]" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-[20px] bg-white ring-1 ring-[color:var(--lavender-strong)] shadow-[0_1px_2px_rgba(42,92,224,0.05),0_10px_28px_-20px_rgba(42,92,224,0.35)] p-6 shadow-[var(--shadow-md)]" onClick={(e) => e.stopPropagation()}>
         <h2 className="mb-4 text-[15px] font-semibold tracking-tight text-slate-900">Ajouter une dimension</h2>
         <div className="space-y-3">
           <div>

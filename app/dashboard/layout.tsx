@@ -15,7 +15,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <BillingGraceBanner />
         <TopBar />
         <PerformanceTabs />
-        {children}
+        {/* Haut de page teinté, comme Brief : les onglets de Performance
+            partagent le même fond que le reste de l'app. */}
+        <div style={{ background: "linear-gradient(180deg, oklch(0.965 0.022 270) 0px, var(--background) 520px)" }}>{children}</div>
         {/* Ne se déclenche que sur ?tour=1 — voir GuidedTour. */}
         <GuidedTour />
       </div>

@@ -41,7 +41,7 @@ export default async function ConnectionsStatus({ userId }: { userId: string }) 
   if (!showCrm && !showSlack && !showDigest) return null;
 
   return (
-    <div className="rounded-2xl border border-border bg-white p-4 sm:p-5">
+    <div className="rounded-[20px] bg-white ring-1 ring-[color:var(--lavender-strong)] shadow-[0_1px_2px_rgba(42,92,224,0.05),0_10px_28px_-20px_rgba(42,92,224,0.35)] p-4 sm:p-5">
       <h2 className="mb-1 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Connexions & distribution</h2>
       <div className="divide-y divide-border">
         {showCrm && <StatusRow label="HubSpot" connected={hubspot !== null} href="/settings/connexions" />}

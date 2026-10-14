@@ -12,8 +12,12 @@ export type { ScoreTrendWeek } from "./paris-week";
 // Same green/orange/red thresholds used everywhere scores are shown
 // (ScoreBadge, ScoreBar in app/feedback) — kept in sync manually since
 // there's no shared constant for it yet in this codebase.
+// Mêmes seuils et mêmes couleurs que le reste de l'app (scoreTone de
+// ui-bits, liste des calls, page d'un call) : 3,5 et plus en vert, 2 et plus
+// en ambre, en dessous en rouge. Le tableau de bord tranchait à 4 et 2,5, si
+// bien qu'un même 3,5/5 était vert dans la liste des calls et orange ici.
 export function scoreColorClass(score: number): { bar: string; text: string } {
-  if (score >= 4) return { bar: "bg-green-500", text: "text-green-700" };
-  if (score >= 2.5) return { bar: "bg-orange-400", text: "text-orange-600" };
-  return { bar: "bg-red-400", text: "text-red-600" };
+  if (score >= 3.5) return { bar: "bg-[color:var(--success)]", text: "text-emerald-700" };
+  if (score >= 2) return { bar: "bg-[color:var(--warning)]", text: "text-amber-700" };
+  return { bar: "bg-[color:var(--danger)]", text: "text-rose-700" };
 }

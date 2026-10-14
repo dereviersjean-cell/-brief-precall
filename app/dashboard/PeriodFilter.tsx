@@ -38,7 +38,7 @@ export default function PeriodFilter({
 
   return (
     <div className="mb-5 flex flex-wrap items-center gap-2">
-      <div className="inline-flex max-w-full flex-wrap items-center gap-1 rounded-xl border border-border bg-white p-1">
+      <div className="inline-flex max-w-full flex-wrap items-center gap-1 rounded-full bg-white p-1 ring-1 ring-[color:var(--lavender-strong)]">
         <CalendarRange className="ml-1.5 mr-0.5 h-3.5 w-3.5 shrink-0 text-slate-500" />
         {PERIOD_PRESETS.map((option) => (
           <button
@@ -48,7 +48,7 @@ export default function PeriodFilter({
               setCustomOpen(false);
               apply(option.value);
             }}
-            className={`rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium transition-colors ${
+            className={`rounded-full px-3 py-1.5 text-[12.5px] font-medium transition-colors ${
               preset === option.value
                 ? "bg-[color:var(--lavender)] text-[color:var(--violet)]"
                 : "text-slate-500 hover:text-slate-900"
@@ -60,7 +60,7 @@ export default function PeriodFilter({
         <button
           type="button"
           onClick={() => setCustomOpen((open) => !open)}
-          className={`rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium transition-colors ${
+          className={`rounded-full px-3 py-1.5 text-[12.5px] font-medium transition-colors ${
             preset === "custom"
               ? "bg-[color:var(--lavender)] text-[color:var(--violet)]"
               : "text-slate-500 hover:text-slate-900"
@@ -71,7 +71,7 @@ export default function PeriodFilter({
       </div>
 
       {customOpen && (
-        <div className="inline-flex max-w-full flex-wrap items-center gap-2 rounded-xl border border-border bg-white px-3 py-2">
+        <div className="inline-flex max-w-full flex-wrap items-center gap-2 rounded-2xl bg-white px-3 py-2 ring-1 ring-[color:var(--lavender-strong)]">
           <label htmlFor="period-from" className="text-[12.5px] text-slate-500">
             Du
           </label>

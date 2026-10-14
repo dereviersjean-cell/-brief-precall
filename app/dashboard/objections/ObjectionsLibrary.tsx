@@ -212,7 +212,7 @@ export default function ObjectionsLibrary({ categories }: { categories: Objectio
   }
 
   return (
-    <div className="mb-6 rounded-2xl border border-border bg-white">
+    <div className="mb-6 rounded-[20px] bg-white ring-1 ring-[color:var(--lavender-strong)] shadow-[0_1px_2px_rgba(42,92,224,0.05),0_10px_28px_-20px_rgba(42,92,224,0.35)]">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
