@@ -107,7 +107,7 @@ export default async function LoginPage({
             <ul className="mt-8 space-y-2.5 border-t border-land-line pt-6 text-[14px] text-land-muted">
               <li className="flex items-center gap-2.5">
                 <Check className="h-4 w-4 shrink-0 text-land-accent" aria-hidden />
-                Pas encore de compte ? Il se crée à la première connexion.
+                Google, Microsoft ou simple email : un code suffit, pas de mot de passe obligatoire.
               </li>
               <li className="flex items-center gap-2.5">
                 <Check className="h-4 w-4 shrink-0 text-land-accent" aria-hidden />
