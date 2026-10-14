@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
-import { Calendar, Plus, ArrowRight, Sparkles, Users, X } from "lucide-react";
-import StatTile from "@/app/dashboard/StatTile";
+import { Calendar, Plus, ArrowRight, X, Check, CircleDashed, ChevronLeft, ChevronRight } from "lucide-react";
 import FadeIn from "@/app/dashboard/FadeIn";
 import CompanyLogo from "@/app/components/CompanyLogo";
 import TalkToSales from "@/app/components/TalkToSales";
@@ -193,25 +192,27 @@ function timeUntil(iso: string): string | null {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function DayDivider({ label, count }: { label: string; count?: number }) {
-  return (
-    <div className="flex items-baseline justify-between gap-3 border-b border-border pb-3">
-      <h2 className="text-[20px] font-semibold tracking-[-0.02em] text-slate-900 first-letter:uppercase">{label}</h2>
-      {count !== undefined && <span className="text-[13px] tabular-nums text-slate-500">{count} RDV</span>}
-    </div>
-  );
+// Teinte pastel propre à chaque entreprise (maquette S2a, inspirée d'Amie,
+// choisie par Jean le 14/10/2026) : on n'a pas la couleur de la marque, on en
+// dérive une, stable, du nom — la même entreprise garde la même teinte d'un
+// jour à l'autre.
+const TINT_HUES = [265, 220, 190, 160, 85, 45, 20, 330, 300];
+function tintFor(key: string): { bg: string; ring: string } {
+  let h = 0;
+  for (const c of key.toLowerCase()) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  const hue = TINT_HUES[h % TINT_HUES.length];
+  return { bg: `oklch(0.975 0.022 ${hue})`, ring: `oklch(0.93 0.035 ${hue})` };
 }
 
-function NextBadge({ label }: { label: string }) {
-  return (
-    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[color:var(--lavender)] px-2 py-0.5 text-[11.5px] font-semibold text-[color:var(--violet)]">
-      <span className="relative flex h-1.5 w-1.5">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[color:var(--violet)] opacity-75" />
-        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[color:var(--violet)]" />
-      </span>
-      {label}
-    </span>
-  );
+function initialsOf(label: string): string {
+  if (label.includes("@")) return label.charAt(0).toUpperCase();
+  return label
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((p) => p.charAt(0))
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 }
 
 function CalendarEventCard({
@@ -221,7 +222,6 @@ function CalendarEventCard({
   existingBrief,
   nextLabel,
   index,
-  featured = false,
 }: {
   event: CalendarEvent;
   onPrepare: (event: CalendarEvent) => void;
@@ -229,213 +229,222 @@ function CalendarEventCard({
   existingBrief?: StoredBrief;
   nextLabel: string | null;
   index: number;
-  /** Le prochain rendez-vous, mis en avant en tête de liste (maquette R2a). */
-  featured?: boolean;
 }) {
   const start = eventStartDate(event);
   const duration = eventDuration(event);
-  const logoSize = featured ? "h-[52px] w-[52px] rounded-2xl" : "h-10 w-10 rounded-xl";
-
-  const logo = (
-    // Le logo de l'entreprise du participant externe, trouvé par le serveur
-    // à partir de son domaine et du nom de l'entreprise (app/api/company-logo,
-    // mis en cache).
-    <CompanyLogo
-      domain={companyDomainFromEmail(getCompanyAttendee(event)?.email)}
-      name={event.company}
-      alt={event.summary}
-      className={`${logoSize} shrink-0 border border-border bg-white object-contain p-1`}
-      fallback={
-        <div className={`${logoSize} grid shrink-0 place-items-center ${featured ? "bg-white" : "bg-[color:var(--lavender)]"}`}>
-          <span className={`${featured ? "text-[20px]" : "text-[15px]"} font-semibold text-[color:var(--violet)]`}>
-            {(event.company || getCompanyFromDomain(event) || event.summary).charAt(0).toUpperCase()}
-          </span>
-        </div>
-      }
-    />
-  );
-
-  const attendees =
-    event.attendees.length > 0 ? event.attendees.map((a) => a.name ?? a.email).join(", ") : "Aucun participant externe";
-
-  const actions = (
-    <div className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto">
-      {existingBrief ? (
-        <Link
-          href={`/brief/${existingBrief.calendar_event_id ?? existingBrief.id}?company=${encodeURIComponent(existingBrief.company_name ?? "")}&cached=true&contactEmail=${encodeURIComponent(existingBrief.contact_email ?? "")}&title=${encodeURIComponent(existingBrief.meeting_title ?? "")}`}
-          className={`inline-flex items-center gap-1.5 rounded-full font-medium transition-colors duration-200 ${
-            featured
-              ? "h-11 bg-[color:var(--primary)] px-5 text-[14px] font-semibold text-white hover:brightness-110"
-              : "h-10 border border-border bg-white px-4 text-[13.5px] text-slate-900 hover:bg-slate-50"
-          }`}
-        >
-          Revoir
-          <ArrowRight className="w-4 h-4" />
-        </Link>
-      ) : (
-        <button
-          onClick={() => onPrepare(event)}
-          // Bouton plein pour le prochain RDV seulement : un bouton bleu par
-          // ligne noyait la page dans le bleu (retour de Jean, 13/10/2026).
-          className={`inline-flex items-center gap-1.5 rounded-full font-semibold transition duration-200 ${
-            featured
-              ? "h-11 bg-[color:var(--primary)] px-5 text-[14px] text-white hover:brightness-110"
-              : "h-10 border border-border bg-white px-4 text-[13.5px] text-slate-900 hover:border-slate-300 hover:bg-slate-50"
-          }`}
-        >
-          Préparer le brief
-          <ArrowRight className="w-4 h-4" />
-        </button>
-      )}
-      {event.manual && onDelete && (
-        <button
-          onClick={() => onDelete(event.id)}
-          aria-label="Supprimer ce rendez-vous"
-          className="flex h-10 w-10 items-center justify-center rounded-full text-slate-400 hover:bg-[color:var(--danger-soft)] hover:text-rose-700 transition-colors duration-200"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      )}
-    </div>
-  );
-
-  const pills = (
-    <>
-      {event.manual && (
-        <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11.5px] font-semibold text-slate-600">
-          Ajouté manuellement
-        </span>
-      )}
-      {existingBrief && (
-        <span className="shrink-0 rounded-full bg-[color:var(--success-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-emerald-700">
-          Brief généré
-        </span>
-      )}
-    </>
-  );
-
-  if (featured) {
-    return (
-      <motion.section
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        className="rounded-[24px] bg-[color:var(--lavender)] px-5 py-5 sm:px-8 sm:py-6"
-      >
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px] text-slate-600">
-          {nextLabel && <NextBadge label={nextLabel} />}
-          <span className="tabular-nums">
-            {dayLabel(start)} · {formatTime(start)}
-          </span>
-          {duration > 0 && <span className="tabular-nums">{duration} min</span>}
-          {pills}
-        </div>
-        <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-4">
-          {logo}
-          <div className="min-w-0 flex-1">
-            <h3 className="text-[22px] font-semibold leading-tight tracking-[-0.03em] text-slate-900 sm:text-[24px]">{event.summary}</h3>
-            <p className="mt-1 truncate text-[14px] text-slate-600">{attendees}</p>
-          </div>
-          {actions}
-        </div>
-      </motion.section>
-    );
-  }
+  const companyLabel = event.company || getCompanyFromDomain(event) || event.summary;
+  const tint = tintFor(companyLabel);
+  const contact = getContactAttendee(event);
+  const contactLabel =
+    event.attendees.length > 0
+      ? event.attendees.map((a) => a.name ?? a.email).join(", ")
+      : event.contactName ?? "Aucun participant externe";
 
   return (
     <motion.li
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: Math.min(index * 0.04, 0.3), duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-      // Sous `sm`, les actions passent sur une seconde ligne (`w-full`) : sur
-      // 375 px, l'heure, le titre, les pastilles et « Préparer le brief » ne
-      // tiennent pas côte à côte sans écraser le titre.
-      className="flex flex-wrap items-center gap-x-4 gap-y-3 py-5 sm:flex-nowrap sm:gap-5"
+      className="relative rounded-[18px] transition-shadow hover:shadow-[0_14px_32px_-16px_rgba(15,23,42,0.3)]"
+      style={{ background: tint.bg, boxShadow: `inset 0 0 0 1px ${tint.ring}` }}
     >
-      <div className="w-14 shrink-0 sm:w-16">
-        <p className="text-[18px] font-semibold tabular-nums tracking-tight text-slate-900 sm:text-[20px]">{formatTime(start)}</p>
-        <p className="text-[12px] tabular-nums text-slate-500">{duration > 0 ? `${duration} min` : "—"}</p>
-      </div>
-      {logo}
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <h3 className="min-w-0 truncate text-[15.5px] font-semibold leading-snug text-slate-900 sm:text-[16px]">{event.summary}</h3>
-          {nextLabel && <NextBadge label={nextLabel} />}
-          {pills}
+      {/* Sous `sm`, les actions passent sur une seconde ligne : sur 375 px,
+          l'heure, le titre et le bouton ne tiennent pas côte à côte. */}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-3 px-5 py-4 sm:flex-nowrap sm:pl-6">
+        <div className="w-14 shrink-0 sm:w-[84px]">
+          <div className="text-[15px] font-semibold tabular-nums text-slate-900">{formatTime(start)}</div>
+          <div className="text-[12px] tabular-nums text-slate-400">{duration > 0 ? `${duration} min` : "—"}</div>
         </div>
-        <p className="mt-0.5 truncate text-[13.5px] text-slate-500">{attendees}</p>
+        <div className="min-w-0 flex-1 basis-[180px]">
+          <div className="flex min-w-0 items-center gap-2">
+            {/* Le logo de l'entreprise du participant externe, trouvé par le
+                serveur à partir de son domaine et du nom de l'entreprise
+                (app/api/company-logo, mis en cache). */}
+            <CompanyLogo
+              domain={companyDomainFromEmail(getCompanyAttendee(event)?.email)}
+              name={event.company}
+              alt={event.summary}
+              className="h-[22px] w-[22px] shrink-0 rounded-md border border-white bg-white object-contain p-0.5"
+              fallback={
+                <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md bg-white text-[11px] font-semibold text-[color:var(--violet)]">
+                  {companyLabel.charAt(0).toUpperCase()}
+                </span>
+              }
+            />
+            <h3 className="min-w-0 truncate text-[15.5px] font-semibold leading-snug text-slate-900">{event.summary}</h3>
+            {nextLabel && (
+              <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[11.5px] font-semibold text-[color:var(--violet)]">{nextLabel}</span>
+            )}
+          </div>
+          <div className="mt-1.5 flex min-w-0 items-center gap-2 text-[13px] text-slate-500">
+            {(contact || event.contactName) && (
+              <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full bg-white text-[9.5px] font-semibold text-slate-600">
+                {initialsOf(contact?.name ?? event.contactName ?? contact?.email ?? "?")}
+              </span>
+            )}
+            <span className="truncate">{contactLabel}</span>
+            {event.manual && (
+              <span className="shrink-0 rounded-full bg-white/70 px-2 py-0.5 text-[11.5px] font-semibold text-slate-500 max-sm:hidden">Ajouté manuellement</span>
+            )}
+          </div>
+        </div>
+        <div className="flex w-full shrink-0 items-center justify-end gap-3 whitespace-nowrap sm:w-auto">
+          {existingBrief ? (
+            <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-emerald-700">
+              <Check className="h-4 w-4" /> Brief prêt
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-slate-400 max-[400px]:hidden">
+              <CircleDashed className="h-4 w-4" /> À préparer
+            </span>
+          )}
+          {existingBrief ? (
+            <Link
+              href={`/brief/${existingBrief.calendar_event_id ?? existingBrief.id}?company=${encodeURIComponent(existingBrief.company_name ?? "")}&cached=true&contactEmail=${encodeURIComponent(existingBrief.contact_email ?? "")}&title=${encodeURIComponent(existingBrief.meeting_title ?? "")}`}
+              className="inline-flex h-10 items-center gap-1.5 rounded-full border border-border bg-white/70 px-4 text-[13.5px] font-semibold text-slate-900 transition-colors hover:bg-white"
+            >
+              Revoir <ArrowRight className="h-4 w-4" />
+            </Link>
+          ) : (
+            <button
+              onClick={() => onPrepare(event)}
+              // Pas de bouton bleu plein par ligne : il noyait la page dans le
+              // bleu (retour de Jean, 13/10/2026).
+              className="inline-flex h-10 items-center gap-1.5 rounded-full bg-white px-4 text-[13.5px] font-semibold text-[color:var(--violet)] shadow-[0_1px_2px_rgba(42,92,224,0.12)] ring-1 ring-[color:var(--lavender-strong)] transition-colors hover:bg-[color:var(--lavender)]"
+            >
+              Préparer le brief <ArrowRight className="h-4 w-4" />
+            </button>
+          )}
+          {event.manual && onDelete && (
+            <button
+              onClick={() => onDelete(event.id)}
+              aria-label="Supprimer ce rendez-vous"
+              className="flex h-10 w-10 items-center justify-center rounded-full text-slate-400 transition-colors duration-200 hover:bg-[color:var(--danger-soft)] hover:text-rose-700"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </div>
-      {actions}
     </motion.li>
   );
 }
 
-// Le bandeau des jours (maquette R2a, version claire choisie par Jean le
-// 13/10/2026) : aujourd'hui au milieu, sept jours de part et d'autre, un
-// trait par rendez-vous, vert quand son brief est prêt. Un clic descend au
-// jour. Les jours passés restent visibles mais éteints : l'agenda ne remonte
-// que les rendez-vous à venir.
-const STRIP_RADIUS = 7;
-
-function WeekStrip({ events, briefs }: { events: CalendarEvent[]; briefs: StoredBrief[] }) {
+// Mini-calendrier du mois (maquette S2a) : aujourd'hui en bleu, un point sous
+// chaque jour qui a des rendez-vous — vert quand tous ont leur brief. Un clic
+// descend au jour. Les mois se feuillettent, mais l'agenda ne remonte que les
+// sept prochains jours : les autres mois restent sans point.
+function MonthCalendar({ events, briefs }: { events: CalendarEvent[]; briefs: StoredBrief[] }) {
+  const [offset, setOffset] = useState(0);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const days = Array.from({ length: STRIP_RADIUS * 2 + 1 }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i - STRIP_RADIUS);
-    return d;
-  });
-  const todayKey = today.toDateString();
-  // Sur un écran étroit le bandeau défile : on le centre sur aujourd'hui.
-  const scrollerRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = scrollerRef.current;
-    const cell = el?.querySelector<HTMLElement>("[data-today]");
-    if (el && cell) el.scrollLeft = cell.offsetLeft - el.clientWidth / 2 + cell.clientWidth / 2;
-  }, []);
+  const first = new Date(today.getFullYear(), today.getMonth() + offset, 1);
+  const daysInMonth = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+  const lead = (first.getDay() + 6) % 7;
+  const title = first.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
   return (
-    <div ref={scrollerRef} className="-mx-1 overflow-x-auto px-1 no-scrollbar">
-      <div className="grid min-w-[660px] grid-cols-[repeat(15,minmax(0,1fr))] gap-1 rounded-[20px] border border-border bg-white p-1.5">
-        {days.map((d) => {
+    <div className="rounded-[24px] bg-white/80 p-4 shadow-[0_1px_2px_rgba(42,92,224,0.06),0_8px_24px_-12px_rgba(42,92,224,0.18)] ring-1 ring-[color:var(--lavender-strong)] backdrop-blur">
+      <div className="flex items-center justify-between px-1">
+        <span className="text-[14px] font-semibold text-slate-900 first-letter:uppercase">{title}</span>
+        <span className="flex gap-0.5 text-slate-400">
+          <button type="button" aria-label="Mois précédent" onClick={() => setOffset((o) => o - 1)} className="grid h-7 w-7 place-items-center rounded-full hover:bg-slate-100 hover:text-slate-700">
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button type="button" aria-label="Mois suivant" onClick={() => setOffset((o) => o + 1)} className="grid h-7 w-7 place-items-center rounded-full hover:bg-slate-100 hover:text-slate-700">
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </span>
+      </div>
+      <div className="mt-3 grid grid-cols-7 text-center text-[11px] font-medium text-slate-400">
+        {["L", "M", "M", "J", "V", "S", "D"].map((d, i) => (
+          <span key={i}>{d}</span>
+        ))}
+      </div>
+      <div className="mt-1 grid grid-cols-7 gap-y-0.5 text-center text-[13px]">
+        {Array.from({ length: lead }).map((_, i) => (
+          <span key={`v${i}`} />
+        ))}
+        {Array.from({ length: daysInMonth }, (_, i) => {
+          const d = new Date(first.getFullYear(), first.getMonth(), i + 1);
           const key = d.toDateString();
-          const isToday = key === todayKey;
+          const isTodayCell = d.getTime() === today.getTime();
           const past = d < today;
           const dayEvents = events.filter((e) => new Date(eventStartDate(e)).toDateString() === key);
-          const weekday = isToday ? "Auj." : d.toLocaleDateString("fr-FR", { weekday: "short" });
+          const allReady = dayEvents.length > 0 && dayEvents.every((e) => briefs.some((b) => b.calendar_event_id === e.id));
           return (
             <button
               key={key}
               type="button"
-              data-today={isToday ? "" : undefined}
               disabled={dayEvents.length === 0}
               onClick={() => document.getElementById(dayAnchor(key))?.scrollIntoView({ behavior: "smooth", block: "start" })}
-              className={`rounded-xl px-1 py-2 text-center transition-colors disabled:cursor-default ${
-                isToday ? "bg-slate-900 text-white" : past ? "text-slate-300" : "text-slate-900 enabled:hover:bg-slate-50"
-              }`}
+              className="relative grid h-9 place-items-center disabled:cursor-default"
             >
-              <div
-                className={`text-[11px] font-medium capitalize ${isToday ? "text-white/70" : past ? "text-slate-300" : "text-slate-400"}`}
+              <span
+                className={`grid h-8 w-8 place-items-center rounded-full tabular-nums transition-colors ${
+                  isTodayCell
+                    ? "bg-[color:var(--primary)] font-semibold text-white shadow-[0_6px_14px_-4px_rgba(42,92,224,0.6)]"
+                    : past
+                      ? "text-slate-300"
+                      : dayEvents.length > 0
+                        ? "font-semibold text-slate-900 hover:bg-[color:var(--lavender)]"
+                        : "text-slate-600"
+                }`}
               >
-                {weekday}
-              </div>
-              <div className="text-[16px] font-semibold leading-tight tabular-nums">{d.getDate()}</div>
-              <div className="mt-1.5 flex h-1 flex-wrap justify-center gap-0.5">
-                {dayEvents.slice(0, 4).map((e) => (
-                  <span
-                    key={e.id}
-                    className={`h-1 w-2.5 rounded-full ${
-                      briefs.some((b) => b.calendar_event_id === e.id)
-                        ? "bg-emerald-400"
-                        : isToday
-                          ? "bg-white/50"
-                          : "bg-slate-300"
-                    }`}
-                  />
-                ))}
-              </div>
+                {d.getDate()}
+              </span>
+              {dayEvents.length > 0 && (
+                <span className={`absolute bottom-0.5 h-1 w-1 rounded-full ${allReady ? "bg-emerald-500" : "bg-[color:var(--violet)]"}`} />
+              )}
             </button>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function PrepRing({ ready, total }: { ready: number; total: number }) {
+  const pct = total > 0 ? ready / total : 0;
+  const C = 2 * Math.PI * 34;
+  return (
+    <div className="flex items-center gap-4 rounded-[24px] bg-white/80 p-4 shadow-[0_1px_2px_rgba(42,92,224,0.06),0_8px_24px_-12px_rgba(42,92,224,0.18)] ring-1 ring-[color:var(--lavender-strong)] backdrop-blur">
+      <span className="relative grid h-[76px] w-[76px] shrink-0 place-items-center">
+        <svg viewBox="0 0 80 80" className="absolute inset-0 -rotate-90" aria-hidden>
+          <circle cx="40" cy="40" r="34" fill="none" strokeWidth="7" className="stroke-slate-100" />
+          {total > 0 && (
+            <circle cx="40" cy="40" r="34" fill="none" strokeWidth="7" strokeLinecap="round" className="stroke-[color:var(--primary)]" strokeDasharray={`${pct * C} ${C}`} />
+          )}
+        </svg>
+        <span className="text-[18px] font-semibold tabular-nums text-slate-900">{total > 0 ? `${Math.round(pct * 100)}%` : "—"}</span>
+      </span>
+      <div className="min-w-0">
+        <div className="text-[14px] font-semibold text-slate-900">Préparation</div>
+        <div className="mt-0.5 text-[13px] leading-snug text-slate-500">
+          {total === 0
+            ? "Aucun rendez-vous à venir"
+            : `${ready} brief${ready > 1 ? "s" : ""} prêt${ready > 1 ? "s" : ""} sur ${total} rendez-vous à venir`}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DayHeader({ date, today, count }: { date: Date; today: boolean; count: number }) {
+  return (
+    // Collé sous la TopBar (h-14), z-index en dessous d'elle.
+    <div className="sticky top-14 z-[5] -mx-2 flex items-center gap-3 px-2 py-2 backdrop-blur-md">
+      <span
+        className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-[18px] font-semibold tabular-nums ${
+          today
+            ? "bg-[color:var(--lavender)] text-[color:var(--violet)] ring-1 ring-[color:var(--violet)]/30"
+            : "bg-white text-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.06)]"
+        }`}
+      >
+        {date.getDate()}
+      </span>
+      <div>
+        <h2 className="text-[16px] font-semibold text-slate-900 first-letter:uppercase">{dayLabel(date.toISOString())}</h2>
+        <div className="text-[12.5px] text-slate-500">{count === 0 ? "Aucun rendez-vous" : `${count} RDV`}</div>
       </div>
     </div>
   );
@@ -695,32 +704,36 @@ function AddMeetingModal({
   );
 }
 
-// Même silhouette que la vue chargée : bandeau des jours, prochain RDV mis en
-// avant, puis lignes d'un jour.
+// Même silhouette que la vue chargée : en-têtes de jour et cartes.
 function EventsSkeleton() {
   return (
-    <div className="animate-pulse" aria-hidden>
-      <div className="-mt-0 mb-6 h-[62px] rounded-[20px] border border-border bg-white" />
-      <div className="h-[150px] rounded-[24px] bg-slate-100" />
-      <div className="mt-10 border-b border-border pb-3">
-        <div className="h-5 w-44 rounded bg-slate-100" />
-      </div>
-      <ul className="divide-y divide-border">
-        {[1, 2, 3].map((i) => (
-          <li key={i} className="flex items-center gap-4 py-5 sm:gap-5">
-            <div className="w-14 shrink-0 space-y-1.5 sm:w-16">
-              <div className="h-5 w-12 rounded bg-slate-100" />
-              <div className="h-3 w-9 rounded bg-slate-100" />
+    <div className="animate-pulse space-y-9" aria-hidden>
+      {[3, 2].map((n, g) => (
+        <div key={g}>
+          <div className="flex items-center gap-3 py-2">
+            <div className="h-11 w-11 rounded-2xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.06)]" />
+            <div className="space-y-1.5">
+              <div className="h-4 w-36 rounded bg-slate-100" />
+              <div className="h-3 w-14 rounded bg-slate-100" />
             </div>
-            <div className="h-10 w-10 shrink-0 rounded-xl bg-slate-100" />
-            <div className="min-w-0 flex-1 space-y-2">
-              <div className="h-4 w-1/3 rounded bg-slate-100" />
-              <div className="h-3 w-1/2 rounded bg-slate-100" />
-            </div>
-            <div className="hidden h-10 w-36 shrink-0 rounded-full bg-slate-100 sm:block" />
-          </li>
-        ))}
-      </ul>
+          </div>
+          <div className="ml-[22px] mt-2 space-y-3 border-l border-dashed border-slate-200 pl-4 sm:pl-[34px]">
+            {Array.from({ length: n }).map((_, i) => (
+              <div key={i} className="flex items-center gap-5 rounded-[18px] bg-white/70 px-5 py-4 ring-1 ring-slate-100">
+                <div className="w-14 space-y-1.5 sm:w-[84px]">
+                  <div className="h-4 w-12 rounded bg-slate-100" />
+                  <div className="h-3 w-9 rounded bg-slate-100" />
+                </div>
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="h-4 w-1/3 rounded bg-slate-100" />
+                  <div className="h-3 w-1/2 rounded bg-slate-100" />
+                </div>
+                <div className="hidden h-10 w-36 rounded-full bg-slate-100 sm:block" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -911,7 +924,6 @@ export default function BriefToolClient() {
   const preparedCount = calendarEvents
     ? calendarEvents.filter((e) => recentBriefs.some((b) => b.calendar_event_id === e.id)).length
     : 0;
-  const prepRate = showCalendar && upcomingCount > 0 ? Math.round((preparedCount / upcomingCount) * 100) : null;
 
   // The single nearest upcoming meeting gets a live "Dans X min" badge —
   // only within the next 24h (see timeUntil), so it reads as a genuine
@@ -978,9 +990,10 @@ export default function BriefToolClient() {
       {/* Loading skeleton */}
       {initialLoading && <EventsSkeleton />}
 
-      {/* Calendar events */}
+      {/* Calendar events — journées en blocs d'agenda (maquette S2a). Aujourd'hui
+          toujours en tête, même sans rendez-vous. */}
       {showCalendar && (
-        <div className="space-y-10">
+        <div className="space-y-9">
           {calendarGroups.length === 0 ? (
             <EmptyState
               title="Aucun rendez-vous à venir pour l'instant."
@@ -988,39 +1001,39 @@ export default function BriefToolClient() {
             />
           ) : (
             <>
-              {nextEvent && (
-                <CalendarEventCard
-                  featured
-                  event={nextEvent}
-                  index={0}
-                  onPrepare={handlePrepare}
-                  onDelete={handleDeleteManualMeeting}
-                  existingBrief={recentBriefs.find((b) => b.calendar_event_id === nextEvent.id)}
-                  nextLabel={nextEventLabel}
-                />
+              {!calendarGroups.some(([key]) => key === new Date().toDateString()) && (
+                <section>
+                  <DayHeader date={new Date()} today count={0} />
+                  {nextEvent && (
+                    <div className="ml-[58px] mt-2 rounded-2xl border border-dashed border-[color:var(--lavender-strong)] px-5 py-4 text-[13.5px] text-slate-500">
+                      Journée libre — le prochain rendez-vous est {dayLabel(eventStartDate(nextEvent)).toLowerCase()} à{" "}
+                      {formatTime(eventStartDate(nextEvent))}.
+                    </div>
+                  )}
+                </section>
               )}
-              {calendarGroups.map(([dayKey, dayEvents]) => {
-                const events = dayEvents.filter((e) => e.id !== nextEvent?.id);
-                if (events.length === 0) return null;
-                return (
-                  <section key={dayKey} id={dayAnchor(dayKey)} className="scroll-mt-24">
-                    <DayDivider label={dayLabel(eventStartDate(events[0]))} count={events.length} />
-                    <ul className="divide-y divide-border">
-                      {events.map((e, i) => (
-                        <CalendarEventCard
-                          key={e.id}
-                          event={e}
-                          index={i}
-                          onPrepare={handlePrepare}
-                          onDelete={handleDeleteManualMeeting}
-                          existingBrief={recentBriefs.find((b) => b.calendar_event_id === e.id)}
-                          nextLabel={null}
-                        />
-                      ))}
-                    </ul>
-                  </section>
-                );
-              })}
+              {calendarGroups.map(([dayKey, dayEvents]) => (
+                <section key={dayKey} id={dayAnchor(dayKey)} className="scroll-mt-20">
+                  <DayHeader
+                    date={new Date(eventStartDate(dayEvents[0]))}
+                    today={dayKey === new Date().toDateString()}
+                    count={dayEvents.length}
+                  />
+                  <ul className="ml-[22px] mt-2 space-y-3 border-l border-dashed border-slate-200 pl-4 sm:pl-[34px]">
+                    {dayEvents.map((e, i) => (
+                      <CalendarEventCard
+                        key={e.id}
+                        event={e}
+                        index={i}
+                        onPrepare={handlePrepare}
+                        onDelete={handleDeleteManualMeeting}
+                        existingBrief={recentBriefs.find((b) => b.calendar_event_id === e.id)}
+                        nextLabel={e.id === nextEvent?.id ? nextEventLabel : null}
+                      />
+                    ))}
+                  </ul>
+                </section>
+              ))}
             </>
           )}
         </div>
@@ -1037,22 +1050,45 @@ export default function BriefToolClient() {
   );
 
   return (
-    <div className="max-w-6xl mx-auto w-full px-4 py-6 sm:px-6 sm:py-10">
-      {/* En-tête (maquette R2a) : les chiffres sont dans le sous-titre. */}
-      <FadeIn>
-        <div data-tour="brief-content" className="mb-7 flex flex-wrap items-end justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.035em] text-slate-900 sm:text-[30px]">Vos prochains rendez-vous</h1>
-            {initialLoading ? (
-              <div className="mt-2.5 h-3.5 w-56 animate-pulse rounded bg-slate-100" />
-            ) : (
-              <p className="mt-1 text-[14.5px] text-slate-500">
-                {upcomingCount} RDV à venir
-                {prepRate !== null && ` · ${prepRate} % déjà préparés`}
-                {showCalendar && ` · ${calendarLabel}`}
-              </p>
-            )}
-          </div>
+    // Haut de page légèrement lavande (maquette S2a).
+    <div style={{ background: "linear-gradient(180deg, oklch(0.97 0.02 270) 0px, var(--background) 420px)" }}>
+    <div className="mx-auto w-full max-w-[1240px] px-4 py-6 sm:px-6 sm:py-10">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[300px_minmax(0,1fr)]">
+        {/* Panneau gauche : titre, mois, préparation, ajout. */}
+        <aside className="min-w-0 space-y-4 lg:sticky lg:top-20 lg:self-start">
+          <FadeIn>
+            <div data-tour="brief-content">
+              <h1 className="text-[26px] font-semibold leading-tight tracking-[-0.04em] text-slate-900">
+                Vos prochains <span className="whitespace-nowrap">rendez-vous</span>
+              </h1>
+              {initialLoading ? (
+                <div className="mt-2.5 h-3.5 w-48 animate-pulse rounded bg-slate-100" />
+              ) : (
+                <p className="mt-1 text-[14px] text-slate-500">
+                  {upcomingCount} RDV à venir
+                  {showCalendar && ` · ${calendarLabel}`}
+                </p>
+              )}
+            </div>
+          </FadeIn>
+          {/* Le mois prend un écran entier sur téléphone : il reste réservé
+              au grand écran, la liste suffit en dessous. */}
+          {/* Pendant le chargement, des squelettes de même taille : le mois
+              dépend de la date du navigateur (le serveur est en UTC) et la
+              préparation dirait « aucun rendez-vous » avant d'avoir lu l'agenda. */}
+          {initialLoading ? (
+            <>
+              <div className="hidden h-[330px] animate-pulse rounded-[24px] bg-white/70 ring-1 ring-[color:var(--lavender-strong)] lg:block" />
+              <div className="h-[108px] animate-pulse rounded-[24px] bg-white/70 ring-1 ring-[color:var(--lavender-strong)]" />
+            </>
+          ) : (
+            <>
+              <div className="hidden lg:block">
+                <MonthCalendar events={showCalendar ? calendarEvents : []} briefs={recentBriefs} />
+              </div>
+              <PrepRing ready={showCalendar ? preparedCount : 0} total={showCalendar ? upcomingCount : 0} />
+            </>
+          )}
           <button
             data-tour="brief-add"
             onClick={() =>
@@ -1060,56 +1096,23 @@ export default function BriefToolClient() {
                 ? setShowAddMeetingModal(true)
                 : signIn(provider === "azure-ad" ? "azure-ad" : "google", { callbackUrl: "/brief" })
             }
-            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full bg-[color:var(--primary)] px-4 text-[13.5px] font-semibold text-white hover:brightness-110 transition duration-200"
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[color:var(--primary)] text-[14px] font-semibold text-white shadow-[0_10px_24px_-10px_rgba(42,92,224,0.7)] transition duration-200 hover:brightness-110"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="h-4 w-4" />
             Ajouter un RDV
           </button>
-        </div>
-      </FadeIn>
+        </aside>
 
-      {/* Sans agenda chargé, les chiffres restent en tuiles. « Avec
-          participants externes » retirée le 21/08/2026 : lib/calendar.ts ne
-          remonte QUE les événements ayant au moins un participant externe,
-          donc cette tuile comptait le même ensemble que « RDV à venir ». En
-          mode « briefs enregistrés » la tuile garde du sens et reste
-          affichée. */}
-      {!showCalendar && !initialLoading && (
-        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-          <StatTile compact index={0} accent="indigo" label="RDV à venir" value={upcomingCount} icon={<Calendar className="w-3.5 h-3.5" />} />
-          <StatTile
-            compact
-            index={1}
-            accent="violet"
-            label="Briefs enregistrés"
-            value={recentBriefs.length}
-            icon={<Users className="w-3.5 h-3.5" />}
-          />
-          <StatTile
-            compact
-            index={2}
-            accent="emerald"
-            label="Taux de préparation"
-            value={prepRate}
-            suffix={prepRate !== null ? "%" : undefined}
-            icon={<Sparkles className="w-3.5 h-3.5" />}
-          />
-        </div>
-      )}
+        <div className="min-w-0">
+          {feedContent}
 
-      {showCalendar && calendarGroups.length > 0 && (
-        <div className="mb-6">
-          <WeekStrip events={calendarEvents} briefs={recentBriefs} />
+          {recentBriefs.length > 0 && !initialLoading && (
+            <div className="mt-12">
+              <RecentBriefsCard briefs={recentBriefs} />
+            </div>
+          )}
         </div>
-      )}
-
-      {feedContent}
-
-      {recentBriefs.length > 0 && !initialLoading && (
-        <div className="mt-12">
-          <RecentBriefsCard briefs={recentBriefs} />
-        </div>
-      )}
+      </div>
 
       <AnimatePresence>
         {modalEvent && (
@@ -1124,6 +1127,7 @@ export default function BriefToolClient() {
           <AddMeetingModal onCreated={handleMeetingAdded} onClose={() => setShowAddMeetingModal(false)} />
         )}
       </AnimatePresence>
+    </div>
     </div>
   );
 }
