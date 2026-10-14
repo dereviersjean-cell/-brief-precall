@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { safeInternalPath } from "@/lib/safe-path";
 import {
   blockingModuleForPath,
   isApiClosedInBriefsAccess,
@@ -14,6 +15,10 @@ import {
 
 export const config = {
   matcher: [
+    // Accueil et connexion : seulement pour renvoyer un utilisateur DÉJÀ
+    // connecté vers l'app (voir plus bas). Aucun garde, aucune requête en base.
+    "/",
+    "/login",
     "/dashboard/:path*",
     "/brief/:path*",
     "/feedback/:path*",
@@ -171,6 +176,24 @@ export async function middleware(request: NextRequest) {
 
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
   const supabaseUserId = token?.supabaseUserId as string | undefined;
+
+  // Déjà connecté : taper brief-ai.fr ou ouvrir /login mène directement dans
+  // l'app. Avant, on retombait sur le site puis sur « Se connecter », Google et
+  // le choix du compte — alors que la session (30 jours) était toujours là
+  // (retour de Jean, 14/10/2026). Le cookie de session suffit à trancher :
+  // aucune requête en base ici, la page d'arrivée applique ses propres gardes.
+  // `/?site` garde l'accès au site vitrine pour un utilisateur connecté ; une
+  // erreur de connexion (`/login?error=`) s'affiche toujours.
+  const entryPath = request.nextUrl.pathname;
+  const entryParams = request.nextUrl.searchParams;
+  if (entryPath === "/" || entryPath === "/login") {
+    const showSite = entryPath === "/" && entryParams.has("site");
+    if (supabaseUserId && !showSite && !entryParams.has("error")) {
+      const destination = entryPath === "/login" ? safeInternalPath(entryParams.get("callbackUrl") ?? undefined, "/brief") : "/brief";
+      return NextResponse.redirect(new URL(destination, request.url));
+    }
+    return NextResponse.next();
+  }
 
   // Routes d'API : seul le verrou de module. Hors module (le socle d'un
   // préfixe partagé, comme /api/feedback/[id]/key-points), rien à faire ; sans
