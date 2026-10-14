@@ -13,6 +13,7 @@ export type CompanyRole = "commercial" | "manager";
 
 export type PrefillResult = {
   found: boolean;
+  source?: "web" | "registre" | null;
   whatYouSell: string;
   icp: string;
   sector: string;

@@ -180,7 +180,7 @@ export default function OnboardingPage() {
   const [role, setRole] = useState<CompanyRole>("commercial");
   // Ce que Brief a proposé, pour signaler les champs pré-remplis tant qu'ils
   // n'ont pas été modifiés.
-  const [prefill, setPrefill] = useState<(PrefillResult & { source: string }) | null>(null);
+  const [prefill, setPrefill] = useState<PrefillState | null>(null);
 
   const [whatYouSell, setWhatYouSell] = useState("");
   const [icp, setIcp] = useState("");
@@ -261,6 +261,25 @@ export default function OnboardingPage() {
     if (!isLast) {
       setStep((s) => s + 1);
     }
+  }
+
+  // Rien trouvé : l'utilisateur ajoute son site et relance, sans revenir en
+  // arrière. Les réponses déjà saisies ne sont pas écrasées.
+  async function retryPrefill(website: string): Promise<void> {
+    const res = await fetch("/api/onboarding/prefill", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ companyName, website }),
+    }).catch(() => null);
+    const result = res?.ok ? ((await res.json()) as PrefillResult) : null;
+    if (!result) return;
+    if (result.found) {
+      if (!whatYouSell.trim()) setWhatYouSell(result.whatYouSell);
+      if (!icp.trim()) setIcp(result.icp);
+      if (!sector.trim()) setSector(result.sector);
+      if (!valueProposition.trim()) setValueProposition(result.valueProposition);
+    }
+    setPrefill({ ...result, source: website || companyName, origin: result.source ?? null });
   }
 
   // Accès « briefs » : pas de /bienvenue, qui présente l'accès complet.
@@ -380,7 +399,7 @@ export default function OnboardingPage() {
                 setSector(r.prefill.sector);
                 setValueProposition(r.prefill.valueProposition);
               }
-              setPrefill(r.prefill ? { ...r.prefill, source: r.website || r.companyName } : null);
+              setPrefill(r.prefill ? { ...r.prefill, source: r.website || r.companyName, origin: r.prefill.source ?? null } : null);
               setCompanyDone(true);
             }}
           />
@@ -395,7 +414,12 @@ export default function OnboardingPage() {
             </p>
             <h1 className="mt-2 text-[28px] font-semibold leading-[1.1] tracking-[-0.035em] text-slate-900 sm:text-[34px]">{title}</h1>
             <p className="mt-2 text-[15.5px] leading-relaxed text-slate-500">{subtitle}</p>
-            <PrefillNotice step={step} prefill={prefill} values={{ whatYouSell, icp, sector, valueProposition }} />
+            <PrefillNotice
+              step={step}
+              prefill={prefill}
+              values={{ whatYouSell, icp, sector, valueProposition }}
+              onRetry={retryPrefill}
+            />
 
             <div
               className="mt-7"
@@ -708,25 +732,59 @@ function Examples({ items, onPick }: { items: string[]; onPick: (v: string) => v
   );
 }
 
+// Ce que Brief a proposé, et d'où : `source` est ce qu'on affiche (le site ou
+// le nom saisi), `origin` dit si la proposition vient du web ou seulement des
+// registres officiels.
+type PrefillState = Omit<PrefillResult, "source"> & { source: string; origin: "web" | "registre" | null };
+
 // Bandeau des étapes pré-remplies : Brief dit d'où vient la proposition et
 // invite à la corriger. Il disparaît dès que la réponse a été modifiée — elle
-// n'est plus la sienne. Si rien n'a été trouvé, l'étape 1 le dit simplement.
+// n'est plus la sienne. Rien de trouvé : l'étape 1 le dit, et propose
+// d'ajouter le site pour relancer.
 function PrefillNotice({
   step,
   prefill,
   values,
+  onRetry,
 }: {
   step: number;
-  prefill: (PrefillResult & { source: string }) | null;
+  prefill: PrefillState | null;
   values: { whatYouSell: string; icp: string; sector: string; valueProposition: string };
+  onRetry: (website: string) => Promise<void>;
 }) {
+  const [website, setWebsite] = useState("");
+  const [retrying, setRetrying] = useState(false);
   if (!prefill || step > 3) return null;
   if (!prefill.found) {
     if (step !== 1) return null;
     return (
-      <p className="mt-5 rounded-2xl bg-slate-50 px-4 py-3 text-[13.5px] leading-relaxed text-slate-600 ring-1 ring-slate-100">
-        Nous n&apos;avons pas trouvé assez d&apos;informations publiques sur {prefill.source} : quelques mots suffisent.
-      </p>
+      <div className="mt-5 rounded-2xl bg-slate-50 px-4 py-3.5 ring-1 ring-slate-100">
+        <p className="text-[13.5px] leading-relaxed text-slate-600">
+          Nous n&apos;avons pas trouvé assez d&apos;informations publiques sur {prefill.source}. Indiquez votre site pour
+          que Brief réessaie, ou décrivez votre offre en quelques mots.
+        </p>
+        <div className="mt-3 flex gap-2">
+          <input
+            value={website}
+            onChange={(e) => setWebsite(e.target.value)}
+            placeholder="votre-site.fr"
+            inputMode="url"
+            className="h-10 min-w-0 flex-1 rounded-full border border-slate-200 bg-white px-4 text-[14px] outline-none focus:border-[color:var(--violet)]"
+          />
+          <button
+            type="button"
+            disabled={!website.trim() || retrying}
+            onClick={async () => {
+              setRetrying(true);
+              await onRetry(website.trim());
+              setRetrying(false);
+            }}
+            className="h-10 shrink-0 rounded-full bg-white px-4 text-[13.5px] font-semibold text-[color:var(--violet)] ring-1 ring-[color:var(--lavender-strong)] transition hover:bg-[color:var(--lavender)] disabled:opacity-50"
+          >
+            {retrying ? "Recherche…" : "Réessayer"}
+          </button>
+        </div>
+      </div>
     );
   }
   const unchanged =
@@ -737,10 +795,17 @@ function PrefillNotice({
   return (
     <p className="mt-5 flex items-start gap-2.5 rounded-2xl bg-[color:var(--lavender)] px-4 py-3 text-[13.5px] leading-relaxed text-slate-700 ring-1 ring-[color:var(--lavender-strong)]">
       <span aria-hidden className="mt-px">✨</span>
-      <span>
-        <span className="font-semibold text-slate-900">Proposé par Brief</span> d&apos;après {prefill.source}. Vérifiez, ajustez
-        si besoin, puis continuez.
-      </span>
+      {prefill.origin === "registre" ? (
+        <span>
+          <span className="font-semibold text-slate-900">Proposé par Brief</span> d&apos;après l&apos;activité déclarée au
+          registre des entreprises. Précisez-la avec vos mots : vos briefs n&apos;en seront que meilleurs.
+        </span>
+      ) : (
+        <span>
+          <span className="font-semibold text-slate-900">Proposé par Brief</span> d&apos;après {prefill.source}. Vérifiez,
+          ajustez si besoin, puis continuez.
+        </span>
+      )}
     </p>
   );
 }

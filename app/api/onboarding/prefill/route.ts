@@ -38,6 +38,6 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     reportError("onboarding.prefill", err, { companyName });
     // L'onboarding continue à la main : on ne bloque jamais l'inscription.
-    return NextResponse.json({ found: false, whatYouSell: "", icp: "", sector: "", valueProposition: "" });
+    return NextResponse.json({ found: false, source: null, whatYouSell: "", icp: "", sector: "", valueProposition: "" });
   }
 }

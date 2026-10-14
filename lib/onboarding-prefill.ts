@@ -21,6 +21,9 @@ export const PREFILL_SECTORS = ["SaaS B2B", "Industrie", "BTP", "Finance", "RH",
 
 export type OnboardingPrefill = {
   found: boolean;
+  // D'où vient la proposition : le site ou la presse, ou seulement les
+  // registres officiels (activité déclarée) — l'écran le dit autrement.
+  source: "web" | "registre" | null;
   whatYouSell: string;
   icp: string;
   sector: string;
@@ -31,14 +34,16 @@ const SYSTEM = `Tu aides un commercial B2B qui vient de créer son compte sur Br
 À partir du nom de SON entreprise (et de son site s'il est fourni), cherche sur le web ce qu'elle vend et à qui, puis propose son profil commercial.
 
 Réponds UNIQUEMENT par un objet JSON, sans texte autour :
-{"found": true|false, "what_you_sell": "...", "icp": "...", "sector": "...", "value_proposition": "..."}
+{"found": true|false, "source": "web"|"registre", "what_you_sell": "...", "icp": "...", "sector": "...", "value_proposition": "..."}
 
 Règles :
 - what_you_sell : une ou deux phrases, en français, comme l'entreprise se présenterait à un prospect (le produit ou service, pour qui).
 - icp : le client idéal en une phrase — fonction du décideur, type et taille d'entreprise, secteur. Ex. « Directeurs commerciaux de PME industrielles de 20 à 200 salariés ».
 - sector : le secteur DES CLIENTS visés, parmi exactement : SaaS B2B, Industrie, BTP, Finance, RH, Marketing, Autre.
 - value_proposition : la promesse en une phrase courte, concrète, sans superlatifs.
-- Appuie-toi uniquement sur ce que tu trouves. Si tu ne trouves pas l'entreprise avec certitude (homonymes, rien de probant), réponds found=false et laisse les autres champs vides : une proposition inventée serait pire que rien.`;
+- Appuie-toi uniquement sur ce que tu trouves. Commence par le site de l'entreprise, sa page LinkedIn ou la presse : source="web".
+- Si l'entreprise n'apparaît QUE dans les registres officiels (annuaire-entreprises.data.gouv.fr, Pappers, societe.com…) — souvent une société récente —, pars de son activité déclarée (code NAF, libellé d'activité, objet social) pour une proposition prudente et générale : source="registre". N'invente ni produit précis, ni chiffre, ni client.
+- Si tu ne trouves pas l'entreprise avec certitude (homonymes, rien de probant), réponds found=false et laisse les autres champs vides : une proposition inventée serait pire que rien.`;
 
 function textOf(message: Anthropic.Message): string {
   return message.content
@@ -56,7 +61,7 @@ async function ask(model: string, prompt: string): Promise<Anthropic.Message> {
       max_tokens: 8000,
       system: SYSTEM,
       ...(model === MODEL ? { output_config: { effort: "low" } } : {}),
-      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 2 }],
+      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 }],
       messages,
     } as Anthropic.MessageCreateParamsNonStreaming);
     console.log(
@@ -72,6 +77,8 @@ function clean(value: unknown, max: number): string {
   return typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, max) : "";
 }
 
+const EMPTY: OnboardingPrefill = { found: false, source: null, whatYouSell: "", icp: "", sector: "", valueProposition: "" };
+
 export async function generateOnboardingPrefill(params: { companyName: string; website: string | null }): Promise<OnboardingPrefill> {
   const prompt = `Entreprise : ${params.companyName}${params.website ? `\nSite web : ${params.website}` : ""}`;
   let message = await ask(MODEL, prompt);
@@ -85,12 +92,13 @@ export async function generateOnboardingPrefill(params: { companyName: string; w
     parsed = JSON.parse(extractJsonObject(textOf(message))) as Record<string, unknown>;
   } catch {
     reportWarning("onboarding-prefill.json", `Réponse illisible pour « ${params.companyName} »`, { raw: textOf(message).slice(0, 1000) });
-    return { found: false, whatYouSell: "", icp: "", sector: "", valueProposition: "" };
+    return EMPTY;
   }
 
   const sector = clean(parsed.sector, 40);
   const result: OnboardingPrefill = {
     found: parsed.found === true,
+    source: parsed.source === "registre" ? "registre" : "web",
     whatYouSell: clean(parsed.what_you_sell, 400),
     icp: clean(parsed.icp, 300),
     sector: (PREFILL_SECTORS as readonly string[]).includes(sector) ? sector : "",
@@ -98,5 +106,5 @@ export async function generateOnboardingPrefill(params: { companyName: string; w
   };
   // « Trouvé » sans rien d'utilisable ne vaut pas mieux qu'« introuvable ».
   if (!result.whatYouSell && !result.icp) result.found = false;
-  return result.found ? result : { found: false, whatYouSell: "", icp: "", sector: "", valueProposition: "" };
+  return result.found ? result : EMPTY;
 }
