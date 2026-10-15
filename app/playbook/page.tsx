@@ -1,22 +1,16 @@
 import { redirect } from "next/navigation";
-import {
-  getUserRole,
-  getUserOrganizationId,
-  ensureDefaultPlaybookForOrganization,
-  getPlaybookForOrganization,
-  getMeetingStageConfigForOrganization,
-} from "@/lib/db";
-import { getEffectiveUserId } from "@/lib/session-user";
+import { ensureDefaultPlaybookForOrganization, getPlaybookForOrganization, getMeetingStageConfigForOrganization } from "@/lib/db";
+import { getViewer } from "@/lib/session-user";
 import PlaybookClient from "./PlaybookClient";
 
 // Onglet Performance > Playbook (déplacé depuis /team/playbook le
 // 29/07/2026). Ouvert aux deux rôles : le commercial consulte en lecture
 // seule la grille sur laquelle il est noté, le manager l'édite.
 export default async function PlaybookPage() {
-  const userId = await getEffectiveUserId();
-  if (!userId) redirect("/login");
+  const viewer = await getViewer();
+  if (!viewer) redirect("/login");
 
-  const [role, orgId] = await Promise.all([getUserRole(userId), getUserOrganizationId(userId)]);
+  const { userId, role, organizationId: orgId } = viewer;
   if (!orgId) redirect("/dashboard");
 
   const isManager = role === "manager";

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { requireActiveUser } from "@/lib/api-auth";
+import { requireActiveUserContext } from "@/lib/api-auth";
 import { enforceAiGenerationLimit, requestIp, retryAfterMinutes } from "@/lib/rate-limit";
-import { getUserRole, getUserOrganizationId, createObjectionCategory, listObjectionCategories } from "@/lib/db";
+import { createObjectionCategory, listObjectionCategories } from "@/lib/db";
 import { extractTextFromUploadedFile, UnsupportedFileTypeError, SUPPORTED_DOCUMENT_FORMATS_LABEL } from "@/lib/document-text";
 import { extractJsonObject } from "@/lib/ai-json";
 import Anthropic from "@anthropic-ai/sdk";
@@ -85,7 +85,7 @@ async function extractObjectionCategories(text: string): Promise<ObjectionCatego
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
-  const auth = await requireActiveUser(session);
+  const auth = await requireActiveUserContext(session);
   if (!auth.ok) return auth.response;
 
   const rl = await enforceAiGenerationLimit(requestIp(request), auth.userId);
@@ -97,12 +97,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const role = await getUserRole(auth.userId);
+  const role = auth.role;
   if (role !== "manager") {
     return NextResponse.json({ error: "Réservé aux managers." }, { status: 403 });
   }
 
-  const orgId = await getUserOrganizationId(auth.userId);
+  const orgId = auth.organizationId;
   if (!orgId) {
     return NextResponse.json({ error: "Vous devez être rattaché à une organisation." }, { status: 400 });
   }

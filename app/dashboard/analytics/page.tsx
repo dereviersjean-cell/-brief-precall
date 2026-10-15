@@ -1,12 +1,6 @@
 import { redirect } from "next/navigation";
-import { getEffectiveUserId } from "@/lib/session-user";
-import {
-  getUserRole,
-  getUserOrganizationId,
-  getCommercialsForManager,
-  getUsersInOrganization,
-  getTeamAnalytics,
-} from "@/lib/db";
+import { getViewer } from "@/lib/session-user";
+import { getCommercialsForManager, getUsersInOrganization, getTeamAnalytics } from "@/lib/db";
 import { resolvePeriod } from "@/lib/period";
 import { PageHeader } from "@/app/components/ui/PageHeader";
 import { Card } from "@/app/components/ui/ui-bits";
@@ -28,10 +22,10 @@ export default async function AnalyticsPage({
 }: {
   searchParams: Promise<{ period?: string; from?: string; to?: string }>;
 }) {
-  const userId = await getEffectiveUserId();
-  if (!userId) redirect("/login");
+  const viewer = await getViewer();
+  if (!viewer) redirect("/login");
 
-  const [role, organizationId] = await Promise.all([getUserRole(userId), getUserOrganizationId(userId)]);
+  const { userId, role, organizationId } = viewer;
   const isManager = role === "manager";
   const period = resolvePeriod(await searchParams);
 

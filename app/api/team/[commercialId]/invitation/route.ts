@@ -1,14 +1,9 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { requireActiveUser } from "@/lib/api-auth";
+import { requireActiveUserContext } from "@/lib/api-auth";
 import { isUuid } from "@/lib/uuid";
-import {
-  getUserRole,
-  getOrganizationForUser,
-  getTeamMemberForManager,
-  hardDeleteUser,
-} from "@/lib/db";
+import { getOrganizationForUser, getTeamMemberForManager, hardDeleteUser } from "@/lib/db";
 import { syncSeatsForOrganization } from "@/lib/stripe";
 import { isPendingInvitation } from "@/lib/team-invitation";
 
@@ -23,11 +18,11 @@ import { isPendingInvitation } from "@/lib/team-invitation";
 // reste dans l'équipe pour toujours et occupe un siège.
 export async function DELETE(_request: Request, { params }: { params: Promise<{ commercialId: string }> }) {
   const session = await getServerSession(authOptions);
-  const auth = await requireActiveUser(session);
+  const auth = await requireActiveUserContext(session);
   if (!auth.ok) return auth.response;
   const userId = auth.userId;
 
-  const role = await getUserRole(userId);
+  const role = auth.role;
   if (role !== "manager") {
     return NextResponse.json({ error: "Réservé aux managers." }, { status: 403 });
   }

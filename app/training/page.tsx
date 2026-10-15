@@ -1,16 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Dumbbell } from "lucide-react";
-import { getEffectiveUserId } from "@/lib/session-user";
-import {
-  getUserRole,
-  getUserOrganizationId,
-  isTrainingEnabledForOrganization,
-  listTrainingObjectionCandidatesForUser,
-  listTrainingSessionsForUser,
-  getTrainingStatsForOrganization,
-  getCommercialsForManager,
-} from "@/lib/db";
+import { getViewer } from "@/lib/session-user";
+import { isTrainingEnabledForOrganization, listTrainingObjectionCandidatesForUser, listTrainingSessionsForUser, getTrainingStatsForOrganization, getCommercialsForManager } from "@/lib/db";
 import { PageHeader } from "@/app/components/ui/PageHeader";
 import { Card } from "@/app/components/ui/ui-bits";
 import TrainingClient from "./TrainingClient";
@@ -29,18 +21,16 @@ export default async function TrainingPage({
 }: {
   searchParams: Promise<{ objection?: string; commercial?: string }>;
 }) {
-  const userId = await getEffectiveUserId();
-  if (!userId) redirect("/login");
+  const viewer = await getViewer();
+  if (!viewer) redirect("/login");
+  const { userId, role, organizationId } = viewer;
 
   const { objection, commercial: selectedId } = await searchParams;
-  const organizationId = await getUserOrganizationId(userId);
 
   const trainingEnabled = organizationId ? await isTrainingEnabledForOrganization(organizationId) : false;
   if (!trainingEnabled) {
     return <TrainingLockedClient />;
   }
-
-  const role = await getUserRole(userId);
 
   // Manager : jamais le contenu des sessions (transcripts/débriefs) d'un
   // commercial — décision produit, l'entraînement doit rester un espace sûr.
@@ -48,9 +38,11 @@ export default async function TrainingPage({
   // précis via le sélecteur (même getTrainingStatsForOrganization que
   // /team/insights, filtré côté page pour la vue individuelle).
   if (role === "manager") {
-    const commercials = await getCommercialsForManager(userId);
+    const [commercials, allStats] = await Promise.all([
+      getCommercialsForManager(userId),
+      getTrainingStatsForOrganization(organizationId!).catch(() => []),
+    ]);
     const selected = selectedId ? commercials.find((c) => c.id === selectedId) ?? null : null;
-    const allStats = await getTrainingStatsForOrganization(organizationId!).catch(() => []);
     const stats = selected ? allStats.filter((s) => s.userId === selected.id) : allStats;
 
     return (

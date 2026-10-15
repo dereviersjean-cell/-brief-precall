@@ -1,23 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { requireActiveUser } from "@/lib/api-auth";
-import { getUserRole, getUserOrganizationId, saveObjectionEvalAnnotation } from "@/lib/db";
+import { requireActiveUserContext } from "@/lib/api-auth";
+import { saveObjectionEvalAnnotation } from "@/lib/db";
 
 // Enregistre l'annotation de référence d'un call (page Calibrage).
 // Pas de génération IA ici — c'est une simple écriture, donc pas de rate limit
 // de génération : l'expert enregistre souvent pendant qu'il annote.
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ callId: string }> }) {
   const session = await getServerSession(authOptions);
-  const auth = await requireActiveUser(session);
+  const auth = await requireActiveUserContext(session);
   if (!auth.ok) return auth.response;
 
-  const role = await getUserRole(auth.userId);
+  const role = auth.role;
   if (role !== "manager") {
     return NextResponse.json({ error: "Réservé aux managers." }, { status: 403 });
   }
 
-  const organizationId = await getUserOrganizationId(auth.userId);
+  const organizationId = auth.organizationId;
   if (!organizationId) {
     return NextResponse.json({ error: "Vous devez être rattaché à une organisation." }, { status: 400 });
   }

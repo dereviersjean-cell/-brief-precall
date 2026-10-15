@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { getEffectiveUserId } from "@/lib/session-user";
-import { getUserRole, getUserOrganizationId, listObjectionEvalCalls } from "@/lib/db";
+import { getViewer } from "@/lib/session-user";
+import { listObjectionEvalCalls } from "@/lib/db";
 import CalibrageClient from "./CalibrageClient";
 
 export const dynamic = "force-dynamic";
@@ -10,10 +10,10 @@ export const dynamic = "force-dynamic";
 // celle qui a accès au code. D'où une page dans l'app plutôt que des fichiers
 // et des commandes de terminal.
 export default async function CalibragePage() {
-  const userId = await getEffectiveUserId();
-  if (!userId) redirect("/login");
+  const viewer = await getViewer();
+  if (!viewer) redirect("/login");
 
-  const [role, organizationId] = await Promise.all([getUserRole(userId), getUserOrganizationId(userId)]);
+  const { role, organizationId } = viewer;
   if (role !== "manager") redirect("/settings/general");
 
   const calls = organizationId ? await listObjectionEvalCalls(organizationId).catch(() => []) : [];

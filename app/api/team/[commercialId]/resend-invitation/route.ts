@@ -1,14 +1,9 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { requireActiveUser } from "@/lib/api-auth";
+import { requireActiveUserContext } from "@/lib/api-auth";
 import { isUuid } from "@/lib/uuid";
-import {
-  getUserRole,
-  getOrganizationForUser,
-  getTeamMemberForManager,
-  getUserForInvitation,
-} from "@/lib/db";
+import { getOrganizationForUser, getTeamMemberForManager, getUserForInvitation } from "@/lib/db";
 import { sendInvitationEmail } from "@/lib/email";
 import { isPendingInvitation } from "@/lib/team-invitation";
 
@@ -24,12 +19,12 @@ import { isPendingInvitation } from "@/lib/team-invitation";
 // C'est sa raison d'être : elle sert quand l'envoi a déjà échoué une fois.
 export async function POST(_request: Request, { params }: { params: Promise<{ commercialId: string }> }) {
   const session = await getServerSession(authOptions);
-  const auth = await requireActiveUser(session);
+  const auth = await requireActiveUserContext(session);
   if (!auth.ok) return auth.response;
   const userId = auth.userId;
 
   // Depuis la base, pas le JWT : le rôle peut y avoir jusqu'à 10 min de retard.
-  const role = await getUserRole(userId);
+  const role = auth.role;
   if (role !== "manager") {
     return NextResponse.json({ error: "Réservé aux managers." }, { status: 403 });
   }

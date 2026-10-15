@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { requireActiveUser } from "@/lib/api-auth";
-import { getUserRole, getOrganizationForUser, getOrganizationBillingRow } from "@/lib/db";
+import { requireActiveUserContext } from "@/lib/api-auth";
+import { getOrganizationForUser, getOrganizationBillingRow } from "@/lib/db";
 import { createBillingPortalSession } from "@/lib/stripe";
 import { APP_URL } from "@/lib/app-url";
 
@@ -10,11 +10,11 @@ const BILLING_URL = `${APP_URL}/settings/billing`;
 
 export async function POST() {
   const session = await getServerSession(authOptions);
-  const auth = await requireActiveUser(session);
+  const auth = await requireActiveUserContext(session);
   if (!auth.ok) return auth.response;
   const userId = auth.userId;
 
-  const role = await getUserRole(userId);
+  const role = auth.role;
   if (role !== "manager") {
     return NextResponse.json({ error: "Réservé aux managers." }, { status: 403 });
   }

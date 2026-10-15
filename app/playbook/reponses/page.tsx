@@ -1,11 +1,6 @@
 import { redirect } from "next/navigation";
-import { getEffectiveUserId } from "@/lib/session-user";
-import {
-  getUserOrganizationId,
-  getUserRole,
-  listObjectionsForOrganization,
-  getObjectionCoverageForOrganization,
-} from "@/lib/db";
+import { getViewer } from "@/lib/session-user";
+import { listObjectionsForOrganization, getObjectionCoverageForOrganization } from "@/lib/db";
 import ObjectionsClient from "./ObjectionsClient";
 import { PageHeader } from "@/app/components/ui/PageHeader";
 import type { ReactNode } from "react";
@@ -28,10 +23,10 @@ function Frame({ children }: { children: ReactNode }) {
 export const dynamic = "force-dynamic";
 
 export default async function ObjectionAnswersPage() {
-  const userId = await getEffectiveUserId();
-  if (!userId) redirect("/login");
+  const viewer = await getViewer();
+  if (!viewer) redirect("/login");
 
-  const [organizationId, role] = await Promise.all([getUserOrganizationId(userId), getUserRole(userId)]);
+  const { userId, organizationId, role } = viewer;
 
   if (!organizationId) {
     return (

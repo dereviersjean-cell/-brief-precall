@@ -1,15 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getEffectiveUserId } from "@/lib/session-user";
-import {
-  getUserRole,
-  getUserOrganizationId,
-  getCommercialsForManager,
-  getObjectionCategoryStats,
-  listObjectionCategories,
-  type ObjectionCategoryStat,
-  type ObjectionCategory,
-} from "@/lib/db";
+import { getViewer } from "@/lib/session-user";
+import { getCommercialsForManager, getObjectionCategoryStats, listObjectionCategories, type ObjectionCategoryStat, type ObjectionCategory } from "@/lib/db";
 import { resolvePeriod, periodSearchParams } from "@/lib/period";
 import { PageHeader } from "@/app/components/ui/PageHeader";
 import { Card } from "@/app/components/ui/ui-bits";
@@ -93,10 +85,10 @@ export default async function ObjectionsStatsPage({
 }: {
   searchParams: Promise<{ commercial?: string; period?: string; from?: string; to?: string }>;
 }) {
-  const userId = await getEffectiveUserId();
-  if (!userId) redirect("/login");
+  const viewer = await getViewer();
+  if (!viewer) redirect("/login");
 
-  const [role, organizationId] = await Promise.all([getUserRole(userId), getUserOrganizationId(userId)]);
+  const { userId, role, organizationId } = viewer;
   const isManager = role === "manager";
 
   const commercials = isManager ? await getCommercialsForManager(userId) : [];

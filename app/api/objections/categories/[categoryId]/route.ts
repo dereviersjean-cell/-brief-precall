@@ -1,23 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { requireActiveUser } from "@/lib/api-auth";
-import { getUserRole, getUserOrganizationId, updateObjectionCategory, deleteObjectionCategory } from "@/lib/db";
+import { requireActiveUserContext } from "@/lib/api-auth";
+import { updateObjectionCategory, deleteObjectionCategory } from "@/lib/db";
 
 // Toutes les mutations passent l'organizationId du manager connecté en plus
 // de l'id de la catégorie : un id valide d'une autre organisation ne mute
 // rien (le WHERE côté db.ts porte sur les deux).
 async function authorize(): Promise<{ ok: true; orgId: string } | { ok: false; response: NextResponse }> {
   const session = await getServerSession(authOptions);
-  const auth = await requireActiveUser(session);
+  const auth = await requireActiveUserContext(session);
   if (!auth.ok) return { ok: false, response: auth.response };
 
-  const role = await getUserRole(auth.userId);
+  const role = auth.role;
   if (role !== "manager") {
     return { ok: false, response: NextResponse.json({ error: "Réservé aux managers." }, { status: 403 }) };
   }
 
-  const orgId = await getUserOrganizationId(auth.userId);
+  const orgId = auth.organizationId;
   if (!orgId) {
     return {
       ok: false,

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { requireActiveUser } from "@/lib/api-auth";
-import { getCallWithAnalysis, getCallWithAnalysisForManager, getUserRole } from "@/lib/db";
+import { requireActiveUserContext } from "@/lib/api-auth";
+import { getCallWithAnalysis, getCallWithAnalysisForManager } from "@/lib/db";
 import { getVideoUrl } from "@/lib/recall";
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
-  const auth = await requireActiveUser(session);
+  const auth = await requireActiveUserContext(session);
   if (!auth.ok) return auth.response;
   const userId = auth.userId;
 
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     // Owner first — covers the common case without an extra role lookup.
     call = await getCallWithAnalysis(callId, userId);
     if (!call) {
-      const role = await getUserRole(userId);
+      const role = auth.role;
       if (role === "manager") {
         call = await getCallWithAnalysisForManager(callId, userId);
       }

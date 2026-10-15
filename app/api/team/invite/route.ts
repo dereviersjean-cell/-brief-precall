@@ -1,25 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { requireActiveUser } from "@/lib/api-auth";
-import {
-  getUserRole,
-  getOrganizationForUser,
-  createInvitedUser,
-  linkManagerToCommercial,
-  getUserForInvitation,
-} from "@/lib/db";
+import { requireActiveUserContext } from "@/lib/api-auth";
+import { getOrganizationForUser, createInvitedUser, linkManagerToCommercial, getUserForInvitation } from "@/lib/db";
 import { sendInvitationEmail } from "@/lib/email";
 import { syncSeatsForOrganization } from "@/lib/stripe";
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
-  const auth = await requireActiveUser(session);
+  const auth = await requireActiveUserContext(session);
   if (!auth.ok) return auth.response;
   const userId = auth.userId;
 
   // Fresh from DB, not the JWT — session.role can be stale until re-login.
-  const role = await getUserRole(userId);
+  const role = auth.role;
   if (role !== "manager") {
     return NextResponse.json({ error: "Réservé aux managers." }, { status: 403 });
   }

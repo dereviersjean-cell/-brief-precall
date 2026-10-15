@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { requireActiveUser } from "@/lib/api-auth";
+import { requireActiveUserContext } from "@/lib/api-auth";
 import { enforceAiGenerationLimit, requestIp, retryAfterMinutes } from "@/lib/rate-limit";
-import { createTrainingSession, getUserOrganizationId, isTrainingEnabledForOrganization, type TrainingScenario, type TrainingTurn } from "@/lib/db";
+import { createTrainingSession, isTrainingEnabledForOrganization, type TrainingScenario, type TrainingTurn } from "@/lib/db";
 import { generateOpeningLine, generatePersona } from "@/lib/training";
 import { MEETING_STAGE_LABELS, MEETING_STAGES, type MeetingStage } from "@/lib/meeting-stage";
 
@@ -13,7 +13,7 @@ const MAX_OBJECTION_LENGTH = 500;
 // prospect, persistées avec le scénario. Deux appels IA → rate-limité.
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
-  const auth = await requireActiveUser(session);
+  const auth = await requireActiveUserContext(session);
   if (!auth.ok) return auth.response;
 
   const rl = await enforceAiGenerationLimit(requestIp(request), auth.userId);
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     ? (body.meetingStage as MeetingStage)
     : null;
 
-  const organizationId = await getUserOrganizationId(auth.userId);
+  const organizationId = auth.organizationId;
 
   // Gate serveur (pas que l'UI) — module additionnel désactivé par défaut,
   // migration 003. Fail-closed inclus dans isTrainingEnabledForOrganization.

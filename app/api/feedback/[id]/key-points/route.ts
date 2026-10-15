@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { requireActiveUser } from "@/lib/api-auth";
+import { requireActiveUserContext } from "@/lib/api-auth";
 import { enforceAiGenerationLimit, requestIp, retryAfterMinutes } from "@/lib/rate-limit";
-import { getCallWithAnalysis, getCallWithAnalysisForManager, getUserRole, updateCallAnalysisKeyPoints } from "@/lib/db";
+import { getCallWithAnalysis, getCallWithAnalysisForManager, updateCallAnalysisKeyPoints } from "@/lib/db";
 import { generateKeyPoints } from "@/lib/key-points";
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
-  const auth = await requireActiveUser(session);
+  const auth = await requireActiveUserContext(session);
   if (!auth.ok) return auth.response;
 
   const rl = await enforceAiGenerationLimit(requestIp(request), auth.userId);
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   // result is cached on the call, visible to the owner afterwards).
   let call = await getCallWithAnalysis(callId, auth.userId);
   if (!call) {
-    const role = await getUserRole(auth.userId);
+    const role = auth.role;
     if (role === "manager") {
       call = await getCallWithAnalysisForManager(callId, auth.userId);
     }

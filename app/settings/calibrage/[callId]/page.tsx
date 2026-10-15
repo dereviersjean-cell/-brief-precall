@@ -1,16 +1,16 @@
 import { notFound, redirect } from "next/navigation";
 import { isUuid } from "@/lib/uuid";
-import { getEffectiveUserId } from "@/lib/session-user";
-import { getUserRole, getUserOrganizationId, getObjectionEvalCall, listObjectionCategories } from "@/lib/db";
+import { getViewer } from "@/lib/session-user";
+import { getObjectionEvalCall, listObjectionCategories } from "@/lib/db";
 import AnnotateClient from "./AnnotateClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function AnnotateCallPage({ params }: { params: Promise<{ callId: string }> }) {
-  const userId = await getEffectiveUserId();
-  if (!userId) redirect("/login");
+  const viewer = await getViewer();
+  if (!viewer) redirect("/login");
 
-  const [role, organizationId] = await Promise.all([getUserRole(userId), getUserOrganizationId(userId)]);
+  const { role, organizationId } = viewer;
   if (role !== "manager") redirect("/settings/general");
   if (!organizationId) redirect("/settings/general");
 

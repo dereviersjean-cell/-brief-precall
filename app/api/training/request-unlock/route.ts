@@ -1,16 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { requireActiveUser } from "@/lib/api-auth";
-import {
-  getUserName,
-  getUserEmail,
-  getUserOrganizationId,
-  getOrganization,
-  hasRecentTrainingUnlockRequest,
-  createTrainingUnlockRequest,
-  markTrainingUnlockRequestEmailSent,
-} from "@/lib/db";
+import { requireActiveUserContext } from "@/lib/api-auth";
+import { getUserName, getUserEmail, getOrganization, hasRecentTrainingUnlockRequest, createTrainingUnlockRequest, markTrainingUnlockRequestEmailSent } from "@/lib/db";
 import { sendTrainingUnlockRequestEmail } from "@/lib/email";
 
 const DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -23,7 +15,7 @@ const DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000;
 // panne Resend) n'empêche donc jamais un nouveau clic de réessayer.
 export async function POST() {
   const session = await getServerSession(authOptions);
-  const auth = await requireActiveUser(session);
+  const auth = await requireActiveUserContext(session);
   if (!auth.ok) return auth.response;
 
   const sinceISO = new Date(Date.now() - DEDUP_WINDOW_MS).toISOString();
@@ -35,7 +27,7 @@ export async function POST() {
   const [userName, userEmail, organizationId] = await Promise.all([
     getUserName(auth.userId),
     getUserEmail(auth.userId),
-    getUserOrganizationId(auth.userId),
+    Promise.resolve(auth.organizationId),
   ]);
   const organization = organizationId ? await getOrganization(organizationId) : null;
 

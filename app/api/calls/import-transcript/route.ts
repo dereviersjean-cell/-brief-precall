@@ -1,21 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { requireActiveUser } from "@/lib/api-auth";
+import { requireActiveUserContext } from "@/lib/api-auth";
 import { enforceAiGenerationLimit, requestIp, retryAfterMinutes } from "@/lib/rate-limit";
-import {
-  getUserRole,
-  getUserOrganizationId,
-  getCommercialsForManager,
-  getUserProfile,
-  getUserName,
-  getPlaybookSnapshotForUser,
-  getMeetingStageConfigForOrganization,
-  createCall,
-  saveCallAnalysis,
-  updateCallAnalysisKeyPoints,
-  saveCallAnalytics,
-} from "@/lib/db";
+import { getCommercialsForManager, getUserProfile, getUserName, getPlaybookSnapshotForUser, getMeetingStageConfigForOrganization, createCall, saveCallAnalysis, updateCallAnalysisKeyPoints, saveCallAnalytics } from "@/lib/db";
 import { analyzeCall } from "@/lib/call-analysis";
 import { indexCallObjections } from "@/lib/objections";
 import { generateKeyPoints } from "@/lib/key-points";
@@ -43,7 +31,7 @@ const MAX_TRANSCRIPT_CHARS = 400_000;
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
-  const auth = await requireActiveUser(session);
+  const auth = await requireActiveUserContext(session);
   if (!auth.ok) return auth.response;
 
   const rl = await enforceAiGenerationLimit(requestIp(request), auth.userId);
@@ -56,12 +44,12 @@ export async function POST(request: NextRequest) {
   }
 
   // Rôle relu en base, pas depuis le JWT (bug #22).
-  const role = await getUserRole(auth.userId);
+  const role = auth.role;
   if (role !== "manager") {
     return NextResponse.json({ error: "Réservé aux managers." }, { status: 403 });
   }
 
-  const organizationId = await getUserOrganizationId(auth.userId);
+  const organizationId = auth.organizationId;
   if (!organizationId) {
     return NextResponse.json({ error: "Vous devez être rattaché à une organisation." }, { status: 400 });
   }

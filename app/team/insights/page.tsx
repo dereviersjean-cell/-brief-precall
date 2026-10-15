@@ -1,12 +1,6 @@
 import { redirect } from "next/navigation";
-import {
-  getUserRole,
-  getUserOrganizationId,
-  getObjectionCategoryStats,
-  getTeamAverageScores,
-  getTrainingStatsForOrganization,
-} from "@/lib/db";
-import { getEffectiveUserId } from "@/lib/session-user";
+import { getObjectionCategoryStats, getTeamAverageScores, getTrainingStatsForOrganization } from "@/lib/db";
+import { getViewer } from "@/lib/session-user";
 import TeamInsightsClient from "./TeamInsightsClient";
 
 // Refait le 04/09/2026. La page était bâtie sur la comparaison gagné/perdu
@@ -22,14 +16,14 @@ import TeamInsightsClient from "./TeamInsightsClient";
 // aujourd'hui, plutôt que « pourquoi elle gagne », qui attend une donnée
 // absente.
 export default async function TeamInsightsPage() {
-  const userId = await getEffectiveUserId();
+  const viewer = await getViewer();
 
-  const role = userId ? await getUserRole(userId) : null;
-  if (role !== "manager") {
+  if (viewer?.role !== "manager") {
     redirect("/team");
   }
+  const userId = viewer.userId;
 
-  const orgId = await getUserOrganizationId(userId!);
+  const orgId = viewer.organizationId;
   if (!orgId) {
     redirect("/team");
   }

@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { requireActiveUser } from "@/lib/api-auth";
-import { getUserOrganizationId, isTrainingEnabledForOrganization, listTrainingObjectionCandidatesForUser } from "@/lib/db";
+import { requireActiveUserContext } from "@/lib/api-auth";
+import { isTrainingEnabledForOrganization, listTrainingObjectionCandidatesForUser } from "@/lib/db";
 
 // Scénarios suggérés (les « pains » du commercial) — lecture DB pure, pas
 // d'appel IA, donc pas de rate limit génération.
 export async function GET() {
   const session = await getServerSession(authOptions);
-  const auth = await requireActiveUser(session);
+  const auth = await requireActiveUserContext(session);
   if (!auth.ok) return auth.response;
 
-  const organizationId = await getUserOrganizationId(auth.userId);
+  const organizationId = auth.organizationId;
   if (!organizationId) {
     return NextResponse.json({ candidates: [] });
   }
