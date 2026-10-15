@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, FileText, Video, Users, Settings, HelpCircle, LogOut, Sparkles, Menu, X, Lock } from "lucide-react";
+import { LayoutDashboard, FileText, Video, Users, Settings, HelpCircle, LogOut, Sparkles, Menu, X, Lock, BookOpen, Library } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { fetchJsonOnce } from "@/lib/fetch-once";
 import type { ChromeState } from "@/lib/chrome-state";
@@ -144,14 +144,23 @@ export default function AppSidebar() {
   // Inscription libre : Brief seul, plus l'encart pour contacter Hubert. Les
   // entrées de l'accès complet n'apparaissent qu'une fois `false` confirmé
   // (cf. ModulesProvider).
-  const { briefsOnly } = useModules();
+  const { briefsOnly, isEnabled } = useModules();
   const fullAccess = briefsOnly === false;
 
   // « Performance » regroupe Vue d'ensemble + Historique + Entraînement,
   // navigables en onglets (app/components/PerformanceTabs.tsx) — Objections
   // reste dans Paramètres.
   const performanceActive =
-    pathname === "/dashboard" || pathname.startsWith("/contacts") || pathname.startsWith("/training");
+    pathname.startsWith("/dashboard") || pathname.startsWith("/contacts") || pathname.startsWith("/training");
+  // Sections propres depuis le 15/10/2026 (ex-onglets Performance et
+  // Paramètres), sous l'entrée Équipe. Chacune n'existe que si son module est
+  // ouvert ; « Playbook & objections » mène à la grille, ou aux objections
+  // quand seul ce module est ouvert.
+  const playbookHref = isEnabled("playbook") ? "/playbook" : isEnabled("objections") ? "/playbook/objections" : null;
+  const resourcesGroup: { href: string; label: string; icon: LucideIcon; active: boolean }[] = [
+    ...(playbookHref ? [{ href: playbookHref, label: "Playbook & objections", icon: BookOpen, active: pathname.startsWith("/playbook") }] : []),
+    ...(isEnabled("references") ? [{ href: "/references", label: "Références clients", icon: Library, active: pathname.startsWith("/references") }] : []),
+  ];
   const briefActive = pathname.startsWith("/brief");
   const feedbackActive = pathname.startsWith("/feedback");
   // Équipe est un lien unique — les sous-pages (Playbook, Templates emails,
@@ -281,6 +290,19 @@ export default function AppSidebar() {
             <NavGroupLabel>Manager</NavGroupLabel>
             <div className="space-y-0.5">
               <NavLink href="/team" label="Équipe" icon={Users} active={teamActive} />
+            </div>
+          </div>
+        )}
+
+        {/* Méthode de vente partagée par l'équipe : la grille et les
+            objections, les références clients (15/10/2026). */}
+        {fullAccess && resourcesGroup.length > 0 && (
+          <div>
+            <NavGroupLabel>Méthode</NavGroupLabel>
+            <div className="space-y-0.5">
+              {resourcesGroup.map((item) => (
+                <NavLink key={item.href} href={item.href} label={item.label} icon={item.icon} active={item.active} />
+              ))}
             </div>
           </div>
         )}

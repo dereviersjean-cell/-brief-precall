@@ -48,7 +48,10 @@ export const MODULES: ModuleDefinition[] = [
     label: "Playbook",
     description: "Grille de notation des calls, construite avec le manager.",
     week: 3,
+    // /playbook seul (pas ses sous-pages objections/réponses, qui relèvent du
+    // module Objections) : `patterns` plutôt qu'un préfixe.
     paths: ["/dashboard/playbook", "/team/playbook", "/api/playbook"],
+    patterns: [/^\/playbook\/?$/],
   },
   {
     key: "follow_up",
@@ -69,7 +72,7 @@ export const MODULES: ModuleDefinition[] = [
     label: "Objections",
     description: "Objections repérées dans les calls, phrases exactes, réponses du playbook.",
     week: 5,
-    paths: ["/dashboard/objections", "/settings/objections", "/settings/calibrage", "/api/objections"],
+    paths: ["/dashboard/objections", "/settings/objections", "/playbook/objections", "/playbook/reponses", "/settings/calibrage", "/api/objections"],
   },
   {
     key: "crm",
@@ -120,6 +123,7 @@ export const MODULES: ModuleDefinition[] = [
     week: null,
     paths: [
       "/settings/references",
+      "/references",
       "/api/client-references",
       "/api/crm/hubspot/import-references",
       "/api/crm/pipedrive/import-references",

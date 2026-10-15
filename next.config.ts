@@ -42,6 +42,24 @@ const nextConfig: NextConfig = {
   // images de CRM et des enregistrements Recall, et une politique trop serrée
   // casserait en silence. Une CSP mérite d'être construite en mode
   // `report-only` d'abord — chantier à part entière, pas une ligne de config.
+  // Sections déplacées le 15/10/2026 : Playbook et Objections quittent
+  // Performance, Objections et Références quittent les Paramètres, pour leurs
+  // propres pages (entrées « Playbook & objections » et « Références
+  // clients » de la barre latérale). Favoris, liens d'emails et de l'aide
+  // continuent de fonctionner ; les paramètres (période, commercial) suivent.
+  async redirects() {
+    return [
+      { source: "/dashboard/playbook", destination: "/playbook", permanent: false },
+      { source: "/team/playbook", destination: "/playbook", permanent: false },
+      { source: "/dashboard/objections", destination: "/playbook/objections", permanent: false },
+      { source: "/dashboard/objections/:categoryId", destination: "/playbook/objections/:categoryId", permanent: false },
+      { source: "/settings/objections", destination: "/playbook/reponses", permanent: false },
+      { source: "/settings/references", destination: "/references", permanent: false },
+      // Notifications moved from a Settings sub-page to its own top-level
+      // sidebar item — keeps old bookmarks/links working.
+      { source: "/settings/notifications", destination: "/notifications", permanent: true },
+    ];
+  },
   async headers() {
     return [
       {
@@ -65,13 +83,6 @@ const nextConfig: NextConfig = {
           { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
         ],
       },
-    ];
-  },
-  async redirects() {
-    return [
-      // Notifications moved from a Settings sub-page to its own top-level
-      // sidebar item — keeps old bookmarks/links working.
-      { source: "/settings/notifications", destination: "/notifications", permanent: true },
     ];
   },
 };

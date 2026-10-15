@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Target, MessagesSquare, BookOpen, BarChart3, Dumbbell } from "lucide-react";
+import { LayoutDashboard, Target, BarChart3, Dumbbell } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ModuleKey } from "@/lib/modules";
 import { useModules } from "./ModulesProvider";
@@ -19,14 +19,14 @@ import { useModules } from "./ModulesProvider";
 // playbook est la grille de notation, il appartient au thème Performance
 // bien plus qu'au pilotage d'équipe, et les commerciaux doivent pouvoir le
 // consulter (en lecture seule, cf. app/dashboard/playbook/page.tsx).
+// 15/10/2026 : Playbook et Objections quittent ces onglets pour leur propre
+// section (/playbook, entrée « Playbook & objections » de la barre latérale).
 // `module` : onglet d'un module activable (lib/modules.ts), absent tant que
 // l'account manager ne l'a pas ouvert pour l'organisation.
 const TABS: { href: string; label: string; icon: LucideIcon; module?: ModuleKey }[] = [
   { href: "/dashboard", label: "Vue d'ensemble", icon: LayoutDashboard },
   { href: "/dashboard/scores", label: "Scores", icon: Target },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, module: "insights" },
-  { href: "/dashboard/objections", label: "Objections", icon: MessagesSquare, module: "objections" },
-  { href: "/dashboard/playbook", label: "Playbook", icon: BookOpen, module: "playbook" },
   { href: "/training", label: "Entraînement", icon: Dumbbell, module: "training" },
 ];
 

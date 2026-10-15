@@ -132,7 +132,7 @@ export default async function DemoObjectionsPage({
       <p className="mt-4 text-xs text-slate-400">
         Dans votre compte, chaque objection s&apos;ouvre sur le détail : qui l&apos;a rencontrée, ce que le prospect a
         dit mot pour mot, la réponse apportée, et ce qu&apos;il aurait fallu répondre.{" "}
-        <Link href="/dashboard/objections" className="font-medium text-[color:var(--violet)] hover:underline">
+        <Link href="/playbook/objections" className="font-medium text-[color:var(--violet)] hover:underline">
           Voir mes objections réelles →
         </Link>
       </p>

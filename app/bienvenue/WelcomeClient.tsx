@@ -90,7 +90,7 @@ const STEP_CONTENT: Record<
   playbook: {
     title: "Définir votre playbook",
     why: "La grille sur laquelle vos rendez-vous sont notés. Sans elle, l'analyse utilise des critères génériques au lieu des vôtres.",
-    href: "/dashboard/playbook",
+    href: "/playbook",
     cta: "Ouvrir le playbook",
   },
   "premier-call": {

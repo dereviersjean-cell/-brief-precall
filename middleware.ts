@@ -34,6 +34,10 @@ export const config = {
     "/onboarding/:path*",
     "/bienvenue/:path*",
     "/demo/:path*",
+    // Sections propres depuis le 15/10/2026 (ex-onglets Performance et
+    // Paramètres) : mêmes gardes que le reste de l'app.
+    "/playbook/:path*",
+    "/references/:path*",
     // Routes d'API des modules activables (lib/modules.ts) : seul le verrou
     // de module s'y applique, l'authentification reste l'affaire de chaque
     // route. Toute nouvelle route d'un module doit relever d'un de ces

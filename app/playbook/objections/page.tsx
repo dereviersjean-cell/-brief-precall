@@ -14,9 +14,9 @@ import { resolvePeriod, periodSearchParams } from "@/lib/period";
 import { PageHeader } from "@/app/components/ui/PageHeader";
 import { Card } from "@/app/components/ui/ui-bits";
 import { ChevronRight, Trophy, Users, XCircle } from "lucide-react";
-import FadeIn from "../FadeIn";
-import CommercialSelector from "../CommercialSelector";
-import PeriodFilter from "../PeriodFilter";
+import FadeIn from "@/app/dashboard/FadeIn";
+import CommercialSelector from "@/app/dashboard/CommercialSelector";
+import PeriodFilter from "@/app/dashboard/PeriodFilter";
 import ObjectionsLibrary from "./ObjectionsLibrary";
 import SuggestedCategories from "./SuggestedCategories";
 
@@ -85,7 +85,7 @@ function OutcomeBadge({ stat }: { stat: ObjectionCategoryStat }) {
 //  1. la bibliothèque du manager (les « cases » qu'il définit) — repliée une
 //     fois configurée ;
 //  2. les statistiques par objection sur la période choisie ;
-//  3. le détail par objection, sur sa propre page (/dashboard/objections/[id]).
+//  3. le détail par objection, sur sa propre page (/playbook/objections/[id]).
 // Le sélecteur de commercial et le filtre de période sont les deux mêmes
 // query params partout dans Performance (?commercial=, ?period=/from=/to=).
 export default async function ObjectionsStatsPage({
@@ -135,7 +135,7 @@ export default async function ObjectionsStatsPage({
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
       <FadeIn>
         <div className="mb-8">
-          <PageHeader eyebrow="Performance" title="Objections" subtitle={subtitle} />
+          <PageHeader eyebrow="Playbook & objections" title="Objections rencontrées" subtitle={subtitle} />
         </div>
       </FadeIn>
 
@@ -167,7 +167,7 @@ export default async function ObjectionsStatsPage({
               {stats.map((stat) => (
                 <li key={stat.categoryId ?? "unclassified"}>
                   <Link
-                    href={`/dashboard/objections/${stat.categoryId ?? "non-classees"}?${linkParams}`}
+                    href={`/playbook/objections/${stat.categoryId ?? "non-classees"}?${linkParams}`}
                     className="-mx-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-3 rounded-xl px-2 py-4 transition-colors hover:bg-slate-50 sm:-mx-3 sm:grid-cols-[minmax(0,15rem)_minmax(0,1fr)_auto] sm:px-3"
                   >
                     <div className="min-w-0">
@@ -198,7 +198,7 @@ export default async function ObjectionsStatsPage({
 
       <p className="mt-4 text-[12.5px] text-slate-500">
         Pour retrouver le verbatim de chaque réponse et faire une recherche sémantique,{" "}
-        <Link href="/settings/objections" className="font-medium text-[color:var(--violet)] hover:underline">
+        <Link href="/playbook/reponses" className="font-medium text-[color:var(--violet)] hover:underline">
           ouvrez la bibliothèque complète →
         </Link>
       </p>

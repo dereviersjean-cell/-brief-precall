@@ -270,7 +270,7 @@ export default function ImportCallClient({
               Voir l&apos;analyse <ArrowRight className="h-3.5 w-3.5" />
             </Link>
             <Link
-              href="/dashboard/objections"
+              href="/playbook/objections"
               className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
             >
               Voir les objections

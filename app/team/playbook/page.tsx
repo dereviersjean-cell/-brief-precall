@@ -5,5 +5,5 @@ import { redirect } from "next/navigation";
 // supprimer : elle est en favori chez les managers et référencée dans des
 // emails d'onboarding déjà envoyés.
 export default function LegacyPlaybookPage() {
-  redirect("/dashboard/playbook");
+  redirect("/playbook");
 }

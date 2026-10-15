@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Settings, Link as LinkIcon, Library, CreditCard, MessagesSquare } from "lucide-react";
+import { Settings, Link as LinkIcon, CreditCard } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ModuleKey } from "@/lib/modules";
 import { useModules } from "@/app/components/ModulesProvider";
@@ -22,8 +22,8 @@ const NAV_ITEMS: { href: string; label: string; icon: LucideIcon; managerOnly?: 
   // « Références clients » raccourci en « Références » : avec l'ajout de
   // « Tester un call », la barre débordait de son conteneur max-w-4xl et
   // faisait apparaître une barre de défilement sous les onglets.
-  { href: "/settings/references", label: "Références", icon: Library, module: "references" },
-  { href: "/settings/objections", label: "Objections", icon: MessagesSquare, module: "objections" },
+  // Références et Objections ont quitté les paramètres le 15/10/2026 : pages
+  // propres, /references et /playbook/reponses (barre latérale).
   // « Templates emails » retiré le 29/09/2026 (décision de Jean) : ces modèles
   // ne servaient qu'aux emails des tâches, masquées, jamais à l'email de suivi
   // après un call. La page reste joignable par URL (/settings/email-templates).

@@ -14,8 +14,8 @@ import { resolvePeriod, periodSearchParams } from "@/lib/period";
 import { PageHeader } from "@/app/components/ui/PageHeader";
 import { Card } from "@/app/components/ui/ui-bits";
 import { ArrowLeft, CheckCircle2, CircleSlash, ExternalLink, MinusCircle, Trophy, XCircle } from "lucide-react";
-import FadeIn from "../../FadeIn";
-import PeriodFilter from "../../PeriodFilter";
+import FadeIn from "@/app/dashboard/FadeIn";
+import PeriodFilter from "@/app/dashboard/PeriodFilter";
 import OccurrenceDetail from "../OccurrenceDetail";
 
 export const dynamic = "force-dynamic";
@@ -100,7 +100,7 @@ export default async function ObjectionCategoryDetailPage({
     scopedUserId
   );
 
-  const backHref = `/dashboard/objections?${periodSearchParams(
+  const backHref = `/playbook/objections?${periodSearchParams(
     period.preset,
     { from: period.from?.slice(0, 10), to: period.to?.slice(0, 10) },
     { commercial: selected?.id }
