@@ -1,29 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { fetchJsonOnce, forgetFetchOnce } from "@/lib/fetch-once";
-import type { ChromeState } from "@/lib/chrome-state";
+import { forgetFetchOnce } from "@/lib/fetch-once";
+import { useChromeState } from "./ShellProvider";
 
 export default function ImpersonationBanner() {
   const router = useRouter();
-  const [targetUserName, setTargetUserName] = useState<string | null>(null);
   const [ending, setEnding] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    // Une fois par chargement de page : remonté à chaque changement de
-    // section, alors qu'une impersonation ne démarre ni ne s'arrête au fil
-    // d'une navigation. `forgetFetchOnce` est appelé à la sortie ci-dessous.
-    fetchJsonOnce<ChromeState>("/api/chrome").then((data) => {
-      if (cancelled) return;
-      const imp = data?.impersonation;
-      setTargetUserName(imp?.active ? imp.targetUserName ?? "cet utilisateur" : null);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // Rendu par le serveur (AppShell) ; repli sur /api/chrome sans lui.
+  const imp = useChromeState()?.impersonation;
+  const targetUserName = imp?.active ? imp.targetUserName ?? "cet utilisateur" : null;
 
   if (!targetUserName) return null;
 

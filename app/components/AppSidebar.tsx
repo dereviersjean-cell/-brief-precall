@@ -3,11 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { LayoutDashboard, FileText, Video, Users, Settings, HelpCircle, LogOut, Sparkles, Menu, X, Lock, BookOpen, Library } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { fetchJsonOnce } from "@/lib/fetch-once";
-import type { ChromeState } from "@/lib/chrome-state";
+import { useChromeState } from "./ShellProvider";
 import { useModules } from "./ModulesProvider";
 import TalkToSales from "./TalkToSales";
 import CompanyLogo from "./CompanyLogo";
@@ -102,7 +101,8 @@ function NavGroupLabel({ children }: { children: string }) {
 export default function AppSidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const [orgStatus, setOrgStatus] = useState<OrgStatus | null>(null);
+  // Rendu par le serveur (AppShell) ; repli sur /api/chrome sans lui.
+  const orgStatus: OrgStatus | null = useChromeState();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   // Fermeture du tiroir à chaque navigation — sinon il reste ouvert par-dessus
@@ -117,19 +117,6 @@ export default function AppSidebar() {
     setPathAtRender(pathname);
     setMobileOpen(false);
   }
-
-  useEffect(() => {
-    let cancelled = false;
-    // fetchJsonOnce et pas fetch : ce composant est remonté à chaque
-    // changement de section (chaque layout monte sa propre sidebar), et le nom
-    // de l'organisation ne dépend pas de la page affichée.
-    fetchJsonOnce<ChromeState>("/api/chrome").then((data) => {
-      if (!cancelled && data) setOrgStatus(data);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const userName = session?.user?.name ?? "Jean Dupont";
   const userInitials = userName

@@ -6,7 +6,7 @@ import { consumeLoginCode, looksLikeEmail, normalizeEmail, signInWithPassword, s
 import { passwordProblem } from "./password";
 import { checkSharedRateLimit } from "./rate-limit";
 import { resolveUserForLogin, saveGoogleTokens, getGoogleTokens, getUserAuthState, touchUserLastSeen, type AuthProvider } from "./db";
-import { refreshGoogleAccessToken } from "./gmail";
+import { refreshGoogleAccessTokenOnce } from "./gmail";
 import { MICROSOFT_LOGIN_SCOPES, refreshMicrosoftAccessToken } from "./microsoft";
 
 function toAuthProvider(nextAuthProvider: string): AuthProvider | null {
@@ -238,7 +238,12 @@ export const authOptions: AuthOptions = {
 
               if (provider === "google" && account.access_token) {
                 try {
-                  await saveGoogleTokens(resolution.userId, account.access_token, account.refresh_token);
+                  await saveGoogleTokens(
+                    resolution.userId,
+                    account.access_token,
+                    account.refresh_token,
+                    account.expires_at ? new Date(account.expires_at * 1000).toISOString() : null
+                  );
                 } catch (err) {
                   console.error("[auth] saveGoogleTokens failed:", err);
                 }
@@ -295,9 +300,25 @@ export const authOptions: AuthOptions = {
         typeof token.refreshToken === "string"
       ) {
         try {
-          const newAccessToken = await refreshGoogleAccessToken(token.refreshToken);
-          token.accessToken = newAccessToken;
-          token.accessTokenExpires = Date.now() + 3600 * 1000;
+          // Un jeton déjà renouvelé par un autre appel (et enregistré avec son
+          // expiration, migration 027) sert tel quel : le renouvellement
+          // (~1 s mesuré) n'a lieu qu'une fois par heure et par compte, quel
+          // que soit le nombre d'appels serveur qui tombent dessus.
+          const stored = typeof token.supabaseUserId === "string" ? await getGoogleTokens(token.supabaseUserId).catch(() => null) : null;
+          const storedExpires = stored?.expiresAt ? new Date(stored.expiresAt).getTime() : 0;
+          if (stored?.accessToken && storedExpires - Date.now() > 60 * 1000) {
+            token.accessToken = stored.accessToken;
+            token.accessTokenExpires = storedExpires;
+          } else {
+            const newAccessToken = await refreshGoogleAccessTokenOnce(token.refreshToken);
+            token.accessToken = newAccessToken;
+            token.accessTokenExpires = Date.now() + 3600 * 1000;
+            if (typeof token.supabaseUserId === "string") {
+              await saveGoogleTokens(token.supabaseUserId, newAccessToken, undefined, new Date(token.accessTokenExpires).toISOString()).catch((err) =>
+                console.error("[auth] saveGoogleTokens (refresh) failed:", err)
+              );
+            }
+          }
           delete token.error;
         } catch (err) {
           console.error("[auth] refreshGoogleAccessToken failed:", err);

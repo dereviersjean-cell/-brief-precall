@@ -1,3 +1,15 @@
+// Un seul renouvellement à la fois par jeton dans une même instance : au
+// chargement d'une page, plusieurs appels serveur peuvent constater en même
+// temps que le jeton a expiré.
+const inFlightRefresh = new Map<string, Promise<string>>();
+export function refreshGoogleAccessTokenOnce(refreshToken: string): Promise<string> {
+  const pending = inFlightRefresh.get(refreshToken);
+  if (pending) return pending;
+  const p = refreshGoogleAccessToken(refreshToken).finally(() => inFlightRefresh.delete(refreshToken));
+  inFlightRefresh.set(refreshToken, p);
+  return p;
+}
+
 export async function refreshGoogleAccessToken(refreshToken: string): Promise<string> {
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",

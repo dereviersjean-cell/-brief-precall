@@ -1,4 +1,5 @@
 import AppSidebar from "@/app/components/AppSidebar";
+import AppShell from "@/app/components/AppShell";
 import TopBar from "@/app/components/TopBar";
 import GuidedTour from "@/app/components/GuidedTour";
 import PerformanceTabs from "@/app/components/PerformanceTabs";
@@ -10,6 +11,7 @@ import type { ReactNode } from "react";
 // ce dossier — la contamination est structurellement impossible.
 export default function DemoLayout({ children }: { children: ReactNode }) {
   return (
+    <AppShell>
     <div className="flex min-h-screen">
       <AppSidebar />
       <div className="flex-1 ml-0 lg:ml-60 min-w-0">
@@ -21,5 +23,6 @@ export default function DemoLayout({ children }: { children: ReactNode }) {
         <GuidedTour />
       </div>
     </div>
+    </AppShell>
   );
 }

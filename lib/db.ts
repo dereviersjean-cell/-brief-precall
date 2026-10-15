@@ -108,30 +108,45 @@ export async function resolveUserForLogin(params: {
   return { status: "ok", userId: createdRow.id, role: createdRow.role };
 }
 
+// `expiresAt` : migration 027. Tant qu'elle n'est pas passée, l'écriture
+// reprend sans la colonne (pattern bug #14) et le renouvellement reste comme
+// avant.
 export async function saveGoogleTokens(
   userId: string,
   accessToken: string,
-  refreshToken: string | null | undefined
+  refreshToken: string | null | undefined,
+  expiresAt?: string | null
 ): Promise<void> {
   const patch: Record<string, string> = { google_access_token: accessToken };
   if (refreshToken) patch.google_refresh_token = refreshToken;
+  if (expiresAt) patch.google_token_expires_at = expiresAt;
   const { error } = await supabaseAdmin.from("users").update(patch).eq("id", userId);
+  if (error && expiresAt && isMissingColumnError(error)) {
+    delete patch.google_token_expires_at;
+    const retry = await supabaseAdmin.from("users").update(patch).eq("id", userId);
+    if (retry.error) throw retry.error;
+    return;
+  }
   if (error) throw error;
 }
 
 export async function getGoogleTokens(
   userId: string
-): Promise<{ accessToken: string | null; refreshToken: string | null }> {
-  const { data, error } = await supabaseAdmin
-    .from("users")
-    .select("google_access_token, google_refresh_token")
-    .eq("id", userId)
-    .maybeSingle();
+): Promise<{ accessToken: string | null; refreshToken: string | null; expiresAt: string | null }> {
+  const select = (withExpiry: boolean) =>
+    supabaseAdmin
+      .from("users")
+      .select(withExpiry ? "google_access_token, google_refresh_token, google_token_expires_at" : "google_access_token, google_refresh_token")
+      .eq("id", userId)
+      .maybeSingle();
+  let { data, error } = await select(true);
+  if (error && isMissingColumnError(error)) ({ data, error } = await select(false));
   if (error) throw error;
-  const row = data as { google_access_token: string | null; google_refresh_token: string | null } | null;
+  const row = data as { google_access_token: string | null; google_refresh_token: string | null; google_token_expires_at?: string | null } | null;
   return {
     accessToken: row?.google_access_token ?? null,
     refreshToken: row?.google_refresh_token ?? null,
+    expiresAt: row?.google_token_expires_at ?? null,
   };
 }
 
@@ -1711,6 +1726,49 @@ export async function getChromeStateForUser(userId: string): Promise<{
     billingStatus: org?.billing_status ?? null,
     trialEndsAt: org?.trial_ends_at ?? null,
     graceEndsAt: org?.grace_period_ends_at ?? null,
+  };
+}
+
+// Tout ce que l'habillage affiche (AppShell), en une requête : entreprise,
+// facturation, modules, niveau d'accès. `organizations(*)` : tolérant aux
+// colonnes des migrations récentes.
+export async function getShellStateForUser(userId: string): Promise<{
+  disabledAt: string | null;
+  organizationId: string | null;
+  organizationName: string | null;
+  billingStatus: string | null;
+  trialEndsAt: string | null;
+  graceEndsAt: string | null;
+  modules: ModuleKey[];
+  accessLevel: AccessLevel;
+  needsCompany: boolean;
+} | null> {
+  const { data, error } = await supabaseAdmin.from("users").select("disabled_at, organizations(*)").eq("id", userId).maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  type OrgRow = {
+    id: string | null;
+    name: string | null;
+    billing_status: string | null;
+    trial_ends_at: string | null;
+    grace_period_ends_at: string | null;
+    enabled_modules?: string[] | null;
+    training_enabled?: boolean | null;
+    access_level?: string | null;
+  };
+  const row = data as unknown as { disabled_at: string | null; organizations: OrgRow | OrgRow[] | null };
+  const org = Array.isArray(row.organizations) ? row.organizations[0] ?? null : row.organizations;
+  const needsCompany = org == null;
+  return {
+    disabledAt: row.disabled_at,
+    organizationId: org?.id ?? null,
+    organizationName: org?.name ?? null,
+    billingStatus: org?.billing_status ?? null,
+    trialEndsAt: org?.trial_ends_at ?? null,
+    graceEndsAt: org?.grace_period_ends_at ?? null,
+    modules: needsCompany ? [] : resolveEnabledModules(org),
+    accessLevel: needsCompany ? "briefs" : resolveAccessLevel(org),
+    needsCompany,
   };
 }
 

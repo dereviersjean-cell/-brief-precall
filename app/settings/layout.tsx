@@ -1,4 +1,5 @@
 import AppSidebar from "@/app/components/AppSidebar";
+import AppShell from "@/app/components/AppShell";
 import BillingGraceBanner from "@/app/components/BillingGraceBanner";
 import TopBar from "@/app/components/TopBar";
 import SettingsTabs from "./_components/SettingsTabs";
@@ -7,6 +8,7 @@ import type { ReactNode } from "react";
 
 export default function SettingsLayout({ children }: { children: ReactNode }) {
   return (
+    <AppShell>
     <div className="flex min-h-screen">
       <AppSidebar />
       <div className="flex-1 ml-0 lg:ml-60 min-w-0 bg-background">
@@ -21,5 +23,6 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
         </div>
       </div>
     </div>
+    </AppShell>
   );
 }

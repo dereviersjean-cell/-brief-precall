@@ -1,30 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
-import { fetchJsonOnce } from "@/lib/fetch-once";
-import type { ChromeState } from "@/lib/chrome-state";
+import { useChromeState } from "./ShellProvider";
 
 function hoursUntil(iso: string): number {
   return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / (60 * 60 * 1000)));
 }
 
 export default function BillingGraceBanner() {
-  const [graceEndsAt, setGraceEndsAt] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    // Une fois par chargement de page : ce composant est remonté à chaque
-    // changement de section, et le statut de facturation n'en dépend pas.
-    fetchJsonOnce<ChromeState>("/api/chrome").then((data) => {
-      if (cancelled) return;
-      setGraceEndsAt(data?.billingStatus === "grace_period" ? data.graceEndsAt : null);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // Rendu par le serveur (AppShell) ; repli sur /api/chrome sans lui.
+  const chrome = useChromeState();
+  const graceEndsAt = chrome?.billingStatus === "grace_period" ? chrome.graceEndsAt : null;
 
   if (!graceEndsAt) return null;
 

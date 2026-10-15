@@ -1,4 +1,5 @@
 import AppSidebar from "@/app/components/AppSidebar";
+import AppShell from "@/app/components/AppShell";
 import ImpersonationBanner from "@/app/components/ImpersonationBanner";
 import BillingGraceBanner from "@/app/components/BillingGraceBanner";
 import TopBar from "@/app/components/TopBar";
@@ -6,6 +7,7 @@ import type { ReactNode } from "react";
 
 export default function HelpLayout({ children }: { children: ReactNode }) {
   return (
+    <AppShell>
     <div className="flex min-h-screen">
       <AppSidebar />
       <div className="flex-1 ml-0 lg:ml-60 min-w-0">
@@ -15,5 +17,6 @@ export default function HelpLayout({ children }: { children: ReactNode }) {
         {children}
       </div>
     </div>
+    </AppShell>
   );
 }

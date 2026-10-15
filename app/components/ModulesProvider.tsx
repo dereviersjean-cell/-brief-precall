@@ -21,10 +21,25 @@ type ModulesState = { loaded: boolean; isEnabled: (key: ModuleKey) => boolean; b
 
 const ModulesContext = createContext<ModulesState>({ loaded: false, isEnabled: () => false, briefsOnly: null });
 
-export function ModulesProvider({ children }: { children: ReactNode }) {
+type ModulesInitial = { modules: ModuleKey[]; briefsOnly: boolean } | null;
+
+// `initial` : rendu par le serveur (AppShell) — aucun appel au chargement, la
+// relecture au focus reste. Sans lui (démonstration, aperçus), l'appel
+// /api/modules d'avant.
+export function ModulesProvider({ initial = null, children }: { initial?: ModulesInitial; children: ReactNode }) {
   const { status } = useSession();
-  const [modules, setModules] = useState<ModuleKey[] | null>(null);
-  const [briefsOnly, setBriefsOnly] = useState<boolean | null>(null);
+  const [modules, setModules] = useState<ModuleKey[] | null>(initial?.modules ?? null);
+  const [briefsOnly, setBriefsOnly] = useState<boolean | null>(initial?.briefsOnly ?? null);
+  // Nouvelle valeur serveur (changement de section) : motif « ajuster l'état
+  // pendant le rendu ».
+  const [prevInitial, setPrevInitial] = useState(initial);
+  if (initial !== prevInitial) {
+    setPrevInitial(initial);
+    if (initial) {
+      setModules(initial.modules);
+      setBriefsOnly(initial.briefsOnly);
+    }
+  }
 
   const load = useCallback(() => {
     fetch("/api/modules", { cache: "no-store" })
@@ -36,12 +51,13 @@ export function ModulesProvider({ children }: { children: ReactNode }) {
       .catch(() => {});
   }, []);
 
+  const provided = initial !== null;
   useEffect(() => {
-    if (status !== "authenticated") return;
-    load();
+    if (!provided && status !== "authenticated") return;
+    if (!provided) load();
     window.addEventListener("focus", load);
     return () => window.removeEventListener("focus", load);
-  }, [status, load]);
+  }, [status, load, provided]);
 
   const isEnabled = useCallback((key: ModuleKey) => modules?.includes(key) ?? false, [modules]);
 
