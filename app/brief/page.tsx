@@ -1,7 +1,8 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
-import { getBriefsByUser, getUserProfile } from "@/lib/db";
+import { redirect } from "next/navigation";
+import { getRecentBriefsForUser, getUserProfile } from "@/lib/db";
 import { loadUpcomingEvents } from "@/lib/upcoming-events";
 import BriefToolClient, { type BriefPageInitial } from "./BriefToolClient";
 
@@ -13,6 +14,10 @@ import BriefToolClient, { type BriefPageInitial } from "./BriefToolClient";
 // navigateur (next.config.ts, staleTimes).
 export default async function BriefToolPage() {
   const initial = await loadInitial().catch(() => null);
+  // Compte sans profil (onboarding jamais terminé) : l'onboarding d'abord.
+  // C'était un appel /api/onboarding depuis le navigateur ; le profil est déjà
+  // lu ici, la décision ne coûte plus rien.
+  if (initial?.hasProfile === false) redirect("/onboarding");
   return <BriefToolClient initial={initial} />;
 }
 
@@ -25,13 +30,16 @@ async function loadInitial(): Promise<BriefPageInitial | null> {
   if (!auth.ok || !session) return null;
   const [calendar, briefs, profile] = await Promise.all([
     loadUpcomingEvents(session, auth.userId),
-    getBriefsByUser(auth.userId).catch(() => []),
-    getUserProfile(auth.userId).catch(() => null),
+    getRecentBriefsForUser(auth.userId, 5).catch(() => []),
+    // `undefined` = lecture en échec : on ne renvoie pas à l'onboarding sur une
+    // panne de base.
+    getUserProfile(auth.userId).catch(() => undefined),
   ]);
   return {
     events: calendar.ok ? calendar.events : null,
     error: calendar.ok ? null : calendar.error,
-    briefs: (briefs ?? []) as BriefPageInitial["briefs"],
+    briefs,
+    hasProfile: profile === undefined ? null : profile !== null,
     // Ce que l'onboarding a appris : sert l'accueil personnalisé (WelcomeKit).
     profile: profile
       ? { companyName: profile.company_name, offer: profile.product_description, icp: profile.icp, sector: profile.sector }

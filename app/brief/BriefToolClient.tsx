@@ -812,6 +812,8 @@ export type BriefPageInitial = {
   // Ce que l'inscription a appris, pour l'accueil personnalisé (WelcomeKit).
   profile?: WelcomeProfile | null;
   firstName?: string | null;
+  // false = onboarding jamais terminé (la page renvoie vers /onboarding).
+  hasProfile?: boolean | null;
 };
 
 export default function BriefToolClient({ initial = null }: { initial?: BriefPageInitial | null }) {
@@ -843,17 +845,6 @@ export default function BriefToolClient({ initial = null }: { initial?: BriefPag
   const serverLoaded = initial !== null;
   const [showAddMeetingModal, setShowAddMeetingModal] = useState(false);
   const { briefsOnly } = useModules();
-
-  // Redirect to onboarding if authenticated but no profile yet
-  useEffect(() => {
-    if (status !== "authenticated") return;
-    fetch("/api/onboarding")
-      .then((r) => r.json())
-      .then((data) => {
-        if (!data.hasProfile) router.push("/onboarding");
-      })
-      .catch(() => {});
-  }, [status, router]);
 
   function handlePrepare(event: CalendarEvent) {
     const contactQuery = contactParams(event);

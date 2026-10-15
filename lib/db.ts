@@ -269,6 +269,31 @@ export async function saveBrief(
   return data as { id: string } | null;
 }
 
+// Les « briefs récents » de la page Brief : cinq pastilles, cinq colonnes.
+// getBriefsByUser (select *) y embarquait les 45 briefs complets, contenu
+// compris — 200 Ko sérialisés dans le HTML de chaque chargement (mesuré le
+// 15/10/2026).
+export type RecentBrief = {
+  id: string;
+  company_name: string | null;
+  meeting_title: string | null;
+  contact_email: string | null;
+  calendar_event_id: string | null;
+  model_used: string | null;
+  created_at: string;
+};
+
+export async function getRecentBriefsForUser(userId: string, limit = 5): Promise<RecentBrief[]> {
+  const { data, error } = await supabaseAdmin
+    .from("briefs")
+    .select("id, company_name, meeting_title, contact_email, calendar_event_id, model_used, created_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as RecentBrief[];
+}
+
 export async function getBriefsByUser(userId: string) {
   const { data, error } = await supabaseAdmin
     .from("briefs")
@@ -1982,6 +2007,44 @@ export async function setEnabledModulesForOrganization(organizationId: string, m
 // et s'il doit encore nommer son entreprise (inscription libre pas terminée).
 // Même lecture `organizations(*)` que le middleware, mêmes règles.
 export type UserAccess = { modules: ModuleKey[]; accessLevel: AccessLevel; needsCompany: boolean };
+
+// Rôle + tout ce que le middleware vérifie (compte désactivé, facturation,
+// entreprise, accès, modules), en UNE requête. Mis en cache dans le jeton de
+// session par lib/auth.ts, relu toutes les 10 min : le middleware ne
+// touche plus la base à chaque navigation (15/10/2026).
+export type UserGate = {
+  disabled: boolean;
+  billingBlocked: boolean;
+  modules: ModuleKey[];
+  accessLevel: AccessLevel;
+  needsCompany: boolean;
+};
+
+export async function getUserAuthState(userId: string): Promise<{ role: UserRole | null; gate: UserGate } | null> {
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("role, disabled_at, organizations(*)")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  type OrgRow = { billing_status?: string | null; enabled_modules?: string[] | null; training_enabled?: boolean | null; access_level?: string | null };
+  const row = data as unknown as { role: UserRole | null; disabled_at: string | null; organizations: OrgRow | OrgRow[] | null };
+  const org = Array.isArray(row.organizations) ? row.organizations[0] ?? null : row.organizations;
+  const needsCompany = org == null;
+  const status = org?.billing_status;
+  return {
+    role: row.role,
+    gate: {
+      disabled: row.disabled_at != null,
+      // « canceled » bloque comme « blocked » (cf. middleware).
+      billingBlocked: status === "blocked" || status === "canceled",
+      modules: needsCompany ? [] : resolveEnabledModules(org),
+      accessLevel: needsCompany ? "briefs" : resolveAccessLevel(org),
+      needsCompany,
+    },
+  };
+}
 
 export async function getAccessForUser(userId: string): Promise<UserAccess> {
   const { data, error } = await supabaseAdmin

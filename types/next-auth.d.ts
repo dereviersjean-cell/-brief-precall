@@ -19,6 +19,15 @@ declare module "next-auth/jwt" {
     provider?: string;
     role?: "commercial" | "manager";
     roleRefreshedAt?: number;
+    // Ce que le middleware vérifie, relu avec le rôle toutes les 10 min
+    // (lib/auth.ts) : plus de requête base à chaque navigation.
+    gate?: {
+      disabled: boolean;
+      billingBlocked: boolean;
+      modules: string[];
+      accessLevel: "full" | "briefs";
+      needsCompany: boolean;
+    };
     accessTokenExpires?: number;
     error?: string;
   }

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
-import { getBriefsByUser } from "@/lib/db";
+import { getRecentBriefsForUser } from "@/lib/db";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -11,9 +11,9 @@ export async function GET() {
   const userId = auth.userId;
 
   try {
-    const briefs = await getBriefsByUser(userId);
-    console.log("[briefs] userId:", userId, "— count:", briefs?.length ?? 0);
-    return NextResponse.json(briefs ?? []);
+    // Seul consommateur : la page Brief sans données serveur (5 récents).
+    const briefs = await getRecentBriefsForUser(userId, 5);
+    return NextResponse.json(briefs);
   } catch (err) {
     console.error("[briefs] getBriefsByUser failed:", err);
     return NextResponse.json([], { status: 200 });

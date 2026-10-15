@@ -130,6 +130,17 @@ async function getUserGateInfo(userId: string): Promise<GateInfo> {
   }
 }
 
+// Le garde mis en cache dans le jeton de session (lib/auth.ts, relu toutes
+// les 10 min avec le rôle). Valide seulement pour l'utilisateur de la session,
+// jamais pour une cible d'impersonation.
+const GATE_TTL_MS = 10 * 60 * 1000;
+function cachedGate(token: unknown): GateInfo | null {
+  if (!token || typeof token !== "object") return null;
+  const { gate, roleRefreshedAt: at } = token as { gate?: GateInfo; roleRefreshedAt?: unknown };
+  if (!gate || typeof at !== "number" || Date.now() - at > GATE_TTL_MS) return null;
+  return gate;
+}
+
 // Même calcul que lib/admin-auth.ts, en Web Crypto : le middleware ne charge
 // pas le module `crypto` de Node.
 async function isAdminCookieValid(request: NextRequest): Promise<boolean> {
@@ -208,9 +219,14 @@ export async function middleware(request: NextRequest) {
     if (modulesForPath(request.nextUrl.pathname).length === 0 && !closedInBriefs) return NextResponse.next();
     const userId = await effectiveUserId(request, supabaseUserId);
     if (!userId) return NextResponse.next();
-    const { modules, accessLevel } = await getUserGateInfo(userId);
-    if (closedInBriefs && accessLevel === "briefs") return moduleNotFound(request);
-    return blockingModuleForPath(request.nextUrl.pathname, modules) ? moduleNotFound(request) : NextResponse.next();
+    const blocksApi = (g: GateInfo) =>
+      (closedInBriefs && g.accessLevel === "briefs") || blockingModuleForPath(request.nextUrl.pathname, g.modules);
+    // Cache du jeton d'abord ; une décision de blocage issue du cache est
+    // revérifiée en base (un module ouvert à l'instant doit répondre tout de
+    // suite).
+    const cached = userId === supabaseUserId ? cachedGate(token) : null;
+    const gate = cached && !blocksApi(cached) ? cached : await getUserGateInfo(userId);
+    return blocksApi(gate) ? moduleNotFound(request) : NextResponse.next();
   }
 
   if (!supabaseUserId) {
@@ -233,8 +249,21 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  const gate = await getUserGateInfo(supabaseUserId);
+  // Cache du jeton d'abord. Toute décision de BLOCAGE prise sur le cache est
+  // revérifiée en base avant d'être appliquée : lever un blocage, ouvrir un
+  // module ou rattacher une entreprise prend effet immédiatement ; dans
+  // l'autre sens (désactiver, fermer), jusqu'à 10 min sur les pages — les
+  // routes d'API, elles, relisent la base à chaque appel.
+  const cached = cachedGate(token);
+  let gate = cached ?? (await getUserGateInfo(supabaseUserId));
+  let gateFromCache = cached != null;
+  const verifyGate = async () => {
+    if (!gateFromCache) return;
+    gate = await getUserGateInfo(supabaseUserId);
+    gateFromCache = false;
+  };
 
+  if (gate.disabled) await verifyGate();
   if (gate.disabled) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
@@ -249,7 +278,9 @@ export async function middleware(request: NextRequest) {
 
   // /settings/billing stays reachable even blocked — otherwise a manager has
   // no way to update their payment method and unblock the organization.
-  if (gate.billingBlocked && !request.nextUrl.pathname.startsWith("/settings/billing")) {
+  const billingPage = request.nextUrl.pathname.startsWith("/settings/billing");
+  if (gate.billingBlocked && !billingPage) await verifyGate();
+  if (gate.billingBlocked && !billingPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/compte-suspendu";
     url.search = "";
@@ -260,8 +291,16 @@ export async function middleware(request: NextRequest) {
   // et modules, sur l'utilisateur effectivement affiché (impersonation
   // comprise) — une requête de plus, et seulement en impersonation.
   const userId = await effectiveUserId(request, supabaseUserId);
-  const view = userId === supabaseUserId ? gate : await getUserGateInfo(userId!);
   const pathname = request.nextUrl.pathname;
+  const blocksPage = (v: GateInfo) =>
+    (v.needsCompany && !pathname.startsWith("/onboarding")) ||
+    (v.accessLevel === "briefs" && !isPageOpenInBriefsAccess(pathname)) ||
+    blockingModuleForPath(pathname, v.modules);
+  let view = userId === supabaseUserId ? gate : await getUserGateInfo(userId!);
+  if (userId === supabaseUserId && blocksPage(view)) {
+    await verifyGate();
+    view = gate;
+  }
 
   // Inscription libre sans entreprise : l'onboarding d'abord, rien d'autre.
   if (view.needsCompany && !pathname.startsWith("/onboarding")) {

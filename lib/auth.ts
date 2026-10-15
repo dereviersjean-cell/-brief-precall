@@ -5,7 +5,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { consumeLoginCode, looksLikeEmail, normalizeEmail, signInWithPassword, signInWithVerifiedEmail } from "./email-auth";
 import { passwordProblem } from "./password";
 import { checkSharedRateLimit } from "./rate-limit";
-import { resolveUserForLogin, saveGoogleTokens, getGoogleTokens, getUserRole, touchUserLastSeen, type AuthProvider } from "./db";
+import { resolveUserForLogin, saveGoogleTokens, getGoogleTokens, getUserAuthState, touchUserLastSeen, type AuthProvider } from "./db";
 import { refreshGoogleAccessToken } from "./gmail";
 import { MICROSOFT_LOGIN_SCOPES, refreshMicrosoftAccessToken } from "./microsoft";
 
@@ -196,6 +196,7 @@ export const authOptions: AuthOptions = {
         token.provider = "email";
         token.supabaseUserId = user.id;
         token.role = ((user as { role?: string | null }).role ?? undefined) as typeof token.role;
+        token.gate = (await getUserAuthState(user.id).catch(() => null))?.gate;
         token.roleRefreshedAt = Date.now();
         delete token.accessToken;
         delete token.refreshToken;
@@ -231,6 +232,7 @@ export const authOptions: AuthOptions = {
             if (resolution.status === "ok") {
               token.supabaseUserId = resolution.userId;
               token.role = resolution.role ?? undefined;
+              token.gate = (await getUserAuthState(resolution.userId).catch(() => null))?.gate;
               token.roleRefreshedAt = Date.now();
               await recordLastSeen(resolution.userId);
 
@@ -262,17 +264,21 @@ export const authOptions: AuthOptions = {
         return token;
       }
 
-      // Subsequent calls — re-read the role from DB at most every 10 min.
-      // token.role is otherwise only set at sign-in, so a commercial promoted
-      // to manager (or the reverse) kept a stale role until re-login: the
-      // sidebar "Équipe" entry and the settings tabs read session.role.
-      // Server routes are unaffected (they already re-read the role from DB).
+      // Subsequent calls — re-read role AND gate (disabled, billing, modules,
+      // access) from DB at most every 10 min, in one query. token.role is
+      // otherwise only set at sign-in, so a commercial promoted to manager
+      // kept a stale role until re-login. The gate feeds the middleware, which
+      // used to query Supabase on every navigation (15/10/2026) — it now
+      // re-queries only when the cached gate would BLOCK, so opening a module
+      // or lifting a block applies immediately, while closing one can take up
+      // to 10 min. Server routes are unaffected (they re-read the DB).
       const ROLE_REFRESH_MS = 10 * 60 * 1000;
       const refreshedAt = typeof token.roleRefreshedAt === "number" ? token.roleRefreshedAt : 0;
       if (typeof token.supabaseUserId === "string" && Date.now() - refreshedAt > ROLE_REFRESH_MS) {
         try {
-          const freshRole = await getUserRole(token.supabaseUserId);
-          token.role = freshRole ?? undefined;
+          const state = await getUserAuthState(token.supabaseUserId);
+          token.role = state?.role ?? undefined;
+          token.gate = state?.gate;
           token.roleRefreshedAt = Date.now();
           await recordLastSeen(token.supabaseUserId);
         } catch (err) {
