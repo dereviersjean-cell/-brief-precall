@@ -4,6 +4,7 @@ import {
   billingStatusFromStripeStatus,
   shouldActivateOnPaymentSucceeded,
   canTransitionQuote,
+  isBillingBlocked,
 } from "../lib/billing-rules";
 
 // Flux irréversibles : ces décisions touchent à l'argent et à l'accès, et
@@ -62,5 +63,24 @@ describe("canTransitionQuote — acceptation de devis", () => {
     // fausserait les statistiques d'objections.
     assert.equal(canTransitionQuote("accepted"), false);
     assert.equal(canTransitionQuote("rejected"), false);
+  });
+});
+
+describe("isBillingBlocked — abonnement activé manuellement (migration 028)", () => {
+  test("résilié ou bloqué sans dérogation : accès coupé", () => {
+    assert.equal(isBillingBlocked({ billing_status: "canceled" }), true);
+    assert.equal(isBillingBlocked({ billing_status: "blocked", billing_exempt: false }), true);
+  });
+
+  test("la dérogation passe devant le statut Stripe", () => {
+    assert.equal(isBillingBlocked({ billing_status: "canceled", billing_exempt: true }), false);
+    assert.equal(isBillingBlocked({ billing_status: "blocked", billing_exempt: true }), false);
+  });
+
+  test("essai, actif, grâce et absence d'organisation ne bloquent pas", () => {
+    for (const s of ["none", "trialing", "active", "grace_period"]) assert.equal(isBillingBlocked({ billing_status: s }), false);
+    assert.equal(isBillingBlocked(null), false);
+    // Colonne absente (migration pas encore passée) : comportement d'avant.
+    assert.equal(isBillingBlocked({ billing_status: "canceled", billing_exempt: null }), true);
   });
 });

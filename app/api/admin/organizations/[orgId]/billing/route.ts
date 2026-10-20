@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
-import { updateOrganizationBilling } from "@/lib/db";
+import { updateOrganizationBilling, isMissingColumnError } from "@/lib/db";
 
 // Override côté Brief pour les cas de support (paiement par virement, litige
-// en cours) — ne touche jamais le véritable abonnement Stripe. Si l'abonnement
-// Stripe sous-jacent est réellement résilié/impayé, un prochain webhook peut
-// réécraser ce statut ; c'est un déblocage temporaire, pas une correction
-// définitive de la facturation.
+// en cours) — ne touche jamais le véritable abonnement Stripe.
+//
+// `set_exempt` (migration 028) : abonnement activé à la main. L'accès reste
+// ouvert quel que soit le statut Stripe, et le reste tant que l'interrupteur
+// est allumé — contrairement à `unblock`, qui écrit « active » et se fait
+// réécraser par le webhook suivant si l'abonnement Stripe est bien résilié.
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ orgId: string }> }
@@ -16,7 +18,22 @@ export async function PATCH(
   }
 
   const { orgId } = await params;
-  const { action } = (await request.json().catch(() => ({}))) as { action?: string };
+  const { action, exempt } = (await request.json().catch(() => ({}))) as { action?: string; exempt?: unknown };
+
+  if (action === "set_exempt") {
+    if (typeof exempt !== "boolean") {
+      return NextResponse.json({ error: "exempt (booléen) requis." }, { status: 400 });
+    }
+    try {
+      await updateOrganizationBilling(orgId, { billing_exempt: exempt });
+    } catch (err) {
+      if (isMissingColumnError(err as { code?: string; message?: string })) {
+        return NextResponse.json({ error: "Migration 028 (billing_exempt) non appliquée en base." }, { status: 503 });
+      }
+      throw err;
+    }
+    return NextResponse.json({ ok: true });
+  }
 
   if (action === "unblock") {
     await updateOrganizationBilling(orgId, { billing_status: "active", grace_period_ends_at: null });
@@ -31,5 +48,5 @@ export async function PATCH(
     return NextResponse.json({ ok: true });
   }
 
-  return NextResponse.json({ error: "action invalide (attendu: unblock | extend_grace)." }, { status: 400 });
+  return NextResponse.json({ error: "action invalide (attendu: set_exempt | unblock | extend_grace)." }, { status: 400 });
 }

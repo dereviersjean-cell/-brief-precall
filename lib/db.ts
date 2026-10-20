@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "./supabase";
-import { canTransitionQuote } from "./billing-rules";
+import { canTransitionQuote, isBillingBlocked } from "./billing-rules";
 import { generateEmbedding } from "./embeddings";
 import { computeQuoteTotals } from "./quote-calc";
 import type { TranscriptJson } from "./recall";
@@ -870,7 +870,7 @@ export type CallWithAnalysis = {
 // #14) : une fonctionnalité de confort ne doit jamais emporter l'écran.
 const PROSPECT_IDENTITY_COLUMNS = "prospect_company, prospect_contacts, ";
 
-function isMissingColumnError(error: { code?: string; message?: string } | null): boolean {
+export function isMissingColumnError(error: { code?: string; message?: string } | null): boolean {
   if (!error) return false;
   return error.code === "42703" || /prospect_company|prospect_contacts/.test(error.message ?? "");
 }
@@ -1668,10 +1668,15 @@ export type OrganizationBilling = {
   current_period_start: string | null;
   current_period_end: string | null;
   last_usage_reported_at: string | null;
+  // Abonnement activé à la main par l'admin (migration 028) : l'accès reste
+  // ouvert quel que soit billing_status. Absent tant que la migration n'est
+  // pas passée — les lectures retombent alors sur les colonnes d'avant.
+  billing_exempt?: boolean | null;
 };
 
 const ORGANIZATION_BILLING_COLUMNS =
   "stripe_customer_id, stripe_subscription_id, stripe_seat_item_id, billing_status, billing_interval, trial_ends_at, grace_period_ends_at, current_period_start, current_period_end, last_usage_reported_at";
+const ORGANIZATION_BILLING_COLUMNS_WITH_EXEMPT = `${ORGANIZATION_BILLING_COLUMNS}, billing_exempt`;
 
 // Tout ce dont l'habillage de l'application a besoin, en une requête.
 //
@@ -1773,11 +1778,14 @@ export async function getShellStateForUser(userId: string): Promise<{
 }
 
 export async function getOrganizationBillingRow(orgId: string): Promise<OrganizationBilling | null> {
-  const { data, error } = await supabaseAdmin
-    .from("organizations")
-    .select(ORGANIZATION_BILLING_COLUMNS)
-    .eq("id", orgId)
-    .maybeSingle();
+  const select = (withExempt: boolean) =>
+    supabaseAdmin
+      .from("organizations")
+      .select(withExempt ? ORGANIZATION_BILLING_COLUMNS_WITH_EXEMPT : ORGANIZATION_BILLING_COLUMNS)
+      .eq("id", orgId)
+      .maybeSingle();
+  let { data, error } = await select(true);
+  if (error && isMissingColumnError(error)) ({ data, error } = await select(false));
   if (error) throw error;
   return data as OrganizationBilling | null;
 }
@@ -2086,17 +2094,17 @@ export async function getUserAuthState(userId: string): Promise<{ role: UserRole
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
-  type OrgRow = { billing_status?: string | null; enabled_modules?: string[] | null; training_enabled?: boolean | null; access_level?: string | null };
+  type OrgRow = { billing_status?: string | null; billing_exempt?: boolean | null; enabled_modules?: string[] | null; training_enabled?: boolean | null; access_level?: string | null };
   const row = data as unknown as { role: UserRole | null; disabled_at: string | null; organizations: OrgRow | OrgRow[] | null };
   const org = Array.isArray(row.organizations) ? row.organizations[0] ?? null : row.organizations;
   const needsCompany = org == null;
-  const status = org?.billing_status;
   return {
     role: row.role,
     gate: {
       disabled: row.disabled_at != null,
-      // « canceled » bloque comme « blocked » (cf. middleware).
-      billingBlocked: status === "blocked" || status === "canceled",
+      // « canceled » bloque comme « blocked », sauf abonnement activé à la
+      // main (lib/billing-rules.ts, même règle que le middleware).
+      billingBlocked: isBillingBlocked(org),
       modules: needsCompany ? [] : resolveEnabledModules(org),
       accessLevel: needsCompany ? "briefs" : resolveAccessLevel(org),
       needsCompany,

@@ -90,20 +90,83 @@ function BillingOverrideActions({
   );
 }
 
+// Abonnement activé à la main (migration 028) : l'accès reste ouvert quel que
+// soit le statut Stripe, tant que l'interrupteur est allumé. C'est ce qui
+// remplace le « déblocage manuel » quand l'abonnement Stripe est vraiment
+// résilié — celui-ci se faisait réécraser par le webhook suivant.
+function ManualAccessToggle({ orgId, exempt, onDone }: { orgId: string; exempt: boolean; onDone: () => void }) {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function toggle() {
+    setPending(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/organizations/${orgId}/billing`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "set_exempt", exempt: !exempt }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error ?? "Erreur.");
+      }
+      onDone();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <div className="mt-5 flex items-start justify-between gap-4 rounded-xl bg-slate-50 p-4">
+      <div className="min-w-0">
+        <p className="text-[13px] font-semibold text-slate-900">Abonnement activé manuellement</p>
+        <p className="mt-0.5 text-[12.5px] leading-relaxed text-slate-500">
+          {exempt
+            ? "L'accès reste ouvert quel que soit le statut Stripe (impayé, résilié). Éteindre pour redonner la main à Stripe."
+            : "Ouvre l'accès à Brief même sans paiement, et le garde ouvert quoi que Stripe dise. N'agit pas sur l'abonnement Stripe."}
+        </p>
+        {error && <p className="mt-1.5 text-[12px] text-rose-700">{error}</p>}
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={exempt}
+        aria-label="Abonnement activé manuellement"
+        onClick={toggle}
+        disabled={pending}
+        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${exempt ? "bg-emerald-500" : "bg-slate-300"}`}
+      >
+        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${exempt ? "translate-x-[22px]" : "translate-x-0.5"}`} />
+      </button>
+    </div>
+  );
+}
+
 export default function BillingPanel({ organizationId, billing }: { organizationId: string; billing: OrganizationBilling | null }) {
   const router = useRouter();
+  const exempt = billing?.billing_exempt === true;
   return (
     <div className="rounded-2xl border border-border bg-white p-6">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-[15px] font-semibold tracking-tight text-slate-900">Facturation</h2>
-        {(() => {
-          const meta = BILLING_STATUS_META[billing?.billing_status ?? "none"] ?? BILLING_STATUS_META.none;
-          return (
-            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${meta.className}`}>
-              {meta.label}
+        <div className="flex items-center gap-1.5">
+          {exempt && (
+            <span className="inline-flex items-center rounded-full bg-[color:var(--success-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-emerald-700">
+              Accès ouvert manuellement
             </span>
-          );
-        })()}
+          )}
+          {(() => {
+            const meta = BILLING_STATUS_META[billing?.billing_status ?? "none"] ?? BILLING_STATUS_META.none;
+            return (
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${meta.className}`}>
+                {meta.label}
+              </span>
+            );
+          })()}
+        </div>
       </div>
       {!billing || billing.billing_status === "none" ? (
         <p className="text-[13.5px] text-slate-500">Cette organisation n&apos;a pas encore souscrit d&apos;abonnement.</p>
@@ -138,7 +201,9 @@ export default function BillingPanel({ organizationId, billing }: { organization
         </table>
       )}
 
-      {billing && (billing.billing_status === "blocked" || billing.billing_status === "grace_period") && (
+      <ManualAccessToggle orgId={organizationId} exempt={exempt} onDone={() => router.refresh()} />
+
+      {billing && !exempt && (billing.billing_status === "blocked" || billing.billing_status === "grace_period") && (
         <BillingOverrideActions orgId={organizationId} status={billing.billing_status} onDone={() => router.refresh()} />
       )}
     </div>

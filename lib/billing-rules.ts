@@ -48,3 +48,16 @@ export function shouldActivateOnPaymentSucceeded(currentStatus: string): boolean
 export function canTransitionQuote(currentStatus: string): boolean {
   return currentStatus !== "accepted" && currentStatus !== "rejected";
 }
+
+// Accès bloqué pour raison de facturation ? « canceled » bloque comme
+// « blocked » (une résiliation coupe l'accès tout de suite, la grâce ne vaut
+// que pour un échec de paiement). `billing_exempt` (migration 028) passe
+// devant tout : un client dont l'abonnement est activé à la main par l'admin
+// garde l'accès quoi que Stripe dise — c'est la seule règle d'accès qui ne
+// découle pas de Stripe, et elle vit ici pour que le middleware, le jeton de
+// session et l'admin la lisent au même endroit.
+export function isBillingBlocked(org: { billing_status?: string | null; billing_exempt?: boolean | null } | null | undefined): boolean {
+  if (!org) return false;
+  if (org.billing_exempt === true) return false;
+  return org.billing_status === "blocked" || org.billing_status === "canceled";
+}

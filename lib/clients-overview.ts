@@ -55,6 +55,7 @@ type OrgRow = {
   id: string;
   name: string;
   billing_status?: string | null;
+  billing_exempt?: boolean | null;
   enabled_modules?: string[] | null;
   training_enabled?: boolean | null;
   account_manager?: string | null;
@@ -134,7 +135,11 @@ export async function getClientsOverview(now: Date = new Date(), organizationId?
       alerts.push({ kind: "agenda_disconnected", severity: "danger", label: plural(agendaDisconnected.length, "agenda coupé", "agendas coupés") });
     }
     if (billingStatus === "blocked" || billingStatus === "canceled") {
-      alerts.push({ kind: "billing", severity: "danger", label: billingStatus === "blocked" ? "Accès suspendu" : "Abonnement résilié" });
+      // Abonnement activé à la main (migration 028) : l'accès est ouvert, pas
+      // d'alerte — la fiche Facturation montre l'interrupteur.
+      if (org.billing_exempt !== true) {
+        alerts.push({ kind: "billing", severity: "danger", label: billingStatus === "blocked" ? "Accès suspendu" : "Abonnement résilié" });
+      }
     } else if (billingStatus === "grace_period") {
       alerts.push({ kind: "billing", severity: "warning", label: "Paiement en échec" });
     }

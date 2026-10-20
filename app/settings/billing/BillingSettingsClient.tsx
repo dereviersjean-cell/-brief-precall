@@ -128,6 +128,9 @@ export default function BillingSettingsClient({
   const [billingInterval, setBillingInterval] = useState<"month" | "year">("month");
 
   const status = billing?.billing_status ?? "none";
+  // Abonnement activé à la main par l'équipe Brief (migration 028) : l'accès
+  // est ouvert, le bandeau « Accès suspendu » n'a pas lieu d'être.
+  const manualAccess = billing?.billing_exempt === true;
   const hasSubscription = status !== "none";
   const currentInterval = (billing?.billing_interval as "month" | "year" | null) ?? "month";
 
@@ -223,7 +226,18 @@ export default function BillingSettingsClient({
         </FadeIn>
       )}
 
-      {(status === "blocked" || status === "canceled") && (
+      {manualAccess && (status === "blocked" || status === "canceled") && (
+        <FadeIn delay={0.05}>
+          <div className="mb-6 rounded-2xl bg-[color:var(--success-soft)] p-5">
+            <p className="text-[13.5px] font-semibold text-emerald-800">Votre accès à Brief est ouvert</p>
+            <p className="mt-1 text-[12.5px] text-emerald-700">
+              L&apos;équipe Brief a activé votre abonnement manuellement : aucune action n&apos;est nécessaire de votre côté.
+            </p>
+          </div>
+        </FadeIn>
+      )}
+
+      {!manualAccess && (status === "blocked" || status === "canceled") && (
         <FadeIn delay={0.05}>
           <div className="mb-6 flex items-start gap-3 rounded-2xl bg-[color:var(--danger-soft)] p-5">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-700" />
