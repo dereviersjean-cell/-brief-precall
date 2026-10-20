@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useSession, signIn } from "next-auth/react";
 import { AlertTriangle, CalendarCheck, Video, Share2 } from "lucide-react";
 import HowItWorksCard, { type PipelineStep } from "@/app/settings/_components/HowItWorksCard";
+import OnceConnected, { RECALL_EFFECTS, SLACK_EFFECTS } from "./OnceConnected";
 
 const PIPELINE_STEPS: PipelineStep[] = [
   {
@@ -132,9 +133,10 @@ export default function ConnexionsSettingsClient({
       <div className="rounded-2xl border border-border bg-white">
         <div className="px-5 py-5 sm:px-6">
           <h2 className="mb-1 text-[14px] font-semibold text-slate-900">Calendrier Recall</h2>
-          <p className="mb-4 text-[13px] leading-relaxed text-slate-500">
+          <p className="mb-3 text-[13px] leading-relaxed text-slate-500">
             Permet l&apos;enregistrement et l&apos;analyse automatique de vos appels avec des prospects.
           </p>
+          <OnceConnected items={RECALL_EFFECTS} />
           {recallConnected && recallDisconnected ? (
             // Reconnecter crée un nouvel agenda chez Recall ; l'ancien, coupé,
             // est supprimé au retour (saveReconnectedCalendar).
@@ -290,9 +292,10 @@ export default function ConnexionsSettingsClient({
       <div className="rounded-2xl border border-border bg-white mt-6">
         <div className="px-5 py-5 sm:px-6">
           <h2 className="mb-1 text-[14px] font-semibold text-slate-900">Compte Slack</h2>
-          <p className="mb-4 text-[13px] leading-relaxed text-slate-500">
+          <p className="mb-3 text-[13px] leading-relaxed text-slate-500">
             Permet l&apos;envoi de vos briefs, analyses et digests en message privé sur Slack.
           </p>
+          <OnceConnected items={SLACK_EFFECTS} />
           {slackConnected ? (
             <div className="flex flex-wrap items-center gap-3">
               <div className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-[color:var(--success-soft)] px-2.5 py-1">

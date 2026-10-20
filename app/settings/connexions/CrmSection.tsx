@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import OnceConnected, { CRM_EFFECTS } from "./OnceConnected";
 
 // Section CRM de la page Connexions. Vivait dans un onglet séparé
 // (/settings/crm, supprimée) jusqu'au 21/08/2026 : tout ce qui se connecte est
@@ -72,7 +73,8 @@ export default function CrmSection({
         <div className="divide-y divide-border px-5 sm:px-6">
           {/* Pipedrive */}
           <div className="py-5">
-            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Pipedrive</p>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Pipedrive</p>
+            <OnceConnected items={CRM_EFFECTS("Pipedrive")} />
             {pipedriveConnected ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-3 flex-wrap">
@@ -156,7 +158,8 @@ export default function CrmSection({
 
           {/* HubSpot */}
           <div className="py-5">
-            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">HubSpot</p>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">HubSpot</p>
+            <OnceConnected items={CRM_EFFECTS("HubSpot")} />
             {hubspotConnected ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-3 flex-wrap">
