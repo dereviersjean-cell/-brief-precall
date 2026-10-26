@@ -103,7 +103,7 @@ function DealCard({ deal }: { deal: DealOverview }) {
       </div>
       {idleDays !== null && idleDays >= INACTIVITY_DAYS && (
         <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50/60 px-3 py-2 text-[13px] text-amber-800">
-          <span className="font-semibold">Aucune activité depuis {idleDays} jours</span> — dernier call le {formatDay(last!)}.
+          <span className="font-semibold">Aucune activité depuis {idleDays} jours</span> — dernier call le {formatDay(last!)}
         </p>
       )}
       <HubspotLine snapshot={deal.hubspot} />
@@ -113,7 +113,7 @@ function DealCard({ deal }: { deal: DealOverview }) {
             <span className="w-5 text-right text-[12px] text-slate-400">{i + 1}.</span>
             {c.callAt && <span className="text-[12.5px] text-slate-500">{formatDay(c.callAt)}</span>}
             {c.isCurrent ? (
-              <span className="font-medium text-slate-900">{c.title ?? "Ce call"} (ce call)</span>
+              <span className="font-medium text-slate-900">{c.title ? `${c.title} (ce call)` : "Ce call"}</span>
             ) : (
               <Link href={`/feedback/${c.callId}?tab=deal`} className="font-medium text-[color:var(--violet)] hover:underline">
                 {c.title ?? "Call"}
