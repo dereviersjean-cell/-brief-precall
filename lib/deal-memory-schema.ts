@@ -202,16 +202,39 @@ export type DealMemoryContent = {
   alerts: DealMemoryAlert[];
 };
 
-export type StoredDealMemory = DealMemoryContent & { model: string | null; generatedAt: string };
+export type StoredDealMemory = DealMemoryContent & {
+  model: string | null;
+  generatedAt: string;
+  // Dernier envoi dans HubSpot (étape 3), absent si jamais envoyée.
+  hubspotPushedAt?: string | null;
+};
 
 // Ce qu'un deal a retenu de ses calls précédents, donné au modèle pour qu'il
 // compare (objection qui revient, décideur toujours absent…).
 export type DealHistoryEntry = { callAt: string; title: string | null; content: DealMemoryContent };
 
+// Ce que Brief a lu du deal HubSpot rattaché (étape 3), relu à chaque fiche.
+export type HubspotDealSnapshot = {
+  id: string;
+  name: string | null;
+  pipeline: string | null;
+  stage: string | null;
+  // Position de l'étape dans le pipeline, 1 = la première ; null si l'étape
+  // n'est pas trouvée dans le pipeline (supprimée depuis, par exemple).
+  stageIndex: number | null;
+  stageCount: number | null;
+  closed: boolean;
+  amount: number | null;
+  closeDate: string | null;
+  nextStep: string | null;
+  url: string | null;
+};
+
 // Le deal tel que l'écran d'un call le montre.
 export type DealOverview = {
   id: string;
   name: string;
+  hubspot: HubspotDealSnapshot | null;
   calls: { callId: string; callAt: string | null; title: string | null; alertCount: number; isCurrent: boolean }[];
   // Jours écoulés depuis le dernier call du deal, calculés à la lecture.
   idleDays: number | null;

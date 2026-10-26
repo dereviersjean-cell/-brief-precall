@@ -1,16 +1,37 @@
 import {
+  createDealFromHubspot,
+  findDealByHubspotId,
   findDealByIdentity,
   findOrCreateDeal,
   getDealHistory,
   getOrganizationEmailDomains,
   getOrganizationForUser,
+  getHubspotUserForOrganization,
   getUserName,
   saveCallDealMemory,
+  setDealHubspot,
   type CallWithAnalysis,
 } from "./db";
 import { generateDealMemory } from "./deal-memory";
 import { dealIdentityFor } from "./deal-grouping";
-import type { StoredDealMemory } from "./deal-memory-schema";
+import type { HubspotDealSnapshot, StoredDealMemory } from "./deal-memory-schema";
+import { findHubSpotDealForProspect, getHubSpotDealSnapshot } from "./crm/hubspot-deals";
+import { reportWarning } from "./monitoring";
+
+// Étape 3 : le deal HubSpot du prospect, lu avec la connexion HubSpot du
+// commercial du call, sinon d'un autre membre de l'organisation. Un échec de
+// HubSpot ne bloque pas la fiche : elle se rattache alors comme à l'étape 2.
+async function findHubspotDeal(organizationId: string, call: CallWithAnalysis, domain: string | null): Promise<HubspotDealSnapshot | null> {
+  try {
+    const hubspotUser = await getHubspotUserForOrganization(organizationId, [call.user_id]);
+    if (!hubspotUser) return null;
+    const hubspotDealId = await findHubSpotDealForProspect(hubspotUser, { contactEmail: call.contact_email, domain });
+    return hubspotDealId ? await getHubSpotDealSnapshot(hubspotUser, hubspotDealId) : null;
+  } catch (err) {
+    reportWarning("deal-memory.hubspot", err, { callId: call.id });
+    return null;
+  }
+}
 
 // Génère la fiche d'un call en tenant compte de son deal (étape 2) :
 //  1. on cherche le deal d'après ce que le call sait déjà du prospect (email,
@@ -46,7 +67,18 @@ export async function runDealMemoryForCall(call: CallWithAnalysis, organizationI
     ownDomains,
     ownCompanyName,
   });
-  let dealId = knownIdentity ? await findOrCreateDeal(organizationId, knownIdentity) : null;
+  // Le deal HubSpot prime : deux calls rattachés au même deal HubSpot sont le
+  // même deal dans Brief, quels que soient l'email ou l'entreprise saisis.
+  const hubspot = await findHubspotDeal(organizationId, call, knownIdentity?.domain ?? null);
+  let dealId: string | null = null;
+  if (hubspot) {
+    dealId =
+      (await findDealByHubspotId(organizationId, hubspot.id)) ??
+      (knownIdentity ? await findOrCreateDeal(organizationId, knownIdentity) : await createDealFromHubspot(organizationId, hubspot));
+    await setDealHubspot(dealId, hubspot);
+  } else if (knownIdentity) {
+    dealId = await findOrCreateDeal(organizationId, knownIdentity);
+  }
   let history = dealId ? await getDealHistory(dealId, call.id, callAt) : [];
 
   let result = await generateDealMemory({ ...base, history });

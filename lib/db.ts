@@ -6,7 +6,7 @@ import type { TranscriptJson } from "./recall";
 import type { NotificationEventType, NotificationChannel, NotificationPreference } from "./notification-preferences";
 import { coerceMeetingStageConfig, type MeetingStage, type MeetingStageConfig } from "./meeting-stage";
 import { resolveAccessLevel, resolveEnabledModules, type AccessLevel, type ModuleKey } from "./modules";
-import type { DealHistoryEntry, DealMemoryContent, DealOverview, StoredDealMemory } from "./deal-memory-schema";
+import type { DealHistoryEntry, DealMemoryContent, DealOverview, HubspotDealSnapshot, StoredDealMemory } from "./deal-memory-schema";
 import type { DealIdentity } from "./deal-grouping";
 
 export async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 500): Promise<T> {
@@ -1865,8 +1865,16 @@ export async function getCallDealMemory(callId: string): Promise<(StoredDealMemo
     model: string | null;
     generated_at: string;
     deal_id?: string | null;
+    hubspot_pushed_at?: string | null;
   };
-  return { fields: row.fields ?? {}, alerts: row.alerts ?? [], model: row.model, generatedAt: row.generated_at, dealId: row.deal_id ?? null };
+  return {
+    fields: row.fields ?? {},
+    alerts: row.alerts ?? [],
+    model: row.model,
+    generatedAt: row.generated_at,
+    dealId: row.deal_id ?? null,
+    hubspotPushedAt: row.hubspot_pushed_at ?? null,
+  };
 }
 
 // Une fiche par call : la régénération remplace la précédente. `deal` vient de
@@ -1961,6 +1969,84 @@ export async function findOrCreateDeal(organizationId: string, identity: DealIde
   return (data as { id: string }).id;
 }
 
+export async function findDealByHubspotId(organizationId: string, hubspotDealId: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin
+    .from("deals")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("hubspot_deal_id", hubspotDealId)
+    .order("created_at", { ascending: true })
+    .limit(1);
+  if (error) throw error;
+  return ((data ?? [])[0] as { id: string } | undefined)?.id ?? null;
+}
+
+export async function createDealFromHubspot(organizationId: string, snapshot: HubspotDealSnapshot): Promise<string> {
+  const { data, error } = await supabaseAdmin
+    .from("deals")
+    .insert({
+      organization_id: organizationId,
+      name: snapshot.name ?? "Deal HubSpot",
+      hubspot_deal_id: snapshot.id,
+      hubspot_snapshot: snapshot,
+      hubspot_synced_at: new Date().toISOString(),
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return (data as { id: string }).id;
+}
+
+export async function setDealHubspot(dealId: string, snapshot: HubspotDealSnapshot): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("deals")
+    .update({ hubspot_deal_id: snapshot.id, hubspot_snapshot: snapshot, hubspot_synced_at: new Date().toISOString() })
+    .eq("id", dealId);
+  if (error) throw error;
+}
+
+export async function getDealHubspotId(dealId: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin.from("deals").select("hubspot_deal_id").eq("id", dealId).maybeSingle();
+  if (error) throw error;
+  return (data as { hubspot_deal_id: string | null } | null)?.hubspot_deal_id ?? null;
+}
+
+// Un utilisateur de l'organisation qui a connecté HubSpot, ceux de
+// `preferred` d'abord (le commercial du call). Les connexions sont
+// personnelles ; le portail, lui, est celui de l'entreprise.
+export async function getHubspotUserForOrganization(organizationId: string, preferred: string[]): Promise<string | null> {
+  const { data: users, error } = await supabaseAdmin.from("users").select("id").eq("organization_id", organizationId);
+  if (error) throw error;
+  const ids = ((users ?? []) as { id: string }[]).map((u) => u.id);
+  if (ids.length === 0) return null;
+  const { data: conns, error: connError } = await supabaseAdmin
+    .from("crm_connections")
+    .select("user_id")
+    .eq("provider", "hubspot")
+    .in("user_id", ids);
+  if (connError) throw connError;
+  const connected = new Set(((conns ?? []) as { user_id: string }[]).map((c) => c.user_id));
+  return preferred.find((id) => connected.has(id)) ?? ids.find((id) => connected.has(id)) ?? null;
+}
+
+export async function getOrganizationHubspotMapping(organizationId: string): Promise<Record<string, string>> {
+  const { data, error } = await supabaseAdmin.from("organizations").select("hubspot_field_mapping").eq("id", organizationId).maybeSingle();
+  if (error) throw error;
+  return ((data as { hubspot_field_mapping?: Record<string, string> | null } | null)?.hubspot_field_mapping ?? {}) as Record<string, string>;
+}
+
+export async function setOrganizationHubspotMapping(organizationId: string, mapping: Record<string, string>): Promise<void> {
+  const { error } = await supabaseAdmin.from("organizations").update({ hubspot_field_mapping: mapping }).eq("id", organizationId);
+  if (error) throw error;
+}
+
+export async function markDealMemoryPushed(callId: string): Promise<string> {
+  const at = new Date().toISOString();
+  const { error } = await supabaseAdmin.from("call_deal_memory").update({ hubspot_pushed_at: at }).eq("call_id", callId);
+  if (error) throw error;
+  return at;
+}
+
 type DealFicheRow = {
   call_id: string;
   call_at: string | null;
@@ -1997,7 +2083,7 @@ export async function getDealHistory(dealId: string, callId: string, callAt: str
 // tout ce qu'ils ont retenu, du plus récent au plus ancien.
 export async function getDealOverview(dealId: string, currentCallId: string): Promise<DealOverview | null> {
   const [{ data: deal, error }, rows] = await Promise.all([
-    supabaseAdmin.from("deals").select("id, name").eq("id", dealId).maybeSingle(),
+    supabaseAdmin.from("deals").select("*").eq("id", dealId).maybeSingle(),
     listDealFiches(dealId),
   ]);
   if (error) throw error;
@@ -2016,6 +2102,7 @@ export async function getDealOverview(dealId: string, currentCallId: string): Pr
   return {
     id: (deal as { id: string }).id,
     name: (deal as { name: string }).name,
+    hubspot: ((deal as { hubspot_snapshot?: HubspotDealSnapshot | null }).hubspot_snapshot ?? null) as HubspotDealSnapshot | null,
     idleDays: lastCallAt ? Math.floor((Date.now() - new Date(lastCallAt).getTime()) / (24 * 60 * 60 * 1000)) : null,
     calls: rows.map((row) => ({
       callId: row.call_id,

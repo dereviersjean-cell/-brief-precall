@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -9,7 +9,9 @@ import {
   INACTIVITY_DAYS,
   OBJECTION_ALERT_LABEL,
   type DealMemoryItem,
+  type DealMemoryFieldKey,
   type DealOverview,
+  type HubspotDealSnapshot,
   type QuoteSegment,
   type StoredDealMemory,
 } from "@/lib/deal-memory-schema";
@@ -104,6 +106,7 @@ function DealCard({ deal }: { deal: DealOverview }) {
           <span className="font-semibold">Aucune activité depuis {idleDays} jours</span> — dernier call le {formatDay(last!)}.
         </p>
       )}
+      <HubspotLine snapshot={deal.hubspot} />
       <ol className="mt-3 space-y-1.5">
         {deal.calls.map((c, i) => (
           <li key={c.callId} className="flex flex-wrap items-baseline gap-x-2 text-[13.5px]">
@@ -128,11 +131,152 @@ function DealCard({ deal }: { deal: DealOverview }) {
   );
 }
 
+function formatAmount(amount: number): string {
+  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(amount);
+}
+
+// Le deal HubSpot rattaché (étape 3), tel que lu à la dernière fiche ou au
+// dernier envoi.
+function HubspotLine({ snapshot }: { snapshot: HubspotDealSnapshot | null }) {
+  if (!snapshot) {
+    return <p className="mt-2 text-[12.5px] text-slate-400">Aucun deal HubSpot trouvé pour ce prospect.</p>;
+  }
+  const parts = [
+    snapshot.stage && (snapshot.stageIndex && snapshot.stageCount ? `${snapshot.stage} (étape ${snapshot.stageIndex} sur ${snapshot.stageCount})` : snapshot.stage),
+    snapshot.amount !== null ? formatAmount(snapshot.amount) : null,
+    snapshot.closeDate ? `clôture prévue le ${formatDay(snapshot.closeDate)}` : null,
+  ].filter(Boolean);
+  return (
+    <p className="mt-2 text-[13px] text-slate-600">
+      <span className="font-medium text-slate-900">HubSpot</span>
+      {snapshot.name ? ` · ${snapshot.name}` : ""}
+      {parts.length > 0 ? ` · ${parts.join(" · ")}` : ""}
+      {snapshot.url && (
+        <>
+          {" · "}
+          <a href={snapshot.url} target="_blank" rel="noreferrer" className="font-medium text-[color:var(--violet)] hover:underline">
+            Ouvrir dans HubSpot
+          </a>
+        </>
+      )}
+    </p>
+  );
+}
+
+type MappingState = {
+  connected: boolean;
+  properties: { name: string; label: string }[];
+  mapping: Partial<Record<DealMemoryFieldKey, string>>;
+};
+
+// Où chaque champ de la fiche s'écrit dans HubSpot. Réglé au setup avec le
+// manager ; la liste vient des propriétés de deal du HubSpot du client.
+function HubspotMapping() {
+  const [open, setOpen] = useState(false);
+  const [state, setState] = useState<MappingState | null>(null);
+  const [draft, setDraft] = useState<Partial<Record<DealMemoryFieldKey, string>>>({});
+  const [status, setStatus] = useState<"idle" | "loading" | "saving" | "saved" | "error">("idle");
+
+  useEffect(() => {
+    if (!open || state) return;
+    let cancelled = false;
+    fetch("/api/deal-memory/hubspot-mapping")
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data: MappingState) => {
+        if (cancelled) return;
+        setState(data);
+        setDraft(data.mapping);
+      })
+      .catch(() => !cancelled && setStatus("error"));
+    return () => {
+      cancelled = true;
+    };
+  }, [open, state]);
+
+  async function save() {
+    setStatus("saving");
+    const mapping = Object.fromEntries(DEAL_MEMORY_FIELDS.map((f) => [f.key, draft[f.key] ?? ""]));
+    const res = await fetch("/api/deal-memory/hubspot-mapping", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mapping }),
+    }).catch(() => null);
+    setStatus(res?.ok ? "saved" : "error");
+  }
+
+  return (
+    <section className={`${CARD} p-5`}>
+      <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between text-left">
+        <span className="text-[13.5px] font-semibold text-slate-900">Champs HubSpot</span>
+        <span className="text-[12.5px] text-slate-500">{open ? "Masquer" : "Où chaque champ s'écrit dans HubSpot"}</span>
+      </button>
+      {open && !state && status !== "error" && <p className="mt-3 text-[13px] text-slate-500">Lecture des propriétés HubSpot…</p>}
+      {open && status === "error" && <p className="mt-3 text-[13px] text-rose-700">Impossible de lire ou d&apos;enregistrer les champs HubSpot.</p>}
+      {open && state && !state.connected && (
+        <p className="mt-3 text-[13px] text-slate-500">Personne n&apos;a connecté HubSpot dans votre équipe (Paramètres › Connexions).</p>
+      )}
+      {open && state?.connected && (
+        <div className="mt-4 space-y-2.5">
+          {DEAL_MEMORY_FIELDS.map((field) => (
+            <label key={field.key} className="grid grid-cols-1 items-center gap-1 sm:grid-cols-[220px_minmax(0,1fr)] sm:gap-3">
+              <span className="text-[13px] text-slate-700">{field.label}</span>
+              <select
+                value={draft[field.key] ?? ""}
+                onChange={(e) => {
+                  setDraft((d) => ({ ...d, [field.key]: e.target.value }));
+                  setStatus("idle");
+                }}
+                className="h-9 rounded-lg border border-border bg-white px-2 text-[13px] text-slate-900"
+              >
+                <option value="">Ne pas écrire dans HubSpot</option>
+                {state.properties.map((p) => (
+                  <option key={p.name} value={p.name}>
+                    {p.label} ({p.name})
+                  </option>
+                ))}
+              </select>
+            </label>
+          ))}
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              onClick={save}
+              disabled={status === "saving"}
+              className="inline-flex h-9 items-center rounded-full border border-border bg-white px-4 text-[13px] font-medium text-slate-900 hover:bg-slate-50 disabled:opacity-60"
+            >
+              {status === "saving" ? "Enregistrement…" : "Enregistrer"}
+            </button>
+            {status === "saved" && <span className="text-[12.5px] text-emerald-700">Enregistré.</span>}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function DealMemoryBlock({ callId, panel }: { callId: string; panel: DealMemoryPanel }) {
   const [memory, setMemory] = useState<StoredDealMemory | null>(panel.initial);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [pushStatus, setPushStatus] = useState<"idle" | "pushing" | "error">("idle");
+  const [pushError, setPushError] = useState<string | null>(null);
+  const [pushedAt, setPushedAt] = useState<string | null>(panel.initial?.hubspotPushedAt ?? null);
   const router = useRouter();
+
+  async function pushToHubspot() {
+    setPushStatus("pushing");
+    setPushError(null);
+    try {
+      const res = await fetch(`/api/feedback/${callId}/deal-memory/hubspot`, { method: "POST" });
+      const data = (await res.json().catch(() => ({}))) as { pushedAt?: string; error?: string };
+      if (!res.ok || !data.pushedAt) throw new Error(data.error ?? "L'envoi dans HubSpot a échoué.");
+      setPushedAt(data.pushedAt);
+      setPushStatus("idle");
+      router.refresh();
+    } catch (err) {
+      setPushError(err instanceof Error ? err.message : "L'envoi dans HubSpot a échoué.");
+      setPushStatus("error");
+    }
+  }
 
   async function generate() {
     setStatus("loading");
@@ -174,15 +318,32 @@ export default function DealMemoryBlock({ callId, panel }: { callId: string; pan
               : "Ce que Brief retient de ce call pour le deal : douleur, décideur, budget, prochaines étapes, alertes."}
           </p>
         </div>
-        <button
-          onClick={generate}
-          disabled={status === "loading"}
-          className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-full border border-border bg-white px-4 text-[13px] font-medium text-slate-900 hover:bg-slate-50 disabled:opacity-60"
-        >
-          {status === "loading" && <Spinner />}
-          {status === "loading" ? "Analyse du call…" : memory ? "Régénérer" : "Générer la fiche"}
-        </button>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          {memory && panel.deal?.hubspot && (
+            <button
+              onClick={pushToHubspot}
+              disabled={pushStatus === "pushing" || status === "loading"}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-border bg-white px-4 text-[13px] font-medium text-slate-900 hover:bg-slate-50 disabled:opacity-60"
+            >
+              {pushStatus === "pushing" && <Spinner />}
+              {pushStatus === "pushing" ? "Envoi…" : pushedAt ? "Renvoyer dans HubSpot" : "Envoyer dans HubSpot"}
+            </button>
+          )}
+          <button
+            onClick={generate}
+            disabled={status === "loading"}
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-border bg-white px-4 text-[13px] font-medium text-slate-900 hover:bg-slate-50 disabled:opacity-60"
+          >
+            {status === "loading" && <Spinner />}
+            {status === "loading" ? "Analyse du call…" : memory ? "Régénérer" : "Générer la fiche"}
+          </button>
+        </div>
       </div>
+
+      {pushedAt && pushStatus !== "error" && (
+        <p className="text-[12.5px] text-slate-500">Envoyée dans HubSpot le {formatDate(pushedAt)} : champs de qualification et note de synthèse.</p>
+      )}
+      {pushStatus === "error" && pushError && <p className="text-[13px] text-rose-700">{pushError}</p>}
 
       {status === "loading" && (
         <p className="text-[13px] text-slate-500">Brief relit tout le call : comptez jusqu&apos;à une minute.</p>
@@ -271,6 +432,8 @@ export default function DealMemoryBlock({ callId, panel }: { callId: string; pan
               </div>
             </div>
           </section>
+
+          <HubspotMapping />
         </>
       )}
     </div>

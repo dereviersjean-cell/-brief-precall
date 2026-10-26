@@ -176,7 +176,7 @@ export async function searchCompany(
 // app/api/crm/hubspot/import-references/route.ts) in one place instead of
 // duplicated across ~8 call sites.
 
-async function withHubspotAuth<T>(userId: string, fn: (accessToken: string) => Promise<T>): Promise<T> {
+export async function withHubspotAuth<T>(userId: string, fn: (accessToken: string) => Promise<T>): Promise<T> {
   const tokens = await getCrmTokens(userId, "hubspot");
   if (!tokens) throw new Error("HubSpot non connecté pour cet utilisateur.");
 
@@ -224,7 +224,7 @@ export async function hasHubSpotWriteAccess(userId: string): Promise<boolean> {
   }
 }
 
-async function resolveContactId(accessToken: string, email: string): Promise<string | null> {
+export async function resolveContactId(accessToken: string, email: string): Promise<string | null> {
   const res = await fetch("https://api.hubapi.com/crm/v3/objects/contacts/search", {
     method: "POST",
     headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },

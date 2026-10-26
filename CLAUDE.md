@@ -881,7 +881,7 @@ Demande de Jean : sortir le playbook, les objections et les références des ong
 - **Crédits Pappers** : l'API répond `401 « plus assez de crédits »`, donc **tous** les briefs se génèrent sans données légales officielles alors que « données légales FR » est dans le positionnement. Depuis le 03/09 l'échec est au moins remonté (`reportWarning`) au lieu d'être avalé. Payer ou retirer la promesse — décision business (point 13 de la roadmap).
 - **Win/loss : `deal_outcomes` est vide et ses deux sources sont taries** (devis abandonnés, cron CRM qui n'a jamais rien écrit malgré HubSpot connecté depuis juillet). Insights a été reconstruit sans elle le 04/09. Reste à trancher : faire marcher la remontée CRM des affaires gagnées/perdues, ou renoncer au win/loss et retirer la table. En l'état c'est une promesse produit sans donnée derrière.
 
-## Deal Execution — étapes 1 et 2 en test (26-27 octobre 2026)
+## Deal Execution — étapes 1 à 3 en test (26-27 octobre 2026)
 
 Jean et Hubert font évoluer Brief de « meeting assistant » vers un copilote de deals branché sur HubSpot (deck « From meeting assistant to Deal Execution System », oct. 2026). Tout le dossier est dans **`docs/deal-execution/`** : `README.md` (décisions, réponses de Hubert et de Jean aux 17 questions, champs de la mémoire d'un deal, matière de test, comment reprendre), plus les deux pages de travail en HTML.
 
@@ -899,7 +899,14 @@ En une ligne : HubSpot only en V1 ; parcours de vente propre à chaque organisat
 - Écran : carte du deal (ses calls, liens vers leurs fiches, inactivité) et, dès 2 calls, mémoire cumulée datée élément par élément. Import de transcript : champ « Date du call » (sinon daté du jour de l'import, ce qui désordonnait les calls d'un deal). Le backfill traite les calls du plus ancien au plus récent ; sa simulation n'affiche que le rattachement prévu.
 - Limite connue : régénérer un call ancien ne régénère pas les suivants, qui gardent la comparaison faite avec l'ancienne fiche.
 
-**État du code au 27/10/2026** : référence eslint **14 problèmes** (13 erreurs, 1 avertissement). **128 tests**.
+**Étape 3 — brancher HubSpot (feu vert du 27/10/2026), migration 031** :
+- **Portail de test** : la connexion HubSpot de Jean pointe sur `lartisangroupe.com` (hub 148811650), son portail de test — pas celui d'Oliverlist. Pipeline par défaut (7 étapes), aucune propriété MEDDIC, données de démo sans rapport avec nos calls. Scopes du jeton : contacts read/write, companies read, deals read/write (pas owners.read : connexion antérieure à cet ajout).
+- **Rattachement** (`lib/crm/hubspot-deals.ts`) : deal ouvert le plus récent du contact (email du call), sinon de l'entreprise (domaine). Jamais de création de deal (décision du 26/10). Le deal HubSpot **prime** sur l'email et l'entreprise : `deals.hubspot_deal_id`. Lu avec la connexion du commercial du call, sinon d'un autre membre de l'organisation (`getHubspotUserForOrganization`). Un échec HubSpot ne bloque pas la fiche (`reportWarning`). « Fermé » = `metadata.isClosed` de l'étape dans le pipeline, pas les seuls `closedwon`/`closedlost`.
+- **Photo du deal** (`deals.hubspot_snapshot`) : nom, étape et sa position dans le pipeline, montant, date de clôture, prochaine étape, lien ; relue à chaque fiche et après chaque envoi.
+- **Écriture, sur bouton « Envoyer dans HubSpot »** (`POST /api/feedback/[id]/deal-memory/hubspot`) : les propriétés réglées pour l'organisation (`organizations.hubspot_field_mapping`, réglage « Champs HubSpot » en bas de la fiche, `GET/PUT /api/deal-memory/hubspot-mapping`, seules les propriétés texte modifiables du portail sont proposées et acceptées) + une note sur le deal, remplacée à chaque renvoi du même call (marqueur `brief-deal-memory-<callId>`). Par défaut la prochaine étape va dans `hs_next_step`. **Chaque propriété prend ce qu'a dit le call le plus récent du deal sur ce champ ; un champ dont aucun call n'a parlé n'est pas écrit** — on n'efface jamais ce que le commercial a saisi (`lib/deal-memory-hubspot.ts`, testé).
+- Créer les propriétés MEDDIC demanderait le scope `crm.schemas.deals.write` (non demandé) : au setup, on les crée dans le HubSpot du client, puis on les associe dans « Champs HubSpot ».
+
+**État du code au 27/10/2026** : référence eslint **14 problèmes** (13 erreurs, 1 avertissement). **134 tests**.
 
 ## Devis — fonctionnalité abandonnée (décision de Jean, 31 août 2026)
 
