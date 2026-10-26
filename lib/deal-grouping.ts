@@ -38,10 +38,16 @@ export function dealIdentityFor(input: {
   // Domaines de l'équipe commerciale elle-même : un call interne ou un test
   // envoyé à sa propre adresse ne doit pas devenir un deal.
   ownDomains: string[];
+  // Nom de l'entreprise du commercial : le modèle l'a déjà rendue pour celle
+  // du prospect (« Antoine x Oliverlist » → « Oliverlist »). Sans ce filtre,
+  // tous les calls sans autre repère finiraient dans un même faux deal.
+  ownCompanyName?: string | null;
 }): DealIdentity | null {
   const emailDomain = companyDomainFromEmail(input.contactEmail);
   const domain = emailDomain && !input.ownDomains.includes(emailDomain) ? emailDomain : null;
-  const name = input.prospectCompany?.trim() || input.companyName?.trim() || null;
+  const ownKey = normalizeCompanyName(input.ownCompanyName);
+  const candidates = [input.prospectCompany, input.companyName].map((n) => n?.trim() || null);
+  const name = candidates.find((n) => n && (!ownKey || normalizeCompanyName(n) !== ownKey)) ?? null;
   const nameKey = normalizeCompanyName(name);
   if (!domain && !nameKey) return null;
   return { domain, nameKey, name };

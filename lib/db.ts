@@ -1910,18 +1910,21 @@ export async function getOrganizationEmailDomains(organizationId: string): Promi
 }
 
 // Le domaine d'abord (sans ambiguïté), le nom normalisé ensuite.
-export async function findDealByIdentity(organizationId: string, identity: DealIdentity): Promise<{ id: string; domain: string | null; name_key: string | null } | null> {
+export async function findDealByIdentity(
+  organizationId: string,
+  identity: DealIdentity
+): Promise<{ id: string; name: string; domain: string | null; name_key: string | null } | null> {
   for (const [column, value] of [["domain", identity.domain], ["name_key", identity.nameKey]] as const) {
     if (!value) continue;
     const { data, error } = await supabaseAdmin
       .from("deals")
-      .select("id, domain, name_key")
+      .select("id, name, domain, name_key")
       .eq("organization_id", organizationId)
       .eq(column, value)
       .order("created_at", { ascending: true })
       .limit(1);
     if (error) throw error;
-    const row = (data ?? [])[0] as { id: string; domain: string | null; name_key: string | null } | undefined;
+    const row = (data ?? [])[0] as { id: string; name: string; domain: string | null; name_key: string | null } | undefined;
     if (row) return row;
   }
   return null;
@@ -1929,13 +1932,15 @@ export async function findDealByIdentity(organizationId: string, identity: DealI
 
 // Retrouve le deal d'un prospect, ou le crée. Un deal trouvé par un seul des
 // deux repères apprend l'autre : le call suivant le retrouvera par l'un ou
-// l'autre.
+// l'autre. Un deal qui ne portait que son domaine pour nom prend celui de
+// l'entreprise dès qu'on le connaît.
 export async function findOrCreateDeal(organizationId: string, identity: DealIdentity): Promise<string> {
   const existing = await findDealByIdentity(organizationId, identity);
   if (existing) {
     const patch: Record<string, string> = {};
     if (!existing.domain && identity.domain) patch.domain = identity.domain;
     if (!existing.name_key && identity.nameKey) patch.name_key = identity.nameKey;
+    if (existing.name === existing.domain && identity.name) patch.name = identity.name;
     if (Object.keys(patch).length > 0) {
       const { error } = await supabaseAdmin.from("deals").update(patch).eq("id", existing.id);
       if (error) throw error;

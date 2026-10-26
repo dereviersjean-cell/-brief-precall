@@ -39,6 +39,17 @@ describe("dealIdentityFor", () => {
     );
   });
 
+  test("l'entreprise du commercial n'est jamais celle du prospect", () => {
+    assert.equal(
+      dealIdentityFor({ contactEmail: null, prospectCompany: "Oliverlist", companyName: null, ownDomains: [], ownCompanyName: "Oliverlist" }),
+      null
+    );
+    assert.deepEqual(
+      dealIdentityFor({ contactEmail: null, prospectCompany: "OLIVERLIST", companyName: "Vasco", ownDomains: [], ownCompanyName: "Oliverlist" }),
+      { domain: null, nameKey: "vasco", name: "Vasco" }
+    );
+  });
+
   test("ni domaine ni entreprise : pas de deal", () => {
     assert.equal(dealIdentityFor({ contactEmail: null, prospectCompany: null, companyName: "", ownDomains: [] }), null);
   });

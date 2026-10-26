@@ -3,6 +3,7 @@ import {
   findOrCreateDeal,
   getDealHistory,
   getOrganizationEmailDomains,
+  getOrganizationForUser,
   getUserName,
   saveCallDealMemory,
   type CallWithAnalysis,
@@ -23,10 +24,12 @@ import type { StoredDealMemory } from "./deal-memory-schema";
 // Partagé par la route de génération et le script de backfill.
 export async function runDealMemoryForCall(call: CallWithAnalysis, organizationId: string): Promise<StoredDealMemory> {
   const callAt = call.started_at ?? call.created_at;
-  const [ownDomains, commercialName] = await Promise.all([
+  const [ownDomains, commercialName, ownOrganization] = await Promise.all([
     getOrganizationEmailDomains(organizationId),
     getUserName(call.user_id).catch(() => null),
+    getOrganizationForUser(call.user_id).catch(() => null),
   ]);
+  const ownCompanyName = ownOrganization?.name ?? null;
 
   const base = {
     transcript: call.transcript,
@@ -41,14 +44,22 @@ export async function runDealMemoryForCall(call: CallWithAnalysis, organizationI
     prospectCompany: call.prospect_company,
     companyName: call.company_name,
     ownDomains,
+    ownCompanyName,
   });
   let dealId = knownIdentity ? await findOrCreateDeal(organizationId, knownIdentity) : null;
   let history = dealId ? await getDealHistory(dealId, call.id, callAt) : [];
 
   let result = await generateDealMemory({ ...base, history });
 
+  // Deal reconnu par le seul domaine : l'entreprise relevée par la fiche lui
+  // donne son nom et un second repère.
+  const extracted = dealIdentityFor({ contactEmail: null, prospectCompany: result.prospectCompany, companyName: null, ownDomains, ownCompanyName });
+  if (dealId && knownIdentity && !knownIdentity.nameKey && extracted) {
+    await findOrCreateDeal(organizationId, { domain: knownIdentity.domain, nameKey: extracted.nameKey, name: extracted.name });
+  }
+
   if (!dealId) {
-    const foundIdentity = dealIdentityFor({ contactEmail: null, prospectCompany: result.prospectCompany, companyName: null, ownDomains });
+    const foundIdentity = extracted;
     if (foundIdentity) {
       const existing = await findDealByIdentity(organizationId, foundIdentity);
       dealId = await findOrCreateDeal(organizationId, foundIdentity);

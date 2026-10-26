@@ -53,7 +53,7 @@ ${DEAL_ALERT_RULES.map((r) => `   - "${r.key}" : ${r.definition}${r.needsHistory
 
    Pour chaque alerte : "text" dit en une phrase (25 mots maximum) ce qui la déclenche dans ce call, et "lines" renvoie au passage qui la montre. Pour ${DEAL_ALERT_RULES.filter((r) => !r.needsQuote).map((r) => r.key).join(", ")}, qui constatent une absence, "lines" peut valoir null. Une alerte qui compare à l'historique cite dans "text" le call précédent concerné, par sa date. Au moindre doute, ne lève pas l'alerte.
 
-3. ENTREPRISE — "prospect_company" : le nom de l'entreprise du prospect tel qu'il apparaît dans le call, ou null s'il n'est pas dit.
+3. ENTREPRISE — "prospect_company" : le nom de l'entreprise du PROSPECT tel qu'il apparaît dans le call, ou null s'il n'est pas dit. Jamais l'entreprise du commercial, même si elle figure dans le titre du rendez-vous (« Antoine x Oliverlist » : Oliverlist est l'entreprise du commercial).
 
 Réponds UNIQUEMENT en JSON strict, sans markdown, avec exactement cette structure :
 {"prospect_company": "...", "fields": {"douleur": [{"text": "...", "lines": [12, 14]}], "impact": [], ...}, "alerts": [{"rule": "concurrent_evoque", "text": "...", "lines": [30, 31]}]}
