@@ -469,14 +469,24 @@ export async function appendToHubSpotMeetingBody(userId: string, meetingId: stri
   });
 }
 
-// Idempotence for the deal/contact note tiers, per the spec's preferred
-// option (a): an invisible HTML-comment marker embedded in hs_note_body,
-// keyed by `uid` (the caller passes calendarEventId for briefs, callId for
-// analyses — see lib/notifications-dispatcher.ts) — listing the target's
+// Idempotence for the deal/contact note tiers: a marker embedded in
+// hs_note_body, keyed by `uid` (the caller passes calendarEventId for briefs,
+// callId for analyses — see lib/notifications-dispatcher.ts, and
+// `brief-deal-memory-<callId>` for the deal fiche) — listing the target's
 // existing notes and updating the one that already carries this marker
 // instead of creating a duplicate on every regeneration/retry.
+//
+// The marker is a short VISIBLE line, not an HTML comment: HubSpot strips
+// comments from hs_note_body (verified 27/10/2026 on a real portal), so the
+// invisible marker never survived and every resend created a new note. The
+// search matches the ASCII part only (`Brief <uid>`), whatever HubSpot does
+// to the accented « Réf. ».
 function buildHubspotNoteMarker(uid: string): string {
-  return `<!-- brief-note-uid:${uid} -->`;
+  return `<p>Réf. Brief ${uid}</p>`;
+}
+
+function hubspotNoteMarkerNeedle(uid: string): string {
+  return `Brief ${uid}`;
 }
 
 async function findExistingHubspotNoteId(
@@ -515,10 +525,9 @@ async function upsertHubspotNote(
   toObjectType: "deals" | "contacts",
   associationTypeId: number
 ): Promise<void> {
-  const marker = buildHubspotNoteMarker(uid);
-  const bodyWithMarker = `${htmlBody}${marker}`;
+  const bodyWithMarker = `${htmlBody}${buildHubspotNoteMarker(uid)}`;
 
-  const existingNoteId = await findExistingHubspotNoteId(accessToken, toObjectType, toObjectId, marker);
+  const existingNoteId = await findExistingHubspotNoteId(accessToken, toObjectType, toObjectId, hubspotNoteMarkerNeedle(uid));
   if (existingNoteId) {
     const patchRes = await fetch(`https://api.hubapi.com/crm/v3/objects/notes/${existingNoteId}`, {
       method: "PATCH",

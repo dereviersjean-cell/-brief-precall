@@ -396,6 +396,8 @@ Ce que l'audit a refermé, pour ne pas rouvrir les mêmes portes :
 
 41. **Un déploiement Vercel peut servir l'ANCIEN CSS avec le NOUVEAU HTML** (12/10/2026) : la refonte du site est partie en production avec la feuille de styles d'avant la refonte (tout le bloc `.landing` de `globals.css` absent : boutons sans couleur, autre police, illustrations mal cadrées), alors qu'un clone propre du même commit, `npm ci` puis build, produisait le bon fichier. Cause : Next 16.3 active par défaut `turbopackFileSystemCacheForBuild`, et Vercel restaure `.next/cache` d'un déploiement à l'autre. Fix : `experimental.turbopackFileSystemCacheForBuild: false` dans `next.config.ts`. **Après un déploiement qui touche aux styles, comparer le CSS servi en production au CSS du build local** (taille, ou `cmp` après téléchargement) : la page répond 200 et son contenu est le bon, rien d'autre ne signale le problème.
 
+42. **HubSpot supprime les commentaires HTML des notes** (27/10/2026) : le repère d'idempotence des notes (deal et contact) était un `<!-- brief-note-uid:… -->` invisible ; HubSpot le retire de `hs_note_body` à l'enregistrement, donc la note n'était jamais retrouvée et **chaque renvoi créait une note de plus** — depuis la mise en place des notes d'analyse, pas seulement pour la fiche deal. Vu en relisant les notes d'un vrai portail après deux envois. Le repère est maintenant une courte ligne visible « Réf. Brief <uid> », recherchée sur sa partie ASCII. **Généralisation : un repère caché dans un contenu confié à un service tiers doit être vérifié en relisant ce que le service a réellement stocké.**
+
 ## Règles — NE JAMAIS faire
 
 - ❌ Utiliser le client Supabase anon côté serveur (toujours service_role)
