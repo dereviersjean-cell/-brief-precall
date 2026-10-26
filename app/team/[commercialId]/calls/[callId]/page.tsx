@@ -1,8 +1,8 @@
 import { redirect, notFound } from "next/navigation";
 import { isUuid } from "@/lib/uuid";
-import { getUserRole, getCallWithAnalysisForManager, getUserName } from "@/lib/db";
+import { getCallWithAnalysisForManager, getUserName, loadDealMemoryPanel } from "@/lib/db";
 import { computeConversationAnalytics } from "@/lib/transcript-analytics";
-import { getEffectiveUserId } from "@/lib/session-user";
+import { getViewer } from "@/lib/session-user";
 import CallDetailClient from "./CallDetailClient";
 
 export default async function TeamMemberCallDetailPage({
@@ -13,14 +13,12 @@ export default async function TeamMemberCallDetailPage({
   const { commercialId, callId } = await params;
   // Id malformé : 404 plutôt qu'une 22P02 Postgres remontée en erreur 500.
   if (!isUuid(commercialId) || !isUuid(callId)) notFound();
-  const userId = await getEffectiveUserId();
-
-  const role = userId ? await getUserRole(userId) : null;
-  if (role !== "manager") {
+  const viewer = await getViewer();
+  if (viewer?.role !== "manager") {
     redirect("/dashboard");
   }
 
-  const call = await getCallWithAnalysisForManager(callId, userId!);
+  const call = await getCallWithAnalysisForManager(callId, viewer.userId);
   if (!call) {
     redirect(`/team/${commercialId}`);
   }
@@ -31,5 +29,7 @@ export default async function TeamMemberCallDetailPage({
     ? computeConversationAnalytics(call.transcript_json, call.speaker_names_override, await getUserName(call.user_id))
     : null;
 
-  return <CallDetailClient call={call} commercialId={commercialId} analytics={analytics} />;
+  const dealMemory = await loadDealMemoryPanel(viewer.role, viewer.organizationId, call.id);
+
+  return <CallDetailClient call={call} commercialId={commercialId} analytics={analytics} dealMemory={dealMemory} />;
 }

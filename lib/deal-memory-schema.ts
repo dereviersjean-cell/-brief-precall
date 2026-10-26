@@ -1,0 +1,160 @@
+// Fiche deal tirée d'un call — chantier Deal Execution, étape 1 (26/10/2026).
+// Détail des décisions : docs/deal-execution/README.md.
+//
+// Ce module ne porte que la forme de la fiche (champs, alertes, libellés).
+// Sans aucune dépendance : il est importé par l'écran (composant client), et
+// la moindre importation de lib/objection-classifier y tirerait le SDK
+// Anthropic (cf. bug #12). La génération vit dans lib/deal-memory.ts.
+
+// Les champs de la mémoire d'un deal validés avec Jean le 26/10/2026 : le
+// socle discuté + les champs MEDDIC de l'article envoyé par Hubert. Le
+// douzième, « Objections », n'est pas ici : il est lu dans call_objections,
+// déjà classées et notées par le pipeline existant — deux sources pour la
+// même chose finiraient par se contredire.
+export const DEAL_MEMORY_FIELDS = [
+  {
+    key: "douleur",
+    label: "Douleur identifiée",
+    meddic: "Identified Pain",
+    definition: "le problème concret que le prospect cherche à résoudre, avec ses mots",
+  },
+  {
+    key: "impact",
+    label: "Impact chiffré / ROI attendu",
+    meddic: "Metrics",
+    definition:
+      "ce que le problème coûte au prospect ou ce que la solution lui rapporterait, chiffré quand il donne un chiffre (temps, argent, volume, effectif)",
+  },
+  {
+    key: "decideur",
+    label: "Décideur économique",
+    meddic: "Economic Buyer",
+    definition: "la personne qui décide et engage le budget côté prospect : nom et fonction",
+  },
+  {
+    key: "champion",
+    label: "Champion",
+    meddic: "Champion",
+    definition: "la personne qui, côté prospect, pousse le projet en interne",
+  },
+  {
+    key: "criteres",
+    label: "Critères de décision",
+    meddic: "Decision Criteria",
+    definition: "ce sur quoi le prospect va comparer et choisir",
+  },
+  {
+    key: "processus",
+    label: "Processus de décision",
+    meddic: "Decision Process",
+    definition: "les étapes, les personnes et les délais de la décision côté prospect",
+  },
+  {
+    key: "budget",
+    label: "Budget",
+    meddic: null,
+    definition: "l'enveloppe, la fourchette ou la contrainte budgétaire exprimée",
+  },
+  {
+    key: "echeance",
+    label: "Échéance",
+    meddic: null,
+    definition: "la date ou le délai visé pour décider ou démarrer",
+  },
+  {
+    key: "concurrents",
+    label: "Concurrents évoqués",
+    meddic: null,
+    definition:
+      "les concurrents ou alternatives évoqués, y compris faire en interne ou ne rien faire",
+  },
+  {
+    key: "prochaines_etapes",
+    label: "Engagements et prochaines étapes",
+    meddic: null,
+    definition:
+      "ce que chaque partie s'est engagée à faire après le call, avec la date quand elle a été fixée",
+  },
+  {
+    key: "interlocuteurs_manquants",
+    label: "Interlocuteurs manquants",
+    meddic: null,
+    definition:
+      "les personnes à faire entrer dans la discussion qui n'étaient pas là (finance, associé, DSI…)",
+  },
+] as const;
+
+export type DealMemoryFieldKey = (typeof DEAL_MEMORY_FIELDS)[number]["key"];
+
+// Alertes que le contenu d'un seul call permet de lever. Celles qui dépendent
+// du deal dans le temps (jours sans activité, durée à une étape, sentiment en
+// baisse d'un call à l'autre) attendent l'étape 2 et HubSpot.
+export const DEAL_ALERT_RULES = [
+  {
+    key: "concurrent_evoque",
+    label: "Concurrent évoqué",
+    definition: "le prospect cite un concurrent ou une solution alternative, y compris faire en interne",
+    // Une absence ne se cite pas : seules ces deux règles peuvent se passer
+    // d'une phrase du transcript.
+    needsQuote: true,
+  },
+  {
+    key: "objection_cachee",
+    label: "Objection cachée",
+    definition:
+      "une réticence exprimée à demi-mot (hésitation, réserve, « on verra »), jamais formulée clairement ni traitée par le commercial",
+    needsQuote: true,
+  },
+  {
+    key: "preuve_sociale",
+    label: "Besoin de preuve sociale",
+    definition:
+      "le prospect demande des références, des cas clients ou des retours d'expérience, ou doute que des entreprises comparables l'utilisent",
+    needsQuote: true,
+  },
+  {
+    key: "interlocuteur_manquant",
+    label: "Interlocuteur à faire entrer",
+    definition:
+      "une personne qui pèse dans la décision (finance, associé, cofondateur, DSI…) n'a pas participé et devra être impliquée ; si c'est le décideur lui-même, utilise decideur_absent",
+    needsQuote: true,
+  },
+  {
+    key: "decideur_absent",
+    label: "Décideur absent",
+    definition: "la personne qui décide n'était pas dans le call, ou personne n'a pu dire qui décide",
+    needsQuote: false,
+  },
+  {
+    key: "prochaine_etape_non_datee",
+    label: "Pas de prochaine étape datée",
+    definition: "le call se termine sans prochaine étape concrète ET datée (un « je reviens vers vous » ne compte pas)",
+    needsQuote: false,
+  },
+] as const;
+
+export type DealAlertRuleKey = (typeof DEAL_ALERT_RULES)[number]["key"];
+
+// Levée par le code à partir des objections déjà notées, pas par le modèle.
+export const OBJECTION_ALERT_LABEL = "Objection mal traitée";
+
+export type DealMemoryItem = {
+  text: string;
+  // Phrase exacte du transcript qui justifie l'élément, extraite par le code.
+  verbatim: string | null;
+  startMs: number | null;
+};
+
+export type DealMemoryAlert = {
+  rule: DealAlertRuleKey;
+  text: string;
+  verbatim: string | null;
+  startMs: number | null;
+};
+
+export type DealMemoryContent = {
+  fields: Partial<Record<DealMemoryFieldKey, DealMemoryItem[]>>;
+  alerts: DealMemoryAlert[];
+};
+
+export type StoredDealMemory = DealMemoryContent & { model: string | null; generatedAt: string };

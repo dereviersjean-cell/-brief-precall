@@ -6,6 +6,7 @@ import type { TranscriptJson } from "./recall";
 import type { NotificationEventType, NotificationChannel, NotificationPreference } from "./notification-preferences";
 import { coerceMeetingStageConfig, type MeetingStage, type MeetingStageConfig } from "./meeting-stage";
 import { resolveAccessLevel, resolveEnabledModules, type AccessLevel, type ModuleKey } from "./modules";
+import type { DealMemoryContent, StoredDealMemory } from "./deal-memory-schema";
 
 export async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 500): Promise<T> {
   let lastError: unknown;
@@ -1827,6 +1828,120 @@ export async function isTrainingEnabledForOrganization(organizationId: string): 
     );
     return false;
   }
+}
+
+// ─── Fiche deal tirée d'un call (Deal Execution, étape 1, migration 029) ─────
+//
+// Phase « à blanc » : visible des seuls managers des organisations où
+// `deal_memory_enabled` est vrai. Fail-closed, comme Entraînement : colonne
+// absente (migration pas encore passée) = fiche invisible.
+export async function isDealMemoryEnabledForOrganization(organizationId: string): Promise<boolean> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("organizations")
+      .select("deal_memory_enabled")
+      .eq("id", organizationId)
+      .maybeSingle();
+    if (error) throw error;
+    return (data as { deal_memory_enabled: boolean } | null)?.deal_memory_enabled ?? false;
+  } catch (err) {
+    console.error("[db] isDealMemoryEnabledForOrganization failed (fail-closed):", err instanceof Error ? err.message : String(err));
+    return false;
+  }
+}
+
+export async function getCallDealMemory(callId: string): Promise<StoredDealMemory | null> {
+  const { data, error } = await supabaseAdmin
+    .from("call_deal_memory")
+    .select("fields, alerts, model, generated_at")
+    .eq("call_id", callId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const row = data as { fields: StoredDealMemory["fields"]; alerts: StoredDealMemory["alerts"]; model: string | null; generated_at: string };
+  return { fields: row.fields ?? {}, alerts: row.alerts ?? [], model: row.model, generatedAt: row.generated_at };
+}
+
+// Une fiche par call : la régénération remplace la précédente.
+export async function saveCallDealMemory(
+  callId: string,
+  organizationId: string,
+  content: DealMemoryContent,
+  model: string
+): Promise<StoredDealMemory> {
+  const generatedAt = new Date().toISOString();
+  const { error } = await supabaseAdmin.from("call_deal_memory").upsert(
+    {
+      call_id: callId,
+      organization_id: organizationId,
+      fields: content.fields,
+      alerts: content.alerts,
+      model,
+      generated_at: generatedAt,
+    },
+    { onConflict: "call_id" }
+  );
+  if (error) throw error;
+  return { ...content, model, generatedAt };
+}
+
+export type DealMemoryObjection = {
+  objection: string;
+  handlingQuality: "bien_traitee" | "partiellement" | "non_traitee" | null;
+  handlingComment: string | null;
+  verbatim: string | null;
+};
+
+// Le douzième champ de la fiche : les objections du call, telles que le
+// pipeline existant les a classées et notées. Mêmes filtres que la page
+// Objections : rien d'« incertain ».
+export async function getDealMemoryObjections(callId: string): Promise<DealMemoryObjection[]> {
+  const { data, error } = await supabaseAdmin
+    .from("call_objections")
+    .select("objection, handling_quality, handling_comment, prospect_verbatim, confidence, start_ms")
+    .eq("call_id", callId)
+    .order("start_ms", { ascending: true, nullsFirst: false });
+  if (error) throw error;
+  return (
+    (data ?? []) as {
+      objection: string;
+      handling_quality: string | null;
+      handling_comment: string | null;
+      prospect_verbatim: string | null;
+      confidence: string | null;
+    }[]
+  )
+    .filter((row) => row.confidence !== "incertaine")
+    .map((row) => ({
+      objection: row.objection,
+      handlingQuality:
+        row.handling_quality === "bien_traitee" || row.handling_quality === "partiellement" || row.handling_quality === "non_traitee"
+          ? row.handling_quality
+          : null,
+      handlingComment: row.handling_comment,
+      verbatim: row.prospect_verbatim,
+    }));
+}
+
+export type DealMemoryPanel = { initial: StoredDealMemory | null; objections: DealMemoryObjection[] };
+
+// Ce que la page d'un call montre de la fiche deal, ou null quand le lecteur
+// ne doit pas la voir (pas manager, ou organisation hors phase de test).
+export async function loadDealMemoryPanel(
+  role: UserRole | null,
+  organizationId: string | null,
+  callId: string
+): Promise<DealMemoryPanel | null> {
+  if (role !== "manager" || !organizationId) return null;
+  if (!(await isDealMemoryEnabledForOrganization(organizationId))) return null;
+  const [initial, objections] = await Promise.all([
+    getCallDealMemory(callId).catch((err) => {
+      console.error("[db] getCallDealMemory failed:", err instanceof Error ? err.message : String(err));
+      return null;
+    }),
+    getDealMemoryObjections(callId).catch(() => [] as DealMemoryObjection[]),
+  ]);
+  return { initial, objections };
 }
 
 // Trace du CTA "Je veux débloquer ce module" (migration 004) — durable en

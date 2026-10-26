@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import { Search, Pencil } from "lucide-react";
-import type { CallWithAnalysis } from "@/lib/db";
+import type { CallWithAnalysis, DealMemoryPanel } from "@/lib/db";
 import { MEETING_STAGE_LABELS } from "@/lib/meeting-stage";
 import type { ConversationAnalytics } from "@/lib/transcript-analytics";
 import { getEffectiveScoresForDisplay } from "@/lib/playbook-scores";
@@ -12,6 +12,7 @@ import { isValidEmail } from "@/lib/email-address";
 import { useModules } from "@/app/components/ModulesProvider";
 import ConversationAnalyticsBlock from "./ConversationAnalyticsBlock";
 import KeyPointsBlock from "./KeyPointsBlock";
+import DealMemoryBlock from "./DealMemoryBlock";
 import SpeakerTimelineBlock from "./SpeakerTimelineBlock";
 
 // Étiquette de section et carte, reprises du site (AnalysisObject).
@@ -603,7 +604,7 @@ function ReadOnlyEmailBlock({ call }: { call: CallWithAnalysis }) {
   );
 }
 
-type Tab = "overview" | "email" | "transcript";
+type Tab = "overview" | "email" | "transcript" | "deal";
 
 export default function FeedbackDetailClient({
   call,
@@ -612,6 +613,7 @@ export default function FeedbackDetailClient({
   backHref = "/feedback",
   backLabel = "Retour aux feedbacks",
   initialTab = "overview",
+  dealMemory = null,
 }: {
   call: CallWithAnalysis;
   analytics: ConversationAnalytics | null;
@@ -619,6 +621,8 @@ export default function FeedbackDetailClient({
   backHref?: string;
   backLabel?: string;
   initialTab?: Tab;
+  /** Fiche deal (Deal Execution, phase de test) : null = le lecteur ne la voit pas. */
+  dealMemory?: DealMemoryPanel | null;
 }) {
   const [tab, setTab] = useState<Tab>(initialTab);
   const { isEnabled: isModuleEnabled } = useModules();
@@ -845,8 +849,9 @@ export default function FeedbackDetailClient({
     // colonne de droite, il allongeait la page sans être lu à chaque fois.
     // La vidéo reste dans le bandeau : un clic sur une ligne y saute toujours.
     { key: "transcript" as const, label: "Transcript" },
+    ...(dealMemory ? [{ key: "deal" as const, label: "Fiche deal" }] : []),
   ];
-  const activeTab: Tab = tab === "email" && !followUpEnabled ? "overview" : tab;
+  const activeTab: Tab = (tab === "email" && !followUpEnabled) || (tab === "deal" && !dealMemory) ? "overview" : tab;
 
   return (
     <div className="min-h-screen bg-background">
@@ -1099,6 +1104,8 @@ export default function FeedbackDetailClient({
                 />
               </div>
             )}
+
+            {activeTab === "deal" && dealMemory && <DealMemoryBlock callId={call.id} panel={dealMemory} />}
 
             {activeTab === "email" && (
               <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
