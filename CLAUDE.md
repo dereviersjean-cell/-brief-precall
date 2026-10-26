@@ -881,6 +881,14 @@ Demande de Jean : sortir le playbook, les objections et les références des ong
 - **Crédits Pappers** : l'API répond `401 « plus assez de crédits »`, donc **tous** les briefs se génèrent sans données légales officielles alors que « données légales FR » est dans le positionnement. Depuis le 03/09 l'échec est au moins remonté (`reportWarning`) au lieu d'être avalé. Payer ou retirer la promesse — décision business (point 13 de la roadmap).
 - **Win/loss : `deal_outcomes` est vide et ses deux sources sont taries** (devis abandonnés, cron CRM qui n'a jamais rien écrit malgré HubSpot connecté depuis juillet). Insights a été reconstruit sans elle le 04/09. Reste à trancher : faire marcher la remontée CRM des affaires gagnées/perdues, ou renoncer au win/loss et retirer la table. En l'état c'est une promesse produit sans donnée derrière.
 
+## Deal Execution — EN RÉFLEXION, rien à coder sans feu vert (26 octobre 2026)
+
+Jean et Hubert envisagent de faire évoluer Brief de « meeting assistant » vers un copilote de deals branché sur HubSpot (deck « From meeting assistant to Deal Execution System », oct. 2026). **Phase de discussion uniquement : Jean a demandé plusieurs fois de ne rien coder.** Tout le dossier est dans **`docs/deal-execution/`** : `README.md` (décisions prises, les 17 questions ouvertes avec leurs recommandations, ce qui existe déjà dans le code, comment reprendre), plus les deux pages de travail en HTML (questions envoyées à Hubert, propositions de vue manager A/B/C).
+
+En une ligne : HubSpot only en V1 ; parcours de vente propre à chaque organisation (donc `lib/meeting-stage.ts` et son R1/R2/R3 figé à généraliser le jour venu) ; vue manager = interventions en accueil + bandeau parcours + onglet Équipe, pas de kanban. **En attente des réponses de Hubert aux 17 questions** (10 bloquantes). Le nom du deck « Stage Coach » ne doit pas passer dans le produit : « expert », jamais « coach ».
+
+**État du code au 26/10/2026** (dernier commit avant cette pause) : performance paliers 1-3 livrés, interrupteur « abonnement activé manuellement » (migration 028, appliquée ; Oliverlist est `billing_exempt = true`), cartes de Connexions qui disent ce qui se passe une fois branché. Référence eslint : **14 problèmes** (13 erreurs, 1 avertissement). **109 tests**.
+
 ## Devis — fonctionnalité abandonnée (décision de Jean, 31 août 2026)
 
 **Brief ne fait plus de devis.** L'entrée a disparu de la navigation et plus rien dans l'application n'y renvoie — un utilisateur ne peut plus y arriver autrement qu'en tapant l'URL.
@@ -932,5 +940,5 @@ Avec 4 calls, une objection pèse ~7 points : ne poursuivre que les écarts fran
 ## Comptes de test
 - Jean (manager) : `jean.dereviers@oliverlist.com` — user_id `ee6772b4-423f-4091-a140-bf3991919c8b`
 - Hubert (commercial) : `hubert.delalance@oliverlist.com` — user_id `39addb01-3110-4c96-ad24-2b22904bcd68`
-- Org Oliverlist : `5a90c843-b6c2-4be2-ab64-7469216253d0`
+- Org Oliverlist : `5a90c843-b6c2-4be2-ab64-7469216253d0` — `billing_status: canceled` côté Stripe, accès ouvert par `billing_exempt = true` depuis le 20/10/2026 (ne pas l'éteindre sans réabonnement)
 - Call de référence backfilé : `16729b33-f56b-42a0-8687-c7dc0ae706f9` (Ravachol / Velbrun Capital)

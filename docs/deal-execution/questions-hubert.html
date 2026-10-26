@@ -1,0 +1,266 @@
+<title>Questions Deal Execution</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Layout : une colonne de lecture (~720px) ; décisions déjà prises en tête, puis questions numérotées par priorité. */
+:root {
+  --bg: oklch(0.987 0.002 265);
+  --surface: oklch(1 0 0);
+  --ink: oklch(0.19 0.02 266);
+  --muted: oklch(0.5 0.02 266);
+  --faint: oklch(0.66 0.015 266);
+  --line: oklch(0.912 0.006 266);
+  --accent: oklch(0.52 0.2 265);
+  --lav: oklch(0.955 0.025 265);
+  --lav-strong: oklch(0.9 0.05 265);
+  --ok: oklch(0.5 0.12 155);
+  --ok-soft: oklch(0.95 0.05 155);
+  --warn: oklch(0.55 0.12 70);
+  --warn-soft: oklch(0.96 0.05 75);
+  --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: oklch(0.17 0.012 266); --surface: oklch(0.21 0.014 266); --ink: oklch(0.95 0.008 266);
+    --muted: oklch(0.74 0.015 266); --faint: oklch(0.6 0.015 266); --line: oklch(0.3 0.015 266);
+    --accent: oklch(0.72 0.15 265); --lav: oklch(0.26 0.04 265); --lav-strong: oklch(0.34 0.06 265);
+    --ok: oklch(0.76 0.12 155); --ok-soft: oklch(0.29 0.05 155); --warn: oklch(0.8 0.11 75); --warn-soft: oklch(0.31 0.05 75);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: oklch(0.17 0.012 266); --surface: oklch(0.21 0.014 266); --ink: oklch(0.95 0.008 266);
+  --muted: oklch(0.74 0.015 266); --faint: oklch(0.6 0.015 266); --line: oklch(0.3 0.015 266);
+  --accent: oklch(0.72 0.15 265); --lav: oklch(0.26 0.04 265); --lav-strong: oklch(0.34 0.06 265);
+  --ok: oklch(0.76 0.12 155); --ok-soft: oklch(0.29 0.05 155); --warn: oklch(0.8 0.11 75); --warn-soft: oklch(0.31 0.05 75);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15.5px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 760px; margin: 0 auto; padding-inline: 20px; padding-block: 44px 72px; display: grid; gap: 40px; }
+h1, h2, h3 { margin: 0; text-wrap: balance; letter-spacing: -0.02em; }
+p { margin: 0; }
+.eyebrow { font-size: 11.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
+
+header { display: grid; gap: 12px; }
+header h1 { font-size: clamp(28px, 5vw, 38px); line-height: 1.1; font-weight: 600; }
+header .lead { color: var(--muted); max-width: 62ch; }
+.how { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; font-size: 13.5px; color: var(--muted); }
+.copy { font: inherit; font-size: 13.5px; font-weight: 500; border-radius: 999px; padding: 8px 16px; border: 1px solid transparent; background: var(--accent); color: oklch(1 0 0); cursor: pointer; }
+.copy:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.copy.done { background: var(--ok-soft); color: var(--ok); }
+
+.decided { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 20px 22px; display: grid; gap: 10px; }
+.decided h2 { font-size: 16px; font-weight: 600; }
+.decided ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14.5px; }
+.decided li::marker { color: var(--ok); }
+
+section.group { display: grid; gap: 18px; }
+.group-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+.group-head h2 { font-size: 22px; font-weight: 600; }
+.tag { font-size: 11.5px; font-weight: 600; padding: 2px 10px; border-radius: 999px; }
+.tag.block { background: var(--warn-soft); color: var(--warn); }
+.tag.later { background: var(--lav); color: var(--accent); }
+.theme { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); margin-top: 6px; }
+
+.q { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 4px 12px; }
+.n { font-family: var(--mono); font-size: 14px; font-weight: 500; color: var(--accent); padding-top: 1px; font-variant-numeric: tabular-nums; }
+.q h3 { font-size: 16px; font-weight: 600; line-height: 1.4; }
+.q .why { color: var(--muted); font-size: 14.5px; }
+.q .reco { grid-column: 2; margin-top: 4px; background: var(--lav); border-radius: 12px; padding: 9px 12px; font-size: 14.5px; }
+.q .reco b { font-weight: 600; color: var(--accent); }
+.q ul { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 2px; }
+
+footer { border-top: 1px solid var(--line); padding-top: 18px; font-size: 13.5px; color: var(--muted); display: grid; gap: 6px; }
+@media (max-width: 480px) { .q { grid-template-columns: 26px minmax(0, 1fr); gap: 4px 8px; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Brief · Deal Execution · 26 octobre 2026</span>
+    <h1>Questions à trancher avant de démarrer la V1</h1>
+    <p class="lead">Hubert, voici les points encore ouverts. Pour chacun, une recommandation : tu peux répondre « OK pour les recos sauf le n° X ». Les 10 premiers bloquent le démarrage, les 7 suivants peuvent attendre.</p>
+    <div class="how">
+      <button class="copy" id="copy-btn" type="button">Copier le texte</button>
+      <span>pour le coller dans un email ou Slack</span>
+    </div>
+  </header>
+
+  <div class="decided">
+    <h2>Déjà décidé avec Jean</h2>
+    <ul>
+      <li>V1 sur HubSpot uniquement : deals, étapes et emails lus dans HubSpot.</li>
+      <li>Le parcours de vente est propre à chaque client (nombre d'étapes libre, pas un R1/R2/R3 figé).</li>
+      <li>Vue manager : les interventions en page d'accueil, un bandeau qui résume le parcours, un onglet Équipe. Pas de tableau en colonnes façon CRM.</li>
+      <li>Le commercial reçoit les alertes sur ses deals en même temps que le manager.</li>
+      <li>Aucune limite au nombre d'interventions affichées.</li>
+      <li>Onglet Équipe : un commercial ne voit que sa propre ligne, le manager voit toute l'équipe.</li>
+      <li>Facturation des pilotes mise de côté pour l'instant.</li>
+    </ul>
+  </div>
+
+  <section class="group" aria-labelledby="g1">
+    <div class="group-head"><h2 id="g1">Bloquant pour démarrer</h2><span class="tag block">10 questions</span></div>
+
+    <p class="theme">Périmètre</p>
+    <div class="q">
+      <span class="n">1</span>
+      <h3>Qui est le premier client pilote ?</h3>
+      <p class="why">Il faut un vrai HubSpot avec des deals et des calls enregistrés.</p>
+      <p class="reco"><b>Reco :</b> Oliverlist d'abord, on teste sur nous-mêmes avant un client externe.</p>
+    </div>
+    <div class="q">
+      <span class="n">2</span>
+      <h3>Que fait-on des fonctionnalités actuelles ?</h3>
+      <p class="why">Scoring des calls, entraînement, devis, tâches, onglets Performance : on garde, on gèle ou on retire ?</p>
+      <p class="reco"><b>Reco :</b> on les garde sans y investir. Les tâches servent de base aux actions recommandées.</p>
+    </div>
+    <div class="q">
+      <span class="n">3</span>
+      <h3>Les clients sur Pipedrive ou sans CRM restent-ils sur le Brief actuel ?</h3>
+      <p class="reco"><b>Reco :</b> oui, la V1 est réservée à HubSpot.</p>
+    </div>
+
+    <p class="theme">Données et rattachement des calls aux deals</p>
+    <div class="q">
+      <span class="n">4</span>
+      <h3>Comment les commerciaux enregistrent-ils leurs rendez-vous dans HubSpot ?</h3>
+      <p class="why">Synchronisation de l'agenda, extension, ou rien du tout. C'est ce qui rend fiable, ou non, le lien entre un call et son deal.</p>
+      <p class="reco"><b>Reco :</b> le mesurer en lecture seule sur le HubSpot d'Oliverlist plutôt que de le supposer.</p>
+    </div>
+    <div class="q">
+      <span class="n">5</span>
+      <h3>Que fait Brief quand un call n'a pas encore de deal dans HubSpot ?</h3>
+      <p class="why">Typiquement le premier rendez-vous, avant que le deal soit créé.</p>
+      <p class="reco"><b>Reco :</b> proposer au commercial de créer le deal dans HubSpot en un clic.</p>
+    </div>
+    <div class="q">
+      <span class="n">6</span>
+      <h3>Qu'est-ce que Brief écrit dans HubSpot en V1 ?</h3>
+      <p class="reco"><b>Reco :</b> les notes (comme aujourd'hui) et la propriété « prochaine étape ». Les champs de qualification (budget, décideur…) viendront après.</p>
+    </div>
+
+    <p class="theme">Méthode</p>
+    <div class="q">
+      <span class="n">7</span>
+      <h3>Quels champs composent la mémoire d'un deal ?</h3>
+      <p class="why">C'est elle qui définit ce que Brief retient d'un call à l'autre et les critères de passage d'une étape à la suivante.</p>
+      <p class="reco"><b>Reco :</b> un socle fixe (besoin, impact, budget, décideur, processus de décision, échéance, concurrents, objections, engagements), plus des champs propres à chaque client.</p>
+    </div>
+    <div class="q">
+      <span class="n">8</span>
+      <h3>Qui configure le parcours et les critères de passage ?</h3>
+      <p class="why">Nous au moment du setup, ou le manager seul dans l'application ?</p>
+      <p class="reco"><b>Reco :</b> nous au setup en V1 (c'est le service vendu), puis le manager peut ajuster.</p>
+    </div>
+    <div class="q">
+      <span class="n">9</span>
+      <h3>Les critères de passage bloquent-ils quelque chose ?</h3>
+      <p class="reco"><b>Reco :</b> non. Ils sont indicatifs et déclenchent une alerte, sans jamais empêcher quoi que ce soit.</p>
+    </div>
+    <div class="q">
+      <span class="n">10</span>
+      <h3>Quelles règles de risque en V1, et avec quels seuils ?</h3>
+      <p class="reco"><b>Reco :</b> 5 à 6 règles par défaut, seuils réglables par client :</p>
+      <div class="reco" style="margin-top:0;background:none;padding:0 12px">
+        <ul>
+          <li>X jours sans prochaine étape datée</li>
+          <li>décideur jamais rencontré à partir de la 2e étape</li>
+          <li>deal resté à une étape plus longtemps que la moyenne</li>
+          <li>objection qui revient sans réponse</li>
+          <li>sentiment du prospect en baisse</li>
+          <li>aucune activité depuis X jours</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="group" aria-labelledby="g2">
+    <div class="group-head"><h2 id="g2">Peut attendre</h2><span class="tag later">7 questions</span></div>
+
+    <div class="q">
+      <span class="n">11</span>
+      <h3>Par quels canaux et à quel rythme partent les alertes ?</h3>
+      <p class="reco"><b>Reco :</b> le commercial est prévenu après chaque call. Le manager reçoit un email le matin, et immédiatement si le risque est élevé. Slack en plus si c'est connecté.</p>
+    </div>
+    <div class="q">
+      <span class="n">12</span>
+      <h3>Que se passe-t-il quand le manager clique « Je m'en occupe », « Confier » ou « Plus tard » ?</h3>
+      <p class="reco"><b>Reco :</b> chaque choix est enregistré, ce qui alimente le ROI « deals remis en mouvement ». « Confier » prévient le commercial.</p>
+    </div>
+    <div class="q">
+      <span class="n">13</span>
+      <h3>Quelle page d'accueil pour le commercial ?</h3>
+      <p class="reco"><b>Reco :</b> la page Brief actuelle devient « Aujourd'hui » : rendez-vous du jour, actions à faire, alertes.</p>
+    </div>
+    <div class="q">
+      <span class="n">14</span>
+      <h3>Qui contrôle la qualité des alertes et des recommandations au début ?</h3>
+      <p class="reco"><b>Reco :</b> deux semaines « à blanc » : tout est généré, nous relisons dans l'admin avant que ça parte.</p>
+    </div>
+    <div class="q">
+      <span class="n">15</span>
+      <h3>Comment mesure-t-on la réussite du pilote ?</h3>
+      <p class="reco"><b>Reco :</b> part des deals avec une prochaine étape datée, délai moyen entre deux étapes, part des alertes suivies d'une action. Comparés à une base de référence tirée de l'historique HubSpot.</p>
+    </div>
+    <div class="q">
+      <span class="n">16</span>
+      <h3>RGPD : comment traite-t-on les emails des prospects et la mémoire des deals ?</h3>
+      <p class="why">Information des prospects, durée de conservation, accord de traitement avec le client.</p>
+      <p class="reco"><b>Reco :</b> pas bloquant pour le test sur Oliverlist, bloquant avant tout pilote externe.</p>
+    </div>
+    <div class="q">
+      <span class="n">17</span>
+      <h3>Quel nom pour le produit ?</h3>
+      <p class="reco"><b>Reco :</b> on construit sous « Brief » et on tranche le nom à part. Ça ne bloque rien.</p>
+    </div>
+  </section>
+
+  <footer>
+    <p>Rédigé avec Jean le 26 octobre 2026, à partir du deck « From meeting assistant to Deal Execution System ».</p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var btn = document.getElementById("copy-btn");
+  function asText() {
+    var out = [];
+    out.push("Brief · Deal Execution — Questions à trancher avant de démarrer la V1 (26/10/2026)");
+    out.push("Réponds « OK pour les recos sauf le n° X ».");
+    out.push("");
+    out.push("DÉJÀ DÉCIDÉ");
+    document.querySelectorAll(".decided li").forEach(function (li) { out.push("- " + li.textContent.trim()); });
+    document.querySelectorAll("section.group").forEach(function (g) {
+      out.push("");
+      out.push(g.querySelector(".group-head h2").textContent.trim().toUpperCase());
+      g.querySelectorAll(".theme, .q").forEach(function (el) {
+        if (el.classList.contains("theme")) { out.push(""); out.push(el.textContent.trim()); return; }
+        out.push(el.querySelector(".n").textContent.trim() + ". " + el.querySelector("h3").textContent.trim());
+        var why = el.querySelector(".why");
+        if (why) out.push("   " + why.textContent.trim());
+        var reco = el.querySelector(".reco");
+        if (reco) out.push("   " + reco.textContent.replace(/\s+/g, " ").trim());
+        el.querySelectorAll("li").forEach(function (li) { out.push("     • " + li.textContent.trim()); });
+      });
+    });
+    return out.join("\n");
+  }
+  btn.addEventListener("click", function () {
+    var text = asText();
+    var done = function () { btn.textContent = "Texte copié"; btn.classList.add("done"); setTimeout(function () { btn.textContent = "Copier le texte"; btn.classList.remove("done"); }, 2500); };
+    try {
+      navigator.clipboard.writeText(text).then(done, function () { fallback(text); });
+    } catch (e) { fallback(text); }
+    function fallback(t) {
+      var ta = document.createElement("textarea");
+      ta.value = t; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); done(); } catch (err) { btn.textContent = "Sélectionnez le texte de la page"; }
+      document.body.removeChild(ta);
+    }
+  });
+})();
+</script>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { safeInternalPath } from "@/lib/safe-path";
+import { isBillingBlocked } from "@/lib/billing-rules";
 import {
   blockingModuleForPath,
   isApiClosedInBriefsAccess,
@@ -107,6 +108,7 @@ async function getUserGateInfo(userId: string): Promise<GateInfo> {
       disabled_at: string | null;
       organizations: {
         billing_status: string;
+        billing_exempt?: boolean | null;
         enabled_modules?: string[] | null;
         training_enabled?: boolean | null;
         access_level?: string | null;
@@ -117,10 +119,10 @@ async function getUserGateInfo(userId: string): Promise<GateInfo> {
     // "canceled" bloque au même titre que "blocked" — une résiliation coupe
     // l'accès immédiatement, pas de période de grâce (celle-ci ne s'applique
     // qu'aux échecs de paiement, cf. invoice.payment_failed dans le webhook).
-    const status = row?.organizations?.billing_status;
+    // Sauf abonnement activé à la main par l'admin (lib/billing-rules.ts).
     return {
       disabled: row?.disabled_at != null,
-      billingBlocked: status === "blocked" || status === "canceled",
+      billingBlocked: isBillingBlocked(row?.organizations),
       modules: needsCompany ? [] : resolveEnabledModules(row?.organizations),
       accessLevel: needsCompany ? "briefs" : resolveAccessLevel(row?.organizations),
       needsCompany,

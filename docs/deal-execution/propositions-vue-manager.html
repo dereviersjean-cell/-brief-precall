@@ -1,0 +1,345 @@
+<title>Vue manager Brief</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Layout : une colonne éditoriale ; chaque proposition = texte à gauche, maquette à droite, qui passent l'un sous l'autre sur mobile. */
+:root {
+  --bg: oklch(0.987 0.002 265);
+  --surface: oklch(1 0 0);
+  --ink: oklch(0.19 0.02 266);
+  --muted: oklch(0.52 0.02 266);
+  --faint: oklch(0.68 0.015 266);
+  --line: oklch(0.912 0.006 266);
+  --accent: oklch(0.52 0.2 265);
+  --accent-2: oklch(0.55 0.2 290);
+  --lav: oklch(0.955 0.025 265);
+  --lav-strong: oklch(0.9 0.05 265);
+  --danger: oklch(0.52 0.17 22);
+  --danger-soft: oklch(0.96 0.04 20);
+  --warn: oklch(0.55 0.12 70);
+  --warn-soft: oklch(0.96 0.05 75);
+  --ok: oklch(0.5 0.12 155);
+  --ok-soft: oklch(0.95 0.05 155);
+  --shadow: 0 1px 2px oklch(0.52 0.2 265 / 0.06), 0 18px 44px -28px oklch(0.52 0.2 265 / 0.4);
+  --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: oklch(0.17 0.012 266); --surface: oklch(0.21 0.014 266); --ink: oklch(0.95 0.008 266);
+    --muted: oklch(0.72 0.015 266); --faint: oklch(0.58 0.015 266); --line: oklch(0.3 0.015 266);
+    --accent: oklch(0.7 0.16 265); --accent-2: oklch(0.72 0.15 290);
+    --lav: oklch(0.26 0.04 265); --lav-strong: oklch(0.34 0.06 265);
+    --danger: oklch(0.75 0.13 22); --danger-soft: oklch(0.3 0.06 22);
+    --warn: oklch(0.8 0.11 75); --warn-soft: oklch(0.31 0.05 75);
+    --ok: oklch(0.76 0.12 155); --ok-soft: oklch(0.29 0.05 155);
+    --shadow: 0 1px 2px oklch(0 0 0 / 0.3), 0 18px 44px -28px oklch(0 0 0 / 0.7);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: oklch(0.17 0.012 266); --surface: oklch(0.21 0.014 266); --ink: oklch(0.95 0.008 266);
+  --muted: oklch(0.72 0.015 266); --faint: oklch(0.58 0.015 266); --line: oklch(0.3 0.015 266);
+  --accent: oklch(0.7 0.16 265); --accent-2: oklch(0.72 0.15 290);
+  --lav: oklch(0.26 0.04 265); --lav-strong: oklch(0.34 0.06 265);
+  --danger: oklch(0.75 0.13 22); --danger-soft: oklch(0.3 0.06 22);
+  --warn: oklch(0.8 0.11 75); --warn-soft: oklch(0.31 0.05 75);
+  --ok: oklch(0.76 0.12 155); --ok-soft: oklch(0.29 0.05 155);
+  --shadow: 0 1px 2px oklch(0 0 0 / 0.3), 0 18px 44px -28px oklch(0 0 0 / 0.7);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 20px; padding-block: 48px 72px; display: grid; gap: 64px; }
+h1, h2, h3 { margin: 0; text-wrap: balance; letter-spacing: -0.025em; }
+p { margin: 0; }
+.eyebrow { font-size: 11.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* En-tête */
+header { display: grid; gap: 14px; max-width: 760px; }
+header h1 { font-size: clamp(30px, 5vw, 44px); line-height: 1.05; font-weight: 600; }
+header .lead { font-size: 17px; color: var(--muted); max-width: 62ch; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; padding: 5px 11px; border-radius: 999px; background: var(--lav); color: var(--ink); }
+.chip b { font-weight: 600; }
+
+/* Proposition */
+.prop { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 36px; align-items: start; }
+.prop .text { display: grid; gap: 16px; }
+.prop h2 { font-size: 26px; font-weight: 600; line-height: 1.15; }
+.prop .idea { color: var(--muted); }
+.facts { display: grid; gap: 12px; }
+.fact h3 { font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); margin-bottom: 4px; }
+.fact ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; font-size: 14px; }
+.fact.plus li::marker { color: var(--ok); }
+.fact.minus li::marker { color: var(--danger); }
+
+/* Maquette */
+.mock { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow); padding: 20px; min-width: 0; display: grid; gap: 14px; }
+.mock-top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+.mock-top h4 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+.mock-top span { font-size: 12.5px; color: var(--muted); }
+.sample { font-size: 11px; color: var(--faint); }
+
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+.pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.pill.high { background: var(--danger-soft); color: var(--danger); }
+.pill.mid { background: var(--warn-soft); color: var(--warn); }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+
+/* A : interventions */
+.deal { border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; display: grid; gap: 10px; }
+.deal-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.logo { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; font-weight: 600; font-size: 14px; background: var(--lav); color: var(--accent); flex: none; }
+.deal-name { font-weight: 600; font-size: 15px; }
+.deal-meta { font-size: 12.5px; color: var(--muted); }
+.deal-head .pill { margin-left: auto; }
+.why { display: grid; gap: 3px; font-size: 13.5px; }
+.why li { list-style: none; display: flex; gap: 8px; }
+.why ul { margin: 0; padding: 0; display: grid; gap: 3px; }
+.why li::before { content: "•"; color: var(--faint); }
+.reco { background: var(--lav); border-radius: 12px; padding: 10px 12px; font-size: 13.5px; }
+.reco b { font-weight: 600; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn { font: inherit; font-size: 13px; font-weight: 500; border-radius: 999px; padding: 7px 14px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.btn:hover { border-color: var(--faint); }
+.btn.primary { background: linear-gradient(90deg, var(--accent), var(--accent-2)); color: oklch(1 0 0); border-color: transparent; }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn[aria-pressed="true"] { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
+.calm { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 8px; padding: 4px 2px 0; }
+
+/* B : équipe */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 560px; }
+th { text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--faint); padding: 0 10px 8px; }
+td { padding: 11px 10px; border-top: 1px solid var(--line); vertical-align: top; }
+td.r, th.r { text-align: right; }
+.rep { display: flex; align-items: center; gap: 9px; font-weight: 600; white-space: nowrap; }
+.av { width: 26px; height: 26px; border-radius: 50%; background: var(--lav-strong); color: var(--accent); display: grid; place-items: center; font-size: 11px; font-weight: 600; flex: none; }
+.weak { color: var(--muted); }
+.weak b { color: var(--ink); font-weight: 500; }
+.bar { height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; width: 70px; margin-left: auto; margin-top: 6px; }
+.bar i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+
+/* C : parcours */
+.flow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.stage { border: 1px solid var(--line); border-radius: 16px; padding: 12px; display: grid; gap: 6px; position: relative; }
+.stage.hot { border-color: var(--danger); background: var(--danger-soft); }
+.stage-name { font-size: 12px; font-weight: 600; color: var(--muted); }
+.stage-count { font-size: 26px; font-weight: 600; letter-spacing: -0.03em; line-height: 1; }
+.stage-sub { font-size: 12px; color: var(--muted); }
+.conv { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; padding: 0 4px; }
+.conv span b { color: var(--ink); font-weight: 600; }
+.stuck { border-top: 1px solid var(--line); padding-top: 12px; display: grid; gap: 8px; }
+.stuck-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 13.5px; }
+.stuck-row .deal-meta { margin-left: auto; }
+
+/* Recommandation */
+.final { background: var(--surface); border: 1px solid var(--lav-strong); border-radius: 28px; padding: clamp(20px, 4vw, 36px); display: grid; gap: 24px; box-shadow: var(--shadow); }
+.final h2 { font-size: clamp(24px, 3.4vw, 32px); font-weight: 600; }
+.final .lead { color: var(--muted); max-width: 66ch; }
+.layers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.layer { border-radius: 18px; padding: 16px; background: var(--lav); display: grid; gap: 6px; align-content: start; }
+.layer .where { font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.layer h3 { font-size: 16px; font-weight: 600; }
+.layer p { font-size: 13.5px; color: var(--muted); }
+
+.note { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; border-top: 1px solid var(--line); padding-top: 28px; }
+.note h3 { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+.note p { color: var(--muted); font-size: 14.5px; }
+.seq { display: grid; gap: 8px; }
+.seq-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; }
+.seq-row .org { width: 118px; color: var(--muted); font-size: 12.5px; flex: none; }
+.step { padding: 3px 10px; border-radius: 8px; background: var(--lav); font-weight: 500; }
+.arrow { color: var(--faint); }
+
+.questions { display: grid; gap: 10px; }
+.questions li { font-size: 14.5px; }
+.questions ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+
+@media (max-width: 860px) {
+  .prop { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .layers, .note { grid-template-columns: minmax(0, 1fr); }
+  .flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Brief · Deal execution · Réflexion</span>
+    <h1>Où le manager doit-il intervenir&nbsp;?</h1>
+    <p class="lead">Trois façons de construire la vue du manager sans refaire HubSpot. Chacune répond à une question différente. La dernière section assemble celle que je recommande.</p>
+    <div class="chips">
+      <span class="chip"><b>Source</b> deals et étapes lus dans HubSpot</span>
+      <span class="chip"><b>Signal</b> règles explicables, preuves tirées des calls</span>
+      <span class="chip">Données d'exemple</span>
+    </div>
+  </header>
+
+  <!-- A -->
+  <section class="prop" aria-labelledby="a-title">
+    <div class="text">
+      <span class="eyebrow">Proposition A</span>
+      <h2 id="a-title">Les interventions du jour</h2>
+      <p class="idea">Une file courte des deals qui ont besoin du manager, classés par risque et par montant. Chaque carte dit pourquoi, preuves à l'appui, et propose une intervention précise. Le reste est replié.</p>
+      <div class="facts">
+        <div class="fact"><h3>Question</h3><ul><li>Sur quel deal mon intervention change-t-elle quelque chose&nbsp;?</li></ul></div>
+        <div class="fact plus"><h3>Forces</h3><ul><li>Fidèle à la promesse : seulement les exceptions</li><li>Se lit en 30 secondes, se décide en un clic</li><li>Même contenu dans l'email du matin</li></ul></div>
+        <div class="fact minus"><h3>Limites</h3><ul><li>Pas de vue d'ensemble du pipeline</li><li>Ne montre pas qui progresse ou pas dans l'équipe</li></ul></div>
+      </div>
+    </div>
+    <div class="mock" aria-label="Maquette de la proposition A">
+      <div class="mock-top"><h4>2 deals ont besoin de vous</h4><span>sur 14 deals actifs · <span class="sample">exemple</span></span></div>
+
+      <article class="deal">
+        <div class="deal-head">
+          <span class="logo">N</span>
+          <div><div class="deal-name">NovaTech</div><div class="deal-meta"><span class="num">35 k€</span> · Démo · Alex</div></div>
+          <span class="pill high">Risque élevé</span>
+        </div>
+        <div class="why"><ul>
+          <li>Démo terminée depuis <span class="num">&nbsp;11&nbsp;</span>jours, aucune prochaine étape datée</li>
+          <li>Décideur jamais rencontré en 2 rendez-vous</li>
+        </ul></div>
+        <div class="reco"><b>Intervention proposée :</b> appeler le sponsor avant vendredi et obtenir un rendez-vous avec le DAF.</div>
+        <div class="actions">
+          <button class="btn primary" type="button" aria-pressed="false" data-done="Pris en charge">Je m'en occupe</button>
+          <button class="btn" type="button" aria-pressed="false" data-done="Confié à Alex">Confier à Alex</button>
+          <button class="btn" type="button" aria-pressed="false" data-done="Revu dans 3 jours">Plus tard</button>
+        </div>
+      </article>
+
+      <article class="deal">
+        <div class="deal-head">
+          <span class="logo">L</span>
+          <div><div class="deal-name">Lumina</div><div class="deal-meta"><span class="num">40 k€</span> · Proposition · Sarah</div></div>
+          <span class="pill mid">À surveiller</span>
+        </div>
+        <div class="why"><ul>
+          <li>L'objection prix revient pour la 3e fois sans réponse claire</li>
+          <li>Concurrent cité au dernier call</li>
+        </ul></div>
+        <div class="reco"><b>Intervention proposée :</b> préparer avec Sarah la réponse prix et le cas client avant son prochain rendez-vous.</div>
+      </article>
+
+      <div class="calm"><span class="pill ok">Avancent normalement</span> 12 deals, rien à faire</div>
+    </div>
+  </section>
+
+  <!-- B -->
+  <section class="prop" aria-labelledby="b-title">
+    <div class="text">
+      <span class="eyebrow">Proposition B</span>
+      <h2 id="b-title">L'équipe, commercial par commercial</h2>
+      <p class="idea">Une ligne par commercial : ses deals, ceux qui sont à risque, et surtout son point faible récurrent, mesuré sur ses calls. On passe du « sauver un deal » au « faire progresser quelqu'un ».</p>
+      <div class="facts">
+        <div class="fact"><h3>Question</h3><ul><li>Qui a besoin d'aide, et sur quoi&nbsp;?</li></ul></div>
+        <div class="fact plus"><h3>Forces</h3><ul><li>Relie les deals au coaching (le playbook existe déjà)</li><li>Repère un problème de méthode, pas un incident</li></ul></div>
+        <div class="fact minus"><h3>Limites</h3><ul><li>Moins directement actionnable deal par deal</li><li>Sensible : peut se lire comme un classement</li></ul></div>
+      </div>
+    </div>
+    <div class="mock" aria-label="Maquette de la proposition B">
+      <div class="mock-top"><h4>Votre équipe</h4><span>30 derniers jours · <span class="sample">exemple</span></span></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Commercial</th><th class="r">Deals</th><th class="r">À risque</th><th class="r">Prochaine étape datée</th><th>Point à travailler</th></tr></thead>
+          <tbody>
+            <tr><td><span class="rep"><span class="av">AM</span>Alex</span></td><td class="r num">6</td><td class="r"><span class="pill high">2</span></td><td class="r"><span class="num">58 %</span><div class="bar"><i style="width:58%"></i></div></td><td class="weak"><b>Décideur non identifié</b> en découverte, 4 deals sur 6</td></tr>
+            <tr><td><span class="rep"><span class="av">SL</span>Sarah</span></td><td class="r num">5</td><td class="r"><span class="pill mid">1</span></td><td class="r"><span class="num">80 %</span><div class="bar"><i style="width:80%"></i></div></td><td class="weak"><b>Objection prix</b> traitée par une remise, 3 fois</td></tr>
+            <tr><td><span class="rep"><span class="av">TB</span>Thomas</span></td><td class="r num">4</td><td class="r"><span class="pill ok">0</span></td><td class="r"><span class="num">100 %</span><div class="bar"><i style="width:100%"></i></div></td><td class="weak">Rien de récurrent</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- C -->
+  <section class="prop" aria-labelledby="c-title">
+    <div class="text">
+      <span class="eyebrow">Proposition C</span>
+      <h2 id="c-title">Le parcours, étape par étape</h2>
+      <p class="idea">Le parcours de vente propre à l'entreprise, avec le nombre de deals à chaque étape, le temps passé et le taux de passage. L'étape où ça bloque ressort, et un clic montre les deals concernés. Des chiffres, sans colonnes de cartes.</p>
+      <div class="facts">
+        <div class="fact"><h3>Question</h3><ul><li>Où mon pipeline se perd-il&nbsp;?</li></ul></div>
+        <div class="fact plus"><h3>Forces</h3><ul><li>Vue d'ensemble sans mini-CRM</li><li>S'adapte au parcours de chaque client</li><li>Pose la base du ROI (taux de passage avant / après)</li></ul></div>
+        <div class="fact minus"><h3>Limites</h3><ul><li>Peu de sens sous une vingtaine de deals</li><li>Diagnostic, pas action : il faut cliquer pour agir</li></ul></div>
+      </div>
+    </div>
+    <div class="mock" aria-label="Maquette de la proposition C">
+      <div class="mock-top"><h4>Parcours de vente</h4><span>étapes lues dans HubSpot · <span class="sample">exemple</span></span></div>
+      <div class="flow">
+        <div class="stage"><span class="stage-name">Découverte</span><span class="stage-count num">7</span><span class="stage-sub"><span class="num">6 j</span> en moyenne</span></div>
+        <div class="stage hot"><span class="stage-name">Démo</span><span class="stage-count num">5</span><span class="stage-sub"><span class="num">19 j</span> · 3 bloqués</span></div>
+        <div class="stage"><span class="stage-name">Proposition</span><span class="stage-count num">2</span><span class="stage-sub"><span class="num">9 j</span> en moyenne</span></div>
+        <div class="stage"><span class="stage-name">Closing</span><span class="stage-count num">1</span><span class="stage-sub"><span class="num">4 j</span> en moyenne</span></div>
+      </div>
+      <div class="conv"><span>Découverte → Démo <b class="num">64 %</b></span><span>Démo → Proposition <b class="num">31 %</b></span><span>Proposition → Closing <b class="num">55 %</b></span></div>
+      <div class="stuck">
+        <div class="stuck-row"><span class="pill high">Bloqué</span><b>NovaTech</b><span class="deal-meta">11 j sans prochaine étape</span></div>
+        <div class="stuck-row"><span class="pill mid">Lent</span><b>Greenly</b><span class="deal-meta">2 démos, décideur absent</span></div>
+        <div class="stuck-row"><span class="pill mid">Lent</span><b>Payfit</b><span class="deal-meta">22 j à l'étape</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Recommandation -->
+  <section class="final" aria-labelledby="r-title">
+    <div style="display:grid;gap:10px">
+      <span class="eyebrow">Ma recommandation</span>
+      <h2 id="r-title">A en page d'accueil, C en bandeau, B en second onglet</h2>
+      <p class="lead">Le manager ouvre Brief et tombe sur les interventions (A). Au-dessus, une ligne résume le parcours (C) : chaque étape est cliquable et filtre la liste. L'onglet Équipe (B) sert au point hebdomadaire avec chaque commercial. Le même contenu que A part par email le matin, pour qu'il n'ait pas besoin d'ouvrir l'app.</p>
+    </div>
+    <div class="layers">
+      <div class="layer"><span class="where">Accueil manager</span><h3>Interventions</h3><p>3 à 5 deals maximum. Le reste replié sous « avancent normalement ».</p></div>
+      <div class="layer"><span class="where">Bandeau</span><h3>Parcours</h3><p>Une ligne de chiffres par étape. Un clic filtre les interventions sur cette étape.</p></div>
+      <div class="layer"><span class="where">Onglet Équipe</span><h3>Par commercial</h3><p>Le point à travailler de chacun, avec les calls qui le prouvent. Vu par le commercial lui-même.</p></div>
+    </div>
+
+    <div class="note">
+      <div>
+        <h3>Chaque entreprise a son propre parcours</h3>
+        <p>Le nombre et la nature des rendez-vous avant un deal changent d'un client à l'autre. Les étapes viennent donc du pipeline HubSpot du client, et le setup associe à chacune ses types de rendez-vous et ses critères de passage. Brief ne doit pas figer R1, R2, R3 : c'est un changement par rapport au code actuel.</p>
+      </div>
+      <div class="seq" aria-label="Exemples de parcours">
+        <div class="seq-row"><span class="org">Vente courte</span><span class="step">Découverte</span><span class="arrow">→</span><span class="step">Closing</span></div>
+        <div class="seq-row"><span class="org">SaaS mid-market</span><span class="step">Découverte</span><span class="arrow">→</span><span class="step">Démo</span><span class="arrow">→</span><span class="step">Proposition</span><span class="arrow">→</span><span class="step">Closing</span></div>
+        <div class="seq-row"><span class="org">Vente complexe</span><span class="step">Découverte</span><span class="arrow">→</span><span class="step">Atelier</span><span class="arrow">→</span><span class="step">Démo</span><span class="arrow">→</span><span class="step">Sécurité / IT</span><span class="arrow">→</span><span class="step">Achats</span><span class="arrow">→</span><span class="step">Signature</span></div>
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="questions">
+        <h3>Décidé le 26/10</h3>
+        <ol>
+          <li>A en accueil, C en bandeau, B en second onglet.</li>
+          <li>Le commercial reçoit les alertes de ses deals en même temps que le manager.</li>
+          <li>Pas de limite au nombre d'interventions : la liste est triée par risque puis par montant, les deals qui avancent restent repliés.</li>
+          <li>Onglet Équipe : chaque commercial voit uniquement sa propre ligne, le manager voit toute l'équipe.</li>
+        </ol>
+      </div>
+      <div>
+        <h3>Ce qu'on écarte</h3>
+        <p>Le tableau en colonnes de cartes par étape : il refait HubSpot, oblige à parcourir tous les deals et va contre le principe « seulement les exceptions ». La vue C en donne l'information utile sans ce coût.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+document.querySelectorAll(".btn[data-done]").forEach(function (b) {
+  var label = b.textContent;
+  b.addEventListener("click", function () {
+    var on = b.getAttribute("aria-pressed") !== "true";
+    b.closest(".actions").querySelectorAll(".btn").forEach(function (o) {
+      o.setAttribute("aria-pressed", "false");
+      o.textContent = o.dataset.label || o.textContent;
+    });
+    b.dataset.label = label;
+    if (on) { b.setAttribute("aria-pressed", "true"); b.textContent = b.dataset.done; }
+  });
+});
+</script>
