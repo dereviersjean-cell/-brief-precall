@@ -883,7 +883,7 @@ Demande de Jean : sortir le playbook, les objections et les références des ong
 - **Crédits Pappers** : l'API répond `401 « plus assez de crédits »`, donc **tous** les briefs se génèrent sans données légales officielles alors que « données légales FR » est dans le positionnement. Depuis le 03/09 l'échec est au moins remonté (`reportWarning`) au lieu d'être avalé. Payer ou retirer la promesse — décision business (point 13 de la roadmap).
 - **Win/loss : `deal_outcomes` est vide et ses deux sources sont taries** (devis abandonnés, cron CRM qui n'a jamais rien écrit malgré HubSpot connecté depuis juillet). Insights a été reconstruit sans elle le 04/09. Reste à trancher : faire marcher la remontée CRM des affaires gagnées/perdues, ou renoncer au win/loss et retirer la table. En l'état c'est une promesse produit sans donnée derrière.
 
-## Deal Execution — étapes 1 à 4 en test (26-27 octobre 2026)
+## Deal Execution — étapes 1 à 5 en test (26-27 octobre 2026)
 
 Jean et Hubert font évoluer Brief de « meeting assistant » vers un copilote de deals branché sur HubSpot (deck « From meeting assistant to Deal Execution System », oct. 2026). Tout le dossier est dans **`docs/deal-execution/`** : `README.md` (décisions, réponses de Hubert et de Jean aux 17 questions, champs de la mémoire d'un deal, matière de test, comment reprendre), plus les deux pages de travail en HTML.
 
@@ -915,9 +915,18 @@ En une ligne : HubSpot only en V1 ; parcours de vente propre à chaque organisat
 - Bandeau des étapes dans l'ordre du pipeline HubSpot (deals sans HubSpot à part), un clic filtre la file. **Pas de durée moyenne ni de taux de passage** : il faudrait l'historique des étapes, que Brief ne lit pas encore.
 - Onglet **Équipe** : par commercial, deals, à risque, part avec prochaine étape datée, et point à travailler = alerte présente sur au moins deux de ses deals (l'inactivité n'en est pas un), avec les calls qui le montrent.
 - Cartes compactes : alertes en étiquettes, preuves (texte + phrase) sur « Voir les preuves » — développées, dix cartes faisaient six écrans.
-- Pas encore fait : l'email du matin au manager et les alertes envoyées au commercial (décisions du 26/10).
 
-**État du code au 27/10/2026** : référence eslint **14 problèmes** (13 erreurs, 1 avertissement). **140 tests**.
+**Étape 5 — les emails (feu vert du 27/10/2026, « Continue »), migration 033** :
+- **La fiche se génère toute seule après chaque call** des organisations où `deal_memory_enabled` est vrai : le bot-webhook (Step 7) envoie l'événement `deal-memory/call.analyzed` (id `deal-memory-<callId>` : un webhook rejoué ne génère pas deux fois), traité par `generateDealMemoryAfterCall` (`lib/inngest-functions.ts`, `runDealMemoryForCall`). Hors du webhook : 30 à 60 s d'appel Sonnet. `maxDuration = 300` sur `app/api/inngest/route.ts`. La génération à la demande (bouton, backfill) n'envoie jamais d'email.
+- **Interrupteur séparé `organizations.deal_alerts_enabled`** (migration 033, éteint partout par défaut, Oliverlist compris) : la fiche peut tourner sans qu'aucun email ne sorte. `isDealAlertsEnabledForOrganization` exige les deux drapeaux, fail-closed. **Ne pas l'allumer chez Oliverlist tant que trois commerciaux de test ont des adresses `@brief.com`** (Dorian, Guislain, Katell) : ce domaine n'est pas à nous, les alertes y partiraient.
+- **Commercial** : un email dès que la fiche de son call a au moins une alerte — alertes de la plus lourde à la plus légère, phrase citée, action à faire (`REP_ACTIONS`, pendant de `INTERVENTIONS` à la deuxième personne), lien vers le call ; il est prévenu que son manager voit ces points.
+- **Manager, tout de suite** quand le risque est élevé (`isHighRisk` : une alerte de poids 3, c.-à-d. qui compare plusieurs calls — objection qui revient, décideur toujours absent, prospect moins engagé) : managers liés au commercial, sauf s'il est lui-même le commercial du call. Interventions proposées, rappel que le deal reste au commercial.
+- **Manager, chaque jour ouvré à 8 h** (`sendDealMorningEmails`, cron Paris) : sa file de `/deals` telle quelle (`morningQueue` : sans les deals vus ou remis à plus tard, seulement ceux qui ont une alerte, 5 au plus + « et N autres »). **File vide = pas d'email.**
+- Construction et envoi séparés (`lib/deal-alerts.ts` : `send: false` construit sans envoyer) ; chaque email est une étape Inngest, un envoi rejoué ne renvoie pas ceux déjà partis. Modèles dans `lib/email.ts` (`buildDealAlertEmail`, `buildDealMorningEmail`, palette des notifications).
+- **Aperçu sur les vraies fiches** : `scripts/preview-deal-emails.ts --org=<id> [--call=<id>] [--send-to=<adresse>]` écrit chaque email en HTML (dossier temporaire) avec son vrai destinataire, et avec `--send-to` les envoie tous à cette seule adresse.
+- Reste à faire : durée par étape et taux de passage (historique des étapes HubSpot), test des alertes de comparaison sur un deal qui se dégrade.
+
+**État du code au 27/10/2026** : référence eslint **14 problèmes** (13 erreurs, 1 avertissement). **145 tests**.
 
 ## Devis — fonctionnalité abandonnée (décision de Jean, 31 août 2026)
 

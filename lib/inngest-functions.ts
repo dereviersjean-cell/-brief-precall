@@ -26,7 +26,14 @@ import {
   type UnansweredQuote,
   type DigestRecipient,
   isModuleEnabledForUser,
+  getCallWithAnalysis,
+  isDealAlertsEnabledForOrganization,
+  getOrganizationIdsWithDealAlerts,
+  getActiveManagersInOrganization,
 } from "./db";
+import { runDealMemoryForCall } from "./deal-memory-run";
+import { sendDealAlertsForCall, sendDealMorningEmail } from "./deal-alerts";
+import { sendBuiltEmail } from "./email";
 import { syncAndScheduleForUser } from "./recall";
 import { checkCalendarHealth } from "./calendar-health";
 import type { ModuleKey } from "./modules";
@@ -646,6 +653,87 @@ export const sendMondayMorningDigests = inngest.createFunction(
 
     const summary = { users: users.length, sent, failed };
     console.log("[send-monday-morning-digests] done —", JSON.stringify(summary));
+    return summary;
+  }
+);
+
+// ─── Deal Execution : fiche deal après chaque call, emails d'alerte ────────
+//
+// La fiche est générée hors du webhook Recall (30 à 60 s d'un appel Sonnet
+// sur le transcript complet, plus HubSpot) : le webhook envoie l'événement,
+// avec un id par call pour qu'un webhook rejoué ne génère pas deux fois.
+// Seulement pour les organisations où la fiche est ouverte (le webhook le
+// vérifie avant d'envoyer). Les emails ne partent que si `deal_alerts_enabled`
+// est allumé en plus (migration 033).
+export const generateDealMemoryAfterCall = inngest.createFunction(
+  {
+    id: "deal-memory-after-call",
+    triggers: [{ event: "deal-memory/call.analyzed" }],
+    retries: 2,
+  },
+  async ({ event, step }) => {
+    const { callId, userId, organizationId } = event.data as { callId: string; userId: string; organizationId: string };
+
+    const generated = await step.run("generate-deal-memory", async () => {
+      const call = await getCallWithAnalysis(callId, userId);
+      if (!call || (!call.transcript && !call.transcript_json?.turns?.length)) return false;
+      await runDealMemoryForCall(call, organizationId);
+      return true;
+    });
+    if (!generated) return { generated: false, emails: 0 };
+
+    const enabled = await step.run("deal-alerts-enabled", () => isDealAlertsEnabledForOrganization(organizationId));
+    if (!enabled) return { generated: true, emails: 0 };
+
+    // Construits d'abord, envoyés un par un : un envoi qui échoue et se
+    // rejoue ne renvoie pas les emails déjà partis.
+    const emails = await step.run("build-deal-alerts", () => sendDealAlertsForCall(callId, userId, { send: false }));
+    let sent = 0;
+    for (const [i, email] of emails.entries()) {
+      const ok = await step.run(`send-deal-alert-${i}`, async () => {
+        try {
+          await sendBuiltEmail(email.to, email, "sendDealAlertsForCall");
+          return true;
+        } catch (err) {
+          reportError("deal-alerts.afterCall", err, { callId });
+          return false;
+        }
+      });
+      if (ok) sent++;
+    }
+    return { generated: true, emails: sent };
+  }
+);
+
+// L'email du matin aux managers, jours ouvrés à 8 h (heure de Paris).
+export const sendDealMorningEmails = inngest.createFunction(
+  {
+    id: "send-deal-morning-emails",
+    triggers: [{ cron: "TZ=Europe/Paris 0 8 * * 1-5" }],
+  },
+  async ({ step }) => {
+    const organizationIds = await step.run("get-deal-alert-orgs", () => getOrganizationIdsWithDealAlerts());
+    let sent = 0;
+    let empty = 0;
+    let failed = 0;
+    for (const organizationId of organizationIds) {
+      const managers = await step.run(`get-managers-${organizationId}`, () => getActiveManagersInOrganization(organizationId));
+      for (const manager of managers) {
+        const outcome = await step.run(`send-deal-morning-${manager.id}`, async () => {
+          try {
+            return (await sendDealMorningEmail(manager, organizationId, { send: true })) ? "sent" : "empty";
+          } catch (err) {
+            reportError("deal-alerts.morning", err, { userId: manager.id });
+            return "failed";
+          }
+        });
+        if (outcome === "sent") sent++;
+        else if (outcome === "empty") empty++;
+        else failed++;
+      }
+    }
+    const summary = { organizations: organizationIds.length, sent, empty, failed };
+    console.log("[send-deal-morning-emails] done —", JSON.stringify(summary));
     return summary;
   }
 );

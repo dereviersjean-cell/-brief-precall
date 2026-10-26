@@ -1856,7 +1856,9 @@ export async function isDealMemoryEnabledForOrganization(organizationId: string)
   }
 }
 
-export async function getCallDealMemory(callId: string): Promise<(StoredDealMemory & { dealId: string | null }) | null> {
+export async function getCallDealMemory(
+  callId: string
+): Promise<(StoredDealMemory & { dealId: string | null; callAt: string | null }) | null> {
   const { data, error } = await supabaseAdmin
     .from("call_deal_memory")
     .select("*")
@@ -1870,6 +1872,7 @@ export async function getCallDealMemory(callId: string): Promise<(StoredDealMemo
     model: string | null;
     generated_at: string;
     deal_id?: string | null;
+    call_at?: string | null;
     hubspot_pushed_at?: string | null;
   };
   return {
@@ -1878,6 +1881,7 @@ export async function getCallDealMemory(callId: string): Promise<(StoredDealMemo
     model: row.model,
     generatedAt: row.generated_at,
     dealId: row.deal_id ?? null,
+    callAt: row.call_at ?? null,
     hubspotPushedAt: row.hubspot_pushed_at ?? null,
   };
 }
@@ -2114,6 +2118,64 @@ export async function saveDealReview(dealId: string, userId: string, status: "se
     .from("deal_review_events")
     .insert({ deal_id: dealId, user_id: userId, status, alert_rules: alertRules });
   if (eventError) throw eventError;
+}
+
+// ─── Alertes par email (Deal Execution, migration 033) ────────────────────────
+//
+// Les emails partent seulement là où `deal_alerts_enabled` est allumé EN PLUS
+// de la fiche : la fiche peut tourner « à blanc » sans que rien ne sorte de
+// Brief. Fail-closed, comme la fiche : colonne absente = aucun email.
+export async function isDealAlertsEnabledForOrganization(organizationId: string): Promise<boolean> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("organizations")
+      .select("deal_memory_enabled, deal_alerts_enabled")
+      .eq("id", organizationId)
+      .maybeSingle();
+    if (error) throw error;
+    const row = data as { deal_memory_enabled: boolean; deal_alerts_enabled: boolean } | null;
+    return !!row?.deal_memory_enabled && !!row?.deal_alerts_enabled;
+  } catch (err) {
+    console.error("[db] isDealAlertsEnabledForOrganization failed (fail-closed):", err instanceof Error ? err.message : String(err));
+    return false;
+  }
+}
+
+export async function getOrganizationIdsWithDealAlerts(): Promise<string[]> {
+  const { data, error } = await supabaseAdmin
+    .from("organizations")
+    .select("id")
+    .eq("deal_memory_enabled", true)
+    .eq("deal_alerts_enabled", true);
+  if (error) throw error;
+  return ((data ?? []) as { id: string }[]).map((o) => o.id);
+}
+
+// Les managers actifs d'une organisation : destinataires de l'email du matin.
+export async function getActiveManagersInOrganization(organizationId: string): Promise<LinkedUser[]> {
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("id, name, email")
+    .eq("organization_id", organizationId)
+    .eq("role", "manager")
+    .is("disabled_at", null);
+  if (error) throw error;
+  return (data ?? []) as LinkedUser[];
+}
+
+// Un destinataire d'alerte, sauf s'il est désactivé.
+export async function getActiveUserContact(userId: string): Promise<LinkedUser | null> {
+  const { data, error } = await supabaseAdmin.from("users").select("id, name, email, disabled_at").eq("id", userId).maybeSingle();
+  if (error) throw error;
+  const row = data as (LinkedUser & { disabled_at: string | null }) | null;
+  return row && !row.disabled_at ? { id: row.id, name: row.name, email: row.email } : null;
+}
+
+export async function getDealCard(dealId: string): Promise<{ name: string; hubspot: HubspotDealSnapshot | null } | null> {
+  const { data, error } = await supabaseAdmin.from("deals").select("name, hubspot_snapshot").eq("id", dealId).maybeSingle();
+  if (error) throw error;
+  const row = data as { name: string; hubspot_snapshot: HubspotDealSnapshot | null } | null;
+  return row ? { name: row.name, hubspot: row.hubspot_snapshot } : null;
 }
 
 export async function getDealOrganizationId(dealId: string): Promise<string | null> {

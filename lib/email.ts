@@ -721,3 +721,152 @@ export async function sendManagerWeeklyDigestEmail(params: {
     throw new Error(`sendManagerWeeklyDigestEmail failed: ${error.message}`);
   }
 }
+
+// ─── Deal Execution : alertes après un call, email du matin ───────────────
+//
+// Décisions du 26/10/2026 (reco 11, validée par Hubert) : le commercial reçoit
+// les alertes de son call dès que la fiche est prête, le manager la file des
+// deals chaque matin, et tout de suite quand le risque est élevé. Le manager
+// ne reprend jamais le deal : ce qu'on lui propose passe par le commercial.
+// Les fonctions build* rendent le sujet et le HTML sans rien envoyer, pour
+// l'aperçu (scripts/preview-deal-emails.ts).
+
+export type DealEmailAlert = { label: string; text: string; verbatim: string | null; speaker: string | null; action: string };
+
+function formatDealAmount(amount: number): string {
+  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(amount);
+}
+
+function formatDealDay(iso: string): string {
+  return new Date(iso).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Paris" });
+}
+
+function dealTagHtml(label: string): string {
+  return `<span style="display:inline-block;font-size:12px;font-weight:600;color:#B45309;background:#FEF3C7;padding:3px 10px;border-radius:999px;margin:0 6px 6px 0;">${escapeHtml(label)}</span>`;
+}
+
+// Une alerte : ce qui a été relevé, la phrase qui le montre, ce qu'il y a à
+// faire. La citation est celle de la fiche, ancrée au transcript.
+function dealAlertBlockHtml(alert: DealEmailAlert, actionLabel: string): string {
+  const quote = alert.verbatim
+    ? `<p style="font-size:13px;line-height:1.55;color:${NOTIF.textSecondary};margin:0 0 10px;padding-left:12px;border-left:3px solid ${NOTIF.border};font-style:italic;">« ${escapeHtml(alert.verbatim)} »${
+        alert.speaker ? `<span style="font-style:normal;"> — ${escapeHtml(alert.speaker)}</span>` : ""
+      }</p>`
+    : "";
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+      <tr><td style="padding:16px 18px;background:${NOTIF.card};border-radius:10px;">
+        ${dealTagHtml(alert.label)}
+        <p style="font-size:14px;line-height:1.55;color:${NOTIF.textPrimary};margin:4px 0 10px;">${escapeHtml(alert.text)}</p>
+        ${quote}
+        <p style="font-size:13px;line-height:1.55;color:${NOTIF.textPrimary};margin:0;"><strong>${actionLabel} :</strong> ${escapeHtml(alert.action)}</p>
+      </td></tr>
+    </table>`;
+}
+
+function dealMetaLine(parts: (string | null | undefined)[]): string {
+  return parts.filter(Boolean).map((p) => escapeHtml(p as string)).join(" · ");
+}
+
+export function buildDealAlertEmail(params: {
+  audience: "commercial" | "manager";
+  dealName: string;
+  commercialName: string | null;
+  callAt: string | null;
+  stage: string | null;
+  amount: number | null;
+  alerts: DealEmailAlert[];
+  url: string;
+}): { subject: string; html: string } {
+  const { audience, dealName, commercialName, callAt, stage, amount, alerts, url } = params;
+  const count = alerts.length;
+  const meta = dealMetaLine([
+    audience === "manager" ? commercialName : null,
+    callAt ? `call du ${formatDealDay(callAt)}` : null,
+    stage,
+    amount != null ? formatDealAmount(amount) : null,
+  ]);
+
+  const copy =
+    audience === "commercial"
+      ? {
+          subject: `${count} point${count > 1 ? "s" : ""} à reprendre sur ${dealName}`,
+          title: "Ce que votre call laisse ouvert",
+          action: "À faire",
+          note: "Votre manager voit aussi ces points dans son suivi des deals.",
+          cta: "Revoir le call",
+        }
+      : {
+          subject: `Deal à risque : ${dealName}${commercialName ? ` (${commercialName})` : ""}`,
+          title: "Un deal se dégrade d'un call à l'autre",
+          action: "Intervention proposée",
+          note: `${commercialName ? escapeHtml(commercialName) : "Le commercial"} a reçu ces points en même temps que vous. Le deal reste le sien : l'intervention passe par lui.`,
+          cta: "Ouvrir les deals à suivre",
+        };
+
+  const body = `
+    <h1 style="font-size:20px;font-weight:700;color:${NOTIF.textPrimary};margin:0 0 4px;">${copy.title}</h1>
+    <p style="font-size:15px;font-weight:600;color:${NOTIF.textPrimary};margin:12px 0 2px;">${escapeHtml(dealName)}</p>
+    <p style="font-size:13px;color:${NOTIF.textSecondary};margin:0 0 20px;">${meta}</p>
+    ${alerts.map((a) => dealAlertBlockHtml(a, copy.action)).join("")}
+    <p style="font-size:13px;line-height:1.55;color:${NOTIF.textSecondary};margin:16px 0 8px;">${copy.note}</p>
+    ${ctaButtonHtml(copy.cta, url)}`;
+
+  return { subject: copy.subject, html: emailShellHtml(body) };
+}
+
+export type DealMorningEmailDeal = {
+  name: string;
+  commercialName: string | null;
+  stage: string | null;
+  amount: number | null;
+  alertLabels: string[];
+  intervention: string | null;
+};
+
+export function buildDealMorningEmail(params: { deals: DealMorningEmailDeal[]; total: number; url: string }): { subject: string; html: string } {
+  const { deals, total, url } = params;
+  const rows = deals
+    .map(
+      (d) => `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+      <tr><td style="padding:16px 18px;border:1px solid ${NOTIF.border};border-radius:10px;">
+        <p style="font-size:15px;font-weight:600;color:${NOTIF.textPrimary};margin:0 0 2px;">${escapeHtml(d.name)}</p>
+        <p style="font-size:13px;color:${NOTIF.textSecondary};margin:0 0 10px;">${dealMetaLine([
+          d.commercialName,
+          d.stage,
+          d.amount != null ? formatDealAmount(d.amount) : null,
+        ])}</p>
+        <div>${d.alertLabels.map(dealTagHtml).join("")}</div>
+        ${
+          d.intervention
+            ? `<p style="font-size:13px;line-height:1.55;color:${NOTIF.textPrimary};margin:4px 0 0;"><strong>Intervention proposée :</strong> ${escapeHtml(d.intervention)}</p>`
+            : ""
+        }
+      </td></tr>
+    </table>`
+    )
+    .join("");
+  const more = total - deals.length;
+
+  const body = `
+    <h1 style="font-size:20px;font-weight:700;color:${NOTIF.textPrimary};margin:0 0 4px;">Les deals où intervenir aujourd'hui</h1>
+    <p style="font-size:14px;color:${NOTIF.textSecondary};margin:0 0 20px;">Du plus risqué au moins risqué. Chaque commercial reçoit les alertes de ses calls dès que la fiche est prête.</p>
+    ${rows}
+    ${more > 0 ? `<p style="font-size:13px;color:${NOTIF.textSecondary};margin:4px 0 16px;">Et ${more} autre${more > 1 ? "s" : ""} dans Brief.</p>` : ""}
+    <p style="font-size:13px;line-height:1.55;color:${NOTIF.textSecondary};margin:8px 0 8px;">« Vu » retire un deal de cette liste jusqu'à son prochain call, « Plus tard » jusqu'à demain.</p>
+    ${ctaButtonHtml("Ouvrir les deals à suivre", url)}`;
+
+  return {
+    subject: `${total} deal${total > 1 ? "s" : ""} où intervenir aujourd'hui`,
+    html: emailShellHtml(body),
+  };
+}
+
+export async function sendBuiltEmail(to: string, email: { subject: string; html: string }, scope: string): Promise<void> {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const { error } = await resend.emails.send({ from: process.env.RESEND_FROM_EMAIL!, to, subject: email.subject, html: email.html });
+  if (error) {
+    throw new Error(`${scope} failed: ${error.message}`);
+  }
+}

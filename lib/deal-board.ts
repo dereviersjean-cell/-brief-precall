@@ -31,6 +31,22 @@ export const INTERVENTIONS: Record<DealAlertRuleKey | "inactivite", string> = {
   inactivite: "Relancer le prospect avec le commercial : aucun échange depuis plus de deux semaines.",
 };
 
+// La même chose côté commercial, pour l'email qu'il reçoit après son call
+// (décision du 26/10/2026 : il reçoit les alertes de ses deals en même temps
+// que son manager). Mêmes règles, à la deuxième personne.
+export const REP_ACTIONS: Record<DealAlertRuleKey | "inactivite", string> = {
+  concurrent_evoque: "Préparer ce qui vous distingue de cette alternative pour ce prospect, et l'aborder au prochain échange.",
+  objection_cachee: "Réécouter le passage et préparer la question qui fera sortir la réserve au prochain échange.",
+  preuve_sociale: "Envoyer un cas client du même secteur, ou proposer une mise en relation avec un client.",
+  interlocuteur_manquant: "Obtenir un rendez-vous avec cette personne, avec une raison concrète de la faire venir.",
+  decideur_absent: "Identifier qui décide, et obtenir sa présence au prochain call.",
+  prochaine_etape_non_datee: "Fixer une date pour la prochaine étape, dès aujourd'hui.",
+  objection_recurrente: "Revoir votre réponse à cette objection : celle donnée la première fois n'a pas suffi.",
+  decideur_toujours_absent: "Obtenir la présence du décideur avant d'aller plus loin.",
+  sentiment_en_baisse: "Comprendre ce qui a changé depuis le call précédent, avant la prochaine relance.",
+  inactivite: "Relancer le prospect : aucun échange depuis plus de deux semaines.",
+};
+
 // Poids d'une alerte dans le classement : ce qui compare plusieurs calls ou
 // touche au décideur pèse plus qu'un signal d'un seul call.
 const WEIGHTS: Partial<Record<DealAlertRuleKey | "inactivite", number>> = {
@@ -84,6 +100,17 @@ export type StageColumn = { key: string; label: string; index: number | null; co
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// Les alertes d'une fiche telles que la file et les emails les montrent : une
+// phrase citée, et qui la dit.
+export function toBoardAlerts(alerts: DealMemoryAlert[]): BoardAlert[] {
+  return alerts.map((a) => ({
+    rule: a.rule,
+    text: a.text,
+    verbatim: a.quote?.find((q) => q.text)?.text ?? a.verbatim,
+    speaker: a.quote?.[0]?.speaker ?? null,
+  }));
+}
+
 // Les deals d'après leurs fiches : chaque deal prend les alertes de sa fiche
 // la plus récente (l'état actuel), plus l'inactivité calculée sur son dernier
 // call. `now` est passé pour que le calcul soit testable.
@@ -102,12 +129,7 @@ export function buildBoard(rows: BoardFicheRow[], reviews: BoardReview[], now: n
     const latest = sorted[0];
     const idleDays = latest.callAt ? Math.floor((now - new Date(latest.callAt).getTime()) / DAY_MS) : null;
 
-    const alerts: BoardAlert[] = latest.alerts.map((a) => ({
-      rule: a.rule,
-      text: a.text,
-      verbatim: a.quote?.find((q) => q.text)?.text ?? a.verbatim,
-      speaker: a.quote?.[0]?.speaker ?? null,
-    }));
+    const alerts = toBoardAlerts(latest.alerts);
     if (idleDays !== null && idleDays >= INACTIVITY_DAYS) {
       alerts.unshift({ rule: "inactivite", text: `Aucun call depuis ${idleDays} jours.`, verbatim: null, speaker: null });
     }
@@ -211,4 +233,33 @@ export function buildTeam(deals: BoardDeal[], userIds: string[]): TeamRow[] {
       recurring: recurring && recurring[1].count >= 2 ? { rule: recurring[0], count: recurring[1].count, calls: recurring[1].calls } : null,
     };
   });
+}
+
+// ─── Emails : alertes après un call, email du matin au manager ──────────────
+//
+// Décisions du 26/10/2026 (reco 11, validée par Hubert) : le commercial reçoit
+// les alertes de son call dès que la fiche est prête ; le manager reçoit la
+// file chaque matin, et tout de suite quand le risque est élevé.
+
+// Risque élevé = une alerte qui compare plusieurs calls (objection qui revient,
+// décideur toujours pas rencontré, prospect moins engagé) : le deal se dégrade
+// d'un call à l'autre, attendre le lendemain matin serait trop tard.
+export function isHighRisk(rules: (DealAlertRuleKey | "inactivite")[]): boolean {
+  return rules.some((rule) => (WEIGHTS[rule] ?? 1) >= 3);
+}
+
+// Les alertes dans l'ordre où les lire : les plus lourdes d'abord.
+export function sortByWeight<T extends { rule: DealAlertRuleKey | "inactivite" }>(alerts: T[]): T[] {
+  return [...alerts].sort((a, b) => (WEIGHTS[b.rule] ?? 1) - (WEIGHTS[a.rule] ?? 1));
+}
+
+export const MORNING_EMAIL_MAX_DEALS = 5;
+
+// L'email du matin reprend la file de /deals telle quelle (déjà triée, sans
+// les deals vus ou remis à plus tard), limitée aux deals qui ont une alerte.
+// Rien à signaler = pas d'email : un email vide chaque matin apprend à ne
+// plus les ouvrir.
+export function morningQueue(deals: BoardDeal[]): { shown: BoardDeal[]; total: number } {
+  const queue = deals.filter((d) => !d.hiddenBecause && d.alerts.length > 0);
+  return { shown: queue.slice(0, MORNING_EMAIL_MAX_DEALS), total: queue.length };
 }

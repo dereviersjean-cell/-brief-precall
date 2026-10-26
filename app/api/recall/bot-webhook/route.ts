@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { createAsyncTranscript, getBotInfo, getTranscriptContent, transcriptToText, buildTranscriptJson, resolveSpeakerNames, countSpokenWords, MIN_SPOKEN_WORDS_FOR_ANALYSIS } from "@/lib/recall";
-import { createCall, getUserProfile, getUserName, getUserEmail, saveCallAnalysis, updateCallProspectIdentity, updateCallAnalysisKeyPoints, updateCallFollowUp, getContact, createContact, updateContact, generateTasksFromTemplates, getPlaybookSnapshotForUser, getUserOrganizationId, getMeetingStageConfigForOrganization, saveCallAnalytics, type CallData } from "@/lib/db";
+import { createCall, getUserProfile, getUserName, getUserEmail, saveCallAnalysis, updateCallProspectIdentity, updateCallAnalysisKeyPoints, updateCallFollowUp, getContact, createContact, updateContact, generateTasksFromTemplates, getPlaybookSnapshotForUser, getUserOrganizationId, getMeetingStageConfigForOrganization, saveCallAnalytics, isDealMemoryEnabledForOrganization, type CallData } from "@/lib/db";
+import { inngest } from "@/lib/inngest";
 import { computeCallInteractionMetrics } from "@/lib/call-analytics";
 import { reportError, reportWarning } from "@/lib/monitoring";
 import { pushNewTasksToHubSpot } from "@/lib/tasks-hubspot-sync";
@@ -458,6 +459,25 @@ export async function POST(request: NextRequest) {
                 "[bot-webhook] dispatchCallAnalysis failed (non-blocking):",
                 dispatchErr instanceof Error ? dispatchErr.message : String(dispatchErr)
               );
+            }
+          }
+
+          // Step 7 — fiche deal (Deal Execution) : générée par Inngest
+          // (lib/inngest-functions.ts, generateDealMemoryAfterCall), qui
+          // envoie ensuite les alertes au commercial et, si le risque est
+          // élevé, à ses managers. L'id par call évite une double génération
+          // quand Recall rejoue le webhook.
+          if (savedAnalysis && hasSpeech && organizationId) {
+            try {
+              if (await isDealMemoryEnabledForOrganization(organizationId)) {
+                await inngest.send({
+                  id: `deal-memory-${call.id}`,
+                  name: "deal-memory/call.analyzed",
+                  data: { callId: call.id, userId, organizationId },
+                });
+              }
+            } catch (dealErr) {
+              reportWarning("bot-webhook.dealMemory", dealErr, { callId: call.id });
             }
           }
         } catch (err) {
