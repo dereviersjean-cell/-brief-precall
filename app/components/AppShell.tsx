@@ -40,6 +40,7 @@ export default async function AppShell({ children }: { children: ReactNode }) {
         trialEndsAt: state.trialEndsAt,
         graceEndsAt: state.graceEndsAt,
         seatCount,
+        dealMemory: state.dealMemoryEnabled,
       }
     : null;
   const modules = state ? { modules: state.modules, briefsOnly: state.accessLevel === "briefs" } : null;

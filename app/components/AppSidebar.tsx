@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useState } from "react";
-import { LayoutDashboard, FileText, Video, Users, Settings, HelpCircle, LogOut, Sparkles, Menu, X, Lock, BookOpen, Library } from "lucide-react";
+import { LayoutDashboard, FileText, Video, Users, Settings, HelpCircle, LogOut, Sparkles, Menu, X, Lock, BookOpen, Library, Target } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useChromeState } from "./ShellProvider";
 import { useModules } from "./ModulesProvider";
@@ -102,7 +102,10 @@ export default function AppSidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   // Rendu par le serveur (AppShell) ; repli sur /api/chrome sans lui.
-  const orgStatus: OrgStatus | null = useChromeState();
+  const chrome = useChromeState();
+  const orgStatus: OrgStatus | null = chrome;
+  // Vue manager des deals (Deal Execution) : organisations en phase de test.
+  const dealsEnabled = chrome?.dealMemory === true;
   const [mobileOpen, setMobileOpen] = useState(false);
 
   // Fermeture du tiroir à chaque navigation — sinon il reste ouvert par-dessus
@@ -276,6 +279,7 @@ export default function AppSidebar() {
           <div>
             <NavGroupLabel>Manager</NavGroupLabel>
             <div className="space-y-0.5">
+              {dealsEnabled && <NavLink href="/deals" label="Deals" icon={Target} active={pathname.startsWith("/deals")} />}
               <NavLink href="/team" label="Équipe" icon={Users} active={teamActive} />
             </div>
           </div>

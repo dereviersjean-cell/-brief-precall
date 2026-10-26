@@ -8,6 +8,7 @@ import { coerceMeetingStageConfig, type MeetingStage, type MeetingStageConfig } 
 import { resolveAccessLevel, resolveEnabledModules, type AccessLevel, type ModuleKey } from "./modules";
 import type { DealHistoryEntry, DealMemoryContent, DealOverview, HubspotDealSnapshot, StoredDealMemory } from "./deal-memory-schema";
 import type { DealIdentity } from "./deal-grouping";
+import type { BoardFicheRow, BoardReview } from "./deal-board";
 
 export async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 500): Promise<T> {
   let lastError: unknown;
@@ -1749,6 +1750,8 @@ export async function getShellStateForUser(userId: string): Promise<{
   modules: ModuleKey[];
   accessLevel: AccessLevel;
   needsCompany: boolean;
+  // Fiche deal et vue manager en test (migration 029) : absent = fermé.
+  dealMemoryEnabled: boolean;
 } | null> {
   const { data, error } = await supabaseAdmin.from("users").select("disabled_at, organizations(*)").eq("id", userId).maybeSingle();
   if (error) throw error;
@@ -1762,6 +1765,7 @@ export async function getShellStateForUser(userId: string): Promise<{
     enabled_modules?: string[] | null;
     training_enabled?: boolean | null;
     access_level?: string | null;
+    deal_memory_enabled?: boolean | null;
   };
   const row = data as unknown as { disabled_at: string | null; organizations: OrgRow | OrgRow[] | null };
   const org = Array.isArray(row.organizations) ? row.organizations[0] ?? null : row.organizations;
@@ -1776,6 +1780,7 @@ export async function getShellStateForUser(userId: string): Promise<{
     modules: needsCompany ? [] : resolveEnabledModules(org),
     accessLevel: needsCompany ? "briefs" : resolveAccessLevel(org),
     needsCompany,
+    dealMemoryEnabled: org?.deal_memory_enabled === true,
   };
 }
 
@@ -2045,6 +2050,76 @@ export async function markDealMemoryPushed(callId: string): Promise<string> {
   const { error } = await supabaseAdmin.from("call_deal_memory").update({ hubspot_pushed_at: at }).eq("call_id", callId);
   if (error) throw error;
   return at;
+}
+
+// ─── Vue manager (Deal Execution, étape 4, migration 032) ─────────────────────
+
+// Les fiches des calls d'une liste de commerciaux, avec leur deal : la
+// matière de la file du manager (lib/deal-board.ts).
+export async function getDealBoardRows(organizationId: string, ownerIds: string[]): Promise<BoardFicheRow[]> {
+  if (ownerIds.length === 0) return [];
+  const { data, error } = await supabaseAdmin
+    .from("call_deal_memory")
+    .select("call_id, deal_id, call_at, generated_at, alerts, calls!inner(user_id, meeting_title), deals!inner(name, hubspot_snapshot)")
+    .eq("organization_id", organizationId)
+    .not("deal_id", "is", null)
+    .in("calls.user_id", ownerIds);
+  if (error) throw error;
+  type Row = {
+    call_id: string;
+    deal_id: string;
+    call_at: string | null;
+    generated_at: string;
+    alerts: BoardFicheRow["alerts"] | null;
+    calls: { user_id: string; meeting_title: string | null } | { user_id: string; meeting_title: string | null }[];
+    deals: { name: string; hubspot_snapshot: HubspotDealSnapshot | null } | { name: string; hubspot_snapshot: HubspotDealSnapshot | null }[];
+  };
+  return ((data ?? []) as Row[]).map((r) => {
+    const call = Array.isArray(r.calls) ? r.calls[0] : r.calls;
+    const deal = Array.isArray(r.deals) ? r.deals[0] : r.deals;
+    return {
+      dealId: r.deal_id,
+      dealName: deal?.name ?? "Deal",
+      hubspot: deal?.hubspot_snapshot ?? null,
+      callId: r.call_id,
+      callAt: r.call_at,
+      callTitle: call?.meeting_title ?? null,
+      ownerId: call?.user_id ?? "",
+      generatedAt: r.generated_at,
+      alerts: r.alerts ?? [],
+    };
+  });
+}
+
+export async function getDealReviews(userId: string): Promise<BoardReview[]> {
+  const { data, error } = await supabaseAdmin.from("deal_reviews").select("deal_id, status, reviewed_at").eq("user_id", userId);
+  if (error) throw error;
+  return ((data ?? []) as { deal_id: string; status: "seen" | "later"; reviewed_at: string }[]).map((r) => ({
+    dealId: r.deal_id,
+    status: r.status,
+    reviewedAt: r.reviewed_at,
+  }));
+}
+
+// Un clic sur « Vu » ou « Plus tard » : l'état courant est remplacé, le clic
+// est gardé avec les alertes qui étaient affichées (mesure de l'effet des
+// alertes, décision du 26/10/2026).
+export async function saveDealReview(dealId: string, userId: string, status: "seen" | "later", alertRules: string[]): Promise<void> {
+  const reviewedAt = new Date().toISOString();
+  const { error } = await supabaseAdmin
+    .from("deal_reviews")
+    .upsert({ deal_id: dealId, user_id: userId, status, reviewed_at: reviewedAt }, { onConflict: "deal_id,user_id" });
+  if (error) throw error;
+  const { error: eventError } = await supabaseAdmin
+    .from("deal_review_events")
+    .insert({ deal_id: dealId, user_id: userId, status, alert_rules: alertRules });
+  if (eventError) throw eventError;
+}
+
+export async function getDealOrganizationId(dealId: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin.from("deals").select("organization_id").eq("id", dealId).maybeSingle();
+  if (error) throw error;
+  return (data as { organization_id: string } | null)?.organization_id ?? null;
 }
 
 type DealFicheRow = {

@@ -9,4 +9,7 @@ export type ChromeState = {
   trialEndsAt: string | null;
   graceEndsAt: string | null;
   seatCount: number;
+  // Vue manager « Deals » (Deal Execution, phase de test) : rendue par
+  // AppShell seulement ; absente du repli /api/chrome, donc fermée.
+  dealMemory?: boolean;
 };

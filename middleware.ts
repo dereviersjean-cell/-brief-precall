@@ -39,6 +39,8 @@ export const config = {
     // Paramètres) : mêmes gardes que le reste de l'app.
     "/playbook/:path*",
     "/references/:path*",
+    // Vue manager des deals (Deal Execution, phase de test, 27/10/2026).
+    "/deals/:path*",
     // Routes d'API des modules activables (lib/modules.ts) : seul le verrou
     // de module s'y applique, l'authentification reste l'affaire de chaque
     // route. Toute nouvelle route d'un module doit relever d'un de ces

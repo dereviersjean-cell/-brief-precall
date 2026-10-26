@@ -883,7 +883,7 @@ Demande de Jean : sortir le playbook, les objections et les références des ong
 - **Crédits Pappers** : l'API répond `401 « plus assez de crédits »`, donc **tous** les briefs se génèrent sans données légales officielles alors que « données légales FR » est dans le positionnement. Depuis le 03/09 l'échec est au moins remonté (`reportWarning`) au lieu d'être avalé. Payer ou retirer la promesse — décision business (point 13 de la roadmap).
 - **Win/loss : `deal_outcomes` est vide et ses deux sources sont taries** (devis abandonnés, cron CRM qui n'a jamais rien écrit malgré HubSpot connecté depuis juillet). Insights a été reconstruit sans elle le 04/09. Reste à trancher : faire marcher la remontée CRM des affaires gagnées/perdues, ou renoncer au win/loss et retirer la table. En l'état c'est une promesse produit sans donnée derrière.
 
-## Deal Execution — étapes 1 à 3 en test (26-27 octobre 2026)
+## Deal Execution — étapes 1 à 4 en test (26-27 octobre 2026)
 
 Jean et Hubert font évoluer Brief de « meeting assistant » vers un copilote de deals branché sur HubSpot (deck « From meeting assistant to Deal Execution System », oct. 2026). Tout le dossier est dans **`docs/deal-execution/`** : `README.md` (décisions, réponses de Hubert et de Jean aux 17 questions, champs de la mémoire d'un deal, matière de test, comment reprendre), plus les deux pages de travail en HTML.
 
@@ -908,7 +908,16 @@ En une ligne : HubSpot only en V1 ; parcours de vente propre à chaque organisat
 - **Écriture, sur bouton « Envoyer dans HubSpot »** (`POST /api/feedback/[id]/deal-memory/hubspot`) : les propriétés réglées pour l'organisation (`organizations.hubspot_field_mapping`, réglage « Champs HubSpot » en bas de la fiche, `GET/PUT /api/deal-memory/hubspot-mapping`, seules les propriétés texte modifiables du portail sont proposées et acceptées) + une note sur le deal, remplacée à chaque renvoi du même call (marqueur `brief-deal-memory-<callId>`). Par défaut la prochaine étape va dans `hs_next_step`. **Chaque propriété prend ce qu'a dit le call le plus récent du deal sur ce champ ; un champ dont aucun call n'a parlé n'est pas écrit** — on n'efface jamais ce que le commercial a saisi (`lib/deal-memory-hubspot.ts`, testé).
 - Créer les propriétés MEDDIC demanderait le scope `crm.schemas.deals.write` (non demandé) : au setup, on les crée dans le HubSpot du client, puis on les associe dans « Champs HubSpot ».
 
-**État du code au 27/10/2026** : référence eslint **14 problèmes** (13 erreurs, 1 avertissement). **134 tests**.
+**Étape 4 — vue manager (feu vert du 27/10/2026, « on continue pour la suite »), migration 032** :
+- Page **`/deals`** (« Deals à suivre », entrée « Deals » du groupe Manager de la barre latérale, visible via `ChromeState.dealMemory` rendu par AppShell — absent du repli `/api/chrome`, donc fermé ; au matcher du middleware). Managers des organisations en test ; les deals de ses commerciaux liés et les siens.
+- Logique pure et testée dans **`lib/deal-board.ts`** : un deal prend les alertes de sa fiche la plus récente + l'inactivité (≥ 14 jours) ; risque = somme pondérée (comparaisons, décideur, prochaine étape non datée, inactivité pèsent plus) ; tri risque puis montant HubSpot ; deals clos dans HubSpot écartés. **Intervention proposée** = texte par règle (`INTERVENTIONS`), toujours via le commercial (le manager ne reprend jamais le deal) ; à poids égal, un signal du call passe avant l'inactivité.
+- **« Vu » cache le deal jusqu'à sa prochaine fiche, « Plus tard » 24 h** (`deal_reviews`, un état par deal et par manager) ; chaque clic est gardé avec les alertes affichées (`deal_review_events`) pour mesurer l'effet des alertes.
+- Bandeau des étapes dans l'ordre du pipeline HubSpot (deals sans HubSpot à part), un clic filtre la file. **Pas de durée moyenne ni de taux de passage** : il faudrait l'historique des étapes, que Brief ne lit pas encore.
+- Onglet **Équipe** : par commercial, deals, à risque, part avec prochaine étape datée, et point à travailler = alerte présente sur au moins deux de ses deals (l'inactivité n'en est pas un), avec les calls qui le montrent.
+- Cartes compactes : alertes en étiquettes, preuves (texte + phrase) sur « Voir les preuves » — développées, dix cartes faisaient six écrans.
+- Pas encore fait : l'email du matin au manager et les alertes envoyées au commercial (décisions du 26/10).
+
+**État du code au 27/10/2026** : référence eslint **14 problèmes** (13 erreurs, 1 avertissement). **140 tests**.
 
 ## Devis — fonctionnalité abandonnée (décision de Jean, 31 août 2026)
 
