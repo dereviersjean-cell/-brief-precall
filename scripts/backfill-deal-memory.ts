@@ -1,12 +1,16 @@
-// Backfill : tire la fiche deal (Deal Execution, étape 1, migration 029) des
-// calls déjà en base d'une organisation, pour que la phase de test parte des
-// vrais calls existants plutôt que d'attendre les prochains.
+// Backfill : tire la fiche deal (Deal Execution, migrations 029 et 030) des
+// calls déjà en base d'une organisation, rattachés à leur deal.
 //
-// Un appel Opus par call (~0,10 $ sur un call d'une demi-heure). Simulation
-// par défaut : affiche les fiches sans rien écrire. `--apply` les enregistre
-// (remplace la fiche existante d'un call). `--call=<id>` pour un seul call.
-// Les calls de moins de MIN_TRANSCRIPT_CHARS caractères sont ignorés : tests
-// de quelques secondes, rien à en tirer.
+// Les calls sont traités du plus ancien au plus récent : la fiche d'un call
+// se génère avec ce que les calls précédents du même deal ont retenu, il faut
+// donc que ceux-là soient faits d'abord.
+//
+// Un appel Sonnet 5.5 par call (environ moitié moins qu'Opus, deux quand le
+// deal n'est reconnu qu'après la première fiche). Simulation par défaut :
+// affiche le rattachement prévu de chaque call, sans appel IA ni écriture.
+// `--apply` génère et enregistre (remplace la fiche existante). `--call=<id>`
+// pour un seul call. Les calls de moins de MIN_TRANSCRIPT_CHARS caractères
+// sont ignorés : tests de quelques secondes, rien à en tirer.
 //
 // Depuis la racine du repo :
 //   node --env-file=.env.local --experimental-strip-types \
@@ -14,10 +18,10 @@
 //     scripts/backfill-deal-memory.ts --org=<id> [--call=<id>] [--apply]
 
 import { supabaseAdmin } from "../lib/supabase";
-import { getUserName, getUserOrganizationId, saveCallDealMemory } from "../lib/db";
-import { generateDealMemory } from "../lib/deal-memory";
-import { DEAL_ALERT_RULES, DEAL_MEMORY_FIELDS } from "../lib/deal-memory-schema";
-import type { TranscriptJson } from "../lib/recall";
+import { getCallWithAnalysis, getOrganizationEmailDomains } from "../lib/db";
+import { runDealMemoryForCall } from "../lib/deal-memory-run";
+import { dealIdentityFor } from "../lib/deal-grouping";
+import { DEAL_ALERT_RULES } from "../lib/deal-memory-schema";
 
 const MIN_TRANSCRIPT_CHARS = 2000;
 
@@ -26,9 +30,11 @@ type Row = {
   user_id: string;
   meeting_title: string | null;
   company_name: string | null;
+  prospect_company: string | null;
+  contact_email: string | null;
+  started_at: string | null;
+  created_at: string;
   transcript: string | null;
-  transcript_json: TranscriptJson | null;
-  speaker_names_override: Record<string, string> | null;
 };
 
 function arg(name: string): string | null {
@@ -48,47 +54,37 @@ async function main() {
 
   let query = supabaseAdmin
     .from("calls")
-    .select("id, user_id, meeting_title, company_name, transcript, transcript_json, speaker_names_override")
-    .in("user_id", userIds)
-    .order("created_at", { ascending: false });
+    .select("id, user_id, meeting_title, company_name, prospect_company, contact_email, started_at, created_at, transcript")
+    .in("user_id", userIds);
   if (onlyCall) query = query.eq("id", onlyCall);
   const { data, error } = await query;
   if (error) throw error;
 
-  const rows = ((data ?? []) as Row[]).filter((r) => (r.transcript?.length ?? 0) >= MIN_TRANSCRIPT_CHARS || (r.transcript_json?.turns?.length ?? 0) > 20);
-  console.log(`${rows.length} call(s) à traiter${apply ? "" : " — SIMULATION, rien n'est écrit (--apply pour enregistrer)"}\n`);
-
-  const fieldLabels = new Map<string, string>(DEAL_MEMORY_FIELDS.map((f) => [f.key, f.label]));
+  const rows = ((data ?? []) as Row[])
+    .filter((r) => (r.transcript?.length ?? 0) >= MIN_TRANSCRIPT_CHARS)
+    .sort((a, b) => (a.started_at ?? a.created_at).localeCompare(b.started_at ?? b.created_at));
+  const ownDomains = await getOrganizationEmailDomains(orgId);
   const ruleLabels = new Map<string, string>(DEAL_ALERT_RULES.map((r) => [r.key, r.label]));
+
+  console.log(`${rows.length} call(s), du plus ancien au plus récent${apply ? "" : " — SIMULATION, rien n'est généré ni écrit (--apply)"}\n`);
 
   for (const row of rows) {
     const title = row.meeting_title || row.company_name || row.id;
+    const identity = dealIdentityFor({ contactEmail: row.contact_email, prospectCompany: row.prospect_company, companyName: row.company_name, ownDomains });
+    const plan = identity
+      ? `deal ${identity.domain ?? ""}${identity.domain && identity.nameKey ? " / " : ""}${identity.nameKey ?? ""}`
+      : "deal à reconnaître d'après la fiche";
+    console.log(`━━ ${(row.started_at ?? row.created_at).slice(0, 10)} ${title} (${row.id}) → ${plan}`);
+    if (!apply) continue;
+
     try {
-      const result = await generateDealMemory({
-        transcript: row.transcript,
-        turns: row.transcript_json?.turns ?? null,
-        speakerNames: row.speaker_names_override ?? {},
-        commercialName: await getUserName(row.user_id),
-        meetingTitle: row.meeting_title,
-      });
-
-      console.log(`━━ ${title} (${row.id})`);
-      for (const [key, items] of Object.entries(result.fields)) {
-        console.log(`  ${fieldLabels.get(key) ?? key}`);
-        for (const item of items ?? []) console.log(`    • ${item.text}\n      « ${item.verbatim} »`);
-      }
-      for (const alert of result.alerts) {
-        console.log(`  ⚠ ${ruleLabels.get(alert.rule) ?? alert.rule} : ${alert.text}${alert.verbatim ? `\n      « ${alert.verbatim} »` : ""}`);
-      }
-
-      if (apply) {
-        const organizationId = (await getUserOrganizationId(row.user_id)) ?? orgId;
-        await saveCallDealMemory(row.id, organizationId, result, result.model);
-        console.log("  ✔ enregistrée");
-      }
-      console.log("");
+      const call = await getCallWithAnalysis(row.id, row.user_id);
+      if (!call) throw new Error("call introuvable");
+      const stored = await runDealMemoryForCall(call, orgId);
+      for (const alert of stored.alerts) console.log(`  ⚠ ${ruleLabels.get(alert.rule) ?? alert.rule} : ${alert.text}`);
+      console.log("  ✔ enregistrée\n");
     } catch (err) {
-      console.error(`✖ ${title} (${row.id}) :`, err instanceof Error ? err.message : String(err));
+      console.error(`  ✖ ${err instanceof Error ? err.message : String(err)}\n`);
     }
   }
 }

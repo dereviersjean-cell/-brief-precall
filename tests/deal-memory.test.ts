@@ -1,6 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { buildDealMemoryLines, shapeDealMemory } from "../lib/deal-memory";
+import { buildDealMemoryLines, formatDealHistory, shapeDealMemory } from "../lib/deal-memory";
 import type { TranscriptLine } from "../lib/objection-classifier";
 
 // Verrouille ce que la fiche deal a le droit d'affirmer : un élément sans
@@ -23,7 +23,12 @@ describe("shapeDealMemory", () => {
       LINES
     );
     assert.deepEqual(out.fields.douleur, [
-      { text: "Deux jours par semaine perdus à qualifier", verbatim: "On perd deux jours par semaine à qualifier des leads à la main", startMs: 4000 },
+      {
+        text: "Deux jours par semaine perdus à qualifier",
+        verbatim: "On perd deux jours par semaine à qualifier des leads à la main",
+        quote: [{ speaker: "Antoine Seifert", text: "On perd deux jours par semaine à qualifier des leads à la main" }],
+        startMs: 4000,
+      },
     ]);
   });
 
@@ -124,5 +129,71 @@ describe("buildDealMemoryLines — découpage des longues prises de parole", () 
     assert.ok(lines.every((l) => l.text.startsWith("Antoine Seifert: ") && l.text.length <= 220 + 17));
     assert.equal(lines[0].startMs, 0);
     assert.equal(lines[lines.length - 1].endMs, 60000);
+  });
+});
+
+describe("shapeDealMemory — qui parle dans la citation", () => {
+  test("une citation qui passe d'une personne à l'autre garde le nom de chacune", () => {
+    const out = shapeDealMemory(
+      { fields: {}, alerts: [{ rule: "interlocuteur_manquant", text: "L'associé valide le budget", lines: [3, 4] }] },
+      LINES
+    );
+    assert.deepEqual(out.alerts[0].quote, [
+      { speaker: "Katell Buisson", text: "Qui valide le budget de votre côté ?" },
+      { speaker: "Antoine Seifert", text: "Ce sera mon associé, il n'était pas dispo aujourd'hui" },
+    ]);
+  });
+
+  test("les lignes consécutives d'une même personne forment un seul morceau", () => {
+    const out = shapeDealMemory({ fields: { douleur: [{ text: "Qualification manuelle", lines: [1, 2] }] }, alerts: [] }, LINES);
+    assert.deepEqual(out.fields.douleur?.[0].quote, [
+      {
+        speaker: "Antoine Seifert",
+        text: "On perd deux jours par semaine à qualifier des leads à la main On regarde aussi Lemlist pour ça",
+      },
+    ]);
+  });
+});
+
+describe("alertes qui comparent aux calls précédents", () => {
+  const raw = {
+    fields: {},
+    alerts: [
+      { rule: "objection_recurrente", text: "Le prix revient, déjà soulevé le 12 octobre", lines: [1, 1] },
+      { rule: "decideur_toujours_absent", text: "Toujours pas de rencontre avec le CEO", lines: null },
+    ],
+  };
+
+  test("écartées sur le premier call d'un deal : rien à comparer", () => {
+    assert.deepEqual(shapeDealMemory(raw, LINES).alerts, []);
+  });
+
+  test("gardées quand le deal a un historique, l'absence sans citation", () => {
+    assert.deepEqual(
+      shapeDealMemory(raw, LINES, { hasHistory: true }).alerts.map((a) => [a.rule, a.verbatim !== null]),
+      [
+        ["objection_recurrente", true],
+        ["decideur_toujours_absent", false],
+      ]
+    );
+  });
+});
+
+describe("formatDealHistory", () => {
+  test("chaque call précédent, daté, avec ce qu'il a retenu et ses alertes", () => {
+    const text = formatDealHistory([
+      {
+        callAt: "2026-10-12T09:00:00Z",
+        title: "Présentation Oliverlist",
+        content: {
+          fields: { budget: [{ text: "1 500 € par mois jugé élevé", verbatim: "c'est cher", startMs: null }] },
+          alerts: [{ rule: "decideur_absent", text: "Le CEO n'était pas là", verbatim: null, startMs: null }],
+        },
+      },
+    ]);
+    assert.equal(
+      text,
+      "Call du 12 octobre 2026 (Présentation Oliverlist)\n- Budget : 1 500 € par mois jugé élevé\n- Alerte « Décideur absent » : Le CEO n'était pas là"
+    );
   });
 });

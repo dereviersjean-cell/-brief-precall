@@ -9,7 +9,9 @@ import {
   type DealMemoryAlert,
   type DealMemoryContent,
   type DealMemoryFieldKey,
+  type DealHistoryEntry,
   type DealMemoryItem,
+  type QuoteSegment,
 } from "./deal-memory-schema";
 
 // Fiche deal tirée d'un call — chantier Deal Execution, étape 1 (26/10/2026).
@@ -17,7 +19,8 @@ import {
 // et lève les alertes que le contenu du call permet de lever, chaque élément
 // renvoyant aux numéros de ligne du transcript qui le justifient.
 
-const MODEL = "claude-opus-5-5";
+// Sonnet 5.5 plutôt qu'Opus 5.5 : décision de Jean du 27/10/2026, sur le coût.
+const MODEL = "claude-sonnet-5-5";
 // Même secours que lib/brief-generator.ts : ses classifieurs de sécurité
 // peuvent refuser un contenu anodin, Sonnet 4.6 n'en a pas.
 const FALLBACK_MODEL = "claude-sonnet-4-6";
@@ -34,6 +37,8 @@ const SYSTEM_PROMPT = `Tu analyses un call commercial B2B en français pour teni
 
 On te donne le transcript complet, lignes numérotées, et le nom du commercial. Toutes les autres personnes sont côté prospect, sauf si le transcript montre clairement le contraire.
 
+On peut aussi te donner l'HISTORIQUE DU DEAL : ce que les calls précédents avec ce prospect ont retenu, avec leur date. Il sert uniquement aux alertes qui comparent ce call aux précédents. Ne recopie jamais un élément de l'historique dans les champs : les champs ne portent que ce qui a été dit dans CE call.
+
 1. CHAMPS — pour chaque champ ci-dessous, relève ce qui a RÉELLEMENT été dit pendant le call :
 ${DEAL_MEMORY_FIELDS.map((f) => `   - "${f.key}" : ${f.definition}.`).join("\n")}
 
@@ -44,12 +49,14 @@ ${DEAL_MEMORY_FIELDS.map((f) => `   - "${f.key}" : ${f.definition}.`).join("\n")
    - 4 éléments au plus par champ.
 
 2. ALERTES — lève uniquement celles dont tu es certain, parmi :
-${DEAL_ALERT_RULES.map((r) => `   - "${r.key}" : ${r.definition}.`).join("\n")}
+${DEAL_ALERT_RULES.map((r) => `   - "${r.key}" : ${r.definition}${r.needsHistory ? " (seulement si un historique du deal est fourni)" : ""}.`).join("\n")}
 
-   Pour chaque alerte : "text" dit en une phrase (25 mots maximum) ce qui la déclenche dans ce call, et "lines" renvoie au passage qui la montre. Pour decideur_absent et prochaine_etape_non_datee, qui constatent une absence, "lines" peut valoir null. Au moindre doute, ne lève pas l'alerte.
+   Pour chaque alerte : "text" dit en une phrase (25 mots maximum) ce qui la déclenche dans ce call, et "lines" renvoie au passage qui la montre. Pour ${DEAL_ALERT_RULES.filter((r) => !r.needsQuote).map((r) => r.key).join(", ")}, qui constatent une absence, "lines" peut valoir null. Une alerte qui compare à l'historique cite dans "text" le call précédent concerné, par sa date. Au moindre doute, ne lève pas l'alerte.
+
+3. ENTREPRISE — "prospect_company" : le nom de l'entreprise du prospect tel qu'il apparaît dans le call, ou null s'il n'est pas dit.
 
 Réponds UNIQUEMENT en JSON strict, sans markdown, avec exactement cette structure :
-{"fields": {"douleur": [{"text": "...", "lines": [12, 14]}], "impact": [], ...}, "alerts": [{"rule": "concurrent_evoque", "text": "...", "lines": [30, 31]}]}
+{"prospect_company": "...", "fields": {"douleur": [{"text": "...", "lines": [12, 14]}], "impact": [], ...}, "alerts": [{"rule": "concurrent_evoque", "text": "...", "lines": [30, 31]}]}
 
 Tous les champs listés doivent figurer dans "fields", même vides.`;
 
@@ -59,6 +66,8 @@ export type DealMemoryInput = {
   speakerNames: Record<string, string>;
   commercialName: string | null;
   meetingTitle: string | null;
+  // Les calls précédents du même deal, du plus ancien au plus récent.
+  history?: DealHistoryEntry[];
 };
 
 // Au-delà, une prise de parole est découpée en plusieurs lignes : la citation
@@ -115,6 +124,24 @@ export function buildDealMemoryLines(input: Pick<DealMemoryInput, "transcript" |
     .map((text) => ({ text, startMs: null, endMs: null }));
 }
 
+// Le passage cité, ligne par ligne, regroupé par interlocuteur. Même lecture
+// du préfixe que stripSpeakerPrefix (lib/objection-classifier.ts) : un nom
+// court, sans ponctuation de phrase, jamais un horodatage.
+function quoteSegments(startIndex: number | null, endIndex: number | null, lines: TranscriptLine[]): QuoteSegment[] {
+  if (startIndex === null || endIndex === null) return [];
+  const segments: QuoteSegment[] = [];
+  for (const line of lines.slice(startIndex, endIndex + 1)) {
+    const match = line.text.match(/^([^:]{1,40}):\s*(.+)$/);
+    const isSpeaker = !!match && !/^\d+$/.test(match[1].trim()) && !/[.!?]/.test(match[1]);
+    const speaker = isSpeaker ? match![1].trim() : null;
+    const text = (isSpeaker ? match![2] : line.text).trim();
+    const last = segments.at(-1);
+    if (last && last.speaker === speaker) last.text = `${last.text} ${text}`;
+    else segments.push({ speaker, text });
+  }
+  return segments;
+}
+
 function cleanText(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
   const text = raw.replace(/\s+/g, " ").trim();
@@ -130,8 +157,10 @@ function cleanText(raw: unknown): string | null {
 // personne n'a dit, ou s'est trompé de passage. Mieux vaut une case vide
 // qu'une case remplie par déduction. Seules les alertes d'absence (décideur
 // absent, pas de prochaine étape datée) s'en passent : on ne cite pas ce qui
-// n'a pas été dit.
-export function shapeDealMemory(raw: unknown, lines: TranscriptLine[]): DealMemoryContent {
+// n'a pas été dit. Les alertes qui comparent aux calls précédents sont
+// écartées quand le deal n'avait pas d'historique : elles ne peuvent alors
+// rien comparer.
+export function shapeDealMemory(raw: unknown, lines: TranscriptLine[], options: { hasHistory?: boolean } = {}): DealMemoryContent {
   const root = (raw && typeof raw === "object" ? raw : {}) as { fields?: unknown; alerts?: unknown };
   const rawFields = (root.fields && typeof root.fields === "object" ? root.fields : {}) as Record<string, unknown>;
 
@@ -145,7 +174,7 @@ export function shapeDealMemory(raw: unknown, lines: TranscriptLine[]): DealMemo
       if (!text) continue;
       const range = resolveRange(e.lines, lines);
       if (!range.verbatim) continue;
-      items.push({ text, verbatim: range.verbatim, startMs: range.startMs });
+      items.push({ text, verbatim: range.verbatim, quote: quoteSegments(range.startIndex, range.endIndex, lines), startMs: range.startMs });
       if (items.length >= MAX_ITEMS_PER_FIELD) break;
     }
     if (items.length > 0) fields[key as DealMemoryFieldKey] = items;
@@ -158,23 +187,56 @@ export function shapeDealMemory(raw: unknown, lines: TranscriptLine[]): DealMemo
     const rule = typeof e.rule === "string" ? RULES.get(e.rule) : undefined;
     const text = cleanText(e.text);
     if (!rule || !text) continue;
+    if (rule.needsHistory && !options.hasHistory) continue;
     const range = resolveRange(e.lines, lines);
     if (rule.needsQuote && !range.verbatim) continue;
     // Une alerte par règle et par call : deux « concurrent évoqué » disent la
     // même chose au manager, le texte peut citer les deux.
     if (seenRules.has(rule.key)) continue;
     seenRules.add(rule.key);
-    alerts.push({ rule: rule.key as DealAlertRuleKey, text, verbatim: range.verbatim, startMs: range.startMs });
+    alerts.push({
+      rule: rule.key as DealAlertRuleKey,
+      text,
+      verbatim: range.verbatim,
+      ...(range.verbatim ? { quote: quoteSegments(range.startIndex, range.endIndex, lines) } : {}),
+      startMs: range.startMs,
+    });
   }
 
   return { fields, alerts };
 }
 
+const FIELD_LABELS = new Map<string, string>(DEAL_MEMORY_FIELDS.map((f) => [f.key, f.label]));
+const RULE_LABELS = new Map<string, string>(DEAL_ALERT_RULES.map((r) => [r.key, r.label]));
+
+function formatDay(iso: string): string {
+  return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Paris" });
+}
+
+// L'historique tel que le modèle le lit : ce que chaque call précédent a
+// retenu, en texte court. Les citations n'y sont pas : elles appartiennent
+// aux transcripts précédents, que ce call ne peut pas citer.
+export function formatDealHistory(history: DealHistoryEntry[]): string {
+  return history
+    .map((entry) => {
+      const fieldLines = Object.entries(entry.content.fields).flatMap(([key, items]) =>
+        (items ?? []).map((item) => `- ${FIELD_LABELS.get(key) ?? key} : ${item.text}`)
+      );
+      const alertLines = entry.content.alerts.map((a) => `- Alerte « ${RULE_LABELS.get(a.rule) ?? a.rule} » : ${a.text}`);
+      return [`Call du ${formatDay(entry.callAt)}${entry.title ? ` (${entry.title})` : ""}`, ...fieldLines, ...alertLines].join("\n");
+    })
+    .join("\n\n");
+}
+
 function buildUserPrompt(input: DealMemoryInput, lines: TranscriptLine[]): string {
+  const history = input.history ?? [];
   return [
     `Commercial : ${input.commercialName ?? "inconnu (déduis-le du transcript)"}`,
     `Titre du rendez-vous : ${input.meetingTitle ?? "inconnu"}`,
     "",
+    ...(history.length > 0
+      ? [`HISTORIQUE DU DEAL (${history.length} call${history.length > 1 ? "s" : ""} précédent${history.length > 1 ? "s" : ""}) :`, formatDealHistory(history), ""]
+      : []),
     "Transcript numéroté :",
     lines.map((line, i) => `[${i}] ${line.text}`).join("\n"),
   ].join("\n");
@@ -183,7 +245,7 @@ function buildUserPrompt(input: DealMemoryInput, lines: TranscriptLine[]): strin
 async function runRequest(client: Anthropic, model: string, userPrompt: string): Promise<Anthropic.Message> {
   return client.messages.create({
     model,
-    // La réflexion compte dans max_tokens sur Opus 5.5.
+    // La réflexion compte dans max_tokens sur Sonnet 5.5.
     max_tokens: 16000,
     system: SYSTEM_PROMPT,
     ...(model === MODEL ? { output_config: { effort: "medium" as const } } : {}),
@@ -198,7 +260,9 @@ function messageText(message: Anthropic.Message): string {
     .join("");
 }
 
-export async function generateDealMemory(input: DealMemoryInput): Promise<DealMemoryContent & { model: string }> {
+export async function generateDealMemory(
+  input: DealMemoryInput
+): Promise<DealMemoryContent & { model: string; prospectCompany: string | null }> {
   const lines = buildDealMemoryLines(input);
   if (lines.length === 0) throw new Error("Transcript vide : aucune fiche à tirer de ce call.");
 
@@ -223,7 +287,12 @@ export async function generateDealMemory(input: DealMemoryInput): Promise<DealMe
     try {
       const parsed = JSON.parse(extractJsonObject(lastRaw)) as unknown;
       if (parsed && typeof parsed === "object" && "fields" in parsed) {
-        return { ...shapeDealMemory(parsed, lines), model: message.model };
+        const company = cleanText((parsed as { prospect_company?: unknown }).prospect_company);
+        return {
+          ...shapeDealMemory(parsed, lines, { hasHistory: (input.history ?? []).length > 0 }),
+          model: message.model,
+          prospectCompany: company,
+        };
       }
     } catch {
       // essai suivant

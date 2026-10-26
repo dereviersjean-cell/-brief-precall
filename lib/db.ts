@@ -6,7 +6,8 @@ import type { TranscriptJson } from "./recall";
 import type { NotificationEventType, NotificationChannel, NotificationPreference } from "./notification-preferences";
 import { coerceMeetingStageConfig, type MeetingStage, type MeetingStageConfig } from "./meeting-stage";
 import { resolveAccessLevel, resolveEnabledModules, type AccessLevel, type ModuleKey } from "./modules";
-import type { DealMemoryContent, StoredDealMemory } from "./deal-memory-schema";
+import type { DealHistoryEntry, DealMemoryContent, DealOverview, StoredDealMemory } from "./deal-memory-schema";
+import type { DealIdentity } from "./deal-grouping";
 
 export async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 500): Promise<T> {
   let lastError: unknown;
@@ -1850,24 +1851,33 @@ export async function isDealMemoryEnabledForOrganization(organizationId: string)
   }
 }
 
-export async function getCallDealMemory(callId: string): Promise<StoredDealMemory | null> {
+export async function getCallDealMemory(callId: string): Promise<(StoredDealMemory & { dealId: string | null }) | null> {
   const { data, error } = await supabaseAdmin
     .from("call_deal_memory")
-    .select("fields, alerts, model, generated_at")
+    .select("*")
     .eq("call_id", callId)
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
-  const row = data as { fields: StoredDealMemory["fields"]; alerts: StoredDealMemory["alerts"]; model: string | null; generated_at: string };
-  return { fields: row.fields ?? {}, alerts: row.alerts ?? [], model: row.model, generatedAt: row.generated_at };
+  const row = data as {
+    fields: StoredDealMemory["fields"];
+    alerts: StoredDealMemory["alerts"];
+    model: string | null;
+    generated_at: string;
+    deal_id?: string | null;
+  };
+  return { fields: row.fields ?? {}, alerts: row.alerts ?? [], model: row.model, generatedAt: row.generated_at, dealId: row.deal_id ?? null };
 }
 
-// Une fiche par call : la régénération remplace la précédente.
+// Une fiche par call : la régénération remplace la précédente. `deal` vient de
+// la migration 030 : sans lui (fiche d'un call qu'aucun repère ne rattache),
+// les colonnes du deal restent vides.
 export async function saveCallDealMemory(
   callId: string,
   organizationId: string,
   content: DealMemoryContent,
-  model: string
+  model: string,
+  deal?: { dealId: string | null; callAt: string | null; prospectCompany: string | null }
 ): Promise<StoredDealMemory> {
   const generatedAt = new Date().toISOString();
   const { error } = await supabaseAdmin.from("call_deal_memory").upsert(
@@ -1878,11 +1888,139 @@ export async function saveCallDealMemory(
       alerts: content.alerts,
       model,
       generated_at: generatedAt,
+      ...(deal ? { deal_id: deal.dealId, call_at: deal.callAt, prospect_company: deal.prospectCompany } : {}),
     },
     { onConflict: "call_id" }
   );
   if (error) throw error;
   return { ...content, model, generatedAt };
+}
+
+// ─── Deals (Deal Execution, étape 2, migration 030) ──────────────────────────
+
+// Domaines des adresses de l'équipe : un call adressé à l'un d'eux n'est pas
+// un prospect (lib/deal-grouping.ts).
+export async function getOrganizationEmailDomains(organizationId: string): Promise<string[]> {
+  const { data, error } = await supabaseAdmin.from("users").select("email").eq("organization_id", organizationId);
+  if (error) throw error;
+  const domains = ((data ?? []) as { email: string | null }[])
+    .map((u) => u.email?.split("@")[1]?.trim().toLowerCase())
+    .filter((d): d is string => !!d);
+  return [...new Set(domains)];
+}
+
+// Le domaine d'abord (sans ambiguïté), le nom normalisé ensuite.
+export async function findDealByIdentity(organizationId: string, identity: DealIdentity): Promise<{ id: string; domain: string | null; name_key: string | null } | null> {
+  for (const [column, value] of [["domain", identity.domain], ["name_key", identity.nameKey]] as const) {
+    if (!value) continue;
+    const { data, error } = await supabaseAdmin
+      .from("deals")
+      .select("id, domain, name_key")
+      .eq("organization_id", organizationId)
+      .eq(column, value)
+      .order("created_at", { ascending: true })
+      .limit(1);
+    if (error) throw error;
+    const row = (data ?? [])[0] as { id: string; domain: string | null; name_key: string | null } | undefined;
+    if (row) return row;
+  }
+  return null;
+}
+
+// Retrouve le deal d'un prospect, ou le crée. Un deal trouvé par un seul des
+// deux repères apprend l'autre : le call suivant le retrouvera par l'un ou
+// l'autre.
+export async function findOrCreateDeal(organizationId: string, identity: DealIdentity): Promise<string> {
+  const existing = await findDealByIdentity(organizationId, identity);
+  if (existing) {
+    const patch: Record<string, string> = {};
+    if (!existing.domain && identity.domain) patch.domain = identity.domain;
+    if (!existing.name_key && identity.nameKey) patch.name_key = identity.nameKey;
+    if (Object.keys(patch).length > 0) {
+      const { error } = await supabaseAdmin.from("deals").update(patch).eq("id", existing.id);
+      if (error) throw error;
+    }
+    return existing.id;
+  }
+  const { data, error } = await supabaseAdmin
+    .from("deals")
+    .insert({
+      organization_id: organizationId,
+      name: identity.name ?? identity.domain ?? "Deal sans nom",
+      name_key: identity.nameKey,
+      domain: identity.domain,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return (data as { id: string }).id;
+}
+
+type DealFicheRow = {
+  call_id: string;
+  call_at: string | null;
+  fields: DealMemoryContent["fields"];
+  alerts: DealMemoryContent["alerts"];
+  calls: { meeting_title: string | null } | { meeting_title: string | null }[] | null;
+};
+
+async function listDealFiches(dealId: string): Promise<DealFicheRow[]> {
+  const { data, error } = await supabaseAdmin
+    .from("call_deal_memory")
+    .select("call_id, call_at, fields, alerts, calls(meeting_title)")
+    .eq("deal_id", dealId)
+    .order("call_at", { ascending: true, nullsFirst: true });
+  if (error) throw error;
+  return (data ?? []) as DealFicheRow[];
+}
+
+function ficheTitle(row: DealFicheRow): string | null {
+  const call = Array.isArray(row.calls) ? row.calls[0] : row.calls;
+  return call?.meeting_title ?? null;
+}
+
+// Ce que les calls ANTÉRIEURS à `callAt` ont retenu, du plus ancien au plus
+// récent. Régénérer un call ancien ne lit donc que ce qui le précédait.
+export async function getDealHistory(dealId: string, callId: string, callAt: string | null): Promise<DealHistoryEntry[]> {
+  const rows = await listDealFiches(dealId);
+  return rows
+    .filter((row) => row.call_id !== callId && row.call_at && (!callAt || row.call_at < callAt))
+    .map((row) => ({ callAt: row.call_at!, title: ficheTitle(row), content: { fields: row.fields ?? {}, alerts: row.alerts ?? [] } }));
+}
+
+// Le deal tel que la page d'un call le montre : ses calls et, champ par champ,
+// tout ce qu'ils ont retenu, du plus récent au plus ancien.
+export async function getDealOverview(dealId: string, currentCallId: string): Promise<DealOverview | null> {
+  const [{ data: deal, error }, rows] = await Promise.all([
+    supabaseAdmin.from("deals").select("id, name").eq("id", dealId).maybeSingle(),
+    listDealFiches(dealId),
+  ]);
+  if (error) throw error;
+  if (!deal) return null;
+
+  const memory: DealOverview["memory"] = {};
+  for (const row of [...rows].reverse()) {
+    for (const [key, items] of Object.entries(row.fields ?? {})) {
+      const list = (memory[key as keyof DealOverview["memory"]] ??= []);
+      for (const item of items ?? []) list.push({ ...item, callId: row.call_id, callAt: row.call_at });
+    }
+  }
+
+  const lastCallAt = rows.reduce<string | null>((max, row) => (row.call_at && (!max || row.call_at > max) ? row.call_at : max), null);
+
+  return {
+    id: (deal as { id: string }).id,
+    name: (deal as { name: string }).name,
+    idleDays: lastCallAt ? Math.floor((Date.now() - new Date(lastCallAt).getTime()) / (24 * 60 * 60 * 1000)) : null,
+    calls: rows.map((row) => ({
+      callId: row.call_id,
+      callAt: row.call_at,
+      title: ficheTitle(row),
+      alertCount: (row.alerts ?? []).length,
+      isCurrent: row.call_id === currentCallId,
+    })),
+    memory,
+  };
 }
 
 export type DealMemoryObjection = {
@@ -1923,7 +2061,7 @@ export async function getDealMemoryObjections(callId: string): Promise<DealMemor
     }));
 }
 
-export type DealMemoryPanel = { initial: StoredDealMemory | null; objections: DealMemoryObjection[] };
+export type DealMemoryPanel = { initial: StoredDealMemory | null; objections: DealMemoryObjection[]; deal: DealOverview | null };
 
 // Ce que la page d'un call montre de la fiche deal, ou null quand le lecteur
 // ne doit pas la voir (pas manager, ou organisation hors phase de test).
@@ -1941,7 +2079,13 @@ export async function loadDealMemoryPanel(
     }),
     getDealMemoryObjections(callId).catch(() => [] as DealMemoryObjection[]),
   ]);
-  return { initial, objections };
+  const deal = initial?.dealId
+    ? await getDealOverview(initial.dealId, callId).catch((err) => {
+        console.error("[db] getDealOverview failed:", err instanceof Error ? err.message : String(err));
+        return null;
+      })
+    : null;
+  return { initial, objections, deal };
 }
 
 // Trace du CTA "Je veux débloquer ce module" (migration 004) — durable en

@@ -39,6 +39,7 @@ export default function ImportCallClient({
   const [companyName, setCompanyName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [meetingTitle, setMeetingTitle] = useState("");
+  const [callDate, setCallDate] = useState("");
   const [ownerId, setOwnerId] = useState(currentUser.id);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,13 +59,14 @@ export default function ImportCallClient({
         formData.append("companyName", companyName);
         formData.append("contactEmail", contactEmail);
         formData.append("meetingTitle", meetingTitle);
+        formData.append("callDate", callDate);
         formData.append("userId", ownerId);
         res = await fetch("/api/calls/import-transcript", { method: "POST", body: formData });
       } else {
         res = await fetch("/api/calls/import-transcript", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transcript, companyName, contactEmail, meetingTitle, userId: ownerId }),
+          body: JSON.stringify({ transcript, companyName, contactEmail, meetingTitle, callDate, userId: ownerId }),
         });
       }
       const data = await res.json().catch(() => ({}));
@@ -215,7 +217,15 @@ export default function ImportCallClient({
             />
           </div>
           <div>
-            <label className="mb-1 block text-[12px] font-medium text-slate-700">Société du prospect</label>
+            <label className="mb-1 block text-[12px] font-medium text-slate-700">
+              Date du call <span className="font-normal text-slate-500">— aujourd&apos;hui si vide ; range les calls d&apos;un même deal dans l&apos;ordre</span>
+            </label>
+            <input type="date" value={callDate} onChange={(e) => setCallDate(e.target.value)} className={inputClass} />
+          </div>
+          <div>
+            <label className="mb-1 block text-[12px] font-medium text-slate-700">
+              Société du prospect <span className="font-normal text-slate-500">— la même graphie d&apos;un call à l&apos;autre regroupe le deal</span>
+            </label>
             <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Acme" className={inputClass} />
           </div>
           <div>

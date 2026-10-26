@@ -60,6 +60,10 @@ export async function POST(request: NextRequest) {
   let companyName: string | null = null;
   let contactEmail: string | null = null;
   let meetingTitle: string | null = null;
+  // « 2026-10-12 » : la date réelle d'un call importé (un extrait Claap
+  // ancien). Sans elle le call est daté du jour de l'import, ce qui mettait
+  // dans le désordre les calls successifs d'un même deal.
+  let callDate: string | null = null;
   let targetUserId = auth.userId;
 
   try {
@@ -74,6 +78,7 @@ export async function POST(request: NextRequest) {
       companyName = (formData.get("companyName") as string | null)?.trim() || null;
       contactEmail = (formData.get("contactEmail") as string | null)?.trim() || null;
       meetingTitle = (formData.get("meetingTitle") as string | null)?.trim() || null;
+      callDate = (formData.get("callDate") as string | null)?.trim() || null;
       targetUserId = (formData.get("userId") as string | null)?.trim() || auth.userId;
     } else {
       const body = (await request.json()) as {
@@ -81,12 +86,14 @@ export async function POST(request: NextRequest) {
         companyName?: string;
         contactEmail?: string;
         meetingTitle?: string;
+        callDate?: string;
         userId?: string;
       };
       content = body.transcript ?? "";
       companyName = body.companyName?.trim() || null;
       contactEmail = body.contactEmail?.trim() || null;
       meetingTitle = body.meetingTitle?.trim() || null;
+      callDate = body.callDate?.trim() || null;
       targetUserId = body.userId?.trim() || auth.userId;
     }
   } catch {
@@ -121,10 +128,15 @@ export async function POST(request: NextRequest) {
   const stageConfig = await getMeetingStageConfigForOrganization(organizationId);
   const meetingStage = detectMeetingStage(meetingTitle, stageConfig);
 
+  // Date saisie : le call est placé à 10 h (heure de Paris en hiver comme en
+  // été, à une heure près) ce jour-là — seul l'ordre des jours compte pour un
+  // deal. Une date future ou illisible est ignorée.
   const now = new Date();
+  const chosen = callDate && /^\d{4}-\d{2}-\d{2}$/.test(callDate) ? new Date(`${callDate}T09:00:00Z`) : null;
+  const end = chosen && !Number.isNaN(chosen.getTime()) && chosen <= now ? chosen : now;
   const startedAt = parsed.durationSeconds
-    ? new Date(now.getTime() - parsed.durationSeconds * 1000).toISOString()
-    : now.toISOString();
+    ? new Date(end.getTime() - parsed.durationSeconds * 1000).toISOString()
+    : end.toISOString();
 
   let call: { id: string };
   try {

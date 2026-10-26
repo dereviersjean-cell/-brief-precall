@@ -4,18 +4,13 @@ import { authOptions } from "@/lib/auth";
 import { requireActiveUserContext } from "@/lib/api-auth";
 import { enforceAiGenerationLimit, requestIp, retryAfterMinutes } from "@/lib/rate-limit";
 import { isUuid } from "@/lib/uuid";
-import {
-  getCallWithAnalysis,
-  getCallWithAnalysisForManager,
-  getUserName,
-  isDealMemoryEnabledForOrganization,
-  saveCallDealMemory,
-} from "@/lib/db";
-import { generateDealMemory } from "@/lib/deal-memory";
+import { getCallWithAnalysis, getCallWithAnalysisForManager, isDealMemoryEnabledForOrganization } from "@/lib/db";
+import { runDealMemoryForCall } from "@/lib/deal-memory-run";
 import { reportError } from "@/lib/monitoring";
 
-// Un appel Opus sur un transcript complet : 30 à 60 s sur un call d'une heure.
-export const maxDuration = 120;
+// Un appel Sonnet sur un transcript complet : 30 à 60 s sur un call d'une
+// heure, deux quand le deal n'est reconnu qu'après la première fiche.
+export const maxDuration = 300;
 
 // Génère (ou régénère) la fiche deal d'un call. Phase « à blanc » (Deal
 // Execution, étape 1) : réservé aux managers des organisations où la fiche
@@ -50,15 +45,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   try {
-    const commercialName = await getUserName(call.user_id).catch(() => null);
-    const result = await generateDealMemory({
-      transcript: call.transcript,
-      turns: call.transcript_json?.turns ?? null,
-      speakerNames: call.speaker_names_override,
-      commercialName,
-      meetingTitle: call.meeting_title,
-    });
-    const stored = await saveCallDealMemory(call.id, auth.organizationId, result, result.model);
+    // Le deal entier change avec cette fiche (ses calls, sa mémoire) : la page
+    // se recharge pour le montrer à jour.
+    const stored = await runDealMemoryForCall(call, auth.organizationId);
     return NextResponse.json({ dealMemory: stored });
   } catch (err) {
     reportError("deal-memory.generate", err, { callId });

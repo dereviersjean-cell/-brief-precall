@@ -1,11 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   DEAL_ALERT_RULES,
   DEAL_MEMORY_FIELDS,
+  INACTIVITY_DAYS,
   OBJECTION_ALERT_LABEL,
   type DealMemoryItem,
+  type DealOverview,
+  type QuoteSegment,
   type StoredDealMemory,
 } from "@/lib/deal-memory-schema";
 import type { DealMemoryObjection, DealMemoryPanel } from "@/lib/db";
@@ -34,14 +39,28 @@ function Spinner() {
   );
 }
 
-function Quote({ text }: { text: string }) {
-  return <p className="mt-1.5 border-l-2 border-slate-200 pl-3 text-[12.5px] italic leading-relaxed text-slate-500">« {text} »</p>;
+// Le passage cité, avec le nom de qui parle : une citation qui passe d'une
+// personne à l'autre se lisait sinon comme venant toute du prospect. Les
+// fiches antérieures au 27/10/2026 n'ont que `verbatim`.
+function Quote({ verbatim, quote }: { verbatim: string; quote?: QuoteSegment[] }) {
+  const segments = quote && quote.length > 0 ? quote : [{ speaker: null, text: verbatim }];
+  return (
+    <div className="mt-1.5 space-y-1 border-l-2 border-slate-200 pl-3 text-[12.5px] leading-relaxed text-slate-500">
+      {segments.map((segment, i) => (
+        <p key={i}>
+          {segment.speaker && <span className="font-medium not-italic text-slate-600">{segment.speaker} : </span>}
+          <span className="italic">« {segment.text} »</span>
+        </p>
+      ))}
+    </div>
+  );
 }
 
-function Item({ item }: { item: DealMemoryItem }) {
+function Item({ item, date }: { item: DealMemoryItem; date?: string | null }) {
   const [open, setOpen] = useState(false);
   return (
     <li className="text-[13.5px] leading-relaxed text-slate-800">
+      {date && <span className="mr-1.5 text-[12px] font-medium text-slate-400">{formatDay(date)}</span>}
       {item.text}
       {item.verbatim && (
         <>
@@ -52,7 +71,7 @@ function Item({ item }: { item: DealMemoryItem }) {
           >
             {open ? "Masquer la phrase" : "Voir la phrase"}
           </button>
-          {open && <Quote text={item.verbatim} />}
+          {open && <Quote verbatim={item.verbatim} quote={item.quote} />}
         </>
       )}
     </li>
@@ -63,10 +82,57 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleString("fr-FR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" });
 }
 
+function formatDay(iso: string): string {
+  return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" });
+}
+
+// Le deal auquel ce call appartient : ses calls dans l'ordre, et l'alerte
+// « aucune activité » quand le dernier date de plus de INACTIVITY_DAYS jours.
+function DealCard({ deal }: { deal: DealOverview }) {
+  const last = deal.calls.reduce<string | null>((max, c) => (c.callAt && (!max || c.callAt > max) ? c.callAt : max), null);
+  const idleDays = deal.idleDays;
+  return (
+    <section className={`${CARD} p-5`}>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="text-[15px] font-semibold text-slate-900">{deal.name}</h3>
+        <p className="text-[12.5px] text-slate-500">
+          {deal.calls.length} call{deal.calls.length > 1 ? "s" : ""} dans ce deal
+        </p>
+      </div>
+      {idleDays !== null && idleDays >= INACTIVITY_DAYS && (
+        <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50/60 px-3 py-2 text-[13px] text-amber-800">
+          <span className="font-semibold">Aucune activité depuis {idleDays} jours</span> — dernier call le {formatDay(last!)}.
+        </p>
+      )}
+      <ol className="mt-3 space-y-1.5">
+        {deal.calls.map((c, i) => (
+          <li key={c.callId} className="flex flex-wrap items-baseline gap-x-2 text-[13.5px]">
+            <span className="w-5 text-right text-[12px] text-slate-400">{i + 1}.</span>
+            {c.callAt && <span className="text-[12.5px] text-slate-500">{formatDay(c.callAt)}</span>}
+            {c.isCurrent ? (
+              <span className="font-medium text-slate-900">{c.title ?? "Ce call"} (ce call)</span>
+            ) : (
+              <Link href={`/feedback/${c.callId}?tab=deal`} className="font-medium text-[color:var(--violet)] hover:underline">
+                {c.title ?? "Call"}
+              </Link>
+            )}
+            {c.alertCount > 0 && (
+              <span className="text-[12px] text-amber-700">
+                {c.alertCount} alerte{c.alertCount > 1 ? "s" : ""}
+              </span>
+            )}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
 export default function DealMemoryBlock({ callId, panel }: { callId: string; panel: DealMemoryPanel }) {
   const [memory, setMemory] = useState<StoredDealMemory | null>(panel.initial);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   async function generate() {
     setStatus("loading");
@@ -77,6 +143,9 @@ export default function DealMemoryBlock({ callId, panel }: { callId: string; pan
       if (!res.ok || !data.dealMemory) throw new Error(data.error ?? "La génération de la fiche a échoué.");
       setMemory(data.dealMemory);
       setStatus("idle");
+      // Le deal a pu changer avec cette fiche (rattachement, mémoire cumulée) :
+      // il est relu côté serveur.
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "La génération de la fiche a échoué.");
       setStatus("error");
@@ -85,6 +154,9 @@ export default function DealMemoryBlock({ callId, panel }: { callId: string; pan
 
   const badlyHandled = panel.objections.filter((o) => o.handlingQuality === "non_traitee" || o.handlingQuality === "partiellement");
   const alertCount = (memory?.alerts.length ?? 0) + badlyHandled.length;
+  // Dès que le deal compte plusieurs calls, la mémoire montre tout ce qu'ils
+  // ont retenu, daté, du plus récent au plus ancien.
+  const dealMemory = panel.deal && panel.deal.calls.length > 1 ? panel.deal.memory : null;
 
   return (
     <div className="mt-8 space-y-6">
@@ -117,6 +189,8 @@ export default function DealMemoryBlock({ callId, panel }: { callId: string; pan
       )}
       {status === "error" && error && <p className="text-[13px] text-rose-700">{error}</p>}
 
+      {panel.deal && <DealCard deal={panel.deal} />}
+
       {memory && (
         <>
           <section>
@@ -131,7 +205,7 @@ export default function DealMemoryBlock({ callId, panel }: { callId: string; pan
                       {RULE_LABELS.get(alert.rule) ?? alert.rule}
                     </p>
                     <p className="mt-1 text-[13.5px] leading-relaxed text-slate-800">{alert.text}</p>
-                    {alert.verbatim && <Quote text={alert.verbatim} />}
+                    {alert.verbatim && <Quote verbatim={alert.verbatim} quote={alert.quote} />}
                   </li>
                 ))}
                 {badlyHandled.map((o, i) => (
@@ -141,7 +215,7 @@ export default function DealMemoryBlock({ callId, panel }: { callId: string; pan
                       {o.objection}
                       {o.handlingComment ? ` — ${o.handlingComment}` : ""}
                     </p>
-                    {o.verbatim && <Quote text={o.verbatim} />}
+                    {o.verbatim && <Quote verbatim={o.verbatim} />}
                   </li>
                 ))}
               </ul>
@@ -149,10 +223,14 @@ export default function DealMemoryBlock({ callId, panel }: { callId: string; pan
           </section>
 
           <section>
-            <h3 className={`${LABEL} mb-3`}>Mémoire du deal</h3>
+            <h3 className={`${LABEL} mb-3`}>
+              Mémoire du deal{dealMemory ? ` · ${panel.deal!.calls.length} calls` : ""}
+            </h3>
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
               {DEAL_MEMORY_FIELDS.map((field) => {
-                const items = memory.fields[field.key] ?? [];
+                const items: (DealMemoryItem & { callAt?: string | null })[] = dealMemory
+                  ? dealMemory[field.key] ?? []
+                  : memory.fields[field.key] ?? [];
                 return (
                   <div key={field.key} className={`${CARD} p-4`}>
                     <div className="flex items-baseline justify-between gap-2">
@@ -160,11 +238,11 @@ export default function DealMemoryBlock({ callId, panel }: { callId: string; pan
                       {field.meddic && <span className="text-[11px] text-slate-400">{field.meddic}</span>}
                     </div>
                     {items.length === 0 ? (
-                      <p className="mt-1.5 text-[13px] text-slate-400">Rien dans ce call.</p>
+                      <p className="mt-1.5 text-[13px] text-slate-400">{dealMemory ? "Rien dans ces calls." : "Rien dans ce call."}</p>
                     ) : (
                       <ul className="mt-1.5 list-disc space-y-1.5 pl-4 marker:text-slate-300">
                         {items.map((item, i) => (
-                          <Item key={i} item={item} />
+                          <Item key={i} item={item} date={dealMemory ? item.callAt : null} />
                         ))}
                       </ul>
                     )}
