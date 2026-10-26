@@ -70,12 +70,26 @@ async function latestOpenDeal(accessToken: string, dealIds: string[], pipelines:
   return open[0]?.id ?? null;
 }
 
+async function dealIdsNamed(accessToken: string, name: string): Promise<string[]> {
+  const data = await getJson<{ results?: { id: string }[] }>(accessToken, "/crm/v3/objects/deals/search", {
+    method: "POST",
+    body: JSON.stringify({
+      filterGroups: [{ filters: [{ propertyName: "dealname", operator: "EQ", value: name }] }],
+      properties: ["dealname"],
+      limit: 10,
+    }),
+  });
+  return (data?.results ?? []).map((d) => d.id);
+}
+
 // Le deal HubSpot d'un prospect : celui du contact d'abord (l'email du call),
-// sinon celui de son entreprise (le domaine). Un premier rendez-vous n'a
-// souvent pas encore de deal : null, sans en créer (décision du 26/10/2026).
+// sinon celui de son entreprise (le domaine), sinon un deal qui porte le nom
+// de l'entreprise — un call importé n'a souvent ni email ni domaine, et les
+// deals sont le plus souvent nommés d'après le client. Un premier rendez-vous
+// n'a souvent pas encore de deal : null, sans en créer (décision du 26/10/2026).
 export async function findHubSpotDealForProspect(
   userId: string,
-  prospect: { contactEmail: string | null; domain: string | null }
+  prospect: { contactEmail: string | null; domain: string | null; companyName?: string | null }
 ): Promise<string | null> {
   return withHubspotAuth(userId, async (accessToken) => {
     const pipelines = await getPipelines(accessToken);
@@ -88,8 +102,12 @@ export async function findHubSpotDealForProspect(
     }
     if (prospect.domain) {
       const companyId = await companyIdForDomain(accessToken, prospect.domain);
-      if (companyId) return latestOpenDeal(accessToken, await associatedDealIds(accessToken, "companies", companyId), pipelines);
+      if (companyId) {
+        const dealId = await latestOpenDeal(accessToken, await associatedDealIds(accessToken, "companies", companyId), pipelines);
+        if (dealId) return dealId;
+      }
     }
+    if (prospect.companyName) return latestOpenDeal(accessToken, await dealIdsNamed(accessToken, prospect.companyName), pipelines);
     return null;
   });
 }

@@ -21,11 +21,19 @@ import { reportWarning } from "./monitoring";
 // Étape 3 : le deal HubSpot du prospect, lu avec la connexion HubSpot du
 // commercial du call, sinon d'un autre membre de l'organisation. Un échec de
 // HubSpot ne bloque pas la fiche : elle se rattache alors comme à l'étape 2.
-async function findHubspotDeal(organizationId: string, call: CallWithAnalysis, domain: string | null): Promise<HubspotDealSnapshot | null> {
+async function findHubspotDeal(
+  organizationId: string,
+  call: CallWithAnalysis,
+  identity: { domain: string | null; name: string | null } | null
+): Promise<HubspotDealSnapshot | null> {
   try {
     const hubspotUser = await getHubspotUserForOrganization(organizationId, [call.user_id]);
     if (!hubspotUser) return null;
-    const hubspotDealId = await findHubSpotDealForProspect(hubspotUser, { contactEmail: call.contact_email, domain });
+    const hubspotDealId = await findHubSpotDealForProspect(hubspotUser, {
+      contactEmail: call.contact_email,
+      domain: identity?.domain ?? null,
+      companyName: identity?.name ?? null,
+    });
     return hubspotDealId ? await getHubSpotDealSnapshot(hubspotUser, hubspotDealId) : null;
   } catch (err) {
     reportWarning("deal-memory.hubspot", err, { callId: call.id });
@@ -69,7 +77,7 @@ export async function runDealMemoryForCall(call: CallWithAnalysis, organizationI
   });
   // Le deal HubSpot prime : deux calls rattachés au même deal HubSpot sont le
   // même deal dans Brief, quels que soient l'email ou l'entreprise saisis.
-  const hubspot = await findHubspotDeal(organizationId, call, knownIdentity?.domain ?? null);
+  const hubspot = await findHubspotDeal(organizationId, call, knownIdentity);
   let dealId: string | null = null;
   if (hubspot) {
     dealId =

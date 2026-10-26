@@ -163,6 +163,41 @@ function HubspotLine({ snapshot }: { snapshot: HubspotDealSnapshot | null }) {
   );
 }
 
+// Un champ de la mémoire cumulée : ce qu'a dit le dernier call qui en parle,
+// les calls plus anciens repliés. Après quatre calls un champ comptait
+// jusqu'à dix éléments (deal Peatch AI) : l'état actuel se perdait dans
+// l'historique.
+function FieldHistory({ items }: { items: NonNullable<DealOverview["memory"][DealMemoryFieldKey]> }) {
+  const [open, setOpen] = useState(false);
+  const latestCall = items[0]?.callId;
+  const latest = items.filter((i) => i.callId === latestCall);
+  const older = items.filter((i) => i.callId !== latestCall);
+  const olderCalls = new Set(older.map((i) => i.callId)).size;
+  return (
+    <>
+      <ul className="mt-1.5 list-disc space-y-1.5 pl-4 marker:text-slate-300">
+        {latest.map((item, i) => (
+          <Item key={i} item={item} date={item.callAt} />
+        ))}
+      </ul>
+      {older.length > 0 && (
+        <>
+          <button onClick={() => setOpen((v) => !v)} className="mt-2 text-[12px] font-medium text-slate-500 hover:text-slate-900">
+            {open ? "Masquer les calls précédents" : `Calls précédents (${olderCalls}) · ${older.length} élément${older.length > 1 ? "s" : ""}`}
+          </button>
+          {open && (
+            <ul className="mt-1.5 list-disc space-y-1.5 pl-4 marker:text-slate-300 opacity-80">
+              {older.map((item, i) => (
+                <Item key={i} item={item} date={item.callAt} />
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </>
+  );
+}
+
 type MappingState = {
   connected: boolean;
   properties: { name: string; label: string }[];
@@ -400,10 +435,12 @@ export default function DealMemoryBlock({ callId, panel }: { callId: string; pan
                     </div>
                     {items.length === 0 ? (
                       <p className="mt-1.5 text-[13px] text-slate-400">{dealMemory ? "Rien dans ces calls." : "Rien dans ce call."}</p>
+                    ) : dealMemory ? (
+                      <FieldHistory items={dealMemory[field.key] ?? []} />
                     ) : (
                       <ul className="mt-1.5 list-disc space-y-1.5 pl-4 marker:text-slate-300">
                         {items.map((item, i) => (
-                          <Item key={i} item={item} date={dealMemory ? item.callAt : null} />
+                          <Item key={i} item={item} />
                         ))}
                       </ul>
                     )}
