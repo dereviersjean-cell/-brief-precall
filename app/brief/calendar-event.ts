@@ -16,4 +16,9 @@ export interface CalendarEvent {
   // un invité au sens agenda a forcément une adresse, or ici le nom seul
   // suffit à retrouver la personne dans l'annuaire (nom + entreprise).
   contactName?: string;
+  // Rang du rendez-vous dans le deal du prospect : 1 = premier call (R1),
+  // 2 = R2… Calculé par le serveur (lib/upcoming-events.ts), absent hors des
+  // organisations en test ou sans repère sur le prospect.
+  dealRank?: number;
+  dealName?: string;
 }

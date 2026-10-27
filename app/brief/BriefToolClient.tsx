@@ -273,6 +273,18 @@ function CalendarEventCard({
         />
         <div className="min-w-0 flex-1 basis-[160px]">
           <div className="flex min-w-0 items-center gap-2">
+            {event.dealRank && (
+              // R1 = premier call avec ce prospect ; R2, R3… = suite d'un deal
+              // en cours, dont le brief reprendra la checklist.
+              <span
+                title={event.dealName ? `Suite du deal ${event.dealName}` : "Premier call avec ce prospect"}
+                className={`shrink-0 rounded-md px-1.5 py-0.5 text-[11.5px] font-bold tabular-nums ${
+                  event.dealRank > 1 ? "bg-[color:var(--violet)] text-white" : "bg-white text-slate-500 ring-1 ring-slate-200"
+                }`}
+              >
+                R{event.dealRank}
+              </span>
+            )}
             <h3 className="min-w-0 truncate text-[15.5px] font-semibold leading-snug text-slate-900">{event.summary}</h3>
             {nextLabel && (
               // Compte à rebours calculé au serveur puis au navigateur, à

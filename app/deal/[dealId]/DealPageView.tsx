@@ -78,7 +78,7 @@ function Calls({ progress, fiches, owners }: { progress: DealProgress; fiches: O
             <li key={step.callId} className="relative border-l-2 border-slate-200 pl-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <p className="text-[13.5px] font-semibold text-slate-900">
-                  Call {i + 1}
+                  R{i + 1}
                   {step.callAt ? ` · ${formatDay(step.callAt)}` : ""}
                   {step.title ? <span className="font-normal text-slate-500"> · {step.title}</span> : null}
                 </p>

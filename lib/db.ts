@@ -2159,6 +2159,32 @@ export async function getDealPageFiches(
   });
 }
 
+// Liste des rendez-vous de /brief (27/10/2026) : de quoi dire, pour chaque
+// rendez-vous, s'il est le R1 d'un nouveau prospect ou le R2, R3… d'un deal
+// en cours — tous les deals de l'organisation et leur nombre de calls, en
+// deux requêtes pour toute la liste.
+export async function getDealRankIndex(
+  organizationId: string
+): Promise<{ deals: { id: string; name: string; domain: string | null; nameKey: string | null }[]; calls: Record<string, number> }> {
+  const [{ data: deals, error }, { data: fiches, error: fichesError }] = await Promise.all([
+    supabaseAdmin.from("deals").select("id, name, domain, name_key").eq("organization_id", organizationId).order("created_at", { ascending: true }),
+    supabaseAdmin.from("call_deal_memory").select("deal_id").eq("organization_id", organizationId).not("deal_id", "is", null),
+  ]);
+  if (error) throw error;
+  if (fichesError) throw fichesError;
+  const calls: Record<string, number> = {};
+  for (const f of (fiches ?? []) as { deal_id: string }[]) calls[f.deal_id] = (calls[f.deal_id] ?? 0) + 1;
+  return {
+    deals: ((deals ?? []) as { id: string; name: string; domain: string | null; name_key: string | null }[]).map((d) => ({
+      id: d.id,
+      name: d.name,
+      domain: d.domain,
+      nameKey: d.name_key,
+    })),
+    calls,
+  };
+}
+
 // Vue commercial « Mes deals » (27/10/2026) : toutes les fiches des deals où
 // ce commercial a au moins un call — y compris les calls d'un collègue sur
 // le même deal, qui font partie de son histoire.

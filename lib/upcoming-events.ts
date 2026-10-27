@@ -1,13 +1,53 @@
 import type { Session } from "next-auth";
 import { getUpcomingMeetings, type CalendarEvent } from "@/lib/calendar";
-import { listUpcomingManualMeetingsForUser } from "@/lib/db";
+import {
+  getDealRankIndex,
+  getOrganizationEmailDomains,
+  getOrganizationForUser,
+  isDealMemoryEnabledForOrganization,
+  listUpcomingManualMeetingsForUser,
+} from "@/lib/db";
+import { dealIdentityFor } from "@/lib/deal-grouping";
 
 // Les rendez-vous des 7 prochains jours : agenda Google/Microsoft + RDV
 // ajoutés à la main, triés ensemble. Partagé par GET /api/calendar/events et
 // par la page /brief, qui les lit côté serveur pour s'afficher déjà remplie —
 // sans écran gris le temps que le navigateur aille les chercher (retour de
 // Jean, 14/10/2026).
-export type UpcomingEvent = CalendarEvent & { manual?: true; company?: string; contactName?: string };
+export type UpcomingEvent = CalendarEvent & {
+  manual?: true;
+  company?: string;
+  contactName?: string;
+  // Rang du rendez-vous dans le deal du prospect (R1 = premier call), et le
+  // deal quand il existe. Absent hors des organisations en test, ou sans
+  // repère sur le prospect.
+  dealRank?: number;
+  dealName?: string;
+};
+
+// Chaque rendez-vous reçoit son rang : le deal du prospect est cherché par le
+// domaine de l'invité ou l'entreprise saisie (mêmes repères que le
+// rattachement d'un call), et son nombre de calls donne le rang du suivant.
+async function withDealRanks(userId: string, events: UpcomingEvent[]): Promise<UpcomingEvent[]> {
+  const org = await getOrganizationForUser(userId).catch(() => null);
+  if (!org || !(await isDealMemoryEnabledForOrganization(org.id))) return events;
+  const [index, ownDomains] = await Promise.all([getDealRankIndex(org.id), getOrganizationEmailDomains(org.id)]);
+  return events.map((event) => {
+    const identity = dealIdentityFor({
+      contactEmail: event.attendees[0]?.email ?? null,
+      prospectCompany: null,
+      companyName: event.company ?? null,
+      ownDomains,
+      ownCompanyName: org.name ?? null,
+    });
+    if (!identity) return event;
+    const deal =
+      (identity.domain ? index.deals.find((d) => d.domain === identity.domain) : undefined) ??
+      (identity.nameKey ? index.deals.find((d) => d.nameKey === identity.nameKey) : undefined);
+    const calls = deal ? index.calls[deal.id] ?? 0 : 0;
+    return calls > 0 ? { ...event, dealRank: calls + 1, dealName: deal!.name } : { ...event, dealRank: 1 };
+  });
+}
 export type UpcomingEventsResult = { ok: true; events: UpcomingEvent[] } | { ok: false; status: number; error: string };
 
 function eventStart(e: CalendarEvent): number {
@@ -57,14 +97,14 @@ export async function loadUpcomingEvents(session: Session, userId: string): Prom
   const calendar = await calendarPromise;
   if (calendar.ok) {
     const merged = [...calendar.events, ...manualEvents].sort((a, b) => eventStart(a) - eventStart(b));
-    return { ok: true, events: merged };
+    return { ok: true, events: await withDealRanks(userId, merged).catch(() => merged) };
   }
   const err = calendar.err;
   // Le calendrier réel a échoué (token expiré, scope manquant...) : montrer
   // au moins les RDV manuels plutôt que de tout perdre derrière une erreur
   // qui ne les concerne pas.
   if (manualEvents.length > 0) {
-    return { ok: true, events: manualEvents };
+    return { ok: true, events: await withDealRanks(userId, manualEvents).catch(() => manualEvents) };
   }
   const message = err instanceof Error ? err.message : "Erreur calendrier";
   // Accès expiré ou révoqué chez Google / Microsoft : le message brut de

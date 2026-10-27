@@ -10,10 +10,6 @@ const LABEL = "text-[11px] font-semibold uppercase tracking-[0.08em]";
 const TILE =
   "rounded-[20px] bg-white ring-1 ring-[color:var(--lavender-strong)] shadow-[0_1px_2px_rgba(42,92,224,0.05),0_10px_28px_-20px_rgba(42,92,224,0.35)]";
 
-function ordinal(n: number): string {
-  return n === 1 ? "1er" : `${n}e`;
-}
-
 function day(iso: string): string {
   return new Date(iso.length === 10 ? `${iso}T12:00:00Z` : iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "Europe/Paris" });
 }
@@ -24,7 +20,7 @@ export default function DealFollowUp({ ctx }: { ctx: DealBriefContext }) {
     <section className={`${TILE} mt-7 overflow-hidden`}>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[color:var(--lavender-strong)] bg-[color:var(--lavender)] px-5 py-3.5">
         <p className="text-[14px] text-slate-900">
-          <span className="font-semibold">{ordinal(ctx.callNumber)} call</span>
+          <span className="rounded-md bg-[color:var(--violet)] px-1.5 py-0.5 text-[12px] font-bold text-white">R{ctx.callNumber}</span>
           <span className="text-slate-600"> · suite du deal </span>
           <Link href={`/deal/${ctx.dealId}`} className="font-semibold text-[color:var(--violet)] hover:underline">
             {ctx.dealName}

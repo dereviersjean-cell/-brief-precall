@@ -72,7 +72,7 @@ export function formatDealBriefForPrompt(ctx: DealBriefContext): string {
   const done = ctx.checklist.filter((c) => c.done);
   return [
     `\n# SUITE D'UN DEAL EN COURS\n`,
-    `Ce rendez-vous est le call n°${ctx.callNumber} avec ce prospect (deal « ${ctx.dealName} »). Dernier call${ctx.lastCall.at ? ` le ${frenchDay(ctx.lastCall.at)}` : ""}.`,
+    `Ce rendez-vous est le call n°${ctx.callNumber} (R${ctx.callNumber}) avec ce prospect (deal « ${ctx.dealName} »). Dernier call${ctx.lastCall.at ? ` le ${frenchDay(ctx.lastCall.at)}` : ""}.`,
     done.length > 0 ? `\nDéjà validé :\n${done.map((c) => `- ${c.label} : ${c.text ?? "connu"}`).join("\n")}` : "",
     ctx.toFind.length > 0 ? `\nEncore inconnu, à aller chercher pendant ce call : ${ctx.toFind.join(", ")}.` : "",
     ctx.engagements.length > 0 ? `\nEngagements pris la dernière fois :\n${ctx.engagements.map((e) => `- ${e.text}${e.date ? ` (pour le ${e.date})` : ""}`).join("\n")}` : "",
