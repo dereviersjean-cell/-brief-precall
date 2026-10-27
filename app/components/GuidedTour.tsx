@@ -308,7 +308,7 @@ export default function GuidedTour() {
     // les vraies données, sinon on reste devant un exemple sans s'en rendre
     // compte une fois le bandeau oublié.
     if (window.location.pathname.startsWith("/demo")) {
-      window.location.href = "/dashboard";
+      window.location.href = "/brief";
       return;
     }
     try {

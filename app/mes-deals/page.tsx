@@ -7,7 +7,7 @@ import MesDealsView from "./MesDealsView";
 export default async function MesDealsPage() {
   const viewer = await getViewer();
   if (!viewer) redirect("/login");
-  if (!viewer.organizationId || !(await isDealMemoryEnabledForOrganization(viewer.organizationId))) redirect("/dashboard");
+  if (!viewer.organizationId || !(await isDealMemoryEnabledForOrganization(viewer.organizationId))) redirect("/brief");
 
   const all = buildDealProgressNow(await getProgressFichesForUser(viewer.organizationId, viewer.userId));
   // Un deal clos dans HubSpot n'a plus de suite à préparer.

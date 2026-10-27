@@ -10,6 +10,10 @@
 - **Proposition de valeur unique (recentrage du 24 juillet 2026, décision du directeur commercial) : augmenter le taux de closing.** Pas d'éparpillement en features — tout ce qui ne sert pas directement « préparer / débriefer / progresser » est masqué (voir ci-dessous).
 - Distribution in-context : Brief livre ses outputs (briefs, analyses) là où le commercial travaille déjà — HubSpot, Google Calendar, email. L'utilisateur ne doit pas venir sur Brief pour en bénéficier.
 
+## Vue simplifiée — 27 octobre 2026 (demande de Jean)
+
+**« Performance » et « Équipe » ne sont plus dans la barre latérale.** Rien n'est supprimé : `/dashboard` (et ses onglets), `/team` (et ses sous-pages, dont l'invitation des commerciaux) restent en place et joignables par leur URL, pour les réactiver si le besoin revient (le commentaire en tête d'`AppSidebar.tsx` dit quoi remettre). La barre ne garde que Brief, Analyse rendez-vous, Mes deals (organisations en test), Deals côté manager, et la Méthode. Les redirections de repli qui menaient à `/dashboard` (pages réservées, tâches et devis masqués, imitation admin, sortie de la visite guidée) mènent à `/brief` ; le logo aussi. La visite guidée cible encore l'entrée Performance : son étape s'affiche sans surbrillance.
+
 ## Recentrage produit — 24 juillet 2026
 
 - **Modules Tasks et Devis masqués, pas supprimés** : entrées retirées de la sidebar, `app/tasks/layout.tsx` et `app/quotes/layout.tsx` remplacés par un `redirect("/dashboard")` (les layouts d'origine sont dans le git log). Les routes API, crons Inngest et le signal win/loss des devis (`deal_outcomes` source `quote`, page publique `/q/[token]`) restent actifs. *(27/10/2026 : leurs crons ne tournent plus, retirés pour le quota Inngest — voir la ligne Inngest des décisions architecturales.)* Le digest hebdo et son email ne mentionnent plus tâches/devis (prompts par défaut `admin_config` ajustés — si des versions éditées existent en base, les resetter).

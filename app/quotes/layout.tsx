@@ -6,5 +6,5 @@ import { redirect } from "next/navigation";
 // Pour réactiver : restaurer le layout d'origine (git log sur ce fichier)
 // et remettre l'entrée « Devis » dans AppSidebar.tsx.
 export default function QuotesLayout() {
-  redirect("/dashboard");
+  redirect("/brief");
 }

@@ -73,7 +73,7 @@ export default function UserDetailAdminClient({
         const data = await res.json().catch(() => ({}));
         throw new Error((data as { error?: string }).error ?? "Erreur lors de l'impersonation.");
       }
-      window.location.href = "/dashboard";
+      window.location.href = "/brief";
     } catch (err) {
       setImpersonateError(err instanceof Error ? err.message : "Erreur lors de l'impersonation.");
       setImpersonating(false);

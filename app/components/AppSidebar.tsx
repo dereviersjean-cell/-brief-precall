@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useState } from "react";
-import { LayoutDashboard, FileText, Video, Users, Settings, HelpCircle, LogOut, Sparkles, Menu, X, Lock, BookOpen, Library, Target, Briefcase } from "lucide-react";
+import { FileText, Video, Settings, HelpCircle, LogOut, Sparkles, Menu, X, Lock, BookOpen, Library, Target, Briefcase } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useChromeState } from "./ShellProvider";
 import { useModules } from "./ModulesProvider";
@@ -137,11 +137,13 @@ export default function AppSidebar() {
   const { briefsOnly, isEnabled } = useModules();
   const fullAccess = briefsOnly === false;
 
-  // « Performance » regroupe Vue d'ensemble + Historique + Entraînement,
-  // navigables en onglets (app/components/PerformanceTabs.tsx) — Objections
-  // reste dans Paramètres.
-  const performanceActive =
-    pathname.startsWith("/dashboard") || pathname.startsWith("/contacts") || pathname.startsWith("/training");
+  // Vue simplifiée (demande de Jean, 27/10/2026) : « Performance »
+  // (/dashboard et ses onglets) et « Équipe » (/team) ne sont plus dans la
+  // barre latérale. Leurs pages restent en place et joignables par leur URL,
+  // pour les réactiver si le besoin revient : remettre l'entrée
+  // { href: "/dashboard", label: "Performance", icon: LayoutDashboard } dans
+  // commercialGroup, et le NavLink « Équipe » (href "/team", icon Users) dans
+  // le groupe Manager.
   // Sections propres depuis le 15/10/2026 (ex-onglets Performance et
   // Paramètres), sous l'entrée Équipe. Chacune n'existe que si son module est
   // ouvert ; « Playbook & objections » mène à la grille, ou aux objections
@@ -153,10 +155,6 @@ export default function AppSidebar() {
   ];
   const briefActive = pathname.startsWith("/brief");
   const feedbackActive = pathname.startsWith("/feedback");
-  // Équipe est un lien unique — les sous-pages (Playbook, Templates emails,
-  // Insights) se naviguent via des onglets en haut de /team (TeamTabs.tsx),
-  // pas depuis la sidebar.
-  const teamActive = pathname.startsWith("/team");
   const settingsActive = pathname.startsWith("/settings");
   const helpActive = pathname.startsWith("/help");
 
@@ -168,7 +166,6 @@ export default function AppSidebar() {
           // Vue commercial des deals (Deal Execution, 27/10/2026) : mêmes
           // organisations en test que la vue manager.
           ...(dealsEnabled ? [{ href: "/mes-deals", label: "Mes deals", icon: Briefcase, active: pathname.startsWith("/mes-deals") }] : []),
-          { href: "/dashboard", label: "Performance", icon: LayoutDashboard, active: performanceActive },
         ]
       : []),
   ];
@@ -202,7 +199,7 @@ export default function AppSidebar() {
       >
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-5 pt-5 pb-4 shrink-0">
-        <Link href={fullAccess ? "/dashboard" : "/brief"} className="flex items-center gap-2.5 min-w-0 flex-1">
+        <Link href="/brief" className="flex items-center gap-2.5 min-w-0 flex-1">
           {/* Le logo de l'entreprise du client, son nom en titre (demande de
               Jean, 14/10/2026) ; « Brief » passe en sous-titre, avec la
               mention de la version gratuite le cas échéant. Repli sur le « B »
@@ -270,20 +267,18 @@ export default function AppSidebar() {
             {briefsOnly && (
               <>
                 <LockedNavItem label="Analyse rendez-vous" icon={Video} />
-                <LockedNavItem label="Performance" icon={LayoutDashboard} />
               </>
             )}
           </div>
         </div>
 
-        {/* Équipe (manager only) — lien unique ; les sous-pages se naviguent
-            via des onglets en haut de /team (TeamTabs.tsx). */}
-        {isManager && fullAccess && (
+        {/* Manager : la vue des deals de l'équipe (« Équipe » retirée le
+            27/10/2026, voir plus haut). */}
+        {isManager && fullAccess && dealsEnabled && (
           <div>
             <NavGroupLabel>Manager</NavGroupLabel>
             <div className="space-y-0.5">
-              {dealsEnabled && <NavLink href="/deals" label="Deals" icon={Target} active={pathname.startsWith("/deals")} />}
-              <NavLink href="/team" label="Équipe" icon={Users} active={teamActive} />
+              <NavLink href="/deals" label="Deals" icon={Target} active={pathname.startsWith("/deals")} />
             </div>
           </div>
         )}

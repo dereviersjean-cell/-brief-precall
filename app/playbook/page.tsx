@@ -11,7 +11,7 @@ export default async function PlaybookPage() {
   if (!viewer) redirect("/login");
 
   const { userId, role, organizationId: orgId } = viewer;
-  if (!orgId) redirect("/dashboard");
+  if (!orgId) redirect("/brief");
 
   const isManager = role === "manager";
 

@@ -9,7 +9,7 @@ export default async function BillingSettingsPage() {
   if (!userId) redirect("/login");
 
   const role = await getUserRole(userId);
-  if (role !== "manager") redirect("/dashboard");
+  if (role !== "manager") redirect("/brief");
 
   const organization = await getOrganizationForUser(userId);
   if (!organization) {

@@ -6,5 +6,5 @@ import { redirect } from "next/navigation";
 // layout d'origine (git log sur ce fichier) et remettre l'entrée « Tasks »
 // dans AppSidebar.tsx.
 export default function TasksLayout() {
-  redirect("/dashboard");
+  redirect("/brief");
 }

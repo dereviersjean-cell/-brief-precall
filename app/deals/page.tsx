@@ -18,7 +18,7 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
   const viewer = await getViewer();
   if (!viewer) redirect("/login");
   if (viewer.role !== "manager" || !viewer.organizationId || !(await isDealMemoryEnabledForOrganization(viewer.organizationId))) {
-    redirect("/dashboard");
+    redirect("/brief");
   }
 
   // Les deals du manager : ceux de ses commerciaux liés, et les siens.
