@@ -5,6 +5,8 @@ import { adaptCachedContent } from "@/lib/brief-content";
 import { getEffectiveUserId } from "@/lib/session-user";
 import { Meeting } from "@/lib/types";
 import BriefClient from "./BriefClient";
+import { loadDealBriefContext } from "@/lib/deal-brief-load";
+import type { DealBriefContext } from "@/lib/deal-brief";
 
 
 export default async function BriefPage({
@@ -70,6 +72,17 @@ export default async function BriefPage({
     }
   }
 
+  // Suite d'un deal en cours (R2, R3…) : reconnue par l'email du contact ou
+  // l'entreprise, comme le rattachement d'un call (structure cible de Jean,
+  // 27/10/2026). null pour un premier call.
+  let dealContext: DealBriefContext | null = null;
+  if (userId) {
+    dealContext = await loadDealBriefContext(userId, decodedContactEmail, decodedCompany).catch((err) => {
+      console.error("[BriefPage] loadDealBriefContext failed:", err instanceof Error ? err.message : String(err));
+      return null;
+    });
+  }
+
   // cached=true : charger le brief depuis Supabase avant de passer à Claude
   if (cached === "true") {
     try {
@@ -108,6 +121,7 @@ export default async function BriefPage({
               contactEmail={byEvent.contact_email ?? decodedContactEmail}
               contactName={decodedContactName}
               callHistory={callHistory}
+              dealContext={dealContext}
             />
           );
         }
@@ -134,6 +148,7 @@ export default async function BriefPage({
               contactEmail={byId.contact_email ?? decodedContactEmail}
               contactName={decodedContactName}
               callHistory={callHistory}
+              dealContext={dealContext}
             />
           );
         }
@@ -161,6 +176,7 @@ export default async function BriefPage({
       contactEmail={decodedContactEmail}
       contactName={decodedContactName}
       callHistory={callHistory}
+      dealContext={dealContext}
     />
   );
 }

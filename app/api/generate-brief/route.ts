@@ -13,6 +13,8 @@ import { checkRateLimit, enforceDailyBriefQuota, retryAfterMinutes } from "@/lib
 import { BRIEFS_ACCESS_DAILY_LIMIT } from "@/lib/sales-contact";
 import { dispatchBriefPreCall } from "@/lib/notifications-dispatcher";
 import { formatContactDisplayName } from "@/lib/format";
+import { loadDealBriefContext } from "@/lib/deal-brief-load";
+import { formatDealBriefForPrompt } from "@/lib/deal-brief";
 
 // Un brief avec recherche web réelle (max_uses: 3, cf. lib/brief-generator.ts)
 // mesure ~54s en conditions réelles (Doctolib, 03/09/2026) — sans ce réglage
@@ -190,7 +192,11 @@ export async function POST(request: NextRequest) {
         : Promise.resolve(null),
     ]);
 
-    console.log('[generate-brief] contactEmail:', contactEmail, '| userId:', userId);
+    // Suite d'un deal en cours : le brief reprend là où le dernier call s'est
+    // arrêté et vise ce qui manque (lib/deal-brief.ts).
+    const dealContext = userId ? await loadDealBriefContext(userId, contactEmail, trimmed).catch(() => null) : null;
+
+    console.log('[generate-brief] contactEmail:', contactEmail, '| userId:', userId, '| deal:', dealContext ? `${dealContext.dealName} (call ${dealContext.callNumber})` : 'premier call');
     const brief = await generateBrief(
       trimmed,
       config,
@@ -199,7 +205,8 @@ export async function POST(request: NextRequest) {
       newsArticles,
       userId ?? undefined,
       contactEmail,
-      apolloContact
+      apolloContact,
+      dealContext ? formatDealBriefForPrompt(dealContext) : ""
     );
 
     // Fiche contact affichée dans la barre latérale du brief (panneau

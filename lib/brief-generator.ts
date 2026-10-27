@@ -184,7 +184,10 @@ export async function generateBrief(
   newsArticles?: NewsArticle[],
   userId?: string,
   contactEmail?: string | null,
-  apolloContact?: ApolloContact | null
+  apolloContact?: ApolloContact | null,
+  // Suite d'un deal en cours (lib/deal-brief.ts) : ce que les calls
+  // précédents ont validé et ce qu'il reste à aller chercher.
+  dealBlock: string = ""
 ): Promise<unknown> {
   const legalContext = pappersData
     ? `\nVoici les données légales officielles de l'entreprise (source : registre français officiel) :\n${JSON.stringify(pappersData, null, 2)}\n\nBase-toi sur ces faits réels pour le brief. Ne les contredis pas.\n`
@@ -251,7 +254,7 @@ export async function generateBrief(
     config,
     userContext,
     similarRefs,
-    relationalHistoryBlock,
+    relationalHistoryBlock + dealBlock,
     crmData,
     apolloContact ?? null
   );

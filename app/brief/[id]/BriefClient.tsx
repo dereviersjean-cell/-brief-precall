@@ -10,6 +10,8 @@ import { StatusChip } from "@/app/components/ui/ui-bits";
 import CompanyLogo from "@/app/components/CompanyLogo";
 import TalkToSales from "@/app/components/TalkToSales";
 import { companyDomainFromEmail } from "@/lib/company-domain";
+import type { DealBriefContext } from "@/lib/deal-brief";
+import DealFollowUp from "./DealFollowUp";
 
 function formatDateTime(iso: string) {
   const d = new Date(iso);
@@ -539,12 +541,15 @@ export default function BriefClient({
   contactEmail: initialContactEmail = null,
   contactName: initialContactName = null,
   callHistory = [],
+  dealContext = null,
 }: {
   meeting: Meeting;
   autoGenerate?: boolean;
   contactEmail?: string | null;
   contactName?: string | null;
   callHistory?: CallHistoryItem[];
+  /** Suite d'un deal en cours (R2, R3…) : null pour un premier call. */
+  dealContext?: DealBriefContext | null;
 }) {
   // État et non prop figée : renseigner un contact depuis le panneau
   // Contacts doit être pris en compte par une régénération lancée juste
@@ -998,6 +1003,10 @@ export default function BriefClient({
           )}
         
         </div>
+
+        {/* Suite d'un deal en cours : la checklist et la dernière fois, avant
+            même que le brief soit rédigé — ces informations sont déjà là. */}
+        {dealContext && <DealFollowUp ctx={dealContext} />}
 
         {/* Génération ou régénération en cours : même animation dans les
             deux cas — remplace le brief existant plutôt que de le griser en

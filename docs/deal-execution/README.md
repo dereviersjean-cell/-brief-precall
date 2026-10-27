@@ -130,7 +130,7 @@ Format de réponse proposé à Hubert : « OK pour les recos sauf le n° X ».
 
 Point de départ avant toute suite technique. Le reste de l'app ne bouge pas (Performance et Équipe sont masqués, pas supprimés).
 
-1. **Brief** : toujours un brief avant chaque call, mais Brief sait si le call qui arrive est un premier call ou une suite (R2, R3…) grâce à la mémoire du deal. Pour une suite : ce qui s'est dit la dernière fois, ce qui est déjà validé dans la checklist, ce qu'il reste à aller chercher pendant ce call.
+1. **Brief** *(fait le 27/10 : bloc « suite du deal » + rédaction adaptée)* : toujours un brief avant chaque call, mais Brief sait si le call qui arrive est un premier call ou une suite (R2, R3…) grâce à la mémoire du deal. Pour une suite : ce qui s'est dit la dernière fois, ce qui est déjà validé dans la checklist, ce qu'il reste à aller chercher pendant ce call.
 2. **Analyse rendez-vous** : la bibliothèque de tous les calls passés ; un call ouvert montre ses statistiques, ses insights et son analyse.
-3. **Mes deals** (commercial) : la vue globale de ses ventes en cours — à qui il parle, où il en est avec chacun, avec qui il est à jour, les actions à prendre, son pipe. Chaque deal s'ouvre et montre clairement où il en est.
-4. **Deals** (manager) : ce que font ses commerciaux, leurs deals en cours et où ils en sont ; en ouvrant un deal, voir très vite ce qui est bien fait, ce qui est mal fait, et s'il faut intervenir.
+3. **Mes deals** (commercial) *(fait le 27/10 : vue d'ensemble + page d'un deal)* : la vue globale de ses ventes en cours — à qui il parle, où il en est avec chacun, avec qui il est à jour, les actions à prendre, son pipe. Chaque deal s'ouvre et montre clairement où il en est.
+4. **Deals** (manager) *(fait le 27/10 : Équipe d'abord + bilan sur la page d'un deal)* : ce que font ses commerciaux, leurs deals en cours et où ils en sont ; en ouvrant un deal, voir très vite ce qui est bien fait, ce qui est mal fait, et s'il faut intervenir.
