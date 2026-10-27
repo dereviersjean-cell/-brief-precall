@@ -2346,7 +2346,9 @@ export async function getOrganizationDealRules(organizationId: string): Promise<
     if (error) throw error;
     return coerceDealRules((data as { deal_rules: unknown } | null)?.deal_rules ?? null);
   } catch (err) {
-    console.error("[db] getOrganizationDealRules failed (règles par défaut):", err instanceof Error ? err.message : String(err));
+    // Erreur PostgREST = objet simple, pas une Error : on lit son message.
+    const message = err instanceof Error ? err.message : (err as { message?: string })?.message ?? String(err);
+    console.error("[db] getOrganizationDealRules failed (règles par défaut — migration 036 passée ?):", message);
     return coerceDealRules(null);
   }
 }
