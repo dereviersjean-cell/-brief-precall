@@ -2161,6 +2161,26 @@ export async function getProgressFichesForUser(organizationId: string, userId: s
   });
 }
 
+// Vue manager, onglet Équipe (27/10/2026) : l'activité de chaque commercial —
+// ses calls des 7 derniers jours et la date de son dernier call (sur les 120
+// derniers jours ; au-delà, « aucun call récent »).
+export async function getCallActivityForUsers(userIds: string[]): Promise<Record<string, { week: number; lastAt: string | null }>> {
+  const result: Record<string, { week: number; lastAt: string | null }> = Object.fromEntries(userIds.map((id) => [id, { week: 0, lastAt: null }]));
+  if (userIds.length === 0) return result;
+  const since = new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabaseAdmin.from("calls").select("user_id, started_at, created_at").in("user_id", userIds).gte("created_at", since);
+  if (error) throw error;
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  for (const row of (data ?? []) as { user_id: string; started_at: string | null; created_at: string }[]) {
+    const at = row.started_at ?? row.created_at;
+    const entry = result[row.user_id];
+    if (!entry) continue;
+    if (Date.parse(at) >= weekAgo) entry.week += 1;
+    if (!entry.lastAt || at > entry.lastAt) entry.lastAt = at;
+  }
+  return result;
+}
+
 export async function getDealReviews(userId: string): Promise<BoardReview[]> {
   const { data, error } = await supabaseAdmin.from("deal_reviews").select("deal_id, status, reviewed_at").eq("user_id", userId);
   if (error) throw error;

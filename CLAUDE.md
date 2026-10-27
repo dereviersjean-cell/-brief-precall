@@ -951,6 +951,8 @@ En une ligne : HubSpot only en V1 ; parcours de vente propre à chaque organisat
 - **Logique pure et testée dans `lib/deal-progress.ts`** : par deal, l'évolution call après call (informations clés connues en cumul sur 8, apprises à chaque call, alertes) et un **verdict** — **en recul** si le dernier call lève une alerte de comparaison ; **à l'arrêt** si aucun call depuis 14 jours ou pas de prochaine étape datée ; **en progrès** sinon. Les infos apprises au dernier call sont une raison affichée, pas une condition (un deal presque qualifié n'a plus rien à apprendre et avance). Tri : en recul, à l'arrêt, en progrès, puis le plus récent.
 - Chaque carte : verdict et raisons, évolution (un bloc par call, lien vers sa page), la suite prévue (engagements du dernier call), points de vigilance, « encore à obtenir », lien vers le dernier call. Affichage dans `app/mes-deals/MesDealsView.tsx` (aperçu local non versionné : `app/apercu-mes-deals`, deals de Hubert).
 
+**Vue manager complétée (point 4, feu vert du 27/10/2026 « on y va »)** — sans migration : l'onglet **Équipe** de `/deals` passe d'un tableau à une carte par personne (le manager et ses commerciaux liés) : calls des 7 derniers jours et date du dernier (`getCallActivityForUsers`, fenêtre de 120 jours), ses deals par verdict (mêmes calculs que « Mes deals », `lib/deal-progress.ts`), part de deals avec prochaine étape datée, point à travailler, et « Voir ses deals » qui déplie sa vue « Mes deals » (`MesDealsView`). Tri : le plus de deals en recul, puis à l'arrêt. L'onglet « À suivre » (où intervenir) est inchangé.
+
 **État du code au 27/10/2026** : référence eslint **14 problèmes** (13 erreurs, 1 avertissement). **157 tests**.
 
 ## Devis — fonctionnalité abandonnée (décision de Jean, 31 août 2026)

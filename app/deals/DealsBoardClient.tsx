@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { alertLabel, formatDays, type BoardDeal, type StageColumn, type TeamRow } from "@/lib/deal-board";
+import type { DealProgress, DealVerdict } from "@/lib/deal-progress";
+import MesDealsView from "@/app/mes-deals/MesDealsView";
 
 // Vue manager (Deal Execution, étape 4) : A = la file des deals où
 // intervenir, C = le bandeau des étapes au-dessus (un clic filtre la file),
@@ -205,58 +207,120 @@ function StageBanner({
   );
 }
 
-function TeamTable({ team, people }: { team: TeamRow[]; people: Record<string, string> }) {
-  if (team.length === 0)
-    return <p className={`${CARD} p-5 text-[13.5px] text-slate-500`}>Aucun deal suivi dans votre équipe pour l&apos;instant.</p>;
+const VERDICT_CHIPS: { key: DealVerdict; label: string; tone: string }[] = [
+  { key: "recul", label: "en recul", tone: "bg-rose-50 text-rose-700" },
+  { key: "arret", label: "à l'arrêt", tone: "bg-amber-50 text-amber-700" },
+  { key: "progres", label: "en progrès", tone: "bg-emerald-50 text-emerald-700" },
+];
+
+// Onglet Équipe (refait le 27/10/2026, demande de Jean : voir ce que font ses
+// commerciaux) : une carte par personne — son activité, ses deals par
+// verdict, son point à travailler — et, sur demande, ses deals tels qu'il les
+// voit dans « Mes deals ».
+function TeamMember({
+  row,
+  name,
+  activity,
+  deals,
+}: {
+  row: TeamRow;
+  name: string;
+  activity: { week: number; lastAt: string | null } | undefined;
+  deals: DealProgress[];
+}) {
+  const [open, setOpen] = useState(false);
+  const counts = { recul: 0, arret: 0, progres: 0 } as Record<DealVerdict, number>;
+  for (const d of deals) counts[d.verdict]++;
   return (
-    <div className={`${CARD} overflow-x-auto`}>
-      <table className="stacked-table w-full text-left text-[13.5px] sm:min-w-[720px]">
-        <thead>
-          <tr className="border-b border-border text-[12px] text-slate-500">
-            <th className="px-4 py-3 font-medium">Commercial</th>
-            <th className="px-4 py-3 font-medium">Deals</th>
-            <th className="px-4 py-3 font-medium">À risque</th>
-            <th className="px-4 py-3 font-medium">Prochaine étape datée</th>
-            <th className="px-4 py-3 font-medium">Point à travailler</th>
-          </tr>
-        </thead>
-        <tbody>
-          {team.map((t) => (
-            <tr key={t.userId} className="border-b border-border last:border-0 align-top">
-              <td className="px-4 py-3 font-medium text-slate-900">{people[t.userId] ?? "—"}</td>
-              <td className="px-4 py-3" data-label="Deals">
-                {t.deals}
-              </td>
-              <td className="px-4 py-3" data-label="À risque">
-                {t.atRisk}
-              </td>
-              <td className="px-4 py-3" data-label="Prochaine étape datée">
-                {t.datedNextStepShare === null ? "—" : `${Math.round(t.datedNextStepShare * 100)} %`}
-              </td>
-              <td className="px-4 py-3" data-label="Point à travailler">
-                {t.recurring ? (
-                  <>
-                    <span className="text-slate-900">{alertLabel(t.recurring.rule)}</span>
-                    <span className="text-slate-500"> · sur {t.recurring.count} deals</span>
-                    <span className="mt-1 block text-[12.5px]">
-                      {t.recurring.calls.map((c, i) => (
-                        <span key={c.id}>
-                          {i > 0 ? " · " : ""}
-                          <Link href={`/feedback/${c.id}?tab=deal`} className="text-[color:var(--violet)] hover:underline">
-                            {c.label}
-                          </Link>
-                        </span>
-                      ))}
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-slate-400">Rien de récurrent</span>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <section className={`${CARD} p-5`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-[15px] font-semibold text-slate-900">{name}</h3>
+          <p className="mt-0.5 text-[12.5px] text-slate-500">
+            {activity ? `${activity.week} call${activity.week > 1 ? "s" : ""} ces 7 derniers jours` : "Activité indisponible"}
+            {activity?.lastAt ? ` · dernier le ${formatDay(activity.lastAt)}` : activity ? " · aucun call récent" : ""}
+          </p>
+        </div>
+        {deals.length > 0 && (
+          <button onClick={() => setOpen((v) => !v)} className="text-[13px] font-medium text-[color:var(--violet)] hover:underline">
+            {open ? "Masquer ses deals" : `Voir ses deals (${deals.length})`}
+          </button>
+        )}
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {deals.length === 0 ? (
+          <span className="text-[13px] text-slate-400">Aucun deal suivi.</span>
+        ) : (
+          VERDICT_CHIPS.map((v) => (
+            <span key={v.key} className={`rounded-full px-2.5 py-1 text-[12.5px] font-medium ${counts[v.key] > 0 ? v.tone : "bg-slate-50 text-slate-400"}`}>
+              {counts[v.key]} {v.label}
+            </span>
+          ))
+        )}
+      </div>
+
+      {row.deals > 0 && (
+        <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1 text-[13px] sm:grid-cols-2">
+          <div>
+            <dt className="inline text-slate-500">Prochaine étape datée : </dt>
+            <dd className="inline text-slate-900">
+              {row.datedNextStepShare === null ? "—" : `${Math.round(row.datedNextStepShare * 100)} % de ses deals`}
+            </dd>
+          </div>
+          <div>
+            <dt className="inline text-slate-500">Point à travailler : </dt>
+            <dd className="inline">
+              {row.recurring ? (
+                <>
+                  <span className="text-slate-900">{alertLabel(row.recurring.rule)}</span>
+                  <span className="text-slate-500"> · sur {row.recurring.count} deals</span>
+                </>
+              ) : (
+                <span className="text-slate-400">rien de récurrent</span>
+              )}
+            </dd>
+          </div>
+        </dl>
+      )}
+
+      {open && (
+        <div className="mt-5 border-t border-border pt-5">
+          <MesDealsView deals={deals} closed={0} />
+        </div>
+      )}
+    </section>
+  );
+}
+
+function TeamView({
+  team,
+  people,
+  activity,
+  progress,
+}: {
+  team: TeamRow[];
+  people: Record<string, string>;
+  activity: Record<string, { week: number; lastAt: string | null }>;
+  progress: Record<string, DealProgress[]>;
+}) {
+  // Les personnes qui ont des deals ou de l'activité récente ; les autres
+  // n'ont rien à montrer.
+  // Ceux dont les deals reculent ou stagnent passent devant.
+  const weight = (id: string) => {
+    const list = progress[id] ?? [];
+    return list.filter((d) => d.verdict === "recul").length * 100 + list.filter((d) => d.verdict === "arret").length;
+  };
+  const rows = team
+    .filter((t) => t.deals > 0 || (progress[t.userId]?.length ?? 0) > 0 || (activity[t.userId]?.lastAt ?? null) !== null)
+    .sort((a, b) => weight(b.userId) - weight(a.userId));
+  if (rows.length === 0)
+    return <p className={`${CARD} p-5 text-[13.5px] text-slate-500`}>Aucune activité ni aucun deal suivi dans votre équipe pour l&apos;instant.</p>;
+  return (
+    <div className="space-y-3">
+      {rows.map((t) => (
+        <TeamMember key={t.userId} row={t} name={people[t.userId] ?? "—"} activity={activity[t.userId]} deals={progress[t.userId] ?? []} />
+      ))}
     </div>
   );
 }
@@ -265,6 +329,8 @@ export default function DealsBoardClient({
   deals,
   stages,
   team,
+  activity,
+  progress,
   people,
   initialTab,
   initialStage,
@@ -272,6 +338,8 @@ export default function DealsBoardClient({
   deals: BoardDeal[];
   stages: StageColumn[];
   team: TeamRow[];
+  activity: Record<string, { week: number; lastAt: string | null }>;
+  progress: Record<string, DealProgress[]>;
   people: Record<string, string>;
   initialTab: "file" | "equipe";
   initialStage: string | null;
@@ -324,7 +392,7 @@ export default function DealsBoardClient({
           <Folded title="Vus ou remis à plus tard" deals={reviewed} people={people} />
         </>
       ) : (
-        <TeamTable team={team} people={people} />
+        <TeamView team={team} people={people} activity={activity} progress={progress} />
       )}
     </div>
   );
