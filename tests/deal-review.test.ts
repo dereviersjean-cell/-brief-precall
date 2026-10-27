@@ -9,7 +9,7 @@ import { buildDealReview } from "../lib/deal-review";
 const NOW = Date.parse("2026-10-27T10:00:00Z");
 const daysAgo = (n: number) => new Date(NOW - n * 86400000).toISOString();
 const item = (text: string) => ({ text, verbatim: null, startMs: null });
-const alert = (rule: ProgressFiche["alerts"][number]["rule"], text = rule) => ({ rule, text, verbatim: null, startMs: null });
+const alert = (rule: ProgressFiche["alerts"][number]["rule"], text: string = rule) => ({ rule, text, verbatim: null, startMs: null });
 const fiche = (over: Partial<ProgressFiche>): ProgressFiche => ({
   dealId: "d",
   dealName: "Deal",
