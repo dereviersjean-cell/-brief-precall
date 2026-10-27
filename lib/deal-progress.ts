@@ -35,6 +35,8 @@ export type ProgressFiche = {
   callTitle: string | null;
   fields: DealMemoryContent["fields"];
   alerts: DealMemoryAlert[];
+  // Domaine du prospect (deals.domain), pour son logo.
+  dealDomain?: string | null;
 };
 
 export type DealVerdict = "progres" | "arret" | "recul";
@@ -82,6 +84,13 @@ export type DealProgress = {
   // Critères de passage : ce qui devrait être connu à l'étape où en est le
   // deal et ne l'est pas (libellés).
   missingForStage: string[];
+  // Vue « Mes deals » en posture de conseil (D3, 27/10/2026) : de quoi
+  // expliquer l'action — le domaine pour le logo, l'alerte la plus lourde du
+  // dernier call avec sa phrase, les informations à obtenir, la checklist.
+  domain: string | null;
+  topAlert: { rule: string; label: string; text: string; quote: string | null; speaker: string | null } | null;
+  missingKeys: QualificationKey[];
+  checklist: { key: QualificationKey; label: string; known: boolean }[];
 };
 
 export type FocusStatus = "relancer" | "traiter" | "bonne_voie";
@@ -242,6 +251,21 @@ export function buildDealProgress(fiches: ProgressFiche[], now: number, rules: D
       total: fields.length,
       toObtain: fields.filter((k) => !seen.has(k)).map((k) => FIELD_LABELS.get(k) ?? k),
       missingForStage: missing.map((k) => qualificationLabel(k)),
+      domain: latest.dealDomain ?? sorted.find((f) => f.dealDomain)?.dealDomain ?? null,
+      topAlert: (() => {
+        const top = sortByWeight(latest.alerts)[0];
+        return top
+          ? {
+              rule: top.rule,
+              label: RULE_LABELS.get(top.rule) ?? top.rule,
+              text: top.text,
+              quote: top.quote?.find((q) => q.text)?.text ?? top.verbatim,
+              speaker: top.quote?.[0]?.speaker ?? null,
+            }
+          : null;
+      })(),
+      missingKeys: missing,
+      checklist: fields.map((k) => ({ key: k, label: qualificationLabel(k), known: seen.has(k) })),
       nextSteps: latest.fields.prochaines_etapes ?? [],
       alerts: latest.alerts.map((a) => RULE_LABELS.get(a.rule) ?? a.rule),
       nextStep: nextStepOf(latest, new Date(now).toISOString().slice(0, 10), idle),

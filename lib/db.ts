@@ -2230,7 +2230,7 @@ export async function getProgressFichesForUser(organizationId: string, userId: s
 
   const { data, error } = await supabaseAdmin
     .from("call_deal_memory")
-    .select("call_id, deal_id, call_at, fields, alerts, calls(meeting_title), deals!inner(name, hubspot_snapshot)")
+    .select("call_id, deal_id, call_at, fields, alerts, calls(meeting_title), deals!inner(name, hubspot_snapshot, domain)")
     .eq("organization_id", organizationId)
     .in("deal_id", dealIds);
   if (error) throw error;
@@ -2241,7 +2241,9 @@ export async function getProgressFichesForUser(organizationId: string, userId: s
     fields: ProgressFiche["fields"] | null;
     alerts: ProgressFiche["alerts"] | null;
     calls: { meeting_title: string | null } | { meeting_title: string | null }[] | null;
-    deals: { name: string; hubspot_snapshot: HubspotDealSnapshot | null } | { name: string; hubspot_snapshot: HubspotDealSnapshot | null }[];
+    deals:
+      | { name: string; hubspot_snapshot: HubspotDealSnapshot | null; domain: string | null }
+      | { name: string; hubspot_snapshot: HubspotDealSnapshot | null; domain: string | null }[];
   };
   return ((data ?? []) as Row[]).map((r) => {
     const call = Array.isArray(r.calls) ? r.calls[0] : r.calls;
@@ -2255,6 +2257,7 @@ export async function getProgressFichesForUser(organizationId: string, userId: s
       callTitle: call?.meeting_title ?? null,
       fields: r.fields ?? {},
       alerts: r.alerts ?? [],
+      dealDomain: deal?.domain ?? null,
     };
   });
 }
