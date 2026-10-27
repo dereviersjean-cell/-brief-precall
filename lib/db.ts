@@ -2091,6 +2091,32 @@ export async function getHubspotPushHistory(organizationId: string, limit = 8): 
   });
 }
 
+// Setup HubSpot de l'admin : les derniers calls dont le deal est relié à
+// HubSpot, pour simuler un envoi.
+export async function getHubspotLinkedCalls(
+  organizationId: string,
+  limit = 10
+): Promise<{ id: string; meeting_title: string | null; started_at: string | null; created_at: string; dealName: string | null }[]> {
+  const { data, error } = await supabaseAdmin
+    .from("call_deal_memory")
+    .select("call_id, call_at, calls!inner(meeting_title, started_at, created_at), deals!inner(name, hubspot_deal_id)")
+    .eq("organization_id", organizationId)
+    .not("deals.hubspot_deal_id", "is", null)
+    .order("call_at", { ascending: false, nullsFirst: false })
+    .limit(limit);
+  if (error) throw error;
+  type Row = {
+    call_id: string;
+    calls: { meeting_title: string | null; started_at: string | null; created_at: string } | { meeting_title: string | null; started_at: string | null; created_at: string }[];
+    deals: { name: string } | { name: string }[];
+  };
+  return ((data ?? []) as Row[]).map((r) => {
+    const call = Array.isArray(r.calls) ? r.calls[0] : r.calls;
+    const deal = Array.isArray(r.deals) ? r.deals[0] : r.deals;
+    return { id: r.call_id, meeting_title: call?.meeting_title ?? null, started_at: call?.started_at ?? null, created_at: call?.created_at ?? "", dealName: deal?.name ?? null };
+  });
+}
+
 // Journal des écritures dans HubSpot (migration 038). Fail-soft : sans la
 // table, rien n'est journalisé et le mode « mise à jour sauf modification à
 // la main » ne remplace rien de déjà rempli.

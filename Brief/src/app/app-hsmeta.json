@@ -20,7 +20,9 @@
         "crm.objects.companies.read",
         "crm.objects.owners.read"
       ],
-      "optionalScopes": [],
+      "optionalScopes": [
+        "crm.schemas.deals.write"
+      ],
       "conditionallyRequiredScopes": []
     },
     "permittedUrls": {

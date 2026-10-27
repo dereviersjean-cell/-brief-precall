@@ -212,6 +212,12 @@ export default function ClientDetailClient({
           <div className="flex items-center gap-2">
             <RenameButton organizationId={overview.id} name={overview.name} />
             <Link
+              href={`/admin/clients/${overview.id}/hubspot`}
+              className="inline-flex h-9 items-center rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-900 transition-colors hover:bg-slate-50"
+            >
+              Setup HubSpot
+            </Link>
+            <Link
               href={`/admin/clients/${overview.id}/point`}
               className="inline-flex h-9 items-center rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110"
             >

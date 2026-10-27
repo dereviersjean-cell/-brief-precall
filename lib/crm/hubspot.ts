@@ -25,12 +25,21 @@ const REDIRECT_URI = `${APP_URL}/api/crm/hubspot/callback`;
 const SCOPES =
   "oauth crm.objects.deals.read crm.objects.deals.write crm.objects.contacts.read crm.objects.contacts.write crm.objects.companies.read crm.objects.owners.read";
 
+// Droits facultatifs (27/10/2026) : crm.schemas.deals.write, pour que le
+// setup HubSpot de l'admin crée les propriétés « Brief » chez le client.
+// Déclaré dans Brief/src/app/app-hsmeta.json (optionalScopes) ; demandé
+// seulement quand HUBSPOT_OPTIONAL_SCOPES est posé sur Vercel, APRÈS
+// `hs project upload` — demander un droit que l'app HubSpot ne déclare pas
+// encore ferait échouer toutes les connexions.
+const OPTIONAL_SCOPES = (process.env.HUBSPOT_OPTIONAL_SCOPES ?? "").trim();
+
 export function getHubspotAuthUrl(state: string): string {
   const params = new URLSearchParams({
     client_id: process.env.HUBSPOT_CLIENT_ID!,
     redirect_uri: REDIRECT_URI,
     scope: SCOPES,
     state,
+    ...(OPTIONAL_SCOPES ? { optional_scope: OPTIONAL_SCOPES } : {}),
   });
   return `https://app.hubspot.com/oauth/authorize?${params.toString()}`;
 }

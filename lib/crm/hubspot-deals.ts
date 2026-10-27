@@ -170,6 +170,91 @@ export async function getHubspotPortalId(userId: string): Promise<number | null>
   });
 }
 
+// ─── Setup HubSpot de l'admin (27/10/2026) ──────────────────────────────────
+
+// Les derniers deals créés, avec les propriétés demandées : de quoi mesurer
+// le remplissage de chaque propriété et en montrer des exemples.
+export async function sampleHubSpotDeals(userId: string, properties: string[], limit = 200): Promise<Record<string, string | null>[]> {
+  return withHubspotAuth(userId, async (accessToken) => {
+    const rows: Record<string, string | null>[] = [];
+    let after: string | undefined;
+    while (rows.length < limit) {
+      const data = await getJson<{ results?: { properties: Record<string, string | null> }[]; paging?: { next?: { after?: string } } }>(
+        accessToken,
+        "/crm/v3/objects/deals/search",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            sorts: [{ propertyName: "createdate", direction: "DESCENDING" }],
+            properties: [...new Set(["pipeline", "dealstage", ...properties])],
+            limit: 100,
+            ...(after ? { after } : {}),
+          }),
+        }
+      );
+      if (!data) throw new Error("Lecture des deals HubSpot impossible");
+      rows.push(...(data.results ?? []).map((r) => r.properties));
+      after = data.paging?.next?.after;
+      if (!after || (data.results ?? []).length === 0) break;
+    }
+    return rows.slice(0, limit);
+  });
+}
+
+export type HubspotPipeline = { id: string; label: string; stages: { id: string; label: string; closed: boolean }[] };
+
+export async function listHubSpotPipelines(userId: string): Promise<HubspotPipeline[]> {
+  return withHubspotAuth(userId, async (accessToken) =>
+    (await getPipelines(accessToken)).map((p) => ({
+      id: p.id,
+      label: p.label,
+      stages: [...p.stages]
+        .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
+        .map((s) => ({ id: s.id, label: s.label, closed: s.metadata?.isClosed === "true" })),
+    }))
+  );
+}
+
+// Les droits accordés par la connexion HubSpot (créer des propriétés demande
+// crm.schemas.deals.write, ajouté le 27/10/2026 : les connexions antérieures
+// ne l'ont pas).
+export async function getHubspotScopes(userId: string): Promise<string[]> {
+  return (await getHubspotTokenInfo(userId)).scopes;
+}
+
+// Les droits et le portail en une lecture : deux lectures parallèles du jeton
+// peuvent se gêner quand il doit être renouvelé.
+export async function getHubspotTokenInfo(userId: string): Promise<{ scopes: string[]; portalId: number | null }> {
+  return withHubspotAuth(userId, async (accessToken) => {
+    const token = await getJson<{ scopes?: string[]; hub_id?: number }>(accessToken, `/oauth/v1/access-tokens/${accessToken}`);
+    return { scopes: token?.scopes ?? [], portalId: token?.hub_id ?? null };
+  });
+}
+
+// Crée une propriété texte de deal dans le groupe « Brief » (créé au besoin).
+// Une propriété qui existe déjà n'est pas une erreur.
+export async function createBriefDealProperty(userId: string, property: { name: string; label: string; description: string }): Promise<"created" | "exists"> {
+  return withHubspotAuth(userId, async (accessToken) => {
+    const headers = { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" };
+    const group = await fetch(`${API}/crm/v3/properties/deals/groups`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ name: "brief", label: "Brief", displayOrder: -1 }),
+    });
+    if (group.status === 401) throw new Error("createBriefDealProperty auth failed: 401");
+    if (!group.ok && group.status !== 409) throw new Error(`Création du groupe Brief refusée (${group.status}) : ${await group.text()}`);
+    const res = await fetch(`${API}/crm/v3/properties/deals`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ ...property, groupName: "brief", type: "string", fieldType: "textarea" }),
+    });
+    if (res.status === 401) throw new Error("createBriefDealProperty auth failed: 401");
+    if (res.status === 409) return "exists";
+    if (!res.ok) throw new Error(`Création de la propriété ${property.name} refusée (${res.status}) : ${await res.text()}`);
+    return "created";
+  });
+}
+
 // Toutes les propriétés de deal, avec leur type, leurs options et si elles
 // sont modifiables : ce que le moteur vérifie avant chaque écriture
 // (lib/hubspot-mapping.ts), et ce que le setup montre.

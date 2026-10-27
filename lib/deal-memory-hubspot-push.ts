@@ -12,7 +12,7 @@ import {
   type CallWithAnalysis,
 } from "./db";
 import { buildHubspotNote } from "./deal-memory-hubspot";
-import { briefCandidates, coerceMapping, mergeWritten, planWrites, type PlannedWrite, type PropertyDefinition } from "./hubspot-mapping";
+import { briefCandidates, coerceMapping, mergeWritten, planWrites, type HubspotMapping, type PlannedWrite, type PropertyDefinition } from "./hubspot-mapping";
 import { getHubSpotDealSnapshot, getHubSpotDealValues, listHubSpotDealProperties, pushToHubSpotDeal } from "./crm/hubspot-deals";
 
 // Écrit la fiche d'un call dans le deal HubSpot rattaché. Partagé par le bouton
@@ -37,11 +37,26 @@ export const HUBSPOT_SKIP_MESSAGES: Record<Extract<HubspotPushResult, { status: 
   "no-hubspot-user": "Personne n'a connecté HubSpot dans votre équipe.",
 };
 
-export async function pushDealMemoryToHubSpot(
-  call: CallWithAnalysis,
+type CallMeta = Pick<CallWithAnalysis, "id" | "meeting_title" | "started_at" | "created_at">;
+
+type Prepared = {
+  hubspotUser: string;
+  hubspotDealId: string;
+  dealId: string;
+  plans: PlannedWrite[];
+  properties: Record<string, string>;
+  noteHtml: string;
+};
+
+// Tout ce qu'un envoi écrirait, sans rien écrire. `override` : un réglage à
+// essayer (setup admin) ; `planned` : les propriétés Brief qui seront créées,
+// tenues pour existantes et vides.
+async function prepareHubspotPush(
+  call: CallMeta,
   organizationId: string,
-  preferredUserIds: string[]
-): Promise<HubspotPushResult> {
+  preferredUserIds: string[],
+  override?: { mapping: HubspotMapping; planned: string[] }
+): Promise<Prepared | Extract<HubspotPushResult, { status: "skipped" }>> {
   const fiche = await getCallDealMemory(call.id);
   if (!fiche) return { status: "skipped", reason: "no-fiche" };
   const hubspotDealId = fiche.dealId ? await getDealHubspotId(fiche.dealId) : null;
@@ -57,11 +72,13 @@ export async function pushDealMemoryToHubSpot(
     getLastBriefWrites(hubspotDealId),
     getHubSpotDealSnapshot(hubspotUser, hubspotDealId).catch(() => null),
   ]);
-  const mapping = coerceMapping(orgMapping);
+  const mapping = override?.mapping ?? coerceMapping(orgMapping);
   const definitions: Record<string, PropertyDefinition> = Object.fromEntries(
     propertyList.map((p) => [p.name, { type: p.type, options: p.options.map((o) => o.value), readOnly: p.readOnly }])
   );
-  const linked = [...new Set(Object.values(mapping).map((e) => e!.property))].filter((name) => name in definitions);
+  for (const name of override?.planned ?? []) definitions[name] ??= { type: "string", options: [], readOnly: false };
+  const existing = new Set(propertyList.map((p) => p.name));
+  const linked = [...new Set(Object.values(mapping).map((e) => e!.property))].filter((name) => existing.has(name));
   const current = await getHubSpotDealValues(hubspotUser, hubspotDealId, linked);
   const plans = planWrites({
     mapping,
@@ -82,6 +99,28 @@ export async function pushDealMemoryToHubSpot(
       .filter((o) => o.handlingQuality === "non_traitee" || o.handlingQuality === "partiellement")
       .map((o) => o.objection),
   });
+  return { hubspotUser, hubspotDealId, dealId: fiche.dealId, plans, properties, noteHtml };
+}
+
+// Le setup admin : ce qu'un envoi de ce call écrirait avec un réglage à
+// l'essai. Rien n'est écrit.
+export async function simulateHubspotPush(
+  call: CallMeta,
+  organizationId: string,
+  override: { mapping: HubspotMapping; planned: string[] }
+): Promise<{ plans: PlannedWrite[]; noteHtml: string } | Extract<HubspotPushResult, { status: "skipped" }>> {
+  const prepared = await prepareHubspotPush(call, organizationId, [], override);
+  return "status" in prepared ? prepared : { plans: prepared.plans, noteHtml: prepared.noteHtml };
+}
+
+export async function pushDealMemoryToHubSpot(
+  call: CallWithAnalysis,
+  organizationId: string,
+  preferredUserIds: string[]
+): Promise<HubspotPushResult> {
+  const prepared = await prepareHubspotPush(call, organizationId, preferredUserIds);
+  if ("status" in prepared) return prepared;
+  const { hubspotUser, hubspotDealId, dealId, plans, properties, noteHtml } = prepared;
 
   await pushToHubSpotDeal(hubspotUser, hubspotDealId, { properties, noteHtml, uid: `brief-deal-memory-${call.id}` });
   const pushedAt = await markDealMemoryPushed(call.id);
@@ -89,7 +128,7 @@ export async function pushDealMemoryToHubSpot(
     plans.map((p) => ({
       organizationId,
       callId: call.id,
-      dealId: fiche.dealId,
+      dealId,
       hubspotDealId,
       field: p.key,
       property: p.property,
@@ -102,7 +141,7 @@ export async function pushDealMemoryToHubSpot(
 
   // Le deal vient de changer côté HubSpot : sa photo est relue.
   const snapshot = await getHubSpotDealSnapshot(hubspotUser, hubspotDealId).catch(() => null);
-  if (snapshot) await setDealHubspot(fiche.dealId, snapshot);
+  if (snapshot) await setDealHubspot(dealId, snapshot);
 
   return { status: "pushed", pushedAt, properties: Object.keys(properties), plans };
 }
