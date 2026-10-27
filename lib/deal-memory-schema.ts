@@ -181,6 +181,10 @@ export type QuoteSegment = { speaker: string | null; text: string };
 
 export type DealMemoryItem = {
   text: string;
+  // Engagements et prochaines étapes seulement (27/10/2026) : la date convenue
+  // pour cette action, AAAA-MM-JJ, ou null si aucune date n'a été fixée.
+  // Absent (undefined) des fiches générées avant : la date n'a pas été relevée.
+  date?: string | null;
   // Phrase exacte du transcript qui justifie l'élément, extraite par le code.
   verbatim: string | null;
   // Absent des fiches générées avant le 27/10/2026 : l'écran retombe alors

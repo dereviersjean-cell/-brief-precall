@@ -1,6 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { buildDealMemoryLines, formatDealHistory, shapeDealMemory } from "../lib/deal-memory";
+import { buildDealMemoryLines, cleanDate, formatDealHistory, shapeDealMemory } from "../lib/deal-memory";
 import type { TranscriptLine } from "../lib/objection-classifier";
 
 // Verrouille ce que la fiche deal a le droit d'affirmer : un élément sans
@@ -195,5 +195,15 @@ describe("formatDealHistory", () => {
       text,
       "Call du 12 octobre 2026 (Présentation Oliverlist)\n- Budget : 1 500 € par mois jugé élevé\n- Alerte « Décideur absent » : Le CEO n'était pas là"
     );
+  });
+});
+
+
+describe("cleanDate", () => {
+  test("garde une date réelle au format AAAA-MM-JJ, écarte le reste", () => {
+    assert.equal(cleanDate("2026-07-13"), "2026-07-13");
+    assert.equal(cleanDate("2026-11-31"), null);
+    assert.equal(cleanDate("lundi"), null);
+    assert.equal(cleanDate(null), null);
   });
 });

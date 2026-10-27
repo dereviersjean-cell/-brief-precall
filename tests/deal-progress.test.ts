@@ -67,3 +67,36 @@ describe("buildDealProgress", () => {
     assert.deepEqual(deals.map((d) => d.id), ["down", "stop", "ok"]);
   });
 });
+
+describe("prochaine étape et suivi", () => {
+  const withSteps = (items: { text: string; date?: string | null }[], alerts: ProgressFiche["alerts"] = []) =>
+    buildDealProgress([fiche({ fields: { prochaines_etapes: items.map((i) => ({ ...item(i.text), ...("date" in i ? { date: i.date } : {}) })) }, alerts })], NOW)[0];
+
+  test("à jour : la plus proche échéance à venir", () => {
+    const d = withSteps([{ text: "Démo", date: "2026-11-10" }, { text: "Envoi devis", date: "2026-11-03" }, { text: "Récap", date: null }]);
+    assert.deepEqual(d.nextStep, { date: "2026-11-03", text: "Envoi devis", status: "a_jour" });
+  });
+
+  test("en retard : toutes les dates sont passées", () => {
+    const d = withSteps([{ text: "RDV", date: "2026-10-20" }, { text: "Relance", date: "2026-10-01" }]);
+    assert.deepEqual(d.nextStep, { date: "2026-10-20", text: "RDV", status: "en_retard" });
+  });
+
+  test("sans suite : aucune date convenue ; non relevée : fiche d'avant le relevé des dates", () => {
+    assert.equal(withSteps([{ text: "On se rappelle", date: null }]).nextStep.status, "sans_suite");
+    assert.equal(withSteps([]).nextStep.status, "sans_suite");
+    assert.equal(withSteps([{ text: "RDV lundi" }]).nextStep.status, "non_relevee");
+    assert.equal(withSteps([{ text: "RDV lundi" }], [alert("prochaine_etape_non_datee")]).nextStep.status, "sans_suite");
+  });
+});
+
+describe("deal sans call depuis longtemps", () => {
+  test("date non relevée mais plus de 14 jours sans call : en retard, et la relance d'abord", () => {
+    const [d] = buildDealProgress(
+      [fiche({ callAt: daysAgo(40), fields: { prochaines_etapes: [item("RDV lundi")] }, alerts: [alert("decideur_absent")] })],
+      NOW
+    );
+    assert.equal(d.nextStep.status, "en_retard");
+    assert.match(d.topAction ?? "", /Relancer/);
+  });
+});

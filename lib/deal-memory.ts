@@ -47,6 +47,7 @@ ${DEAL_MEMORY_FIELDS.map((f) => `   - "${f.key}" : ${f.definition}.`).join("\n")
    - Chaque élément renvoie aux numéros de ligne du passage qui le justifie : "lines": [première, dernière]. Choisis le passage le plus court qui suffit, une ou deux lignes en général, 4 lignes consécutives au plus. Pas de passage, pas d'élément.
    - Rien n'a été dit sur un champ : liste vide. Ne déduis pas, ne complète pas avec ce qui serait probable. Une case vide est une information utile pour le manager ; une case remplie par supposition le trompe.
    - 4 éléments au plus par champ.
+   - Pour "prochaines_etapes" seulement, chaque élément porte aussi "date" : le jour convenu pour cette action au format AAAA-MM-JJ, calculé à partir de la date du call quand elle est relative (« lundi prochain », « dans quinze jours »), ou null si aucun jour n'a été fixé. « Début de semaine prochaine » ou « fin du mois » ne sont pas des jours : null.
 
 2. ALERTES — lève uniquement celles dont tu es certain, parmi :
 ${DEAL_ALERT_RULES.map((r) => `   - "${r.key}" : ${r.definition}${r.needsHistory ? " (seulement si un historique du deal est fourni)" : ""}.`).join("\n")}
@@ -56,7 +57,7 @@ ${DEAL_ALERT_RULES.map((r) => `   - "${r.key}" : ${r.definition}${r.needsHistory
 3. ENTREPRISE — "prospect_company" : le nom de l'entreprise du PROSPECT tel qu'il apparaît dans le call, ou null s'il n'est pas dit. Jamais l'entreprise du commercial, même si elle figure dans le titre du rendez-vous (« Antoine x Oliverlist » : Oliverlist est l'entreprise du commercial).
 
 Réponds UNIQUEMENT en JSON strict, sans markdown, avec exactement cette structure :
-{"prospect_company": "...", "fields": {"douleur": [{"text": "...", "lines": [12, 14]}], "impact": [], ...}, "alerts": [{"rule": "concurrent_evoque", "text": "...", "lines": [30, 31]}]}
+{"prospect_company": "...", "fields": {"douleur": [{"text": "...", "lines": [12, 14]}], "impact": [], "prochaines_etapes": [{"text": "...", "lines": [80, 81], "date": "2026-11-03"}], ...}, "alerts": [{"rule": "concurrent_evoque", "text": "...", "lines": [30, 31]}]}
 
 Tous les champs listés doivent figurer dans "fields", même vides.`;
 
@@ -66,6 +67,9 @@ export type DealMemoryInput = {
   speakerNames: Record<string, string>;
   commercialName: string | null;
   meetingTitle: string | null;
+  // Date du call (ISO) : sert à dater les engagements relatifs (« lundi
+  // prochain »).
+  callAt?: string | null;
   // Les calls précédents du même deal, du plus ancien au plus récent.
   history?: DealHistoryEntry[];
 };
@@ -160,6 +164,15 @@ function cleanText(raw: unknown): string | null {
 // n'a pas été dit. Les alertes qui comparent aux calls précédents sont
 // écartées quand le deal n'avait pas d'historique : elles ne peuvent alors
 // rien comparer.
+// Une date AAAA-MM-JJ qui existe vraiment, sinon null : le modèle peut
+// inventer un 31 novembre ou répondre « lundi ».
+export function cleanDate(raw: unknown): string | null {
+  if (typeof raw !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(raw.trim())) return null;
+  const value = raw.trim();
+  const d = new Date(`${value}T12:00:00Z`);
+  return Number.isFinite(d.getTime()) && d.toISOString().slice(0, 10) === value ? value : null;
+}
+
 export function shapeDealMemory(raw: unknown, lines: TranscriptLine[], options: { hasHistory?: boolean } = {}): DealMemoryContent {
   const root = (raw && typeof raw === "object" ? raw : {}) as { fields?: unknown; alerts?: unknown };
   const rawFields = (root.fields && typeof root.fields === "object" ? root.fields : {}) as Record<string, unknown>;
@@ -169,12 +182,18 @@ export function shapeDealMemory(raw: unknown, lines: TranscriptLine[], options: 
     if (!FIELD_KEYS.has(key) || !Array.isArray(value)) continue;
     const items: DealMemoryItem[] = [];
     for (const entry of value) {
-      const e = (entry && typeof entry === "object" ? entry : {}) as { text?: unknown; lines?: unknown };
+      const e = (entry && typeof entry === "object" ? entry : {}) as { text?: unknown; lines?: unknown; date?: unknown };
       const text = cleanText(e.text);
       if (!text) continue;
       const range = resolveRange(e.lines, lines);
       if (!range.verbatim) continue;
-      items.push({ text, verbatim: range.verbatim, quote: quoteSegments(range.startIndex, range.endIndex, lines), startMs: range.startMs });
+      items.push({
+        text,
+        verbatim: range.verbatim,
+        quote: quoteSegments(range.startIndex, range.endIndex, lines),
+        startMs: range.startMs,
+        ...(key === "prochaines_etapes" ? { date: cleanDate(e.date) } : {}),
+      });
       if (items.length >= MAX_ITEMS_PER_FIELD) break;
     }
     if (items.length > 0) fields[key as DealMemoryFieldKey] = items;
@@ -233,6 +252,7 @@ function buildUserPrompt(input: DealMemoryInput, lines: TranscriptLine[]): strin
   return [
     `Commercial : ${input.commercialName ?? "inconnu (déduis-le du transcript)"}`,
     `Titre du rendez-vous : ${input.meetingTitle ?? "inconnu"}`,
+    `Date du call : ${input.callAt ? new Date(input.callAt).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Paris" }) + ` (${input.callAt.slice(0, 10)})` : "inconnue"}`,
     "",
     ...(history.length > 0
       ? [`HISTORIQUE DU DEAL (${history.length} call${history.length > 1 ? "s" : ""} précédent${history.length > 1 ? "s" : ""}) :`, formatDealHistory(history), ""]

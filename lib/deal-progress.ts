@@ -8,6 +8,7 @@ import {
   type HubspotDealSnapshot,
 } from "./deal-memory-schema";
 import { QUALIFICATION_FIELDS, type QualificationKey } from "./deal-actions";
+import { REP_ACTIONS, sortByWeight } from "./deal-board";
 
 // Vue commercial « Mes deals » (demande de Jean du 27/10/2026) : l'évolution
 // de chaque deal call après call, et un verdict — en progrès, à l'arrêt, en
@@ -37,6 +38,12 @@ export type ProgressFiche = {
 
 export type DealVerdict = "progres" | "arret" | "recul";
 
+// « À jour » (accord de Jean du 27/10/2026) : une prochaine étape datée qui
+// n'est pas dépassée. en_retard = la date est passée sans nouveau call ;
+// sans_suite = aucune date convenue ; non_relevee = fiche antérieure au
+// relevé des dates (27/10/2026), qu'on ne regénère pas.
+export type NextStepStatus = "a_jour" | "en_retard" | "sans_suite" | "non_relevee";
+
 export type DealStep = {
   callId: string;
   callAt: string | null;
@@ -64,7 +71,27 @@ export type DealProgress = {
   nextSteps: DealMemoryItem[];
   // Les alertes du dernier call (libellés).
   alerts: string[];
+  // La prochaine étape convenue au dernier call et où elle en est.
+  nextStep: { date: string | null; text: string | null; status: NextStepStatus };
+  // Ce qu'il y a de plus utile à faire sur ce deal, pour le commercial.
+  topAction: string | null;
 };
+
+function nextStepOf(latest: ProgressFiche, today: string, idle: boolean): DealProgress["nextStep"] {
+  const items = latest.fields.prochaines_etapes ?? [];
+  if (items.length > 0 && items.every((i) => i.date === undefined)) {
+    const undated = latest.alerts.some((a) => a.rule === "prochaine_etape_non_datee");
+    // Date non relevée, mais plus de 14 jours sans call : la suite convenue
+    // est presque sûrement passée.
+    return { date: null, text: items[0].text, status: undated ? "sans_suite" : idle ? "en_retard" : "non_relevee" };
+  }
+  const dated = items.filter((i): i is typeof i & { date: string } => typeof i.date === "string");
+  if (dated.length === 0) return { date: null, text: items[0]?.text ?? null, status: "sans_suite" };
+  // La prochaine échéance : la plus proche à venir, sinon la dernière passée.
+  const upcoming = dated.filter((i) => i.date >= today).sort((a, b) => a.date.localeCompare(b.date));
+  const pick = upcoming[0] ?? [...dated].sort((a, b) => b.date.localeCompare(a.date))[0];
+  return { date: pick.date, text: pick.text, status: pick.date >= today ? "a_jour" : "en_retard" };
+}
 
 const COMPARISON_RULES = new Set(["objection_recurrente", "decideur_toujours_absent", "sentiment_en_baisse"]);
 const RULE_LABELS = new Map<string, string>(DEAL_ALERT_RULES.map((r) => [r.key, r.label]));
@@ -134,6 +161,13 @@ export function buildDealProgress(fiches: ProgressFiche[], now: number): DealPro
       toObtain: QUALIFICATION_FIELDS.filter((k) => !seen.has(k)).map((k) => FIELD_LABELS.get(k) ?? k),
       nextSteps: latest.fields.prochaines_etapes ?? [],
       alerts: latest.alerts.map((a) => RULE_LABELS.get(a.rule) ?? a.rule),
+      nextStep: nextStepOf(latest, new Date(now).toISOString().slice(0, 10), idle),
+      // Un deal sans call depuis 14 jours se relance d'abord ; sinon l'alerte
+      // la plus lourde du dernier call.
+      topAction: idle ? REP_ACTIONS.inactivite : (() => {
+        const top = sortByWeight(latest.alerts)[0];
+        return top ? REP_ACTIONS[top.rule] : null;
+      })(),
     });
   }
 

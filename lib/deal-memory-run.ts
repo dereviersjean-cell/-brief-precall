@@ -66,6 +66,7 @@ export async function runDealMemoryForCall(call: CallWithAnalysis, organizationI
     speakerNames: call.speaker_names_override,
     commercialName,
     meetingTitle: call.meeting_title,
+    callAt,
   };
 
   const knownIdentity = dealIdentityFor({
