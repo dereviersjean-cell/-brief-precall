@@ -2045,6 +2045,25 @@ export async function getOrganizationHubspotMapping(organizationId: string): Pro
   return ((data as { hubspot_field_mapping?: Record<string, string> | null } | null)?.hubspot_field_mapping ?? {}) as Record<string, string>;
 }
 
+// HubSpot mis à jour tout seul après chaque call (migration 035, allumé par
+// défaut). Fail-closed : colonne absente ou lecture en échec = rien n'est
+// écrit sans qu'on l'ait demandé.
+export async function isHubspotAutoPushEnabled(organizationId: string): Promise<boolean> {
+  try {
+    const { data, error } = await supabaseAdmin.from("organizations").select("hubspot_auto_push").eq("id", organizationId).maybeSingle();
+    if (error) throw error;
+    return (data as { hubspot_auto_push: boolean } | null)?.hubspot_auto_push ?? false;
+  } catch (err) {
+    console.error("[db] isHubspotAutoPushEnabled failed (fail-closed):", err instanceof Error ? err.message : String(err));
+    return false;
+  }
+}
+
+export async function setHubspotAutoPush(organizationId: string, enabled: boolean): Promise<void> {
+  const { error } = await supabaseAdmin.from("organizations").update({ hubspot_auto_push: enabled }).eq("id", organizationId);
+  if (error) throw error;
+}
+
 export async function setOrganizationHubspotMapping(organizationId: string, mapping: Record<string, string>): Promise<void> {
   const { error } = await supabaseAdmin.from("organizations").update({ hubspot_field_mapping: mapping }).eq("id", organizationId);
   if (error) throw error;

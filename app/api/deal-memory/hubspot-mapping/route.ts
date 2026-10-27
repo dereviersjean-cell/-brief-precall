@@ -6,6 +6,8 @@ import {
   getHubspotUserForOrganization,
   getOrganizationHubspotMapping,
   isDealMemoryEnabledForOrganization,
+  isHubspotAutoPushEnabled,
+  setHubspotAutoPush,
   setOrganizationHubspotMapping,
 } from "@/lib/db";
 import { listHubSpotDealTextProperties } from "@/lib/crm/hubspot-deals";
@@ -15,6 +17,8 @@ import { effectiveMapping } from "@/lib/deal-memory-hubspot";
 // Où chaque champ de la fiche s'écrit dans le HubSpot de l'organisation
 // (Deal Execution, étape 3). Réglé au setup avec le manager, modifiable
 // ensuite par lui : Brief s'adapte aux propriétés que le client utilise déjà.
+// Porte aussi l'interrupteur « mettre à jour HubSpot après chaque call »
+// (migration 035).
 
 async function guard() {
   const session = await getServerSession(authOptions);
@@ -30,11 +34,12 @@ export async function GET() {
   const g = await guard();
   if ("response" in g) return g.response;
   const hubspotUser = await getHubspotUserForOrganization(g.organizationId, [g.userId]);
-  const mapping = effectiveMapping(await getOrganizationHubspotMapping(g.organizationId));
-  if (!hubspotUser) return NextResponse.json({ connected: false, properties: [], mapping });
+  const [orgMapping, autoPush] = await Promise.all([getOrganizationHubspotMapping(g.organizationId), isHubspotAutoPushEnabled(g.organizationId)]);
+  const mapping = effectiveMapping(orgMapping);
+  if (!hubspotUser) return NextResponse.json({ connected: false, properties: [], mapping, autoPush });
   try {
     const properties = await listHubSpotDealTextProperties(hubspotUser);
-    return NextResponse.json({ connected: true, properties, mapping });
+    return NextResponse.json({ connected: true, properties, mapping, autoPush });
   } catch {
     return NextResponse.json({ error: "Lecture des propriétés HubSpot impossible." }, { status: 502 });
   }
@@ -43,7 +48,7 @@ export async function GET() {
 export async function PUT(request: Request) {
   const g = await guard();
   if ("response" in g) return g.response;
-  const body = (await request.json().catch(() => null)) as { mapping?: Record<string, unknown> } | null;
+  const body = (await request.json().catch(() => null)) as { mapping?: Record<string, unknown>; autoPush?: unknown } | null;
   const hubspotUser = await getHubspotUserForOrganization(g.organizationId, [g.userId]);
   if (!hubspotUser) return NextResponse.json({ error: "HubSpot n'est pas connecté." }, { status: 400 });
 
@@ -57,5 +62,6 @@ export async function PUT(request: Request) {
     else if (typeof value === "string" && known.has(value)) mapping[field.key] = value;
   }
   await setOrganizationHubspotMapping(g.organizationId, mapping);
-  return NextResponse.json({ mapping: effectiveMapping(mapping) });
+  if (typeof body?.autoPush === "boolean") await setHubspotAutoPush(g.organizationId, body.autoPush);
+  return NextResponse.json({ mapping: effectiveMapping(mapping), autoPush: await isHubspotAutoPushEnabled(g.organizationId) });
 }

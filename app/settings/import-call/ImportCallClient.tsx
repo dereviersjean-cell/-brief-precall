@@ -10,6 +10,7 @@ type Person = { id: string; label: string };
 
 type ImportResult = {
   callId: string;
+  dealMemoryQueued?: boolean;
   format: string;
   speakers: string[];
   globalScore: number | null;
@@ -262,6 +263,7 @@ export default function ImportCallClient({
               {result.objectionsCount > 1 ? "s" : ""} et rangée{result.objectionsCount > 1 ? "s" : ""} dans vos
               catégories
             </li>
+            {result.dealMemoryQueued && <li>Fiche deal en cours de génération (environ une minute), puis mise à jour de HubSpot</li>}
           </ul>
 
           {result.warnings.length > 0 && (

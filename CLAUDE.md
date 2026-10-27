@@ -933,6 +933,14 @@ En une ligne : HubSpot only en V1 ; parcours de vente propre à chaque organisat
 - Le portail de test (lartisangroupe.com) n'a que 5 deals et aucun changement d'étape : la lecture a été vérifiée de bout en bout, mais les durées et taux n'y apparaîtront pas. Rendu vérifié sur un aperçu local non versionné (`app/apercu-deals`, historique fabriqué).
 - Reste à faire : test des alertes de comparaison sur un deal qui se dégrade.
 
+**Priorités recadrées par Jean le 27/10/2026** (après le schéma récapitulatif du doc pour Hubert), dans cet ordre : (1) HubSpot mis à jour automatiquement après chaque call ; (2) l'analyse du call centrée sur la fiche deal, actionnable, visible du commercial ; (3) une vue commercial « Mes deals » avec l'évolution de chaque deal (en progrès / à l'arrêt / en recul) ; (4) la vue manager complétée par l'activité de chaque commercial ; (5) une checklist tirée du deal dans le brief pré-call R2/R3. **Emails : « on verra plus tard »** (code en place, interrupteur éteint). **Parcours mesuré : Jean n'en voit pas l'intérêt** — proposé de ne garder que l'alerte « deal qui traîne », non tranché ; ne pas investir dessus.
+
+**HubSpot automatique après chaque call (point 1, feu vert du 27/10/2026 « on y va »), migration 035** :
+- `generateDealMemoryAfterCall` enchaîne fiche → **HubSpot** (étape `push-hubspot`) → emails. Un échec HubSpot est remonté (`deal-memory.hubspotAutoPush`) sans bloquer la suite. Même écriture que le bouton : **`lib/deal-memory-hubspot-push.ts`** (`pushDealMemoryToHubSpot`), partagé par la route du bouton, qui sert désormais à renvoyer (après une régénération par exemple). La régénération à la main ne renvoie pas toute seule.
+- **Interrupteur `organizations.hubspot_auto_push`** (allumé par défaut, fail-closed si la colonne manque), case « Mettre à jour HubSpot après chaque call » en tête de « Champs HubSpot ». Garde-fou voulu : chez Oliverlist, seule la connexion HubSpot de Jean existe (portail de test) ; si quelqu'un connectait le vrai HubSpot d'Oliverlist, Brief y écrirait aussitôt — on coupe ici.
+- **L'import de transcript déclenche aussi la fiche puis HubSpot** (même événement, `dealMemoryQueued` dans la réponse) : les extraits Claap suivent le chemin d'un call Recall. **Une fiche à la fois par organisation** (`concurrency` sur `event.data.organizationId`) : trois extraits importés coup sur coup se traitent dans l'ordre, chacun comparé au précédent.
+- Vérifié sur le portail de test : renvoi de la fiche Velbrun par la fonction partagée, une seule note sur le deal (remplacée), `hs_next_step` et `description` écrits.
+
 **État du code au 27/10/2026** : référence eslint **14 problèmes** (13 erreurs, 1 avertissement). **157 tests**.
 
 ## Devis — fonctionnalité abandonnée (décision de Jean, 31 août 2026)

@@ -31,7 +31,9 @@ import {
   getOrganizationIdsWithDealAlerts,
   getActiveManagersInOrganization,
   getDealMemoryOrganizationIds,
+  isHubspotAutoPushEnabled,
 } from "./db";
+import { pushDealMemoryToHubSpot } from "./deal-memory-hubspot-push";
 import { refreshDealPipelinesForOrganization } from "./deal-pipeline-refresh";
 import { runDealMemoryForCall } from "./deal-memory-run";
 import { sendDealAlertsForCall, sendDealMorningEmail } from "./deal-alerts";
@@ -662,16 +664,22 @@ export const sendMondayMorningDigests = inngest.createFunction(
 // ─── Deal Execution : fiche deal après chaque call, emails d'alerte ────────
 //
 // La fiche est générée hors du webhook Recall (30 à 60 s d'un appel Sonnet
-// sur le transcript complet, plus HubSpot) : le webhook envoie l'événement,
-// avec un id par call pour qu'un webhook rejoué ne génère pas deux fois.
-// Seulement pour les organisations où la fiche est ouverte (le webhook le
-// vérifie avant d'envoyer). Les emails ne partent que si `deal_alerts_enabled`
-// est allumé en plus (migration 033).
+// sur le transcript complet, plus HubSpot) : le webhook et l'import de
+// transcript envoient l'événement, avec un id par call pour qu'un webhook
+// rejoué ne génère pas deux fois. Seulement pour les organisations où la
+// fiche est ouverte (l'émetteur le vérifie avant d'envoyer).
+// Puis, dans l'ordre : HubSpot mis à jour (si `hubspot_auto_push`, migration
+// 035, demande de Jean du 27/10/2026), puis les emails (si
+// `deal_alerts_enabled`, migration 033).
+// Une fiche à la fois par organisation : la fiche d'un call compare avec
+// celle du call précédent du même deal, qui doit donc être finie avant —
+// trois extraits importés coup sur coup se traitent dans l'ordre.
 export const generateDealMemoryAfterCall = inngest.createFunction(
   {
     id: "deal-memory-after-call",
     triggers: [{ event: "deal-memory/call.analyzed" }],
     retries: 2,
+    concurrency: { limit: 1, key: "event.data.organizationId" },
   },
   async ({ event, step }) => {
     const { callId, userId, organizationId } = event.data as { callId: string; userId: string; organizationId: string };
@@ -684,8 +692,22 @@ export const generateDealMemoryAfterCall = inngest.createFunction(
     });
     if (!generated) return { generated: false, emails: 0 };
 
+    // Un échec HubSpot n'empêche ni la fiche (déjà enregistrée) ni les emails.
+    const hubspot = await step.run("push-hubspot", async () => {
+      if (!(await isHubspotAutoPushEnabled(organizationId))) return "disabled";
+      try {
+        const call = await getCallWithAnalysis(callId, userId);
+        if (!call) return "no-call";
+        const result = await pushDealMemoryToHubSpot(call, organizationId, [userId]);
+        return result.status === "pushed" ? "pushed" : result.reason;
+      } catch (err) {
+        reportError("deal-memory.hubspotAutoPush", err, { callId });
+        return "failed";
+      }
+    });
+
     const enabled = await step.run("deal-alerts-enabled", () => isDealAlertsEnabledForOrganization(organizationId));
-    if (!enabled) return { generated: true, emails: 0 };
+    if (!enabled) return { generated: true, hubspot, emails: 0 };
 
     // Construits d'abord, envoyés un par un : un envoi qui échoue et se
     // rejoue ne renvoie pas les emails déjà partis.
@@ -703,7 +725,7 @@ export const generateDealMemoryAfterCall = inngest.createFunction(
       });
       if (ok) sent++;
     }
-    return { generated: true, emails: sent };
+    return { generated: true, hubspot, emails: sent };
   }
 );
 

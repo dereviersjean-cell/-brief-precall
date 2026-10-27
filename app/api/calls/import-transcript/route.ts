@@ -3,13 +3,14 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { requireActiveUserContext } from "@/lib/api-auth";
 import { enforceAiGenerationLimit, requestIp, retryAfterMinutes } from "@/lib/rate-limit";
-import { getCommercialsForManager, getUserProfile, getUserName, getPlaybookSnapshotForUser, getMeetingStageConfigForOrganization, createCall, saveCallAnalysis, updateCallAnalysisKeyPoints, saveCallAnalytics } from "@/lib/db";
+import { getCommercialsForManager, getUserProfile, getUserName, getPlaybookSnapshotForUser, getMeetingStageConfigForOrganization, createCall, saveCallAnalysis, updateCallAnalysisKeyPoints, saveCallAnalytics, isDealMemoryEnabledForOrganization } from "@/lib/db";
 import { analyzeCall } from "@/lib/call-analysis";
 import { indexCallObjections } from "@/lib/objections";
 import { generateKeyPoints } from "@/lib/key-points";
 import { computeCallInteractionMetrics } from "@/lib/call-analytics";
 import { detectMeetingStage, MEETING_STAGE_LABELS } from "@/lib/meeting-stage";
 import { parseTranscript } from "@/lib/transcript-import";
+import { inngest } from "@/lib/inngest";
 
 // Banc d'essai : rejoue le pipeline complet d'analyse (scores playbook,
 // extraction des objections, classification + évaluation, points clés,
@@ -255,8 +256,22 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Fiche deal puis HubSpot, comme après un call enregistré par Recall
+  // (bot-webhook, Step 7) : les extraits Claap importés suivent le même chemin.
+  let dealMemoryQueued = false;
+  try {
+    if (await isDealMemoryEnabledForOrganization(organizationId)) {
+      await inngest.send({ id: `deal-memory-${call.id}`, name: "deal-memory/call.analyzed", data: { callId: call.id, userId: targetUserId, organizationId } });
+      dealMemoryQueued = true;
+    }
+  } catch (err) {
+    console.warn("[import-transcript] deal memory event failed:", err instanceof Error ? err.message : String(err));
+    warnings.push("La fiche deal n'a pas pu être lancée : générez-la depuis le détail du call.");
+  }
+
   return NextResponse.json({
     callId: call.id,
+    dealMemoryQueued,
     format: parsed.format,
     speakers: Object.keys(parsed.speakerNames),
     globalScore,

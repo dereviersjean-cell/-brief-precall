@@ -202,6 +202,7 @@ type MappingState = {
   connected: boolean;
   properties: { name: string; label: string }[];
   mapping: Partial<Record<DealMemoryFieldKey, string>>;
+  autoPush: boolean;
 };
 
 // Où chaque champ de la fiche s'écrit dans HubSpot. Réglé au setup avec le
@@ -210,6 +211,7 @@ function HubspotMapping() {
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<MappingState | null>(null);
   const [draft, setDraft] = useState<Partial<Record<DealMemoryFieldKey, string>>>({});
+  const [autoPush, setAutoPush] = useState(true);
   const [status, setStatus] = useState<"idle" | "loading" | "saving" | "saved" | "error">("idle");
 
   useEffect(() => {
@@ -221,6 +223,7 @@ function HubspotMapping() {
         if (cancelled) return;
         setState(data);
         setDraft(data.mapping);
+        setAutoPush(data.autoPush);
       })
       .catch(() => !cancelled && setStatus("error"));
     return () => {
@@ -234,7 +237,7 @@ function HubspotMapping() {
     const res = await fetch("/api/deal-memory/hubspot-mapping", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mapping }),
+      body: JSON.stringify({ mapping, autoPush }),
     }).catch(() => null);
     setStatus(res?.ok ? "saved" : "error");
   }
@@ -252,6 +255,22 @@ function HubspotMapping() {
       )}
       {open && state?.connected && (
         <div className="mt-4 space-y-2.5">
+          <label className="mb-3 flex items-start gap-2.5 rounded-xl bg-slate-50 px-3 py-2.5">
+            <input
+              type="checkbox"
+              checked={autoPush}
+              onChange={(e) => {
+                setAutoPush(e.target.checked);
+                setStatus("idle");
+              }}
+              className="mt-0.5 h-4 w-4 shrink-0"
+            />
+            <span className="text-[13px] text-slate-700">
+              <span className="font-medium text-slate-900">Mettre à jour HubSpot après chaque call.</span> Les champs ci-dessous et
+              une note de synthèse sont écrits dans le deal dès que la fiche est prête. Seul ce que le call a dit est écrit :
+              rien de ce que le commercial a saisi n&apos;est effacé.
+            </span>
+          </label>
           {DEAL_MEMORY_FIELDS.map((field) => (
             <label key={field.key} className="grid grid-cols-1 items-center gap-1 sm:grid-cols-[220px_minmax(0,1fr)] sm:gap-3">
               <span className="text-[13px] text-slate-700">{field.label}</span>
@@ -376,7 +395,7 @@ export default function DealMemoryBlock({ callId, panel }: { callId: string; pan
       </div>
 
       {pushedAt && pushStatus !== "error" && (
-        <p className="text-[12.5px] text-slate-500">Envoyée dans HubSpot le {formatDate(pushedAt)} : champs de qualification et note de synthèse.</p>
+        <p className="text-[12.5px] text-slate-500">HubSpot mis à jour le {formatDate(pushedAt)} : champs de qualification et note de synthèse.</p>
       )}
       {pushStatus === "error" && pushError && <p className="text-[13px] text-rose-700">{pushError}</p>}
 
