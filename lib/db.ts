@@ -9,6 +9,7 @@ import { resolveAccessLevel, resolveEnabledModules, type AccessLevel, type Modul
 import type { DealHistoryEntry, DealMemoryContent, DealOverview, HubspotDealSnapshot, StoredDealMemory } from "./deal-memory-schema";
 import type { DealIdentity } from "./deal-grouping";
 import type { BoardFicheRow, BoardReview } from "./deal-board";
+import type { PipelineStats } from "./deal-pipeline-stats";
 
 export async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 500): Promise<T> {
   let lastError: unknown;
@@ -2176,6 +2177,50 @@ export async function getDealCard(dealId: string): Promise<{ name: string; hubsp
   if (error) throw error;
   const row = data as { name: string; hubspot_snapshot: HubspotDealSnapshot | null } | null;
   return row ? { name: row.name, hubspot: row.hubspot_snapshot } : null;
+}
+
+// ─── Parcours mesuré sur HubSpot (Deal Execution, étape 6, migration 034) ────
+
+// Les statistiques du parcours, recalculées chaque matin. Absentes (migration
+// pas passée, jamais calculées) : la vue se passe des durées et des taux.
+export async function getOrganizationPipelineStats(organizationId: string): Promise<PipelineStats[] | null> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("organizations")
+      .select("hubspot_pipeline_stats")
+      .eq("id", organizationId)
+      .maybeSingle();
+    if (error) throw error;
+    return (data as { hubspot_pipeline_stats: PipelineStats[] | null } | null)?.hubspot_pipeline_stats ?? null;
+  } catch (err) {
+    console.error("[db] getOrganizationPipelineStats failed:", err instanceof Error ? err.message : String(err));
+    return null;
+  }
+}
+
+export async function saveOrganizationPipelineStats(organizationId: string, stats: PipelineStats[]): Promise<void> {
+  const { error } = await supabaseAdmin.from("organizations").update({ hubspot_pipeline_stats: stats }).eq("id", organizationId);
+  if (error) throw error;
+}
+
+export async function getDealMemoryOrganizationIds(): Promise<string[]> {
+  const { data, error } = await supabaseAdmin.from("organizations").select("id").eq("deal_memory_enabled", true);
+  if (error) throw error;
+  return ((data ?? []) as { id: string }[]).map((o) => o.id);
+}
+
+// Les deals Brief rattachés à un deal HubSpot encore ouvert : leur photo est
+// relue chaque matin, l'étape bougeant dans HubSpot sans nouveau call.
+export async function getOpenHubspotDeals(organizationId: string): Promise<{ id: string; hubspotDealId: string }[]> {
+  const { data, error } = await supabaseAdmin
+    .from("deals")
+    .select("id, hubspot_deal_id, hubspot_snapshot")
+    .eq("organization_id", organizationId)
+    .not("hubspot_deal_id", "is", null);
+  if (error) throw error;
+  return ((data ?? []) as { id: string; hubspot_deal_id: string; hubspot_snapshot: HubspotDealSnapshot | null }[])
+    .filter((d) => !d.hubspot_snapshot?.closed)
+    .map((d) => ({ id: d.id, hubspotDealId: d.hubspot_deal_id }));
 }
 
 export async function getDealOrganizationId(dealId: string): Promise<string | null> {

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { alertLabel, type BoardDeal, type StageColumn, type TeamRow } from "@/lib/deal-board";
+import { alertLabel, formatDays, type BoardDeal, type StageColumn, type TeamRow } from "@/lib/deal-board";
 
 // Vue manager (Deal Execution, étape 4) : A = la file des deals où
 // intervenir, C = le bandeau des étapes au-dessus (un clic filtre la file),
@@ -166,27 +166,41 @@ function StageBanner({
   onSelect: (key: string | null) => void;
 }) {
   if (stages.length === 0) return null;
+  const measured = stages.some((s) => s.medianDays !== null || s.passRate !== null);
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-      {stages.map((s, i) => {
-        const selected = active === s.key;
-        return (
-          <button
-            key={s.key}
-            onClick={() => onSelect(selected ? null : s.key)}
-            className={`min-w-[150px] shrink-0 rounded-xl border px-3 py-2.5 text-left transition-colors ${
-              selected ? "border-[color:var(--violet)] bg-white" : "border-border bg-white/70 hover:bg-white"
-            }`}
-          >
-            <p className="text-[11.5px] text-slate-500">{s.index ? `Étape ${s.index}` : i === stages.length - 1 ? "Hors pipeline" : ""}</p>
-            <p className="text-[13px] font-semibold text-slate-900">{s.label}</p>
-            <p className="mt-1 text-[12.5px] text-slate-600">
-              {s.count} deal{s.count > 1 ? "s" : ""}
-              {s.atRisk > 0 ? <span className="text-amber-700"> · {s.atRisk} à risque</span> : null}
-            </p>
-          </button>
-        );
-      })}
+    <div>
+      <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+        {stages.map((s, i) => {
+          const selected = active === s.key;
+          return (
+            <button
+              key={s.key}
+              onClick={() => onSelect(selected ? null : s.key)}
+              className={`min-w-[150px] shrink-0 rounded-xl border px-3 py-2.5 text-left transition-colors ${
+                selected ? "border-[color:var(--violet)] bg-white" : "border-border bg-white/70 hover:bg-white"
+              }`}
+            >
+              <p className="text-[11.5px] text-slate-500">{s.index ? `Étape ${s.index}` : i === stages.length - 1 ? "Hors pipeline" : ""}</p>
+              <p className="text-[13px] font-semibold text-slate-900">{s.label}</p>
+              <p className="mt-1 text-[12.5px] text-slate-600">
+                {s.count} deal{s.count > 1 ? "s" : ""}
+                {s.atRisk > 0 ? <span className="text-amber-700"> · {s.atRisk} à risque</span> : null}
+              </p>
+              {s.medianDays !== null || s.passRate !== null ? (
+                <p className="mt-1.5 border-t border-border pt-1.5 text-[11.5px] leading-snug text-slate-500">
+                  {s.medianDays !== null ? <span className="block">{formatDays(s.medianDays)} d&apos;habitude</span> : null}
+                  {s.passRate !== null ? <span className="block">{Math.round(s.passRate * 100)} % passent à la suite</span> : null}
+                </p>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+      {measured ? (
+        <p className="mt-1.5 text-[11.5px] text-slate-500">
+          Durées (médianes) et taux de passage mesurés chaque matin sur l&apos;historique des deals HubSpot créés depuis un an.
+        </p>
+      ) : null}
     </div>
   );
 }

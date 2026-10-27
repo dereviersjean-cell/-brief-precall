@@ -228,6 +228,12 @@ export type HubspotDealSnapshot = {
   closeDate: string | null;
   nextStep: string | null;
   url: string | null;
+  // Étape 6 (27/10/2026) : de quoi situer le deal dans les statistiques du
+  // pipeline (lib/deal-pipeline-stats.ts). Absents des photos antérieures.
+  pipelineId?: string | null;
+  stageId?: string | null;
+  // Entrée dans l'étape actuelle, d'après l'historique HubSpot.
+  stageEnteredAt?: string | null;
 };
 
 // Le deal tel que l'écran d'un call le montre.

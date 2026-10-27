@@ -883,7 +883,7 @@ Demande de Jean : sortir le playbook, les objections et les références des ong
 - **Crédits Pappers** : l'API répond `401 « plus assez de crédits »`, donc **tous** les briefs se génèrent sans données légales officielles alors que « données légales FR » est dans le positionnement. Depuis le 03/09 l'échec est au moins remonté (`reportWarning`) au lieu d'être avalé. Payer ou retirer la promesse — décision business (point 13 de la roadmap).
 - **Win/loss : `deal_outcomes` est vide et ses deux sources sont taries** (devis abandonnés, cron CRM qui n'a jamais rien écrit malgré HubSpot connecté depuis juillet). Insights a été reconstruit sans elle le 04/09. Reste à trancher : faire marcher la remontée CRM des affaires gagnées/perdues, ou renoncer au win/loss et retirer la table. En l'état c'est une promesse produit sans donnée derrière.
 
-## Deal Execution — étapes 1 à 5 en test (26-27 octobre 2026)
+## Deal Execution — étapes 1 à 6 en test (26-27 octobre 2026)
 
 Jean et Hubert font évoluer Brief de « meeting assistant » vers un copilote de deals branché sur HubSpot (deck « From meeting assistant to Deal Execution System », oct. 2026). Tout le dossier est dans **`docs/deal-execution/`** : `README.md` (décisions, réponses de Hubert et de Jean aux 17 questions, champs de la mémoire d'un deal, matière de test, comment reprendre), plus les deux pages de travail en HTML.
 
@@ -924,9 +924,16 @@ En une ligne : HubSpot only en V1 ; parcours de vente propre à chaque organisat
 - **Manager, chaque jour ouvré à 8 h** (`sendDealMorningEmails`, cron Paris) : sa file de `/deals` telle quelle (`morningQueue` : sans les deals vus ou remis à plus tard, seulement ceux qui ont une alerte, 5 au plus + « et N autres »). **File vide = pas d'email.**
 - Construction et envoi séparés (`lib/deal-alerts.ts` : `send: false` construit sans envoyer) ; chaque email est une étape Inngest, un envoi rejoué ne renvoie pas ceux déjà partis. Modèles dans `lib/email.ts` (`buildDealAlertEmail`, `buildDealMorningEmail`, palette des notifications).
 - **Aperçu sur les vraies fiches** : `scripts/preview-deal-emails.ts --org=<id> [--call=<id>] [--send-to=<adresse>]` écrit chaque email en HTML (dossier temporaire) avec son vrai destinataire, et avec `--send-to` les envoie tous à cette seule adresse.
-- Reste à faire : durée par étape et taux de passage (historique des étapes HubSpot), test des alertes de comparaison sur un deal qui se dégrade.
 
-**État du code au 27/10/2026** : référence eslint **14 problèmes** (13 erreurs, 1 avertissement). **145 tests**.
+**Étape 6 — le parcours mesuré sur HubSpot (feu vert du 27/10/2026, « Continue »), migration 034** :
+- **Cron `refresh-deal-pipelines`, chaque jour à 7 h (Paris)**, avant l'email de 8 h, pour les organisations où la fiche est ouverte (`lib/deal-pipeline-refresh.ts`, lecture seule) : (1) parcours de chaque pipeline mesuré sur l'historique `dealstage` des deals créés depuis un an (recherche puis `batch/read` avec `propertiesWithHistory`, 2 000 deals au plus), enregistré dans `organizations.hubspot_pipeline_stats` ; (2) photo des deals suivis encore ouverts relue — **l'étape bougeait dans HubSpot sans que Brief le voie tant qu'aucun nouveau call n'arrivait.** À la main : `scripts/refresh-deal-pipelines.ts --org=<id> [--apply]` (simulation par défaut : affiche le parcours).
+- **Calcul pur et testé dans `lib/deal-pipeline-stats.ts`**, par étape ouverte : durée = **médiane** des passages terminés (pas la moyenne : un deal oublié six mois la fausserait) ; taux de passage = parmi les deals **tranchés** à l'étape (qui l'ont quittée), ceux qui sont allés plus loin — un deal encore dans l'étape ne compte pas ; étape sautée = passée ; gagné = au-delà de toutes les étapes ouvertes ; perdu n'avance pas. **Un deal ne compte qu'à partir de son étape d'entrée** (créé directement à l'étape 4, il ne dit rien des étapes 1 à 3). Rien n'est affiché sous `MIN_SAMPLES` (5) passages ou deals tranchés.
+- **Nouvelle règle « Étape plus longue que d'habitude »** (`etape_longue`, reco 10 validée par Hubert) : deal ouvert dans son étape depuis plus de `SLOW_STAGE_FACTOR` (1,5) fois la médiane. Calculée à la lecture comme l'inactivité, poids 2, hors « point à travailler » de l'onglet Équipe. La photo HubSpot porte désormais `pipelineId`, `stageId` et `stageEnteredAt` (entrée dans l'étape actuelle, d'après l'historique) ; les photos antérieures n'en ont pas et ne déclenchent rien jusqu'au prochain rafraîchissement.
+- **Bandeau des étapes** : quand le parcours est mesuré, toutes les étapes ouvertes du pipeline y figurent (même sans deal suivi), avec durée habituelle et part qui passe à la suite.
+- Le portail de test (lartisangroupe.com) n'a que 5 deals et aucun changement d'étape : la lecture a été vérifiée de bout en bout, mais les durées et taux n'y apparaîtront pas. Rendu vérifié sur un aperçu local non versionné (`app/apercu-deals`, historique fabriqué).
+- Reste à faire : test des alertes de comparaison sur un deal qui se dégrade.
+
+**État du code au 27/10/2026** : référence eslint **14 problèmes** (13 erreurs, 1 avertissement). **157 tests**.
 
 ## Devis — fonctionnalité abandonnée (décision de Jean, 31 août 2026)
 

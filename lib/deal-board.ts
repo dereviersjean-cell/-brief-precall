@@ -5,6 +5,7 @@ import {
   type DealMemoryAlert,
   type HubspotDealSnapshot,
 } from "./deal-memory-schema";
+import { slowStage, type PipelineStats } from "./deal-pipeline-stats";
 
 // Deal Execution, étape 4 (27/10/2026) : la vue manager. Sans dépendance
 // (réseau, base) pour être testée ; lib/db.ts lui fournit les lignes.
@@ -18,7 +19,12 @@ import {
 // Ce que le manager peut faire, par alerte. Le manager ne « reprend » jamais
 // le deal (réponse de Hubert du 26/10) : chaque proposition passe par le
 // commercial, qui reste propriétaire.
-export const INTERVENTIONS: Record<DealAlertRuleKey | "inactivite", string> = {
+// Les règles lues dans les données du deal plutôt que dans un call :
+// l'inactivité (date du dernier call) et l'étape qui dure plus que d'habitude
+// (historique HubSpot, étape 6).
+export type BoardRuleKey = DealAlertRuleKey | "inactivite" | "etape_longue";
+
+export const INTERVENTIONS: Record<BoardRuleKey, string> = {
   concurrent_evoque: "Voir avec le commercial comment se positionner face à cette alternative, et ce qui nous distingue pour ce prospect.",
   objection_cachee: "Faire réécouter le passage au commercial et préparer la question qui fera sortir la réserve au prochain échange.",
   preuve_sociale: "Fournir au commercial un cas client du même secteur ou une mise en relation avec un client.",
@@ -29,12 +35,13 @@ export const INTERVENTIONS: Record<DealAlertRuleKey | "inactivite", string> = {
   decideur_toujours_absent: "Proposer de rejoindre le prochain call, ou obtenir la présence du décideur avant d'aller plus loin.",
   sentiment_en_baisse: "Faire le point avec le commercial sur ce qui a changé depuis le call précédent, avant la prochaine relance.",
   inactivite: "Relancer le prospect avec le commercial : aucun échange depuis plus de deux semaines.",
+  etape_longue: "Voir avec le commercial ce qui retient le deal à cette étape, et ce qu'il faut obtenir du prospect pour passer à la suivante.",
 };
 
 // La même chose côté commercial, pour l'email qu'il reçoit après son call
 // (décision du 26/10/2026 : il reçoit les alertes de ses deals en même temps
 // que son manager). Mêmes règles, à la deuxième personne.
-export const REP_ACTIONS: Record<DealAlertRuleKey | "inactivite", string> = {
+export const REP_ACTIONS: Record<BoardRuleKey, string> = {
   concurrent_evoque: "Préparer ce qui vous distingue de cette alternative pour ce prospect, et l'aborder au prochain échange.",
   objection_cachee: "Réécouter le passage et préparer la question qui fera sortir la réserve au prochain échange.",
   preuve_sociale: "Envoyer un cas client du même secteur, ou proposer une mise en relation avec un client.",
@@ -45,23 +52,27 @@ export const REP_ACTIONS: Record<DealAlertRuleKey | "inactivite", string> = {
   decideur_toujours_absent: "Obtenir la présence du décideur avant d'aller plus loin.",
   sentiment_en_baisse: "Comprendre ce qui a changé depuis le call précédent, avant la prochaine relance.",
   inactivite: "Relancer le prospect : aucun échange depuis plus de deux semaines.",
+  etape_longue: "Identifier ce qui retient le deal à cette étape, et le demander au prospect au prochain échange.",
 };
 
 // Poids d'une alerte dans le classement : ce qui compare plusieurs calls ou
 // touche au décideur pèse plus qu'un signal d'un seul call.
-const WEIGHTS: Partial<Record<DealAlertRuleKey | "inactivite", number>> = {
+const WEIGHTS: Partial<Record<BoardRuleKey, number>> = {
   decideur_toujours_absent: 3,
   sentiment_en_baisse: 3,
   objection_recurrente: 3,
   decideur_absent: 2,
   prochaine_etape_non_datee: 2,
   inactivite: 2,
+  etape_longue: 2,
 };
 
 const RULE_LABELS = new Map<string, string>(DEAL_ALERT_RULES.map((r) => [r.key, r.label]));
 
-export function alertLabel(rule: DealAlertRuleKey | "inactivite"): string {
-  return rule === "inactivite" ? "Aucune activité" : RULE_LABELS.get(rule) ?? rule;
+export function alertLabel(rule: BoardRuleKey): string {
+  if (rule === "inactivite") return "Aucune activité";
+  if (rule === "etape_longue") return "Étape plus longue que d'habitude";
+  return RULE_LABELS.get(rule) ?? rule;
 }
 
 // Une fiche de call telle que la base la rend, avec son deal.
@@ -79,7 +90,7 @@ export type BoardFicheRow = {
 
 export type BoardReview = { dealId: string; status: "seen" | "later"; reviewedAt: string };
 
-export type BoardAlert = { rule: DealAlertRuleKey | "inactivite"; text: string; verbatim: string | null; speaker: string | null };
+export type BoardAlert = { rule: BoardRuleKey; text: string; verbatim: string | null; speaker: string | null };
 
 export type BoardDeal = {
   id: string;
@@ -96,9 +107,24 @@ export type BoardDeal = {
   hiddenBecause: "seen" | "later" | null;
 };
 
-export type StageColumn = { key: string; label: string; index: number | null; count: number; atRisk: number };
+export type StageColumn = {
+  key: string;
+  label: string;
+  index: number | null;
+  count: number;
+  atRisk: number;
+  // Mesurés sur l'historique HubSpot (étape 6), null sans assez de deals.
+  medianDays: number | null;
+  passRate: number | null;
+};
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Une règle lue dans les données du deal, pas dans un call : elle ne dit rien
+// de la méthode du commercial, et passe après un signal du call à poids égal.
+function isDerived(rule: BoardRuleKey): rule is "inactivite" | "etape_longue" {
+  return rule === "inactivite" || rule === "etape_longue";
+}
 
 // Les alertes d'une fiche telles que la file et les emails les montrent : une
 // phrase citée, et qui la dit.
@@ -113,8 +139,9 @@ export function toBoardAlerts(alerts: DealMemoryAlert[]): BoardAlert[] {
 
 // Les deals d'après leurs fiches : chaque deal prend les alertes de sa fiche
 // la plus récente (l'état actuel), plus l'inactivité calculée sur son dernier
-// call. `now` est passé pour que le calcul soit testable.
-export function buildBoard(rows: BoardFicheRow[], reviews: BoardReview[], now: number): BoardDeal[] {
+// call et, quand le parcours est mesuré, l'étape HubSpot qui dure plus que
+// d'habitude. `now` est passé pour que le calcul soit testable.
+export function buildBoard(rows: BoardFicheRow[], reviews: BoardReview[], now: number, pipelineStats?: PipelineStats[] | null): BoardDeal[] {
   const byDeal = new Map<string, BoardFicheRow[]>();
   for (const row of rows) {
     const list = byDeal.get(row.dealId) ?? [];
@@ -133,11 +160,20 @@ export function buildBoard(rows: BoardFicheRow[], reviews: BoardReview[], now: n
     if (idleDays !== null && idleDays >= INACTIVITY_DAYS) {
       alerts.unshift({ rule: "inactivite", text: `Aucun call depuis ${idleDays} jours.`, verbatim: null, speaker: null });
     }
+    const slow = latest.hubspot ? slowStage(pipelineStats, latest.hubspot, now) : null;
+    if (slow) {
+      alerts.unshift({
+        rule: "etape_longue",
+        text: `Dans « ${slow.label} » depuis ${slow.days} jours ; un deal y reste ${formatDays(slow.medianDays)} d'habitude (médiane sur ${slow.samples} passages).`,
+        verbatim: null,
+        speaker: null,
+      });
+    }
     const risk = alerts.reduce((sum, a) => sum + (WEIGHTS[a.rule] ?? 1), 0);
     // L'intervention suit l'alerte la plus lourde ; à poids égal, un signal
-    // tiré du call passe avant l'inactivité, qui ne dit rien du deal lui-même.
+    // tiré du call passe avant les règles lues dans les données du deal.
     const top = [...alerts].sort(
-      (a, b) => (WEIGHTS[b.rule] ?? 1) - (WEIGHTS[a.rule] ?? 1) || Number(a.rule === "inactivite") - Number(b.rule === "inactivite")
+      (a, b) => (WEIGHTS[b.rule] ?? 1) - (WEIGHTS[a.rule] ?? 1) || Number(isDerived(a.rule)) - Number(isDerived(b.rule))
     )[0];
 
     // « Vu » vaut jusqu'à la prochaine fiche du deal, « Plus tard » 24 h.
@@ -173,14 +209,32 @@ export function buildBoard(rows: BoardFicheRow[], reviews: BoardReview[], now: n
 
 // La même chose à l'instant présent, pour les pages : l'heure est lue ici,
 // hors du rendu.
-export function buildBoardNow(rows: BoardFicheRow[], reviews: BoardReview[]): BoardDeal[] {
-  return buildBoard(rows, reviews, Date.now());
+export function buildBoardNow(rows: BoardFicheRow[], reviews: BoardReview[], pipelineStats?: PipelineStats[] | null): BoardDeal[] {
+  return buildBoard(rows, reviews, Date.now(), pipelineStats);
+}
+
+export function formatDays(days: number): string {
+  const rounded = days < 10 ? Math.round(days * 10) / 10 : Math.round(days);
+  return `${String(rounded).replace(".", ",")} jour${rounded >= 2 ? "s" : ""}`;
 }
 
 // Le bandeau des étapes, dans l'ordre du pipeline HubSpot ; les deals sans
-// deal HubSpot rattaché à part.
-export function buildStages(deals: BoardDeal[]): StageColumn[] {
+// deal HubSpot rattaché à part. Quand le parcours est mesuré, toutes les
+// étapes ouvertes du pipeline y figurent, même sans deal suivi : c'est le
+// parcours entier qu'on lit, avec sa durée habituelle et son taux de passage.
+export function buildStages(deals: BoardDeal[], pipelineStats?: PipelineStats[] | null): StageColumn[] {
   const columns = new Map<string, StageColumn>();
+  const used = (pipelineStats ?? []).filter((p) =>
+    deals.some((d) => d.hubspot && (d.hubspot.pipelineId ? d.hubspot.pipelineId === p.pipelineId : d.hubspot.pipeline === p.pipelineLabel))
+  );
+  for (const pipeline of used) {
+    for (const s of pipeline.stages) {
+      const column = columns.get(s.label);
+      // Deux pipelines qui partagent un libellé : on garde la première mesure.
+      if (column) continue;
+      columns.set(s.label, { key: s.label, label: s.label, index: s.order + 1, count: 0, atRisk: 0, medianDays: s.medianDays, passRate: s.passRate });
+    }
+  }
   for (const d of deals) {
     const key = d.hubspot?.stage ?? "hors-hubspot";
     const column = columns.get(key) ?? {
@@ -189,6 +243,8 @@ export function buildStages(deals: BoardDeal[]): StageColumn[] {
       index: d.hubspot?.stageIndex ?? null,
       count: 0,
       atRisk: 0,
+      medianDays: null,
+      passRate: null,
     };
     column.count += 1;
     if (d.alerts.length > 0) column.atRisk += 1;
@@ -211,12 +267,12 @@ export type TeamRow = {
 export function buildTeam(deals: BoardDeal[], userIds: string[]): TeamRow[] {
   return userIds.map((userId) => {
     const own = deals.filter((d) => d.ownerId === userId);
-    // L'inactivité n'est pas un point de méthode du commercial : elle reste
-    // dans la file, pas dans son point à travailler.
+    // L'inactivité et l'étape qui dure ne sont pas des points de méthode du
+    // commercial : elles restent dans la file, pas dans son point à travailler.
     const counts = new Map<DealAlertRuleKey, { count: number; calls: { id: string; label: string }[] }>();
     for (const d of own) {
       for (const a of d.alerts) {
-        if (a.rule === "inactivite") continue;
+        if (isDerived(a.rule)) continue;
         const entry = counts.get(a.rule) ?? { count: 0, calls: [] };
         entry.count += 1;
         entry.calls.push({ id: d.lastCall.id, label: d.lastCall.title ?? d.name });
@@ -244,12 +300,12 @@ export function buildTeam(deals: BoardDeal[], userIds: string[]): TeamRow[] {
 // Risque élevé = une alerte qui compare plusieurs calls (objection qui revient,
 // décideur toujours pas rencontré, prospect moins engagé) : le deal se dégrade
 // d'un call à l'autre, attendre le lendemain matin serait trop tard.
-export function isHighRisk(rules: (DealAlertRuleKey | "inactivite")[]): boolean {
+export function isHighRisk(rules: BoardRuleKey[]): boolean {
   return rules.some((rule) => (WEIGHTS[rule] ?? 1) >= 3);
 }
 
 // Les alertes dans l'ordre où les lire : les plus lourdes d'abord.
-export function sortByWeight<T extends { rule: DealAlertRuleKey | "inactivite" }>(alerts: T[]): T[] {
+export function sortByWeight<T extends { rule: BoardRuleKey }>(alerts: T[]): T[] {
   return [...alerts].sort((a, b) => (WEIGHTS[b.rule] ?? 1) - (WEIGHTS[a.rule] ?? 1));
 }
 

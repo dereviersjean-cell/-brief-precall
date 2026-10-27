@@ -1,5 +1,6 @@
 import { createHubSpotNoteOnDeal, resolveContactId, withHubspotAuth } from "./hubspot";
 import type { HubspotDealSnapshot } from "../deal-memory-schema";
+import { computePipelineStats, stageStays, type PipelineStageDef, type PipelineStats } from "../deal-pipeline-stats";
 
 export type { HubspotDealSnapshot };
 
@@ -7,7 +8,22 @@ export type { HubspotDealSnapshot };
 // prospect. Tout passe par le jeton d'un utilisateur qui a connecté HubSpot
 // (withHubspotAuth : renouvellement sur 401 compris).
 
-type Pipeline = { id: string; label: string; stages: { id: string; label: string; metadata?: { isClosed?: string } }[] };
+type Pipeline = {
+  id: string;
+  label: string;
+  stages: { id: string; label: string; displayOrder?: number; metadata?: { isClosed?: string; probability?: string } }[];
+};
+
+type StageHistoryEntry = { value: string; timestamp: string };
+
+// L'entrée dans l'étape actuelle : début du dernier passage dans l'étape où
+// le deal se trouve (HubSpot rend l'historique du plus récent au plus ancien).
+function enteredCurrentStage(history: StageHistoryEntry[] | undefined, currentStage: string | null | undefined): string | null {
+  if (!history?.length || !currentStage) return null;
+  const stays = stageStays({ id: "", changes: history.map((h) => ({ stageId: h.value, at: h.timestamp })) });
+  const last = stays.at(-1);
+  return last && last.stageId === currentStage ? new Date(last.enteredAt).toISOString() : null;
+}
 
 const API = "https://api.hubapi.com";
 
@@ -115,9 +131,9 @@ export async function findHubSpotDealForProspect(
 export async function getHubSpotDealSnapshot(userId: string, dealId: string): Promise<HubspotDealSnapshot | null> {
   return withHubspotAuth(userId, async (accessToken) => {
     const [deal, pipelines, token] = await Promise.all([
-      getJson<{ id: string; properties: Record<string, string | null> }>(
+      getJson<{ id: string; properties: Record<string, string | null>; propertiesWithHistory?: { dealstage?: StageHistoryEntry[] } }>(
         accessToken,
-        `/crm/v3/objects/deals/${dealId}?properties=dealname,dealstage,pipeline,amount,closedate,hs_next_step`
+        `/crm/v3/objects/deals/${dealId}?properties=dealname,dealstage,pipeline,amount,closedate,hs_next_step&propertiesWithHistory=dealstage`
       ),
       getPipelines(accessToken),
       getJson<{ hub_id?: number }>(accessToken, `/oauth/v1/access-tokens/${accessToken}`),
@@ -139,6 +155,9 @@ export async function getHubSpotDealSnapshot(userId: string, dealId: string): Pr
       closeDate: p.closedate ?? null,
       nextStep: p.hs_next_step ?? null,
       url: token?.hub_id ? `https://app.hubspot.com/contacts/${token.hub_id}/record/0-3/${deal.id}` : null,
+      pipelineId: p.pipeline ?? null,
+      stageId: p.dealstage ?? null,
+      stageEnteredAt: enteredCurrentStage(deal.propertiesWithHistory?.dealstage, p.dealstage),
     };
   });
 }
@@ -179,4 +198,80 @@ export async function pushToHubSpotDeal(
     });
   }
   await createHubSpotNoteOnDeal(userId, dealId, payload.noteHtml, payload.uid);
+}
+
+// Deals créés depuis un an au plus, lus au maximum : de quoi mesurer le
+// parcours sans relire tout un portail (la recherche HubSpot s'arrête de
+// toute façon à 10 000 résultats).
+const STATS_WINDOW_DAYS = 365;
+const STATS_MAX_DEALS = 2000;
+
+function stageDefs(pipeline: Pipeline): PipelineStageDef[] {
+  return pipeline.stages.map((s, i) => {
+    const closed = s.metadata?.isClosed === "true";
+    return {
+      id: s.id,
+      label: s.label,
+      order: s.displayOrder ?? i,
+      closed,
+      won: closed && Number(s.metadata?.probability) === 1,
+    };
+  });
+}
+
+// Le parcours de chaque pipeline, mesuré sur l'historique des étapes des
+// deals de l'année (étape 6). Lecture seule.
+export async function getHubSpotPipelineStats(userId: string, now: number): Promise<PipelineStats[]> {
+  return withHubspotAuth(userId, async (accessToken) => {
+    const pipelines = await getPipelines(accessToken);
+    const since = now - STATS_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+
+    const ids: string[] = [];
+    let after: string | undefined;
+    do {
+      const page = await getJson<{ results?: { id: string }[]; paging?: { next?: { after?: string } } }>(
+        accessToken,
+        "/crm/v3/objects/deals/search",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            filterGroups: [{ filters: [{ propertyName: "createdate", operator: "GTE", value: String(since) }] }],
+            sorts: [{ propertyName: "createdate", direction: "DESCENDING" }],
+            properties: ["dealstage"],
+            limit: 100,
+            ...(after ? { after } : {}),
+          }),
+        }
+      );
+      if (!page) throw new Error("Recherche des deals HubSpot refusée");
+      ids.push(...(page.results ?? []).map((d) => d.id));
+      after = page.paging?.next?.after;
+    } while (after && ids.length < STATS_MAX_DEALS);
+
+    const histories = new Map<string, { id: string; changes: { stageId: string; at: string }[] }[]>();
+    for (let i = 0; i < Math.min(ids.length, STATS_MAX_DEALS); i += 100) {
+      const batch = await getJson<{
+        results?: { id: string; properties: { pipeline?: string | null }; propertiesWithHistory?: { dealstage?: StageHistoryEntry[] } }[];
+      }>(accessToken, "/crm/v3/objects/deals/batch/read", {
+        method: "POST",
+        body: JSON.stringify({
+          inputs: ids.slice(i, i + 100).map((id) => ({ id })),
+          properties: ["pipeline"],
+          propertiesWithHistory: ["dealstage"],
+        }),
+      });
+      if (!batch) throw new Error("Lecture de l'historique des deals HubSpot refusée");
+      for (const deal of batch.results ?? []) {
+        const pipelineId = deal.properties.pipeline ?? "default";
+        const list = histories.get(pipelineId) ?? [];
+        list.push({
+          id: deal.id,
+          changes: (deal.propertiesWithHistory?.dealstage ?? []).map((h) => ({ stageId: h.value, at: h.timestamp })),
+        });
+        histories.set(pipelineId, list);
+      }
+    }
+
+    return pipelines.map((p) => computePipelineStats({ id: p.id, label: p.label, stages: stageDefs(p) }, histories.get(p.id) ?? [], now));
+  });
 }

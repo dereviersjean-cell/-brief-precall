@@ -13,6 +13,7 @@ import {
   checkBillingGracePeriods,
   generateDealMemoryAfterCall,
   sendDealMorningEmails,
+  refreshDealPipelines,
 } from "@/lib/inngest-functions";
 
 // La fiche deal d'un call (generateDealMemoryAfterCall) tient dans une seule
@@ -35,5 +36,6 @@ export const { GET, POST, PUT } = serve({
     checkBillingGracePeriods,
     generateDealMemoryAfterCall,
     sendDealMorningEmails,
+    refreshDealPipelines,
   ],
 });

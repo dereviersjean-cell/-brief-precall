@@ -30,7 +30,9 @@ import {
   isDealAlertsEnabledForOrganization,
   getOrganizationIdsWithDealAlerts,
   getActiveManagersInOrganization,
+  getDealMemoryOrganizationIds,
 } from "./db";
+import { refreshDealPipelinesForOrganization } from "./deal-pipeline-refresh";
 import { runDealMemoryForCall } from "./deal-memory-run";
 import { sendDealAlertsForCall, sendDealMorningEmail } from "./deal-alerts";
 import { sendBuiltEmail } from "./email";
@@ -702,6 +704,31 @@ export const generateDealMemoryAfterCall = inngest.createFunction(
       if (ok) sent++;
     }
     return { generated: true, emails: sent };
+  }
+);
+
+// Le parcours mesuré sur HubSpot et la photo des deals suivis, relus chaque
+// matin à 7 h (heure de Paris), avant l'email de 8 h (étape 6, migration 034).
+export const refreshDealPipelines = inngest.createFunction(
+  {
+    id: "refresh-deal-pipelines",
+    triggers: [{ cron: "TZ=Europe/Paris 0 7 * * *" }],
+  },
+  async ({ step }) => {
+    const organizationIds = await step.run("get-deal-memory-orgs", () => getDealMemoryOrganizationIds());
+    const results: Record<string, unknown> = {};
+    for (const organizationId of organizationIds) {
+      results[organizationId] = await step.run(`refresh-${organizationId}`, async () => {
+        try {
+          return await refreshDealPipelinesForOrganization(organizationId);
+        } catch (err) {
+          reportError("deal-pipeline.refresh", err, { organizationId });
+          return { failed: true };
+        }
+      });
+    }
+    console.log("[refresh-deal-pipelines] done —", JSON.stringify(results));
+    return results;
   }
 );
 
