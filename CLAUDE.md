@@ -967,6 +967,8 @@ En une ligne : HubSpot only en V1 ; parcours de vente propre à chaque organisat
 - **Suivi d'un deal** (`nextStep` dans `lib/deal-progress.ts`, accord de Jean : « à jour » = prochaine étape datée non dépassée) : `a_jour` (échéance à venir la plus proche), `en_retard` (toutes passées sans nouveau call ; ou date non relevée et ≥ 14 jours sans call), `sans_suite` (aucune date convenue), `non_relevee`. `topAction` : relance si ≥ 14 jours sans call, sinon l'action de l'alerte la plus lourde.
 - **`MesDealsView` refait** : compteurs (tendance + suivi), « Mes prochaines actions » regroupées (en retard, à venir par date, suite à fixer, points à traiter), « Mon pipe » (un deal par ligne : étape, montant, dernier call, prochaine étape, suivi, tendance → `/deal/[id]`). Les cartes détaillées ont disparu de cette page : le détail est sur la page du deal. Le même composant sert à « Voir ses deals » dans l'onglet Équipe du manager.
 
+**« Deals » manager réorganisé (27/10/2026, « on y va »)** : la page s'appelle « Deals de l'équipe » et **s'ouvre sur l'onglet Équipe** ; « Où intervenir » (l'ancienne file « À suivre », avec le bandeau des étapes) passe en second (`?tab=file`). Chaque commercial : activité, deals par tendance et en retard, point à travailler, et **son pipe déplié** (`PipeTable`, partagé avec « Mes deals », colonnes fixes) — chaque deal mène à sa page avec le bilan du manager.
+
 **État du code au 27/10/2026** : référence eslint **14 problèmes** (13 erreurs, 1 avertissement). **157 tests**.
 
 ## Devis — fonctionnalité abandonnée (décision de Jean, 31 août 2026)

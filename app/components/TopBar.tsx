@@ -31,7 +31,7 @@ const LABELS: Record<string, string> = {
   billing: "Facturation",
   help: "Aide",
   calls: "Calls",
-  deals: "Deals à suivre",
+  deals: "Deals de l'équipe",
   "mes-deals": "Mes deals",
   deal: "Deal",
 };

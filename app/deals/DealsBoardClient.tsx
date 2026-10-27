@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { alertLabel, formatDays, type BoardDeal, type StageColumn, type TeamRow } from "@/lib/deal-board";
 import type { DealProgress, DealVerdict } from "@/lib/deal-progress";
-import MesDealsView from "@/app/mes-deals/MesDealsView";
+import { PipeTable, STATUS } from "@/app/mes-deals/MesDealsView";
 
 // Vue manager (Deal Execution, étape 4) : A = la file des deals où
 // intervenir, C = le bandeau des étapes au-dessus (un clic filtre la file),
@@ -69,7 +69,7 @@ function DealCard({ deal, owner, quiet = false }: { deal: BoardDeal; owner: stri
       </div>
       <p className="mt-1 text-[12.5px] text-slate-500">
         {deal.callCount} call{deal.callCount > 1 ? "s" : ""} · dernier :{" "}
-        <Link href={`/feedback/${deal.lastCall.id}?tab=deal`} className="font-medium text-[color:var(--violet)] hover:underline">
+        <Link href={`/feedback/${deal.lastCall.id}`} className="font-medium text-[color:var(--violet)] hover:underline">
           {deal.lastCall.title ?? "voir la fiche"}
         </Link>
         {deal.lastCall.at ? ` le ${formatDay(deal.lastCall.at)}` : ""}
@@ -217,10 +217,10 @@ const VERDICT_CHIPS: { key: DealVerdict; label: string; tone: string }[] = [
   { key: "progres", label: "en progrès", tone: "bg-emerald-50 text-emerald-700" },
 ];
 
-// Onglet Équipe (refait le 27/10/2026, demande de Jean : voir ce que font ses
-// commerciaux) : une carte par personne — son activité, ses deals par
-// verdict, son point à travailler — et, sur demande, ses deals tels qu'il les
-// voit dans « Mes deals ».
+// Onglet Équipe, ouvert par défaut (structure cible de Jean, 27/10/2026 :
+// d'abord ce que font ses commerciaux) : une carte par personne — son
+// activité, ses deals par tendance et en retard, son point à travailler — et
+// son pipe, un deal par ligne vers la page du deal (bilan du manager).
 function TeamMember({
   row,
   name,
@@ -232,9 +232,10 @@ function TeamMember({
   activity: { week: number; lastAt: string | null } | undefined;
   deals: DealProgress[];
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const counts = { recul: 0, arret: 0, progres: 0 } as Record<DealVerdict, number>;
   for (const d of deals) counts[d.verdict]++;
+  const late = deals.filter((d) => d.nextStep.status === "en_retard").length;
   return (
     <section className={`${CARD} p-5`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -247,7 +248,7 @@ function TeamMember({
         </div>
         {deals.length > 0 && (
           <button onClick={() => setOpen((v) => !v)} className="text-[13px] font-medium text-[color:var(--violet)] hover:underline">
-            {open ? "Masquer ses deals" : `Voir ses deals (${deals.length})`}
+            {open ? "Replier ses deals" : `Voir ses deals (${deals.length})`}
           </button>
         )}
       </div>
@@ -256,11 +257,16 @@ function TeamMember({
         {deals.length === 0 ? (
           <span className="text-[13px] text-slate-400">Aucun deal suivi.</span>
         ) : (
-          VERDICT_CHIPS.map((v) => (
-            <span key={v.key} className={`rounded-full px-2.5 py-1 text-[12.5px] font-medium ${counts[v.key] > 0 ? v.tone : "bg-slate-50 text-slate-400"}`}>
-              {counts[v.key]} {v.label}
+          <>
+            {VERDICT_CHIPS.map((v) => (
+              <span key={v.key} className={`rounded-full px-2.5 py-1 text-[12.5px] font-medium ${counts[v.key] > 0 ? v.tone : "bg-slate-50 text-slate-400"}`}>
+                {counts[v.key]} {v.label}
+              </span>
+            ))}
+            <span className={`rounded-full px-2.5 py-1 text-[12.5px] font-medium ${late > 0 ? STATUS.en_retard.tone : "bg-slate-50 text-slate-400"}`}>
+              {late} en retard
             </span>
-          ))
+          </>
         )}
       </div>
 
@@ -288,9 +294,9 @@ function TeamMember({
         </dl>
       )}
 
-      {open && (
-        <div className="mt-5 border-t border-border pt-5">
-          <MesDealsView deals={deals} closed={0} />
+      {open && deals.length > 0 && (
+        <div className="-mx-5 mt-4 overflow-x-auto border-t border-border">
+          <PipeTable deals={deals} />
         </div>
       )}
     </section>
@@ -361,8 +367,8 @@ export default function DealsBoardClient({
       <div className="inline-flex items-center rounded-full bg-slate-100 p-1">
         {(
           [
-            ["file", "À suivre"],
             ["equipe", "Équipe"],
+            ["file", "Où intervenir"],
           ] as const
         ).map(([key, label]) => (
           <button

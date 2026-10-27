@@ -54,7 +54,7 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
       activity={activity}
       progress={progress}
       people={Object.fromEntries(people.map((p) => [p.id, p.name]))}
-      initialTab={params.tab === "equipe" ? "equipe" : "file"}
+      initialTab={params.tab === "file" ? "file" : "equipe"}
       initialStage={params.stage ?? null}
     />
   );

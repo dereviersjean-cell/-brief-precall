@@ -24,7 +24,7 @@ export function formatAmount(amount: number): string {
   return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(amount);
 }
 
-const STATUS: Record<NextStepStatus, { label: string; tone: string }> = {
+export const STATUS: Record<NextStepStatus, { label: string; tone: string }> = {
   a_jour: { label: "À jour", tone: "bg-emerald-50 text-emerald-700" },
   en_retard: { label: "En retard", tone: "bg-rose-50 text-rose-700" },
   sans_suite: { label: "Sans suite datée", tone: "bg-amber-50 text-amber-700" },
@@ -73,6 +73,64 @@ function ActionGroup({ title, tone, items }: { title: string; tone: string; item
         ))}
       </ul>
     </div>
+  );
+}
+
+// Le pipe : un deal par ligne, ouvert sur sa page. Partagé avec la vue
+// manager (une table par commercial dans l'onglet Équipe).
+export function PipeTable({ deals }: { deals: DealProgress[] }) {
+  return (
+    <table className="stacked-table w-full text-left sm:table-fixed text-[13.5px] sm:min-w-[860px]">
+      <thead>
+        <tr className="border-b border-border text-[12px] text-slate-500">
+          <th className="w-[19%] px-5 py-2.5 font-medium">Deal</th>
+          <th className="w-[13%] px-3 py-2.5 font-medium">Étape</th>
+          <th className="w-[9%] px-3 py-2.5 font-medium">Montant</th>
+          <th className="w-[9%] px-3 py-2.5 font-medium">Dernier call</th>
+          <th className="px-3 py-2.5 font-medium">Prochaine étape</th>
+          <th className="w-[13%] px-3 py-2.5 font-medium">Suivi</th>
+          <th className="w-[13%] px-5 py-2.5 font-medium">Tendance</th>
+        </tr>
+      </thead>
+      <tbody>
+        {deals.map((d) => (
+          <tr key={d.id} className="border-b border-border align-top last:border-0">
+            <td className="px-5 py-3">
+              <Link href={`/deal/${d.id}`} className="font-semibold text-slate-900 hover:underline">
+                {d.name}
+              </Link>
+              <p className="text-[12px] text-slate-500">
+                {d.steps.length} call{d.steps.length > 1 ? "s" : ""} · {d.known}/{d.total} infos clés
+              </p>
+            </td>
+            <td className="px-3 py-3" data-label="Étape">
+              {d.hubspot?.stage ?? <span className="text-slate-400">Hors HubSpot</span>}
+            </td>
+            <td className="px-3 py-3 tabular-nums" data-label="Montant">
+              {d.hubspot?.amount != null ? formatAmount(d.hubspot.amount) : <span className="text-slate-400">—</span>}
+            </td>
+            <td className="px-3 py-3 tabular-nums" data-label="Dernier call">
+              {d.lastCall.at ? formatDay(d.lastCall.at) : "—"}
+            </td>
+            <td className="px-3 py-3" data-label="Prochaine étape">
+              {d.nextStep.date && <span className="font-medium tabular-nums text-slate-900">{formatDay(d.nextStep.date)} · </span>}
+              <span className="text-slate-700">{d.nextStep.text ?? <span className="text-slate-400">Aucune</span>}</span>
+            </td>
+            <td className="px-3 py-3" data-label="Suivi">
+              <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[12px] font-medium ${STATUS[d.nextStep.status].tone}`}>
+                {STATUS[d.nextStep.status].label}
+              </span>
+            </td>
+            <td className="px-5 py-3" data-label="Tendance">
+              <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-[12px] font-semibold ${VERDICTS[d.verdict].tone}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${VERDICTS[d.verdict].dot}`} />
+                {VERDICTS[d.verdict].label}
+              </span>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
@@ -125,58 +183,8 @@ export default function MesDealsView({ deals, closed }: { deals: DealProgress[];
       </section>
 
       <section className={`${CARD} overflow-x-auto`}>
-        <h2 className={`${LABEL} px-5 pt-5`}>Mon pipe</h2>
-        <table className="stacked-table mt-3 w-full text-left text-[13.5px] sm:min-w-[860px]">
-          <thead>
-            <tr className="border-b border-border text-[12px] text-slate-500">
-              <th className="px-5 py-2.5 font-medium">Deal</th>
-              <th className="px-3 py-2.5 font-medium">Étape</th>
-              <th className="px-3 py-2.5 font-medium">Montant</th>
-              <th className="px-3 py-2.5 font-medium">Dernier call</th>
-              <th className="px-3 py-2.5 font-medium">Prochaine étape</th>
-              <th className="px-3 py-2.5 font-medium">Suivi</th>
-              <th className="px-5 py-2.5 font-medium">Tendance</th>
-            </tr>
-          </thead>
-          <tbody>
-            {deals.map((d) => (
-              <tr key={d.id} className="border-b border-border align-top last:border-0">
-                <td className="px-5 py-3">
-                  <Link href={`/deal/${d.id}`} className="font-semibold text-slate-900 hover:underline">
-                    {d.name}
-                  </Link>
-                  <p className="text-[12px] text-slate-500">
-                    {d.steps.length} call{d.steps.length > 1 ? "s" : ""} · {d.known}/{d.total} infos clés
-                  </p>
-                </td>
-                <td className="px-3 py-3" data-label="Étape">
-                  {d.hubspot?.stage ?? <span className="text-slate-400">Hors HubSpot</span>}
-                </td>
-                <td className="px-3 py-3 tabular-nums" data-label="Montant">
-                  {d.hubspot?.amount != null ? formatAmount(d.hubspot.amount) : <span className="text-slate-400">—</span>}
-                </td>
-                <td className="px-3 py-3 tabular-nums" data-label="Dernier call">
-                  {d.lastCall.at ? formatDay(d.lastCall.at) : "—"}
-                </td>
-                <td className="px-3 py-3" data-label="Prochaine étape">
-                  {d.nextStep.date && <span className="font-medium tabular-nums text-slate-900">{formatDay(d.nextStep.date)} · </span>}
-                  <span className="text-slate-700">{d.nextStep.text ?? <span className="text-slate-400">Aucune</span>}</span>
-                </td>
-                <td className="px-3 py-3" data-label="Suivi">
-                  <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[12px] font-medium ${STATUS[d.nextStep.status].tone}`}>
-                    {STATUS[d.nextStep.status].label}
-                  </span>
-                </td>
-                <td className="px-5 py-3" data-label="Tendance">
-                  <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-[12px] font-semibold ${VERDICTS[d.verdict].tone}`}>
-                    <span className={`h-1.5 w-1.5 rounded-full ${VERDICTS[d.verdict].dot}`} />
-                    {VERDICTS[d.verdict].label}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <h2 className={`${LABEL} px-5 pb-3 pt-5`}>Mon pipe</h2>
+        <PipeTable deals={deals} />
       </section>
 
       {closed > 0 && (
