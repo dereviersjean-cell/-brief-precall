@@ -564,7 +564,42 @@ export type BriefPageInitial = {
   firstName?: string | null;
   // false = onboarding jamais terminé (la page renvoie vers /onboarding).
   hasProfile?: boolean | null;
+  // Les deals qui demandent une action (lib/deal-progress.ts), null hors des
+  // organisations en test.
+  dealActions?: { id: string; name: string; status: "relancer" | "traiter" | "bonne_voie"; action: string; detail: string | null }[] | null;
 };
+
+// « Aujourd'hui » : les deals qui demandent une action, en tête de la page
+// Brief, à côté des rendez-vous du jour (question 13). Quatre au plus ; le
+// reste est dans « Mes deals ».
+function TodayDealActions({ actions }: { actions: NonNullable<BriefPageInitial["dealActions"]> }) {
+  if (actions.length === 0) return null;
+  const shown = actions.slice(0, 4);
+  return (
+    <section className="mb-8 rounded-[20px] bg-white p-5 ring-1 ring-[color:var(--lavender-strong)] shadow-[0_1px_2px_rgba(42,92,224,0.05),0_10px_28px_-20px_rgba(42,92,224,0.35)]">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">À faire aujourd&apos;hui sur vos deals</h2>
+        <Link href="/mes-deals" className="text-[12.5px] font-medium text-[color:var(--violet)] hover:underline">
+          {actions.length > shown.length ? `Les ${actions.length} deals →` : "Mes deals →"}
+        </Link>
+      </div>
+      <ul className="mt-3 divide-y divide-slate-100">
+        {shown.map((a) => (
+          <li key={a.id}>
+            <Link href={`/deal/${a.id}`} className="flex items-center gap-3 py-2.5 hover:bg-slate-50/60">
+              <span className={`h-2 w-2 shrink-0 rounded-full ${a.status === "relancer" ? "bg-rose-500" : "bg-amber-500"}`} />
+              <span className="min-w-0 flex-1 text-[13.5px] text-slate-800">
+                <span className="font-semibold text-slate-900">{a.action}</span>
+                <span className="text-slate-500"> — {a.name}</span>
+                {a.detail && <span className="text-slate-400"> · {a.detail}</span>}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 export default function BriefToolClient({ initial = null }: { initial?: BriefPageInitial | null }) {
   const router = useRouter();
@@ -932,6 +967,7 @@ export default function BriefToolClient({ initial = null }: { initial?: BriefPag
         </aside>
 
         <div className="min-w-0">
+          {initial?.dealActions && <TodayDealActions actions={initial.dealActions} />}
           {feedContent}
 
           {recentBriefs.length > 0 && !initialLoading && (

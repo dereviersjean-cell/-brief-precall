@@ -2,7 +2,15 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
 import { redirect } from "next/navigation";
-import { getRecentBriefsForUser, getUserProfile } from "@/lib/db";
+import {
+  getOrganizationDealRules,
+  getProgressFichesForUser,
+  getRecentBriefsForUser,
+  getUserOrganizationId,
+  getUserProfile,
+  isDealMemoryEnabledForOrganization,
+} from "@/lib/db";
+import { buildDealProgressNow } from "@/lib/deal-progress";
 import { loadUpcomingEvents } from "@/lib/upcoming-events";
 import BriefToolClient, { type BriefPageInitial } from "./BriefToolClient";
 
@@ -28,12 +36,13 @@ async function loadInitial(): Promise<BriefPageInitial | null> {
   // (bannière de connexion). Sans jeton d'agenda (compte email), seuls les
   // RDV ajoutés à la main sont lus.
   if (!auth.ok || !session) return null;
-  const [calendar, briefs, profile] = await Promise.all([
+  const [calendar, briefs, profile, dealActions] = await Promise.all([
     loadUpcomingEvents(session, auth.userId),
     getRecentBriefsForUser(auth.userId, 5).catch(() => []),
     // `undefined` = lecture en échec : on ne renvoie pas à l'onboarding sur une
     // panne de base.
     getUserProfile(auth.userId).catch(() => undefined),
+    loadDealActions(auth.userId).catch(() => null),
   ]);
   return {
     events: calendar.ok ? calendar.events : null,
@@ -45,5 +54,19 @@ async function loadInitial(): Promise<BriefPageInitial | null> {
       ? { companyName: profile.company_name, offer: profile.product_description, icp: profile.icp, sector: profile.sector }
       : null,
     firstName: session.user?.name?.trim().split(/\s+/)[0] ?? null,
+    dealActions,
   };
+}
+
+// « Aujourd'hui » (question 13, validée par Hubert : la page Brief devient le
+// point de départ de la journée) : à côté des rendez-vous du jour, les deals
+// qui demandent une action — à relancer, à traiter — tels que « Mes deals »
+// les calcule. Organisations en test seulement ; null ailleurs.
+async function loadDealActions(userId: string): Promise<BriefPageInitial["dealActions"]> {
+  const organizationId = await getUserOrganizationId(userId);
+  if (!organizationId || !(await isDealMemoryEnabledForOrganization(organizationId))) return null;
+  const [fiches, rules] = await Promise.all([getProgressFichesForUser(organizationId, userId), getOrganizationDealRules(organizationId)]);
+  return buildDealProgressNow(fiches, rules)
+    .filter((d) => !d.hubspot?.closed && d.focus.status !== "bonne_voie")
+    .map((d) => ({ id: d.id, name: d.name, status: d.focus.status, action: d.focus.action, detail: d.focus.detail }));
 }
