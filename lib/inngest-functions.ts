@@ -36,7 +36,7 @@ import {
 import { pushDealMemoryToHubSpot } from "./deal-memory-hubspot-push";
 import { refreshDealPipelinesForOrganization } from "./deal-pipeline-refresh";
 import { runDealMemoryForCall } from "./deal-memory-run";
-import { sendDealAlertsForCall, sendDealMorningEmail } from "./deal-alerts";
+import { sendDealAlertsForCall, sendDealMorningEmail, sendDealSlack } from "./deal-alerts";
 import { sendBuiltEmail } from "./email";
 import { syncAndScheduleForUser } from "./recall";
 import { checkCalendarHealth } from "./calendar-health";
@@ -728,6 +728,15 @@ export const generateDealMemoryAfterCall = inngest.createFunction(
         }
       });
       if (ok) sent++;
+      // Slack en plus, si le destinataire l'a connecté (reco 11).
+      await step.run(`send-deal-slack-${i}`, async () => {
+        try {
+          return await sendDealSlack(email);
+        } catch (err) {
+          reportWarning("deal-alerts.slack", err, { callId });
+          return "failed";
+        }
+      });
     }
     return { generated: true, hubspot, emails: sent };
   }
