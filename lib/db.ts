@@ -2064,6 +2064,33 @@ export async function getHubspotUserForOrganization(organizationId: string, pref
   return preferred.find((id) => connected.has(id)) ?? ids.find((id) => connected.has(id)) ?? null;
 }
 
+// Onglet HubSpot de Deals de l'équipe (27/10/2026) : les derniers envois de
+// fiches dans HubSpot, du plus récent au plus ancien.
+export type HubspotPushEntry = { callId: string; callTitle: string | null; dealId: string | null; dealName: string | null; pushedAt: string; ownerId: string | null };
+
+export async function getHubspotPushHistory(organizationId: string, limit = 8): Promise<HubspotPushEntry[]> {
+  const { data, error } = await supabaseAdmin
+    .from("call_deal_memory")
+    .select("call_id, deal_id, hubspot_pushed_at, calls(meeting_title, user_id), deals(name)")
+    .eq("organization_id", organizationId)
+    .not("hubspot_pushed_at", "is", null)
+    .order("hubspot_pushed_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  type Row = {
+    call_id: string;
+    deal_id: string | null;
+    hubspot_pushed_at: string;
+    calls: { meeting_title: string | null; user_id: string } | { meeting_title: string | null; user_id: string }[] | null;
+    deals: { name: string } | { name: string }[] | null;
+  };
+  return ((data ?? []) as Row[]).map((r) => {
+    const call = Array.isArray(r.calls) ? r.calls[0] : r.calls;
+    const deal = Array.isArray(r.deals) ? r.deals[0] : r.deals;
+    return { callId: r.call_id, callTitle: call?.meeting_title ?? null, dealId: r.deal_id, dealName: deal?.name ?? null, pushedAt: r.hubspot_pushed_at, ownerId: call?.user_id ?? null };
+  });
+}
+
 export async function getOrganizationHubspotMapping(organizationId: string): Promise<Record<string, string>> {
   const { data, error } = await supabaseAdmin.from("organizations").select("hubspot_field_mapping").eq("id", organizationId).maybeSingle();
   if (error) throw error;

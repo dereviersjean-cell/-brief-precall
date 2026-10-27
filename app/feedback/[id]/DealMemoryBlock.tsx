@@ -250,6 +250,15 @@ function HubspotMapping() {
         <span className="text-[13.5px] font-semibold text-slate-900">Champs HubSpot</span>
         <span className="text-[12.5px] text-slate-500">{open ? "Masquer" : "Où chaque champ s'écrit dans HubSpot"}</span>
       </button>
+      {open && (
+        <p className="mt-2 text-[12.5px] text-slate-500">
+          Vue complète (automatisation, propriétés détectées, derniers envois) :{" "}
+          <Link href="/deals?tab=hubspot" className="font-medium text-[color:var(--violet)] hover:underline">
+            Deals de l&apos;équipe › HubSpot
+          </Link>
+          .
+        </p>
+      )}
       {open && !state && status !== "error" && <p className="mt-3 text-[13px] text-slate-500">Lecture des propriétés HubSpot…</p>}
       {open && status === "error" && <p className="mt-3 text-[13px] text-rose-700">Impossible de lire ou d&apos;enregistrer les champs HubSpot.</p>}
       {open && state && !state.connected && (

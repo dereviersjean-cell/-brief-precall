@@ -80,7 +80,7 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
       impact={impact}
       impactWindowDays={rules.inactivityDays}
       people={Object.fromEntries(people.map((p) => [p.id, p.name]))}
-      initialTab={params.tab === "file" ? "file" : params.tab === "regles" ? "regles" : "equipe"}
+      initialTab={params.tab === "file" ? "file" : params.tab === "regles" ? "regles" : params.tab === "hubspot" ? "hubspot" : "equipe"}
       initialStage={params.stage ?? null}
       initialCommercial={params.commercial ?? null}
     />

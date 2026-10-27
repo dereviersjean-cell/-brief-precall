@@ -162,6 +162,14 @@ export async function getHubSpotDealSnapshot(userId: string, dealId: string): Pr
   });
 }
 
+// Le numéro du portail HubSpot connecté (onglet HubSpot de Deals de l'équipe).
+export async function getHubspotPortalId(userId: string): Promise<number | null> {
+  return withHubspotAuth(userId, async (accessToken) => {
+    const token = await getJson<{ hub_id?: number }>(accessToken, `/oauth/v1/access-tokens/${accessToken}`);
+    return token?.hub_id ?? null;
+  });
+}
+
 export type HubspotDealProperty = { name: string; label: string; type: string };
 
 // Les propriétés de deal où Brief peut écrire du texte : celles du client,
