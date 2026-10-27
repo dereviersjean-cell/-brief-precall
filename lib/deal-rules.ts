@@ -52,7 +52,15 @@ export type DealRules = {
   // étape du pipeline HubSpot, ou R1 hors HubSpot). Cumulatif : à l'étape 3,
   // ce que demandent les étapes 1, 2 et 3.
   stageRequirements: Partial<Record<number, QualificationKey[]>>;
+  // Ce que le commercial doit aller chercher à chaque rendez-vous (28/10/2026,
+  // demande de Jean : « dans un R1, l'objectif fixé par le manager c'est le
+  // budget, le signataire… »). 1 = R1, 2 = R2, 3 = R3 et suivants. Ce qui
+  // n'a pas été obtenu au rendez-vous prévu est reporté au suivant
+  // (lib/call-objectives.ts).
+  callObjectives: Partial<Record<number, QualificationKey[]>>;
 };
+
+export const OBJECTIVE_RANKS = 3;
 
 // Les exigences par étape de l'article envoyé par Hubert : Découverte → la
 // douleur ; Qualification → le décideur et les chiffres ; Proposition → les
@@ -66,6 +74,12 @@ export const DEFAULT_RULES: DealRules = {
     2: ["decideur", "impact"],
     3: ["criteres", "processus"],
     4: ["champion", "budget", "echeance"],
+  },
+  // R1 : le problème, qui signe, l'enveloppe et l'échéance ; R2 : de quoi
+  // construire la proposition ; R3 : finir ce qui manque.
+  callObjectives: {
+    1: ["douleur", "decideur", "budget", "echeance"],
+    2: ["impact", "criteres", "processus", "champion"],
   },
 };
 
@@ -89,22 +103,28 @@ function clamp(value: unknown, min: number, max: number, fallback: number): numb
 export function coerceDealRules(raw: unknown): DealRules {
   const source = (raw && typeof raw === "object" ? raw : {}) as Partial<Record<keyof DealRules, unknown>>;
   const method = typeof source.method === "string" && source.method in METHODS ? (source.method as QualificationMethod) : DEFAULT_RULES.method;
-  const stageRequirements: DealRules["stageRequirements"] = {};
   const rawStages = source.stageRequirements && typeof source.stageRequirements === "object" ? (source.stageRequirements as Record<string, unknown>) : null;
-  if (rawStages) {
-    for (let stage = 1; stage <= MAX_STAGES; stage++) {
-      const list = rawStages[String(stage)];
-      if (!Array.isArray(list)) continue;
-      const keys = [...new Set(list.filter((k): k is QualificationKey => typeof k === "string" && (QUALIFICATION_KEYS as readonly string[]).includes(k)))];
-      if (keys.length > 0) stageRequirements[stage] = keys;
-    }
-  }
+  const rawObjectives = source.callObjectives && typeof source.callObjectives === "object" ? (source.callObjectives as Record<string, unknown>) : null;
   return {
     method,
     inactivityDays: Math.round(clamp(source.inactivityDays, 3, 90, DEFAULT_RULES.inactivityDays)),
     slowStageFactor: Math.round(clamp(source.slowStageFactor, 1, 5, DEFAULT_RULES.slowStageFactor) * 10) / 10,
-    stageRequirements: rawStages ? stageRequirements : DEFAULT_RULES.stageRequirements,
+    stageRequirements: rawStages ? keysByNumber(rawStages, MAX_STAGES) : DEFAULT_RULES.stageRequirements,
+    callObjectives: rawObjectives ? keysByNumber(rawObjectives, OBJECTIVE_RANKS) : DEFAULT_RULES.callObjectives,
   };
+}
+
+// { "1": ["budget", …], … } : des listes de champs connus, sans doublon, de 1
+// à `max`.
+function keysByNumber(raw: Record<string, unknown>, max: number): Partial<Record<number, QualificationKey[]>> {
+  const result: Partial<Record<number, QualificationKey[]>> = {};
+  for (let n = 1; n <= max; n++) {
+    const list = raw[String(n)];
+    if (!Array.isArray(list)) continue;
+    const keys = [...new Set(list.filter((k): k is QualificationKey => typeof k === "string" && (QUALIFICATION_KEYS as readonly string[]).includes(k)))];
+    if (keys.length > 0) result[n] = keys;
+  }
+  return result;
 }
 
 // Ce qui devrait être connu à l'étape `stage` et ne l'est pas : les

@@ -1,10 +1,13 @@
 import Link from "next/link";
 import type { DealBriefContext } from "@/lib/deal-brief";
+import { ObjectivesMessage, ObjectivesPlan } from "@/app/components/CallObjectives";
 
 // En tête du brief quand le rendez-vous fait suite à d'autres calls du même
 // deal (structure cible de Jean, 27/10/2026) : ce qui est validé dans la
 // checklist, ce qu'il reste à aller chercher, ce qui s'est dit la dernière
-// fois. Tiré des fiches des calls précédents (lib/deal-brief.ts).
+// fois. Tiré des fiches des calls précédents (lib/deal-brief.ts). Depuis le
+// 28/10/2026, le conseil des objectifs par rendez-vous en tête : ce que le
+// dernier call a obtenu, ce qu'il faut aller chercher à celui-ci et comment.
 
 const LABEL = "text-[11px] font-semibold uppercase tracking-[0.08em]";
 const TILE =
@@ -32,6 +35,12 @@ export default function DealFollowUp({ ctx }: { ctx: DealBriefContext }) {
         </span>
       </div>
 
+      {ctx.objectives && (
+        <div className="border-b border-[color:var(--lavender-strong)] px-5 py-4">
+          <ObjectivesMessage lines={ctx.objectives.message} />
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-6 p-5 lg:grid-cols-3">
         <div>
           <h3 className={`${LABEL} mb-3 text-slate-500`}>La checklist du deal</h3>
@@ -40,14 +49,15 @@ export default function DealFollowUp({ ctx }: { ctx: DealBriefContext }) {
               <li key={c.label} className="flex gap-2.5 text-[13px] leading-snug">
                 <span
                   className={`mt-0.5 grid h-[17px] w-[17px] shrink-0 place-items-center rounded-md text-[11px] font-bold ${
-                    c.done ? "bg-emerald-500 text-white" : "ring-1 ring-slate-300"
+                    c.done ? "bg-emerald-500 text-white" : c.vague ? "bg-amber-100 text-amber-800" : "ring-1 ring-slate-300"
                   }`}
                 >
-                  {c.done ? "✓" : ""}
+                  {c.done ? "✓" : c.vague ? "~" : ""}
                 </span>
                 <span>
                   <span className={c.done ? "font-medium text-slate-900" : "font-medium text-slate-500"}>{c.label}</span>
-                  {c.done && c.text && <span className="block text-[12.5px] text-slate-500">{c.text}</span>}
+                  {c.vague && <span className="ml-1.5 text-[11.5px] font-semibold text-amber-700">encore flou</span>}
+                  {(c.done || c.vague) && c.text && <span className="block text-[12.5px] text-slate-500">{c.text}</span>}
                 </span>
               </li>
             ))}
@@ -56,11 +66,16 @@ export default function DealFollowUp({ ctx }: { ctx: DealBriefContext }) {
 
         <div>
           <h3 className={`${LABEL} mb-3 text-[color:var(--violet)]`}>À aller chercher pendant ce call</h3>
-          {ctx.toFind.length === 0 && ctx.points.length === 0 && ctx.objections.length === 0 ? (
-            <p className="text-[13px] text-slate-500">La checklist est complète et rien n&apos;est en suspens.</p>
+          {ctx.objectives && (
+            <div className="mb-4">
+              <ObjectivesPlan plan={ctx.objectives.plan} />
+            </div>
+          )}
+          {(ctx.objectives ? 0 : ctx.toFind.length) === 0 && ctx.points.length === 0 && ctx.objections.length === 0 ? (
+            !ctx.objectives && <p className="text-[13px] text-slate-500">La checklist est complète et rien n&apos;est en suspens.</p>
           ) : (
             <ul className="space-y-2.5 text-[13.5px] leading-snug text-slate-800">
-              {ctx.toFind.map((label) => (
+              {(ctx.objectives ? [] : ctx.toFind).map((label) => (
                 <li key={label} className="flex gap-2">
                   <span className="text-[color:var(--violet)]">→</span>
                   <span>

@@ -24,6 +24,12 @@ export const QUALIFICATION_QUESTIONS: Record<QualificationKey, string> = {
   concurrents: "Quelles autres options regardez-vous, y compris faire en interne ?",
 };
 
+// La question écrite pour ce prospect après le dernier call (objectifs du
+// rendez-vous, 28/10/2026), sinon la question générique.
+function questionFor(d: DealProgress, key: QualificationKey): string {
+  return d.objectives?.plan.items.find((i) => i.key === key)?.question ?? `« ${QUALIFICATION_QUESTIONS[key]} »`;
+}
+
 export type DealAdvice = {
   title: string;
   why: string;
@@ -61,7 +67,7 @@ export function adviceFor(d: DealProgress): DealAdvice {
   // Critère de passage : le pourquoi et le comment portent sur l'information
   // manquante, pas sur une autre alerte du call.
   if (d.missingForStage.length > 0 && d.focus.action.startsWith("Obtenir")) {
-    const how = d.missingKeys.slice(0, 2).map((k) => `« ${QUALIFICATION_QUESTIONS[k]} »`);
+    const how = d.missingKeys.slice(0, 2).map((k) => questionFor(d, k));
     if (d.topAlert) how.push(`Autre point du dernier call — ${lowerFirst(d.topAlert.label)} : ${lowerFirst(REP_ACTIONS[d.topAlert.rule as keyof typeof REP_ACTIONS] ?? d.topAlert.text)}`);
     return {
       title: d.focus.action,
@@ -84,7 +90,7 @@ export function adviceFor(d: DealProgress): DealAdvice {
 
   if (d.topAlert) {
     const how = [REP_ACTIONS[d.topAlert.rule as keyof typeof REP_ACTIONS] ?? d.topAlert.text];
-    for (const k of d.missingKeys.slice(0, 1)) how.push(`« ${QUALIFICATION_QUESTIONS[k]} »`);
+    for (const k of d.missingKeys.slice(0, 1)) how.push(questionFor(d, k));
     return {
       title: d.focus.action,
       why: d.topAlert.text,
@@ -99,7 +105,7 @@ export function adviceFor(d: DealProgress): DealAdvice {
     title: d.focus.action,
     why: d.missingKeys.length > 0 ? `Le deal avance. Il reste à obtenir : ${d.toObtain.map(lowerFirst).join(", ")}.` : "Le deal avance et la qualification est complète.",
     quote: null,
-    how: d.missingKeys.length > 0 ? d.missingKeys.slice(0, 2).map((k) => `« ${QUALIFICATION_QUESTIONS[k]} »`) : ["Faire valider la proposition et fixer la date de signature."],
+    how: d.missingKeys.length > 0 ? d.missingKeys.slice(0, 2).map((k) => questionFor(d, k)) : ["Faire valider la proposition et fixer la date de signature."],
     when: d.nextStep.date ? `Le ${longDay(d.nextStep.date)}` : "Au prochain échange",
   };
 }

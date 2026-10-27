@@ -29,6 +29,9 @@ const MAX_ITEMS_PER_FIELD = 4;
 const MAX_TEXT_LENGTH = 280;
 
 const FIELD_KEYS = new Set<string>(DEAL_MEMORY_FIELDS.map((f) => f.key));
+// Les informations de qualification, qui portent un niveau de certitude.
+const LEVEL_FIELDS = ["douleur", "impact", "decideur", "champion", "criteres", "processus", "budget", "echeance"] as const;
+const LEVEL_KEYS = new Set<string>(LEVEL_FIELDS);
 const RULES = new Map<string, (typeof DEAL_ALERT_RULES)[number]>(DEAL_ALERT_RULES.map((r) => [r.key, r]));
 
 // Prompt codé en dur, pas dans admin_config : contrat JSON structurel (même
@@ -47,6 +50,10 @@ ${DEAL_MEMORY_FIELDS.map((f) => `   - "${f.key}" : ${f.definition}.`).join("\n")
    - Chaque élément renvoie aux numéros de ligne du passage qui le justifie : "lines": [première, dernière]. Choisis le passage le plus court qui suffit, une ou deux lignes en général, 4 lignes consécutives au plus. Pas de passage, pas d'élément.
    - Rien n'a été dit sur un champ : liste vide. Ne déduis pas, ne complète pas avec ce qui serait probable. Une case vide est une information utile pour le manager ; une case remplie par supposition le trompe.
    - 4 éléments au plus par champ.
+   - Pour ${LEVEL_FIELDS.map((k) => `"${k}"`).join(", ")}, chaque élément porte aussi "level" :
+     · "confirme" quand le PROSPECT l'a dit clairement : un montant ou une fourchette pour le budget, un nom et un rôle pour le décideur, une date ou un délai pour l'échéance, un chiffre pour l'impact, des étapes et des personnes pour le processus ;
+     · "evoque" quand le sujet a été abordé sans réponse nette (« on a un budget, mais pas 18 000 € », « il faudra en parler en interne »), ou quand c'est le commercial qui l'avance sans que le prospect le confirme.
+     Au moindre doute : "evoque". Le commercial s'appuie sur ce niveau pour savoir ce qu'il lui reste à aller chercher.
    - Pour "prochaines_etapes" seulement, chaque élément porte aussi "date" : le jour convenu pour cette action au format AAAA-MM-JJ, calculé à partir de la date du call quand elle est relative (« lundi prochain », « dans quinze jours »), ou null si aucun jour n'a été fixé. « Début de semaine prochaine » ou « fin du mois » ne sont pas des jours : null.
 
 2. ALERTES — lève uniquement celles dont tu es certain, parmi :
@@ -57,7 +64,7 @@ ${DEAL_ALERT_RULES.map((r) => `   - "${r.key}" : ${r.definition}${r.needsHistory
 3. ENTREPRISE — "prospect_company" : le nom de l'entreprise du PROSPECT tel qu'il apparaît dans le call, ou null s'il n'est pas dit. Jamais l'entreprise du commercial, même si elle figure dans le titre du rendez-vous (« Antoine x Oliverlist » : Oliverlist est l'entreprise du commercial).
 
 Réponds UNIQUEMENT en JSON strict, sans markdown, avec exactement cette structure :
-{"prospect_company": "...", "fields": {"douleur": [{"text": "...", "lines": [12, 14]}], "impact": [], "prochaines_etapes": [{"text": "...", "lines": [80, 81], "date": "2026-11-03"}], ...}, "alerts": [{"rule": "concurrent_evoque", "text": "...", "lines": [30, 31]}]}
+{"prospect_company": "...", "fields": {"douleur": [{"text": "...", "lines": [12, 14], "level": "confirme"}], "impact": [], "prochaines_etapes": [{"text": "...", "lines": [80, 81], "date": "2026-11-03"}], ...}, "alerts": [{"rule": "concurrent_evoque", "text": "...", "lines": [30, 31]}]}
 
 Tous les champs listés doivent figurer dans "fields", même vides.`;
 
@@ -72,6 +79,8 @@ export type DealMemoryInput = {
   callAt?: string | null;
   // Les calls précédents du même deal, du plus ancien au plus récent.
   history?: DealHistoryEntry[];
+  // Pour comparer un autre modèle (essai Haiku du 28/10/2026) ; MODEL sinon.
+  model?: string;
 };
 
 // Au-delà, une prise de parole est découpée en plusieurs lignes : la citation
@@ -182,7 +191,7 @@ export function shapeDealMemory(raw: unknown, lines: TranscriptLine[], options: 
     if (!FIELD_KEYS.has(key) || !Array.isArray(value)) continue;
     const items: DealMemoryItem[] = [];
     for (const entry of value) {
-      const e = (entry && typeof entry === "object" ? entry : {}) as { text?: unknown; lines?: unknown; date?: unknown };
+      const e = (entry && typeof entry === "object" ? entry : {}) as { text?: unknown; lines?: unknown; date?: unknown; level?: unknown };
       const text = cleanText(e.text);
       if (!text) continue;
       const range = resolveRange(e.lines, lines);
@@ -193,6 +202,9 @@ export function shapeDealMemory(raw: unknown, lines: TranscriptLine[], options: 
         quote: quoteSegments(range.startIndex, range.endIndex, lines),
         startMs: range.startMs,
         ...(key === "prochaines_etapes" ? { date: cleanDate(e.date) } : {}),
+        // Seul un « confirme » explicite compte comme obtenu : un niveau
+        // absent ou inconnu est un doute.
+        ...(LEVEL_KEYS.has(key) ? { level: e.level === "confirme" ? ("confirme" as const) : ("evoque" as const) } : {}),
       });
       if (items.length >= MAX_ITEMS_PER_FIELD) break;
     }
@@ -292,7 +304,7 @@ export async function generateDealMemory(
   // Deux essais au plus : le second seulement si le JSON est inexploitable.
   let lastRaw = "";
   for (let attempt = 0; attempt < 2; attempt++) {
-    let message = await runRequest(client, MODEL, userPrompt);
+    let message = await runRequest(client, input.model ?? MODEL, userPrompt);
     if (message.stop_reason === "refusal") {
       reportWarning("deal-memory.refusal", `Refus du modèle ${MODEL}`, {
         category: message.stop_details?.category ?? null,

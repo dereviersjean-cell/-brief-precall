@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DEFAULT_RULES, MAX_STAGES, METHODS, qualificationLabel, type DealRules, type QualificationMethod } from "@/lib/deal-rules";
+import { DEFAULT_RULES, MAX_STAGES, METHODS, OBJECTIVE_RANKS, qualificationLabel, type DealRules, type QualificationMethod } from "@/lib/deal-rules";
 
 // Onglet « Règles » de Deals de l'équipe (27/10/2026) : le manager règle
-// lui-même la méthode de qualification, les seuils et ce qui doit être connu
-// à chaque étape (lib/deal-rules.ts). Les critères sont indicatifs : ils
+// lui-même la méthode de qualification, les objectifs de chaque rendez-vous
+// (28/10/2026), les seuils et ce qui doit être connu à chaque étape
+// (lib/deal-rules.ts). Les critères sont indicatifs : ils
 // lèvent une alerte, ils ne bloquent rien.
 
 const CARD = "rounded-2xl border border-border bg-white p-5 sm:p-6";
@@ -40,6 +41,12 @@ export default function DealRulesForm({ stageLabels }: { stageLabels: Record<num
     update({ stageRequirements: { ...rules.stageRequirements, [stage]: next } });
   };
 
+  const toggleObjective = (rank: number, key: (typeof fields)[number]) => {
+    const current = rules.callObjectives[rank] ?? [];
+    const next = current.includes(key) ? current.filter((k) => k !== key) : [...current, key];
+    update({ callObjectives: { ...rules.callObjectives, [rank]: next } });
+  };
+
   async function save() {
     setStatus("saving");
     setError(null);
@@ -72,6 +79,45 @@ export default function DealRulesForm({ stageLabels }: { stageLabels: Record<num
               </span>
             </label>
           ))}
+        </div>
+      </section>
+
+      <section className={CARD}>
+        <h2 className={`${LABEL} mb-1`}>Objectifs de chaque rendez-vous</h2>
+        <p className="mb-4 text-[13px] text-slate-500">
+          Ce que vos commerciaux doivent aller chercher à chaque rendez-vous. Après le call, Brief dit ce qui a été obtenu clairement ; ce qui ne l&apos;est
+          pas est reporté au rendez-vous suivant, avec la question à poser.
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-left text-[13px]">
+            <thead>
+              <tr className="text-[12px] text-slate-500">
+                <th className="py-2 pr-3 font-medium">Rendez-vous</th>
+                {fields.map((k) => (
+                  <th key={k} className="px-2 py-2 text-center font-medium">
+                    {qualificationLabel(k)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: OBJECTIVE_RANKS }, (_, i) => i + 1).map((rank) => (
+                <tr key={rank} className="border-t border-border">
+                  <td className="py-2 pr-3 font-medium text-slate-900">{rank === OBJECTIVE_RANKS ? `R${rank} et suivants` : `R${rank}`}</td>
+                  {fields.map((k) => (
+                    <td key={k} className="px-2 py-2 text-center">
+                      <input
+                        type="checkbox"
+                        aria-label={`${qualificationLabel(k)} au R${rank}`}
+                        checked={(rules.callObjectives[rank] ?? []).includes(k)}
+                        onChange={() => toggleObjective(rank, k)}
+                      />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </section>
 

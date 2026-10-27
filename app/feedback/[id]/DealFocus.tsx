@@ -4,6 +4,8 @@ import { useState } from "react";
 import { buildActionPlan, buildQualification, priorItems, type ActionRisk, type QualificationRow } from "@/lib/deal-actions";
 import type { DealMemoryItem } from "@/lib/deal-memory-schema";
 import type { DealMemoryPanel } from "@/lib/db";
+import { objectivesAt } from "@/lib/call-objectives";
+import { ObjectivesCard } from "@/app/components/CallObjectives";
 import { Item, Quote } from "./DealMemoryBlock";
 
 // L'analyse d'un call centrée sur le deal (demande de Jean du 27/10/2026) :
@@ -21,6 +23,7 @@ const STATUS: Record<QualificationRow["status"], { label: string; tone: string }
   connu: { label: "Déjà connu", tone: "bg-slate-100 text-slate-600" },
   manquant: { label: "À obtenir", tone: "bg-amber-50 text-amber-700" },
 };
+const VAGUE = { label: "Encore flou", tone: "bg-amber-50 text-amber-800" };
 
 function Risk({ risk }: { risk: ActionRisk }) {
   const [open, setOpen] = useState(false);
@@ -59,13 +62,15 @@ export function DealActionPlan({ callId, panel }: { callId: string; panel: DealM
   const callAt = panel.deal?.calls.find((c) => c.callId === callId)?.callAt ?? null;
   const qualification = buildQualification(fiche, priorItems(panel.deal, callId), callAt, panel.qualificationFields);
   const plan = buildActionPlan(fiche, panel.objections, qualification);
-  const empty = plan.engagements.length + plan.risks.length + plan.objections.length + plan.toObtain.length === 0;
+  // Ce qui reste à obtenir est dans les objectifs du rendez-vous
+  // (DealObjectives, au-dessus).
+  const empty = plan.engagements.length + plan.risks.length + plan.objections.length === 0;
 
   return (
     <section className={`${CARD} p-5 sm:p-6`}>
       <h2 className={`${LABEL} mb-4`}>À faire avant le prochain call</h2>
       {empty ? (
-        <p className="text-[13.5px] text-slate-500">Rien à signaler : aucun engagement relevé, aucune alerte, la qualification est complète.</p>
+        <p className="text-[13.5px] text-slate-500">Rien à signaler : aucun engagement relevé, aucune alerte, aucune objection à reprendre.</p>
       ) : (
         <div className="space-y-4">
           {plan.engagements.length > 0 && (
@@ -99,21 +104,21 @@ export function DealActionPlan({ callId, panel }: { callId: string; panel: DealM
               </ul>
             </Group>
           )}
-          {plan.toObtain.length > 0 && (
-            <Group title="À obtenir au prochain call">
-              <div className="flex flex-wrap gap-1.5">
-                {plan.toObtain.map((q) => (
-                  <span key={q.key} className="rounded-full bg-amber-50 px-2.5 py-1 text-[12.5px] font-medium text-amber-800">
-                    {q.label}
-                  </span>
-                ))}
-              </div>
-            </Group>
-          )}
         </div>
       )}
     </section>
   );
+}
+
+// Les objectifs du rendez-vous (28/10/2026) : en tête de la page du call et
+// de la page du deal.
+export function DealObjectives({ callId, panel }: { callId: string; panel: DealMemoryPanel }) {
+  const fiche = panel.initial;
+  if (!fiche) return null;
+  const index = panel.deal?.calls.findIndex((c) => c.callId === callId) ?? -1;
+  const objectives = objectivesAt(index >= 0 ? index + 1 : 1, fiche.fields, priorItems(panel.deal, callId), panel.rules, fiche.nextQuestions);
+  if (objectives.review.length === 0 && objectives.plan.items.length === 0) return null;
+  return <ObjectivesCard objectives={objectives} />;
 }
 
 export function DealQualification({ callId, panel }: { callId: string; panel: DealMemoryPanel }) {
@@ -122,6 +127,7 @@ export function DealQualification({ callId, panel }: { callId: string; panel: De
   const callAt = panel.deal?.calls.find((c) => c.callId === callId)?.callAt ?? null;
   const rows = buildQualification(fiche, priorItems(panel.deal, callId), callAt, panel.qualificationFields);
   const known = rows.filter((r) => r.status !== "manquant").length;
+  const tag = (row: QualificationRow) => (row.vague ? VAGUE : STATUS[row.status]);
   const learned = rows.filter((r) => r.status === "nouveau" || r.status === "precise").length;
 
   return (
@@ -140,7 +146,7 @@ export function DealQualification({ callId, panel }: { callId: string; panel: De
           <li key={row.key}>
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[13px] font-semibold text-slate-900">{row.label}</span>
-              <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS[row.status].tone}`}>{STATUS[row.status].label}</span>
+              <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${tag(row).tone}`}>{tag(row).label}</span>
             </div>
             {row.latest && (
               <ul className="mt-1 list-none">
@@ -152,6 +158,9 @@ export function DealQualification({ callId, panel }: { callId: string; panel: De
       </ul>
       {rows.some((r) => r.status === "connu") && (
         <p className="mt-4 text-[12px] text-slate-400">« Déjà connu » : appris lors d&apos;un call précédent du même deal, daté.</p>
+      )}
+      {rows.some((r) => r.vague) && (
+        <p className="mt-1 text-[12px] text-slate-400">« Encore flou » : abordé sans réponse nette du prospect (pas de montant, de nom ou de date).</p>
       )}
     </section>
   );

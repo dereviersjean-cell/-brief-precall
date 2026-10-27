@@ -13,7 +13,7 @@ import { useModules } from "@/app/components/ModulesProvider";
 import ConversationAnalyticsBlock from "./ConversationAnalyticsBlock";
 import KeyPointsBlock from "./KeyPointsBlock";
 import DealMemoryBlock, { DealCard } from "./DealMemoryBlock";
-import { DealActionPlan, DealFocusMissing, DealQualification } from "./DealFocus";
+import { DealActionPlan, DealFocusMissing, DealObjectives, DealQualification } from "./DealFocus";
 import SpeakerTimelineBlock from "./SpeakerTimelineBlock";
 
 // Étiquette de section et carte, reprises du site (AnalysisObject).
@@ -1013,6 +1013,7 @@ export default function FeedbackDetailClient({
                     deal, actionnable), puis ce qu'il faut retenir de la
                     conversation. */}
                 <div className="min-w-0 space-y-9">
+                  {dealMemory?.initial && <DealObjectives callId={call.id} panel={dealMemory} />}
                   {dealMemory?.initial && <DealActionPlan callId={call.id} panel={dealMemory} />}
                   <div className="space-y-4">
                     {dealMemory?.initial && <h2 className={`${LABEL} border-t border-border pt-8`}>La conversation</h2>}

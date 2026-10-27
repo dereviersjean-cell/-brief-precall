@@ -7,14 +7,18 @@ import {
   getOrganizationEmailDomains,
   getOrganizationForUser,
   getHubspotUserForOrganization,
+  getOrganizationDealRules,
   getUserName,
   saveCallDealMemory,
+  setCallNextQuestions,
   setDealHubspot,
   type CallWithAnalysis,
 } from "./db";
 import { generateDealMemory } from "./deal-memory";
 import { dealIdentityFor } from "./deal-grouping";
-import type { HubspotDealSnapshot, StoredDealMemory } from "./deal-memory-schema";
+import type { DealHistoryEntry, DealMemoryContent, HubspotDealSnapshot, NextQuestions, StoredDealMemory } from "./deal-memory-schema";
+import { dealObjectives, mergeKnown, type ItemsByField } from "./call-objectives";
+import { tailorObjectiveQuestions } from "./objective-questions";
 import { findHubSpotDealForProspect, getHubSpotDealSnapshot } from "./crm/hubspot-deals";
 import { reportWarning } from "./monitoring";
 
@@ -111,9 +115,39 @@ export async function runDealMemoryForCall(call: CallWithAnalysis, organizationI
     }
   }
 
-  return saveCallDealMemory(call.id, organizationId, result, result.model, {
+  const stored = await saveCallDealMemory(call.id, organizationId, result, result.model, {
     dealId,
     callAt,
     prospectCompany: result.prospectCompany,
   });
+  const nextQuestions = await writeNextQuestions(call.id, organizationId, result.prospectCompany ?? call.company_name ?? "le prospect", history, result);
+  return { ...stored, nextQuestions };
+}
+
+// Les questions du prochain call (28/10/2026) : ce qui reste à aller chercher
+// d'après les objectifs du manager, une question par information, rédigée par
+// Haiku. Un échec ne touche pas la fiche : les écrans gardent les questions
+// fixes.
+async function writeNextQuestions(
+  callId: string,
+  organizationId: string,
+  dealName: string,
+  history: DealHistoryEntry[],
+  current: DealMemoryContent
+): Promise<NextQuestions | null> {
+  try {
+    const fiches: ItemsByField[] = [...history.map((h) => h.content.fields), current.fields];
+    const objectives = dealObjectives(fiches, await getOrganizationDealRules(organizationId));
+    if (!objectives || objectives.plan.items.length === 0) {
+      await setCallNextQuestions(callId, null);
+      return null;
+    }
+    const result = await tailorObjectiveQuestions({ dealName, nextRank: objectives.plan.rank, known: mergeKnown(fiches), items: objectives.plan.items });
+    const value: NextQuestions = { rank: objectives.plan.rank, questions: result.questions, model: result.model, generatedAt: new Date().toISOString() };
+    await setCallNextQuestions(callId, value);
+    return value;
+  } catch (err) {
+    reportWarning("deal-memory.next-questions", err, { callId });
+    return null;
+  }
 }

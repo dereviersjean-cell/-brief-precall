@@ -185,6 +185,13 @@ export type DealMemoryItem = {
   // pour cette action, AAAA-MM-JJ, ou null si aucune date n'a été fixée.
   // Absent (undefined) des fiches générées avant : la date n'a pas été relevée.
   date?: string | null;
+  // Informations de qualification seulement (28/10/2026, demande de Jean :
+  // savoir si l'objectif du call est vraiment atteint) : « confirme » quand le
+  // prospect l'a dit clairement (un montant, un nom, une date), « evoque »
+  // quand le sujet a été abordé sans réponse nette ou avancé par le seul
+  // commercial. Absent des fiches générées avant : lu comme « confirme »,
+  // c'est ce que l'écran en disait jusque-là.
+  level?: "confirme" | "evoque";
   // Phrase exacte du transcript qui justifie l'élément, extraite par le code.
   verbatim: string | null;
   // Absent des fiches générées avant le 27/10/2026 : l'écran retombe alors
@@ -211,7 +218,14 @@ export type StoredDealMemory = DealMemoryContent & {
   generatedAt: string;
   // Dernier envoi dans HubSpot (étape 3), absent si jamais envoyée.
   hubspotPushedAt?: string | null;
+  // Les questions du prochain call rédigées par Haiku (migration 037), absentes
+  // avant elle ou quand rien n'était à aller chercher.
+  nextQuestions?: NextQuestions | null;
 };
+
+// Une question par information à aller chercher au rendez-vous `rank`
+// (lib/call-objectives.ts), clé = le champ de qualification.
+export type NextQuestions = { rank: number; questions: Partial<Record<string, string>>; model: string; generatedAt: string };
 
 // Ce qu'un deal a retenu de ses calls précédents, donné au modèle pour qu'il
 // compare (objection qui revient, décideur toujours absent…).

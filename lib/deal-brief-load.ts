@@ -36,5 +36,5 @@ export async function loadDealBriefContext(
   const latest = [...fiches].sort((a, b) => (a.callAt ?? "").localeCompare(b.callAt ?? "")).at(-1)!;
   const objections = await getDealMemoryObjections(latest.callId).catch(() => []);
   const rules = await getOrganizationDealRules(org.id);
-  return buildDealBriefContext(fiches, objections, qualificationFields(rules));
+  return buildDealBriefContext(fiches, objections, qualificationFields(rules), rules);
 }

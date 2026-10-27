@@ -43,7 +43,7 @@ describe("adviceFor", () => {
     assert.match(a.title, /^Obtenir : /);
     assert.match(a.why, /décideur économique/);
     assert.equal(a.quote, null);
-    assert.ok(a.how[0].includes("Au-delà de vous, qui validera"));
+    assert.ok(a.how[0].includes("Au-delà de vous, qui"));
     assert.match(a.how.at(-1) ?? "", /Autre point du dernier call/);
     assert.match(a.when, /^Avant le 3 novembre/);
   });

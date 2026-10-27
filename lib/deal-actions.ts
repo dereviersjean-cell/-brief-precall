@@ -10,6 +10,7 @@ import {
 } from "./deal-memory-schema";
 import { REP_ACTIONS, sortByWeight } from "./deal-board";
 import { METHODS, type QualificationKey } from "./deal-rules";
+import { itemLevel, isVague } from "./call-objectives";
 
 export type { QualificationKey };
 
@@ -32,6 +33,9 @@ export type QualificationRow = {
   // connu = connu par un call précédent, pas abordé ici ; manquant = personne
   // n'en a encore parlé.
   status: "nouveau" | "precise" | "connu" | "manquant";
+  // Abordé sans réponse nette, sur ce call et les précédents (28/10/2026) :
+  // compte comme manquant, l'écran le dit « encore flou ».
+  vague: boolean;
   // Ce qu'on en sait de plus récent, jusqu'à ce call compris.
   latest: DealMemoryItem | null;
   latestAt: string | null;
@@ -64,8 +68,12 @@ export function buildQualification(
 ): QualificationRow[] {
   return fields.map((key) => {
     const field = FIELD_DEFS.get(key)!;
-    const now = fiche.fields[key] ?? [];
-    const before = prior[key] ?? [];
+    // Seul ce que le prospect a dit clairement compte comme connu ; un élément
+    // sans niveau (fiche antérieure au 28/10/2026) compte comme avant.
+    const nowAll = fiche.fields[key] ?? [];
+    const beforeAll = prior[key] ?? [];
+    const now = nowAll.filter((i) => itemLevel(i) === "confirme");
+    const before = beforeAll.filter((i) => itemLevel(i) === "confirme");
     const status: QualificationRow["status"] =
       now.length > 0 ? (before.length > 0 ? "precise" : "nouveau") : before.length > 0 ? "connu" : "manquant";
     return {
@@ -73,8 +81,9 @@ export function buildQualification(
       label: field.label,
       meddic: field.meddic,
       status,
-      latest: now[0] ?? before[0] ?? null,
-      latestAt: now.length > 0 ? callAt : before[0]?.callAt ?? null,
+      vague: status === "manquant" && isVague([...nowAll, ...beforeAll]),
+      latest: now[0] ?? before[0] ?? nowAll[0] ?? beforeAll[0] ?? null,
+      latestAt: now.length > 0 || (before.length === 0 && nowAll.length > 0) ? callAt : before[0]?.callAt ?? beforeAll[0]?.callAt ?? null,
     };
   });
 }

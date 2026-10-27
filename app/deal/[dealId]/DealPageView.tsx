@@ -3,7 +3,7 @@ import type { DealMemoryPanel } from "@/lib/db";
 import type { DealProgress, ProgressFiche } from "@/lib/deal-progress";
 import type { DealReview } from "@/lib/deal-review";
 import { DEAL_ALERT_RULES } from "@/lib/deal-memory-schema";
-import { DealActionPlan, DealQualification } from "@/app/feedback/[id]/DealFocus";
+import { DealActionPlan, DealObjectives, DealQualification } from "@/app/feedback/[id]/DealFocus";
 import { VERDICTS, formatAmount, formatDay } from "@/app/mes-deals/deal-ui";
 
 const LABEL = "text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500";
@@ -172,6 +172,7 @@ export default function DealPageView({
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <div className="min-w-0 space-y-6">
+          {panel?.initial && <DealObjectives callId={progress.lastCall.id} panel={panel} />}
           {panel?.initial && <DealActionPlan callId={progress.lastCall.id} panel={panel} />}
           <Calls progress={progress} fiches={fiches} owners={owners} />
         </div>

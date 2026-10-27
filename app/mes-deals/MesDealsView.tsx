@@ -4,6 +4,10 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import CompanyLogo from "@/app/components/CompanyLogo";
 import { adviceFor } from "@/lib/deal-advice";
+import { Line } from "@/app/components/CopyLine";
+import { ObjectivesMessage, ObjectivesPlan } from "@/app/components/CallObjectives";
+
+export { Line };
 import type { DealProgress, FocusStatus } from "@/lib/deal-progress";
 
 // Vue commercial « Mes deals », version D3 « coach » (choisie par Jean le
@@ -78,34 +82,6 @@ function Ring({ value, total }: { value: number; total: number }) {
   );
 }
 
-// Une phrase prête à dire, copiable d'un clic.
-export function Line({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-  const quoted = /^«.*»$/.test(text.trim());
-  return (
-    <li className="group flex gap-2.5 text-[14px] leading-relaxed text-stone-800">
-      <span className="mt-0.5 text-emerald-600">→</span>
-      <span className="min-w-0 flex-1">{text}</span>
-      {quoted && (
-        <button
-          onClick={() => {
-            navigator.clipboard
-              ?.writeText(text.replace(/^«\s*|\s*»$/g, ""))
-              .then(() => {
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1500);
-              })
-              .catch(() => {});
-          }}
-          className="shrink-0 self-start rounded-md px-2 py-0.5 text-[12px] font-medium text-stone-400 hover:bg-white hover:text-stone-700"
-        >
-          {copied ? "Copié" : "Copier"}
-        </button>
-      )}
-    </li>
-  );
-}
-
 function Detail({ d }: { d: DealProgress }) {
   const a = adviceFor(d);
   const st = STATUS[d.focus.status];
@@ -155,6 +131,16 @@ function Detail({ d }: { d: DealProgress }) {
         </Link>
       </div>
 
+      {d.objectives && d.objectives.plan.items.length > 0 && (
+        <div className="mt-6 border-t border-stone-100 pt-5">
+          <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-[0.1em] text-stone-500">Ton R{d.objectives.plan.rank} : ce qu&apos;il faut aller chercher</h3>
+          <ObjectivesMessage lines={d.objectives.message} />
+          <div className="mt-4">
+            <ObjectivesPlan plan={d.objectives.plan} />
+          </div>
+        </div>
+      )}
+
       <div className="mt-6 grid grid-cols-1 gap-6 border-t border-stone-100 pt-5 sm:grid-cols-2">
         <section>
           <h3 className="mb-2 text-[12px] font-semibold text-stone-500">Ce que vous savez</h3>
@@ -162,13 +148,13 @@ function Detail({ d }: { d: DealProgress }) {
             {d.checklist.map((c) => (
               <li key={c.key} className="flex items-center gap-2">
                 <span
-                  className="grid h-4 w-4 place-items-center rounded text-[10px] font-bold text-white"
-                  style={c.known ? { background: "#059669" } : { boxShadow: "inset 0 0 0 1.5px #d6d3d1" }}
+                  className={`grid h-4 w-4 place-items-center rounded text-[10px] font-bold ${c.vague ? "bg-amber-100 text-amber-800" : "text-white"}`}
+                  style={c.known ? { background: "#059669" } : c.vague ? undefined : { boxShadow: "inset 0 0 0 1.5px #d6d3d1" }}
                 >
-                  {c.known ? "✓" : ""}
+                  {c.known ? "✓" : c.vague ? "~" : ""}
                 </span>
                 <span className={c.known ? "text-stone-800" : "font-medium text-stone-900"}>{c.label}</span>
-                {!c.known && <span className="text-[11px] font-semibold text-amber-700">à obtenir</span>}
+                {!c.known && <span className="text-[11px] font-semibold text-amber-700">{c.vague ? "encore flou" : "à obtenir"}</span>}
               </li>
             ))}
           </ul>

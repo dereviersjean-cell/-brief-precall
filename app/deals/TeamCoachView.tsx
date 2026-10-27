@@ -3,7 +3,8 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Avatar, Line } from "@/app/mes-deals/MesDealsView";
+import { Avatar } from "@/app/mes-deals/MesDealsView";
+import { Line } from "@/app/components/CopyLine";
 import {
   coachingQuestions,
   firstName,

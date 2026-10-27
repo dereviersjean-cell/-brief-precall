@@ -28,8 +28,27 @@ describe("shapeDealMemory", () => {
         verbatim: "On perd deux jours par semaine à qualifier des leads à la main",
         quote: [{ speaker: "Antoine Seifert", text: "On perd deux jours par semaine à qualifier des leads à la main" }],
         startMs: 4000,
+        // Sans niveau donné par le modèle : un doute, donc « évoqué ».
+        level: "evoque",
       },
     ]);
+  });
+
+  test("le niveau de certitude : seul un « confirme » explicite est confirmé", () => {
+    const out = shapeDealMemory(
+      {
+        fields: {
+          budget: [{ text: "15 k€", lines: [1, 1], level: "confirme" }],
+          douleur: [{ text: "Deux jours perdus", lines: [1, 1], level: "certain" }],
+          prochaines_etapes: [{ text: "Démo", lines: [1, 1], level: "confirme", date: null }],
+        },
+        alerts: [],
+      },
+      LINES
+    );
+    assert.equal(out.fields.budget?.[0].level, "confirme");
+    assert.equal(out.fields.douleur?.[0].level, "evoque");
+    assert.equal(out.fields.prochaines_etapes?.[0].level, undefined);
   });
 
   test("écarte un élément sans numéro de ligne ou hors transcript", () => {

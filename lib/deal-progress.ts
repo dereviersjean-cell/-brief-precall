@@ -10,6 +10,7 @@ import {
 import type { QualificationKey } from "./deal-actions";
 import { DEFAULT_RULES, missingForStage, qualificationFields, qualificationLabel, type DealRules } from "./deal-rules";
 import { REP_ACTIONS, sortByWeight } from "./deal-board";
+import { dealObjectives, isVague, itemLevel, type DealObjectives, type ItemsByField, type StoredQuestions } from "./call-objectives";
 
 // Vue commercial « Mes deals » (demande de Jean du 27/10/2026) : l'évolution
 // de chaque deal call après call, et un verdict — en progrès, à l'arrêt, en
@@ -37,6 +38,8 @@ export type ProgressFiche = {
   alerts: DealMemoryAlert[];
   // Domaine du prospect (deals.domain), pour son logo.
   dealDomain?: string | null;
+  // Les questions du prochain call rédigées après ce call (migration 037).
+  nextQuestions?: StoredQuestions | null;
 };
 
 export type DealVerdict = "progres" | "arret" | "recul";
@@ -90,7 +93,10 @@ export type DealProgress = {
   domain: string | null;
   topAlert: { rule: string; label: string; text: string; quote: string | null; speaker: string | null } | null;
   missingKeys: QualificationKey[];
-  checklist: { key: QualificationKey; label: string; known: boolean }[];
+  checklist: { key: QualificationKey; label: string; known: boolean; vague: boolean }[];
+  // Les objectifs du prochain call (lib/call-objectives.ts) : ce que le
+  // dernier a obtenu, ce qu'il reste à aller chercher, les questions.
+  objectives: DealObjectives | null;
 };
 
 export type FocusStatus = "relancer" | "traiter" | "bonne_voie";
@@ -203,7 +209,8 @@ export function buildDealProgress(fiches: ProgressFiche[], now: number, rules: D
     const steps: DealStep[] = sorted.map((f) => {
       const learned: string[] = [];
       for (const key of fields) {
-        if ((f.fields[key] ?? []).length > 0 && !seen.has(key)) {
+        // Seul ce que le prospect a dit clairement compte (28/10/2026).
+        if ((f.fields[key] ?? []).some((i) => itemLevel(i) === "confirme") && !seen.has(key)) {
           seen.add(key);
           learned.push(FIELD_LABELS.get(key) ?? key);
         }
@@ -265,7 +272,17 @@ export function buildDealProgress(fiches: ProgressFiche[], now: number, rules: D
           : null;
       })(),
       missingKeys: missing,
-      checklist: fields.map((k) => ({ key: k, label: qualificationLabel(k), known: seen.has(k) })),
+      checklist: fields.map((k) => ({
+        key: k,
+        label: qualificationLabel(k),
+        known: seen.has(k),
+        vague: !seen.has(k) && isVague(sorted.flatMap((f) => f.fields[k] ?? [])),
+      })),
+      objectives: dealObjectives(
+        sorted.map((f) => f.fields as ItemsByField),
+        rules,
+        latest.nextQuestions
+      ),
       nextSteps: latest.fields.prochaines_etapes ?? [],
       alerts: latest.alerts.map((a) => RULE_LABELS.get(a.rule) ?? a.rule),
       nextStep: nextStepOf(latest, new Date(now).toISOString().slice(0, 10), idle),

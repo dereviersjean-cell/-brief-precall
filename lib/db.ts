@@ -6,7 +6,7 @@ import type { TranscriptJson } from "./recall";
 import type { NotificationEventType, NotificationChannel, NotificationPreference } from "./notification-preferences";
 import { coerceMeetingStageConfig, type MeetingStage, type MeetingStageConfig } from "./meeting-stage";
 import { resolveAccessLevel, resolveEnabledModules, type AccessLevel, type ModuleKey } from "./modules";
-import type { DealHistoryEntry, DealMemoryContent, DealOverview, HubspotDealSnapshot, StoredDealMemory } from "./deal-memory-schema";
+import type { DealHistoryEntry, DealMemoryContent, DealOverview, HubspotDealSnapshot, NextQuestions, StoredDealMemory } from "./deal-memory-schema";
 import type { DealIdentity } from "./deal-grouping";
 import type { BoardFicheRow, BoardReview } from "./deal-board";
 import type { PipelineStats } from "./deal-pipeline-stats";
@@ -1877,6 +1877,7 @@ export async function getCallDealMemory(
     deal_id?: string | null;
     call_at?: string | null;
     hubspot_pushed_at?: string | null;
+    next_questions?: NextQuestions | null;
   };
   return {
     fields: row.fields ?? {},
@@ -1886,7 +1887,29 @@ export async function getCallDealMemory(
     dealId: row.deal_id ?? null,
     callAt: row.call_at ?? null,
     hubspotPushedAt: row.hubspot_pushed_at ?? null,
+    nextQuestions: row.next_questions ?? null,
   };
+}
+
+// Les questions du prochain call (migration 037). Fail-soft : sans la
+// colonne, rien n'est écrit et les écrans gardent les questions fixes.
+export async function setCallNextQuestions(callId: string, value: NextQuestions | null): Promise<void> {
+  const { error } = await supabaseAdmin.from("call_deal_memory").update({ next_questions: value }).eq("call_id", callId);
+  if (error) console.error("[db] setCallNextQuestions failed (migration 037 ?):", error.message);
+}
+
+export async function getNextQuestionsForCalls(callIds: string[]): Promise<Record<string, NextQuestions>> {
+  if (callIds.length === 0) return {};
+  const { data, error } = await supabaseAdmin.from("call_deal_memory").select("call_id, next_questions").in("call_id", callIds);
+  if (error) {
+    console.error("[db] getNextQuestionsForCalls failed (migration 037 ?):", error.message);
+    return {};
+  }
+  const result: Record<string, NextQuestions> = {};
+  for (const row of (data ?? []) as { call_id: string; next_questions: NextQuestions | null }[]) {
+    if (row.next_questions) result[row.call_id] = row.next_questions;
+  }
+  return result;
 }
 
 // Une fiche par call : la régénération remplace la précédente. `deal` vient de
@@ -2101,10 +2124,15 @@ export async function getDealBoardRows(organizationId: string, ownerIds: string[
     calls: { user_id: string; meeting_title: string | null } | { user_id: string; meeting_title: string | null }[];
     deals: { name: string; hubspot_snapshot: HubspotDealSnapshot | null } | { name: string; hubspot_snapshot: HubspotDealSnapshot | null }[];
   };
-  return ((data ?? []) as Row[]).map((r) => {
+  const rows = (data ?? []) as Row[];
+  // Les questions du prochain call, lues à part : sans la migration 037, la
+  // liste s'affiche quand même (questions fixes).
+  const questions = await getNextQuestionsForCalls(rows.map((r) => r.call_id));
+  return rows.map((r) => {
     const call = Array.isArray(r.calls) ? r.calls[0] : r.calls;
     const deal = Array.isArray(r.deals) ? r.deals[0] : r.deals;
     return {
+      nextQuestions: questions[r.call_id] ?? null,
       dealId: r.deal_id,
       dealName: deal?.name ?? "Deal",
       hubspot: deal?.hubspot_snapshot ?? null,
@@ -2147,7 +2175,9 @@ export async function getDealPageFiches(
     calls: { meeting_title: string | null; user_id: string } | { meeting_title: string | null; user_id: string }[];
     deals: { name: string; hubspot_snapshot: HubspotDealSnapshot | null } | { name: string; hubspot_snapshot: HubspotDealSnapshot | null }[];
   };
-  return ((data ?? []) as Row[]).map((r) => {
+  const rows = (data ?? []) as Row[];
+  const questions = await getNextQuestionsForCalls(rows.map((r) => r.call_id));
+  return rows.map((r) => {
     const call = Array.isArray(r.calls) ? r.calls[0] : r.calls;
     const d = Array.isArray(r.deals) ? r.deals[0] : r.deals;
     return {
@@ -2160,6 +2190,7 @@ export async function getDealPageFiches(
       ownerId: call?.user_id ?? "",
       fields: r.fields ?? {},
       alerts: r.alerts ?? [],
+      nextQuestions: questions[r.call_id] ?? null,
     };
   });
 }
@@ -2245,10 +2276,15 @@ export async function getProgressFichesForUser(organizationId: string, userId: s
       | { name: string; hubspot_snapshot: HubspotDealSnapshot | null; domain: string | null }
       | { name: string; hubspot_snapshot: HubspotDealSnapshot | null; domain: string | null }[];
   };
-  return ((data ?? []) as Row[]).map((r) => {
+  const rows = (data ?? []) as Row[];
+  // Les questions du prochain call, lues à part : sans la migration 037, la
+  // liste s'affiche quand même (questions fixes).
+  const questions = await getNextQuestionsForCalls(rows.map((r) => r.call_id));
+  return rows.map((r) => {
     const call = Array.isArray(r.calls) ? r.calls[0] : r.calls;
     const deal = Array.isArray(r.deals) ? r.deals[0] : r.deals;
     return {
+      nextQuestions: questions[r.call_id] ?? null,
       dealId: r.deal_id,
       dealName: deal?.name ?? "Deal",
       hubspot: deal?.hubspot_snapshot ?? null,
@@ -2583,6 +2619,8 @@ export type DealMemoryPanel = {
   canManage: boolean;
   // Les champs de la méthode de qualification de l'organisation.
   qualificationFields: QualificationKey[];
+  // Les règles des deals, dont les objectifs par rendez-vous.
+  rules: DealRules;
 };
 
 // Ce que la page d'un call montre de la fiche deal, ou null quand le lecteur
@@ -2611,7 +2649,7 @@ export async function loadDealMemoryPanel(
       })
     : null;
   const rules = await getOrganizationDealRules(organizationId);
-  return { initial, objections, deal, canManage: role === "manager", qualificationFields: qualificationFields(rules) };
+  return { initial, objections, deal, canManage: role === "manager", qualificationFields: qualificationFields(rules), rules };
 }
 
 // Trace du CTA "Je veux débloquer ce module" (migration 004) — durable en
