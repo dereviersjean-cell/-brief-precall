@@ -12,7 +12,8 @@ import { isValidEmail } from "@/lib/email-address";
 import { useModules } from "@/app/components/ModulesProvider";
 import ConversationAnalyticsBlock from "./ConversationAnalyticsBlock";
 import KeyPointsBlock from "./KeyPointsBlock";
-import DealMemoryBlock from "./DealMemoryBlock";
+import DealMemoryBlock, { DealCard } from "./DealMemoryBlock";
+import { DealActionPlan, DealFocusMissing, DealQualification } from "./DealFocus";
 import SpeakerTimelineBlock from "./SpeakerTimelineBlock";
 
 // Étiquette de section et carte, reprises du site (AnalysisObject).
@@ -621,7 +622,7 @@ export default function FeedbackDetailClient({
   backHref?: string;
   backLabel?: string;
   initialTab?: Tab;
-  /** Fiche deal (Deal Execution, phase de test) : null = le lecteur ne la voit pas. */
+  /** Fiche deal (Deal Execution) : null = le lecteur ne la voit pas (organisation hors test). */
   dealMemory?: DealMemoryPanel | null;
 }) {
   const [tab, setTab] = useState<Tab>(initialTab);
@@ -1007,11 +1008,18 @@ export default function FeedbackDetailClient({
 
             {activeTab === "overview" && (
               <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-                {/* Gauche : ce qu'il faut retenir du call */}
+                {/* Gauche : ce qu'il faut faire pour le deal (demande de Jean
+                    du 27/10/2026 : l'analyse du call centrée sur la fiche
+                    deal, actionnable), puis ce qu'il faut retenir de la
+                    conversation. */}
                 <div className="min-w-0 space-y-9">
-                  {/* Points clés — generated on demand (not by analyzeCall), cached
-                      on call_analysis.key_points. */}
-                  <KeyPointsBlock callId={call.id} initialKeyPoints={a.key_points} bare />
+                  {dealMemory?.initial && <DealActionPlan callId={call.id} panel={dealMemory} />}
+                  <div className="space-y-4">
+                    {dealMemory?.initial && <h2 className={`${LABEL} border-t border-border pt-8`}>La conversation</h2>}
+                    {/* Points clés — generated on demand (not by analyzeCall), cached
+                        on call_analysis.key_points. */}
+                    <KeyPointsBlock callId={call.id} initialKeyPoints={a.key_points} bare />
+                  </div>
 
                   <ConversationAnalyticsBlock analytics={analytics} />
 
@@ -1046,8 +1054,18 @@ export default function FeedbackDetailClient({
                   )}
                 </div>
 
-                {/* Droite : le détail des scores, l'email */}
+                {/* Droite : le deal et sa qualification, puis le détail des
+                    scores et l'email */}
                 <div className="min-w-0 space-y-8">
+                  {dealMemory &&
+                    (dealMemory.initial ? (
+                      <>
+                        {dealMemory.deal && <DealCard deal={dealMemory.deal} />}
+                        <DealQualification callId={call.id} panel={dealMemory} />
+                      </>
+                    ) : (
+                      <DealFocusMissing canGenerate={dealMemory.canManage} onOpen={() => setTab("deal")} />
+                    ))}
                   {/* Scores par dimension — dynamique via le playbook_snapshot de
                       l'analyse (ou les 4 labels historiques si absent) */}
                   {effectiveScores.length > 0 && (

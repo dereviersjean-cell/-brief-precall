@@ -17,9 +17,11 @@ import {
 } from "@/lib/deal-memory-schema";
 import type { DealMemoryObjection, DealMemoryPanel } from "@/lib/db";
 
-// Fiche deal tirée du call — Deal Execution, étape 1, phase « à blanc » :
-// seuls les managers des organisations ouvertes la voient, le temps de
-// vérifier sur de vrais calls que ce qu'elle retient est juste.
+// Fiche deal tirée du call — Deal Execution. Onglet « Fiche deal » : le
+// détail complet (tous les champs, la mémoire cumulée du deal). L'essentiel,
+// actionnable, est en tête de la vue d'ensemble (DealFocus.tsx). Le
+// commercial la voit sur ses calls ; régénérer, renvoyer dans HubSpot et
+// régler les champs restent aux managers (panel.canManage).
 
 const LABEL = "text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500";
 const CARD = "rounded-2xl border border-border bg-white";
@@ -44,7 +46,7 @@ function Spinner() {
 // Le passage cité, avec le nom de qui parle : une citation qui passe d'une
 // personne à l'autre se lisait sinon comme venant toute du prospect. Les
 // fiches antérieures au 27/10/2026 n'ont que `verbatim`.
-function Quote({ verbatim, quote }: { verbatim: string; quote?: QuoteSegment[] }) {
+export function Quote({ verbatim, quote }: { verbatim: string; quote?: QuoteSegment[] }) {
   const segments = quote && quote.length > 0 ? quote : [{ speaker: null, text: verbatim }];
   return (
     <div className="mt-1.5 space-y-1 border-l-2 border-slate-200 pl-3 text-[12.5px] leading-relaxed text-slate-500">
@@ -58,7 +60,7 @@ function Quote({ verbatim, quote }: { verbatim: string; quote?: QuoteSegment[] }
   );
 }
 
-function Item({ item, date }: { item: DealMemoryItem; date?: string | null }) {
+export function Item({ item, date }: { item: DealMemoryItem; date?: string | null }) {
   const [open, setOpen] = useState(false);
   return (
     <li className="text-[13.5px] leading-relaxed text-slate-800">
@@ -90,7 +92,7 @@ function formatDay(iso: string): string {
 
 // Le deal auquel ce call appartient : ses calls dans l'ordre, et l'alerte
 // « aucune activité » quand le dernier date de plus de INACTIVITY_DAYS jours.
-function DealCard({ deal }: { deal: DealOverview }) {
+export function DealCard({ deal }: { deal: DealOverview }) {
   const last = deal.calls.reduce<string | null>((max, c) => (c.callAt && (!max || c.callAt > max) ? c.callAt : max), null);
   const idleDays = deal.idleDays;
   return (
@@ -115,7 +117,7 @@ function DealCard({ deal }: { deal: DealOverview }) {
             {c.isCurrent ? (
               <span className="font-medium text-slate-900">{c.title ? `${c.title} (ce call)` : "Ce call"}</span>
             ) : (
-              <Link href={`/feedback/${c.callId}?tab=deal`} className="font-medium text-[color:var(--violet)] hover:underline">
+              <Link href={`/feedback/${c.callId}`} className="font-medium text-[color:var(--violet)] hover:underline">
                 {c.title ?? "Call"}
               </Link>
             )}
@@ -362,16 +364,16 @@ export default function DealMemoryBlock({ callId, panel }: { callId: string; pan
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-[15px] font-semibold text-slate-900">Fiche deal</h2>
-            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11.5px] font-medium text-amber-700">
-              Test · visible des managers seulement
-            </span>
           </div>
           <p className="mt-1 text-[13px] text-slate-500">
             {memory
               ? `Tirée de ce call le ${formatDate(memory.generatedAt)}. Chaque élément renvoie à la phrase prononcée.`
-              : "Ce que Brief retient de ce call pour le deal : douleur, décideur, budget, prochaines étapes, alertes."}
+              : panel.canManage
+                ? "Ce que Brief retient de ce call pour le deal : douleur, décideur, budget, prochaines étapes, alertes."
+                : "Pas de fiche deal pour ce call : elle se génère toute seule après chaque nouveau call enregistré."}
           </p>
         </div>
+        {panel.canManage && (
         <div className="flex shrink-0 flex-wrap gap-2">
           {memory && panel.deal?.hubspot && (
             <button
@@ -392,6 +394,7 @@ export default function DealMemoryBlock({ callId, panel }: { callId: string; pan
             {status === "loading" ? "Analyse du call…" : memory ? "Régénérer" : "Générer la fiche"}
           </button>
         </div>
+        )}
       </div>
 
       {pushedAt && pushStatus !== "error" && (
@@ -489,7 +492,7 @@ export default function DealMemoryBlock({ callId, panel }: { callId: string; pan
             </div>
           </section>
 
-          <HubspotMapping />
+          {panel.canManage && <HubspotMapping />}
         </>
       )}
     </div>

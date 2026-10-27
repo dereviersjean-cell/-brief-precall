@@ -2354,16 +2354,25 @@ export async function getDealMemoryObjections(callId: string): Promise<DealMemor
     }));
 }
 
-export type DealMemoryPanel = { initial: StoredDealMemory | null; objections: DealMemoryObjection[]; deal: DealOverview | null };
+export type DealMemoryPanel = {
+  initial: StoredDealMemory | null;
+  objections: DealMemoryObjection[];
+  deal: DealOverview | null;
+  // Régénérer, envoyer dans HubSpot, régler les champs : managers seulement.
+  canManage: boolean;
+};
 
 // Ce que la page d'un call montre de la fiche deal, ou null quand le lecteur
-// ne doit pas la voir (pas manager, ou organisation hors phase de test).
+// ne doit pas la voir (organisation hors phase de test). Depuis le 27/10/2026
+// le commercial la voit aussi sur ses calls (demande de Jean : l'analyse du
+// call centrée sur le deal) ; la page a déjà vérifié qu'il en est le
+// propriétaire, ou que le manager lui est lié.
 export async function loadDealMemoryPanel(
   role: UserRole | null,
   organizationId: string | null,
   callId: string
 ): Promise<DealMemoryPanel | null> {
-  if (role !== "manager" || !organizationId) return null;
+  if (!role || !organizationId) return null;
   if (!(await isDealMemoryEnabledForOrganization(organizationId))) return null;
   const [initial, objections] = await Promise.all([
     getCallDealMemory(callId).catch((err) => {
@@ -2378,7 +2387,7 @@ export async function loadDealMemoryPanel(
         return null;
       })
     : null;
-  return { initial, objections, deal };
+  return { initial, objections, deal, canManage: role === "manager" };
 }
 
 // Trace du CTA "Je veux débloquer ce module" (migration 004) — durable en

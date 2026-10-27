@@ -941,6 +941,11 @@ En une ligne : HubSpot only en V1 ; parcours de vente propre à chaque organisat
 - **L'import de transcript déclenche aussi la fiche puis HubSpot** (même événement, `dealMemoryQueued` dans la réponse) : les extraits Claap suivent le chemin d'un call Recall. **Une fiche à la fois par organisation** (`concurrency` sur `event.data.organizationId`) : trois extraits importés coup sur coup se traitent dans l'ordre, chacun comparé au précédent.
 - Vérifié sur le portail de test : renvoi de la fiche Velbrun par la fonction partagée, une seule note sur le deal (remplacée), `hs_next_step` et `description` écrits.
 
+**Analyse du call centrée sur le deal (point 2, feu vert du 27/10/2026 « on y va »)** — sans migration :
+- **La vue d'ensemble d'un call commence par le deal** quand la fiche existe : à gauche « À faire avant le prochain call », à droite la carte du deal et la « Qualification du deal » ; l'analyse de la conversation (points clés, points forts, objections, analytics) suit sous « La conversation ». Composants dans `app/feedback/[id]/DealFocus.tsx` ; l'onglet « Fiche deal » garde le détail complet.
+- **Logique pure et testée dans `lib/deal-actions.ts`, sans appel IA** : le plan d'action = engagements pris pendant le call (champ `prochaines_etapes`), points de vigilance (alertes du call, les plus lourdes d'abord, chacune avec son « À faire » tiré de `REP_ACTIONS`), objections non ou mal traitées, cases de qualification encore vides (« À obtenir au prochain call », le décideur retiré quand une alerte en parle déjà). La qualification = 8 champs (socle + MEDDIC) marqués « Nouveau », « Précisé », « Déjà connu » (call antérieur, daté) ou « À obtenir » — **seuls les calls ANTÉRIEURS au call regardé comptent** (`priorItems`) : la page d'un call dit où en était le deal après ce call.
+- **Le commercial voit la fiche sur ses calls** (`loadDealMemoryPanel` ouvert à tout rôle des organisations en test ; la page a déjà vérifié la propriété). Régénérer, renvoyer dans HubSpot et « Champs HubSpot » restent aux managers (`DealMemoryPanel.canManage`). Un call sans fiche le dit sans promettre d'attente ; le manager peut la lancer.
+
 **État du code au 27/10/2026** : référence eslint **14 problèmes** (13 erreurs, 1 avertissement). **157 tests**.
 
 ## Devis — fonctionnalité abandonnée (décision de Jean, 31 août 2026)
