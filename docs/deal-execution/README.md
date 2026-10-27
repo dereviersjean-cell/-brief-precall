@@ -134,3 +134,13 @@ Point de départ avant toute suite technique. Le reste de l'app ne bouge pas (Pe
 2. **Analyse rendez-vous** : la bibliothèque de tous les calls passés ; un call ouvert montre ses statistiques, ses insights et son analyse.
 3. **Mes deals** (commercial) *(fait le 27/10 : vue d'ensemble + page d'un deal)* : la vue globale de ses ventes en cours — à qui il parle, où il en est avec chacun, avec qui il est à jour, les actions à prendre, son pipe. Chaque deal s'ouvre et montre clairement où il en est.
 4. **Deals** (manager) *(fait le 27/10 : Équipe d'abord + bilan sur la page d'un deal)* : ce que font ses commerciaux, leurs deals en cours et où ils en sont ; en ouvrant un deal, voir très vite ce qui est bien fait, ce qui est mal fait, et s'il faut intervenir.
+
+## Point d'étape du 27/10/2026 (fin de journée) — ce qui reste
+
+**À vérifier en conditions réelles** : aucun call enregistré par Recall depuis la mise en ligne de la chaîne automatique (fiche → HubSpot → emails coupés). Le premier vrai call (ou un import de transcript, qui suit le même chemin) doit produire sa fiche en ~1 min, puis `hubspot_pushed_at`. Vérifier aussi dans Inngest que `sync-recall-calendars` tourne sans erreur depuis qu'il n'a plus d'étapes, et que `refresh-deal-pipelines` a tourné à 7 h.
+
+**Décisions en attente de Jean** : (1) deal en progrès avec des objections mal traitées : « pas besoin d'intervenir » ou « à surveiller » ; (2) parcours mesuré : ne garder que l'alerte « étape plus longue que d'habitude » et retirer les chiffres du bandeau ? (3) Sonnet ou Opus pour les fiches (Sonnet rate des alertes qu'Opus voyait) ; (4) où remettre « Inviter un commercial » maintenant qu'Équipe est masquée ; (5) emails : plus tard, et corriger d'abord les adresses @brief.com des commerciaux de test.
+
+**Manques connus** : test d'un deal qui se dégrade (alertes de comparaison jamais vues sur de vraies données) ; deal rattaché par son seul id HubSpot non reconnu par le brief ; deals créés par import sans email (Peatch) reconnus seulement par le nom d'entreprise ; dates d'engagement seulement sur les nouvelles fiches ; visite guidée qui pointe encore vers Performance ; étape R1/R2/R3 de l'analyse encore déduite du titre (`lib/meeting-stage.ts`) alors que le rang réel est connu ; captures 1 à 6 du doc pour Hubert à glisser ; dates des calls Peatch supposées.
+
+**Questions de Hubert sans réponse** : 14 (deux semaines « à blanc » avant envoi), 15 (mesure de réussite du pilote), 16 (RGPD, bloquant avant tout pilote externe), 17 (nom du produit).
