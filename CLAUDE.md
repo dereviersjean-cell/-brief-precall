@@ -957,6 +957,11 @@ En une ligne : HubSpot only en V1 ; parcours de vente propre à chaque organisat
 
 **Vue manager complétée (point 4, feu vert du 27/10/2026 « on y va »)** — sans migration : l'onglet **Équipe** de `/deals` passe d'un tableau à une carte par personne (le manager et ses commerciaux liés) : calls des 7 derniers jours et date du dernier (`getCallActivityForUsers`, fenêtre de 120 jours), ses deals par verdict (mêmes calculs que « Mes deals », `lib/deal-progress.ts`), part de deals avec prochaine étape datée, point à travailler, et « Voir ses deals » qui déplie sa vue « Mes deals » (`MesDealsView`). Tri : le plus de deals en recul, puis à l'arrêt. L'onglet « À suivre » (où intervenir) est inchangé.
 
+**Page d'un deal (27/10/2026, feu vert « ok ça me va, on y va » après la structure cible de Jean — voir `docs/deal-execution/README.md`)** — sans migration :
+- Route **`/deal/[dealId]`** (au matcher du middleware ; layout propre). Ouverte depuis « Mes deals » (nom du deal, « Ouvrir le deal ») et depuis « Deals » (nom du deal sur les cartes). Accès : deal de l'organisation ET au moins un call du deal appartenant au lecteur, ou à un commercial lié s'il est manager (`getDealPageFiches` + contrôle dans la page) ; sinon 404.
+- Contenu : en-tête (verdict, étape HubSpot, montant, clôture, commercial, calls), « À faire avant le prochain call » et « Qualification du deal » du dernier call (composants de `DealFocus.tsx`), « Les calls du deal » (chaque call : ce qu'il a appris, ses alertes, lien). **Version manager en plus : le bilan** (`lib/deal-review.ts`, pur, testé, sans IA) — **Bien fait** (infos obtenues, suite datée, décideur identifié, objections bien traitées), **À corriger** (alertes du dernier call, objections mal traitées sur tout le deal sans doublon, ce qui manque encore après 2 calls ou plus, inactivité), **Faut-il intervenir ?** (oui si en recul, à surveiller si à l'arrêt, non si en progrès ; intervention proposée tirée de l'alerte la plus lourde).
+- Vue dans `app/deal/[dealId]/DealPageView.tsx` (aperçu local non versionné : `app/apercu-deal?name=…&role=…`).
+
 **État du code au 27/10/2026** : référence eslint **14 problèmes** (13 erreurs, 1 avertissement). **157 tests**.
 
 ## Devis — fonctionnalité abandonnée (décision de Jean, 31 août 2026)

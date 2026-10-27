@@ -56,7 +56,11 @@ function DealCard({ deal, owner, quiet = false }: { deal: BoardDeal; owner: stri
   return (
     <article className={`${CARD} p-5 ${quiet ? "opacity-80" : ""}`}>
       <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-        <h3 className="text-[15px] font-semibold text-slate-900">{deal.name}</h3>
+        <h3 className="text-[15px] font-semibold text-slate-900">
+          <Link href={`/deal/${deal.id}`} className="hover:underline">
+            {deal.name}
+          </Link>
+        </h3>
         <p className="text-[12.5px] text-slate-500">
           {owner}
           {hubspot?.stage ? ` · ${hubspot.stage}` : ""}

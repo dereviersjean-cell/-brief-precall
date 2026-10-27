@@ -7,17 +7,17 @@ import type { DealProgress, DealVerdict } from "@/lib/deal-progress";
 const LABEL = "text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500";
 const CARD = "rounded-2xl border border-border bg-white";
 
-const VERDICTS: Record<DealVerdict, { label: string; tone: string; dot: string }> = {
+export const VERDICTS: Record<DealVerdict, { label: string; tone: string; dot: string }> = {
   recul: { label: "En recul", tone: "bg-rose-50 text-rose-700", dot: "bg-rose-500" },
   arret: { label: "À l'arrêt", tone: "bg-amber-50 text-amber-700", dot: "bg-amber-500" },
   progres: { label: "En progrès", tone: "bg-emerald-50 text-emerald-700", dot: "bg-emerald-500" },
 };
 
-function formatDay(iso: string): string {
+export function formatDay(iso: string): string {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" });
 }
 
-function formatAmount(amount: number): string {
+export function formatAmount(amount: number): string {
   return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(amount);
 }
 
@@ -69,7 +69,11 @@ function DealProgressCard({ deal }: { deal: DealProgress }) {
     <article className={`${CARD} p-5 sm:p-6`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="text-[16px] font-semibold text-slate-900">{deal.name}</h2>
+          <h2 className="text-[16px] font-semibold text-slate-900">
+            <Link href={`/deal/${deal.id}`} className="hover:underline">
+              {deal.name}
+            </Link>
+          </h2>
           <p className="mt-0.5 text-[12.5px] text-slate-500">{meta.join(" · ")}</p>
         </div>
         <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12.5px] font-semibold ${v.tone}`}>
@@ -129,9 +133,9 @@ function DealProgressCard({ deal }: { deal: DealProgress }) {
         </div>
       </div>
 
-      <div className="mt-5 border-t border-border pt-4">
-        <Link href={`/feedback/${deal.lastCall.id}`} className="text-[13px] font-medium text-[color:var(--violet)] hover:underline">
-          Voir le dernier call et quoi faire avant le prochain →
+      <div className="mt-5 flex flex-wrap gap-x-5 gap-y-1 border-t border-border pt-4">
+        <Link href={`/deal/${deal.id}`} className="text-[13px] font-medium text-[color:var(--violet)] hover:underline">
+          Ouvrir le deal →
         </Link>
       </div>
     </article>

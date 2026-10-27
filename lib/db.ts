@@ -2116,6 +2116,49 @@ export async function getDealBoardRows(organizationId: string, ownerIds: string[
   });
 }
 
+// Page d'un deal (27/10/2026) : toutes ses fiches avec le commercial de
+// chaque call, ou null si le deal n'est pas de cette organisation. Le
+// contrôle « ce lecteur peut-il voir ce deal » est fait par la page, sur les
+// propriétaires des calls.
+export async function getDealPageFiches(
+  dealId: string,
+  organizationId: string
+): Promise<(ProgressFiche & { ownerId: string })[] | null> {
+  const { data: deal, error: dealError } = await supabaseAdmin.from("deals").select("organization_id").eq("id", dealId).maybeSingle();
+  if (dealError) throw dealError;
+  if (!deal || (deal as { organization_id: string }).organization_id !== organizationId) return null;
+  const { data, error } = await supabaseAdmin
+    .from("call_deal_memory")
+    .select("call_id, deal_id, call_at, fields, alerts, calls!inner(meeting_title, user_id), deals!inner(name, hubspot_snapshot)")
+    .eq("deal_id", dealId)
+    .order("call_at", { ascending: true, nullsFirst: true });
+  if (error) throw error;
+  type Row = {
+    call_id: string;
+    deal_id: string;
+    call_at: string | null;
+    fields: ProgressFiche["fields"] | null;
+    alerts: ProgressFiche["alerts"] | null;
+    calls: { meeting_title: string | null; user_id: string } | { meeting_title: string | null; user_id: string }[];
+    deals: { name: string; hubspot_snapshot: HubspotDealSnapshot | null } | { name: string; hubspot_snapshot: HubspotDealSnapshot | null }[];
+  };
+  return ((data ?? []) as Row[]).map((r) => {
+    const call = Array.isArray(r.calls) ? r.calls[0] : r.calls;
+    const d = Array.isArray(r.deals) ? r.deals[0] : r.deals;
+    return {
+      dealId: r.deal_id,
+      dealName: d?.name ?? "Deal",
+      hubspot: d?.hubspot_snapshot ?? null,
+      callId: r.call_id,
+      callAt: r.call_at,
+      callTitle: call?.meeting_title ?? null,
+      ownerId: call?.user_id ?? "",
+      fields: r.fields ?? {},
+      alerts: r.alerts ?? [],
+    };
+  });
+}
+
 // Vue commercial « Mes deals » (27/10/2026) : toutes les fiches des deals où
 // ce commercial a au moins un call — y compris les calls d'un collègue sur
 // le même deal, qui font partie de son histoire.

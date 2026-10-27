@@ -165,7 +165,7 @@ export default function AppSidebar() {
           { href: "/feedback", label: "Analyse rendez-vous", icon: Video, active: feedbackActive },
           // Vue commercial des deals (Deal Execution, 27/10/2026) : mêmes
           // organisations en test que la vue manager.
-          ...(dealsEnabled ? [{ href: "/mes-deals", label: "Mes deals", icon: Briefcase, active: pathname.startsWith("/mes-deals") }] : []),
+          ...(dealsEnabled ? [{ href: "/mes-deals", label: "Mes deals", icon: Briefcase, active: pathname.startsWith("/mes-deals") || (!isManager && pathname.startsWith("/deal/")) }] : []),
         ]
       : []),
   ];
@@ -278,7 +278,7 @@ export default function AppSidebar() {
           <div>
             <NavGroupLabel>Manager</NavGroupLabel>
             <div className="space-y-0.5">
-              <NavLink href="/deals" label="Deals" icon={Target} active={pathname.startsWith("/deals")} />
+              <NavLink href="/deals" label="Deals" icon={Target} active={pathname.startsWith("/deals") || pathname.startsWith("/deal/")} />
             </div>
           </div>
         )}

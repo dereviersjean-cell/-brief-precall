@@ -33,6 +33,7 @@ const LABELS: Record<string, string> = {
   calls: "Calls",
   deals: "Deals à suivre",
   "mes-deals": "Mes deals",
+  deal: "Deal",
 };
 
 // Identifiants d'événement d'agenda : courts chez Google, ~140 caractères

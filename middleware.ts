@@ -43,6 +43,7 @@ export const config = {
     // 27/10/2026).
     "/deals/:path*",
     "/mes-deals/:path*",
+    "/deal/:path*",
     // Routes d'API des modules activables (lib/modules.ts) : seul le verrou
     // de module s'y applique, l'authentification reste l'affaire de chaque
     // route. Toute nouvelle route d'un module doit relever d'un de ces
