@@ -2,12 +2,44 @@ import type { Session } from "next-auth";
 import { getUpcomingMeetings, type CalendarEvent } from "@/lib/calendar";
 import {
   getDealRankIndex,
+  getGoogleTokens,
   getOrganizationEmailDomains,
   getOrganizationForUser,
+  getUserEmail,
   isDealMemoryEnabledForOrganization,
   listUpcomingManualMeetingsForUser,
+  saveGoogleTokens,
 } from "@/lib/db";
 import { dealIdentityFor } from "@/lib/deal-grouping";
+import { getImpersonationTarget } from "@/lib/impersonation";
+import { refreshGoogleAccessTokenOnce } from "@/lib/gmail";
+
+// Exception unique et volontaire (demande de Jean du 27/10/2026, avec
+// l'accord de Hubert de la Lance, associé d'Oliverlist et non client, pour
+// tester Brief ensemble) : quand un admin imite CE compte, la liste des
+// rendez-vous est lue dans l'agenda Google de la personne imitée, avec ses
+// accès enregistrés. Pour tout autre compte, l'imitation continue d'afficher
+// l'agenda de la personne réellement connectée : les règles Google acceptées
+// à la vérification interdisent de montrer les données Google d'un
+// utilisateur à quelqu'un d'autre. Ne pas élargir cette liste sans accord
+// écrit de la personne concernée.
+const IMPERSONATION_CALENDAR_USERS = new Set(["39addb01-3110-4c96-ad24-2b22904bcd68"]);
+
+// L'agenda Google de la personne imitée, si elle figure dans la liste
+// ci-dessus ; null sinon (on garde alors la connexion du navigateur).
+async function impersonatedGoogleAccess(userId: string): Promise<{ accessToken: string; email: string } | null> {
+  if (!IMPERSONATION_CALENDAR_USERS.has(userId)) return null;
+  const target = await getImpersonationTarget().catch(() => null);
+  if (target?.id !== userId) return null;
+  const [tokens, email] = await Promise.all([getGoogleTokens(userId), getUserEmail(userId)]);
+  if (!email) return null;
+  const fresh = tokens.accessToken && tokens.expiresAt && Date.parse(tokens.expiresAt) - Date.now() > 60_000;
+  if (fresh) return { accessToken: tokens.accessToken!, email };
+  if (!tokens.refreshToken) return null;
+  const accessToken = await refreshGoogleAccessTokenOnce(tokens.refreshToken);
+  await saveGoogleTokens(userId, accessToken, undefined, new Date(Date.now() + 3600 * 1000).toISOString()).catch(() => {});
+  return { accessToken, email };
+}
 
 // Les rendez-vous des 7 prochains jours : agenda Google/Microsoft + RDV
 // ajoutés à la main, triés ensemble. Partagé par GET /api/calendar/events et
@@ -58,8 +90,12 @@ function eventStart(e: CalendarEvent): number {
 // les RDV ajoutés à la main sont lus — pas d'erreur.
 export async function loadUpcomingEvents(session: Session, userId: string): Promise<UpcomingEventsResult> {
   const auth = { userId };
-  const provider = session.provider ?? "google";
-  const userEmail = session.user?.email ?? "";
+  const impersonated = await impersonatedGoogleAccess(userId).catch((err) => {
+    console.error("[calendar/events] impersonatedGoogleAccess failed:", err instanceof Error ? err.message : String(err));
+    return null;
+  });
+  const provider = impersonated ? "google" : session.provider ?? "google";
+  const userEmail = impersonated?.email ?? session.user?.email ?? "";
 
   // Les RDV ajoutés manuellement (migration 012) appartiennent à Brief, pas à
   // Google/Microsoft — un échec de leur lecture (table absente si la
@@ -68,7 +104,7 @@ export async function loadUpcomingEvents(session: Session, userId: string): Prom
   //
   // Les deux lectures partent ensemble : l'agenda Google/Microsoft est le
   // plus lent, inutile de le faire attendre derrière la base.
-  const accessToken = session.accessToken;
+  const accessToken = impersonated?.accessToken ?? session.accessToken;
   const calendarPromise = (accessToken ? getUpcomingMeetings(accessToken, provider, userEmail) : Promise.resolve([] as CalendarEvent[])).then(
     (events) => ({ ok: true as const, events }),
     (err: unknown) => ({ ok: false as const, err })

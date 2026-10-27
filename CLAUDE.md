@@ -90,6 +90,7 @@ Inspiration muchbetter.ai (simulations vocales + coach IA), mais paramétré aut
 - `requireActiveUser(session)` obligatoire dans toutes les routes API sensibles
 
 ### Impersonation admin
+- **Agenda en imitation (27/10/2026)** : la liste des rendez-vous de `/brief` est lue avec la connexion Google du NAVIGATEUR, donc celle de l'admin — en imitation on voit son propre agenda, pas celui de la personne imitée. **Exception unique : Hubert de la Lance** (`IMPERSONATION_CALENDAR_USERS` dans `lib/upcoming-events.ts`), à la demande de Jean et avec l'accord de Hubert (associé, pas client) pour tester ensemble : en l'imitant, l'agenda est lu avec ses accès Google enregistrés (renouvelés si besoin). Les règles Google acceptées à la vérification interdisent de montrer les données Google d'un utilisateur à quelqu'un d'autre : **ne pas élargir cette liste sans accord écrit de la personne**.
 - Cookie `brief_impersonate_user_id`, maxAge 4h, log toutes les actions
 - Routes `/api/admin/*` : auth mot de passe partagé, jamais impactées par l'impersonation
 - Bandeau rouge sticky visible quand impersonation active
