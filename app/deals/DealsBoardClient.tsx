@@ -45,6 +45,12 @@ function ImpactStrip({ impact, windowDays }: { impact: AlertImpact; windowDays: 
 // intervenir, C = le bandeau des étapes au-dessus (un clic filtre la file),
 // B = l'onglet Équipe. Décisions du 26/10/2026, voir lib/deal-board.ts.
 
+// Onglet « Où intervenir » masqué le 27/10/2026 (Jean : « plus d'actualité »,
+// l'onglet Équipe en version M3 dit déjà où intervenir et quoi dire). Rien
+// n'est supprimé : remettre `true` le réaffiche, avec la file, le bandeau des
+// étapes et l'effet des alertes.
+const SHOW_FILE_TAB = false;
+
 const LABEL = "text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500";
 const CARD = "rounded-2xl border border-border bg-white";
 
@@ -266,7 +272,7 @@ export default function DealsBoardClient({
   initialStage: string | null;
   initialCommercial?: string | null;
 }) {
-  const [tab, setTab] = useState(initialTab);
+  const [tab, setTab] = useState(initialTab === "file" && !SHOW_FILE_TAB ? "equipe" : initialTab);
   const [stage, setStage] = useState<string | null>(initialStage);
 
   const inStage = (d: BoardDeal) => !stage || (d.hubspot?.stage ?? "hors-hubspot") === stage;
@@ -287,7 +293,9 @@ export default function DealsBoardClient({
             ["file", "Où intervenir"],
             ["regles", "Règles"],
           ] as const
-        ).map(([key, label]) => (
+        )
+          .filter(([key]) => SHOW_FILE_TAB || key !== "file")
+          .map(([key, label]) => (
           <button
             key={key}
             onClick={() => setTab(key)}

@@ -132,7 +132,7 @@ export async function sendDealMorningEmail(
         (d) =>
           `• *${d.name}* (${d.ownerId === manager.id ? "vous" : names.get(d.ownerId) ?? "?"}) — ${d.alerts.map((a) => alertLabel(a.rule)).join(", ")}`
       ),
-      `<${APP_URL}/deals?tab=file|Ouvrir les deals de l'équipe>`,
+      `<${APP_URL}/deals|Ouvrir les deals de l'équipe>`,
     ]),
     ...buildDealMorningEmail({
       deals: shown.map((d) => ({
