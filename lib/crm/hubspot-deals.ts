@@ -170,6 +170,65 @@ export async function getHubspotPortalId(userId: string): Promise<number | null>
   });
 }
 
+// Toutes les propriétés de deal, avec leur type, leurs options et si elles
+// sont modifiables : ce que le moteur vérifie avant chaque écriture
+// (lib/hubspot-mapping.ts), et ce que le setup montre.
+export type HubspotDealPropertyFull = {
+  name: string;
+  label: string;
+  type: string;
+  fieldType: string;
+  options: { label: string; value: string }[];
+  readOnly: boolean;
+  custom: boolean;
+  groupName: string | null;
+};
+
+export async function listHubSpotDealProperties(userId: string): Promise<HubspotDealPropertyFull[]> {
+  return withHubspotAuth(userId, async (accessToken) => {
+    const data = await getJson<{
+      results?: {
+        name: string;
+        label: string;
+        type: string;
+        fieldType: string;
+        groupName?: string;
+        hidden?: boolean;
+        calculated?: boolean;
+        hubspotDefined?: boolean;
+        options?: { label: string; value: string; hidden?: boolean }[];
+        modificationMetadata?: { readOnlyValue?: boolean };
+      }[];
+    }>(accessToken, "/crm/v3/properties/deals");
+    if (!data) throw new Error("Lecture des propriétés HubSpot impossible");
+    return (data.results ?? [])
+      .filter((p) => !p.hidden)
+      .map((p) => ({
+        name: p.name,
+        label: p.label,
+        type: p.type,
+        fieldType: p.fieldType,
+        options: (p.options ?? []).filter((o) => !o.hidden).map((o) => ({ label: o.label, value: o.value })),
+        readOnly: !!p.calculated || !!p.modificationMetadata?.readOnlyValue,
+        custom: !p.hubspotDefined,
+        groupName: p.groupName ?? null,
+      }));
+  });
+}
+
+// Les valeurs actuelles de quelques propriétés d'un deal.
+export async function getHubSpotDealValues(userId: string, dealId: string, properties: string[]): Promise<Record<string, string | null>> {
+  if (properties.length === 0) return {};
+  return withHubspotAuth(userId, async (accessToken) => {
+    const deal = await getJson<{ properties: Record<string, string | null> }>(
+      accessToken,
+      `/crm/v3/objects/deals/${dealId}?properties=${properties.map(encodeURIComponent).join(",")}`
+    );
+    if (!deal) throw new Error("Lecture du deal HubSpot impossible");
+    return Object.fromEntries(properties.map((p) => [p, deal.properties[p] ?? null]));
+  });
+}
+
 export type HubspotDealProperty = { name: string; label: string; type: string };
 
 // Les propriétés de deal où Brief peut écrire du texte : celles du client,

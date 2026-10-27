@@ -5,13 +5,17 @@ import {
   getDealOverview,
   getHubspotPushHistory,
   getHubspotUserForOrganization,
+  getLastBriefWrites,
+  getRecentHubspotWrites,
   getOrganizationHubspotMapping,
   getUserName,
   isHubspotAutoPushEnabled,
   type HubspotPushEntry,
+  type HubspotWriteEntry,
 } from "./db";
-import { getHubspotPortalId, listHubSpotDealTextProperties } from "./crm/hubspot-deals";
-import { buildHubspotNote, buildHubspotProperties, effectiveMapping } from "./deal-memory-hubspot";
+import { getHubSpotDealSnapshot, getHubSpotDealValues, getHubspotPortalId, listHubSpotDealProperties, type HubspotDealPropertyFull } from "./crm/hubspot-deals";
+import { buildHubspotNote, effectiveMapping } from "./deal-memory-hubspot";
+import { briefCandidates, coerceMapping, mergeWritten, planWrites, type HubspotMapping, type PlannedWrite, type PropertyDefinition } from "./hubspot-mapping";
 import type { DealMemoryFieldKey } from "./deal-memory-schema";
 import type { HubspotProperty } from "./hubspot-overview";
 
@@ -27,8 +31,14 @@ export type HubspotOverview = {
   autoPush: boolean;
   properties: HubspotProperty[];
   mapping: Partial<Record<DealMemoryFieldKey, string>>;
+  // Le réglage complet de chaque propriété reliée (type, mode, options).
+  entries: HubspotMapping;
   history: (HubspotPushEntry & { ownerName: string | null })[];
-  example: { dealName: string | null; callTitle: string | null; callDay: string | null; pushedAt: string; properties: Record<string, string>; noteHtml: string } | null;
+  // Le dernier envoi, rejoué à blanc avec les réglages et les valeurs
+  // actuelles du deal : ce que le moteur écrirait, et pourquoi pas ailleurs.
+  example: { dealName: string | null; callTitle: string | null; callDay: string | null; pushedAt: string; plans: PlannedWrite[]; noteHtml: string } | null;
+  // Journal des écritures (migration 038), du plus récent au plus ancien.
+  journal: HubspotWriteEntry[];
   // La lecture des propriétés HubSpot a échoué (jeton, réseau) : le reste
   // s'affiche quand même.
   propertiesError: boolean;
@@ -42,25 +52,31 @@ export async function loadHubspotOverview(organizationId: string, viewerId: stri
     getHubspotPushHistory(organizationId).catch(() => [] as HubspotPushEntry[]),
   ]);
   const mapping = effectiveMapping(orgMapping);
+  const entries = coerceMapping(orgMapping);
 
   const names = new Map<string, string | null>();
   for (const id of new Set([hubspotUser, ...history.map((h) => h.ownerId)].filter((x): x is string => !!x))) {
     names.set(id, await getUserName(id).catch(() => null));
   }
 
-  let properties: HubspotProperty[] = [];
+  let all: HubspotDealPropertyFull[] = [];
   let portalId: number | null = null;
   let propertiesError = false;
   if (hubspotUser) {
     try {
-      [properties, portalId] = await Promise.all([
-        listHubSpotDealTextProperties(hubspotUser).then((list) => list.map((p) => ({ name: p.name, label: p.label }))),
-        getHubspotPortalId(hubspotUser).catch(() => null),
-      ]);
+      [all, portalId] = await Promise.all([listHubSpotDealProperties(hubspotUser), getHubspotPortalId(hubspotUser).catch(() => null)]);
     } catch {
       propertiesError = true;
     }
   }
+  // Le choix du manager se fait parmi les propriétés texte, nombre et date
+  // modifiables ; les listes se règlent au setup avec leurs options. Une
+  // propriété déjà reliée reste affichée quel que soit son type.
+  const linked = new Set(Object.values(entries).map((e) => e!.property));
+  const properties: HubspotProperty[] = all
+    .filter((p) => (!p.readOnly && ["string", "number", "date", "datetime"].includes(p.type)) || linked.has(p.name))
+    .map((p) => ({ name: p.name, label: p.label }))
+    .sort((a, b) => a.label.localeCompare(b.label, "fr"));
 
   return {
     connected: !!hubspotUser,
@@ -69,19 +85,36 @@ export async function loadHubspotOverview(organizationId: string, viewerId: stri
     autoPush,
     properties,
     mapping,
+    entries,
     history: history.map((h) => ({ ...h, ownerName: h.ownerId ? names.get(h.ownerId) ?? null : null })),
-    example: await buildExample(history[0], mapping).catch(() => null),
+    example: hubspotUser && !propertiesError ? await buildExample(history[0], entries, all, hubspotUser).catch(() => null) : null,
+    journal: await getRecentHubspotWrites(organizationId).catch(() => []),
     propertiesError,
   };
 }
 
-// Le dernier envoi, tel qu'il partirait aujourd'hui avec les réglages actuels.
-async function buildExample(last: HubspotPushEntry | undefined, mapping: Partial<Record<DealMemoryFieldKey, string>>): Promise<HubspotOverview["example"]> {
-  if (!last?.dealId || !(await getDealHubspotId(last.dealId))) return null;
-  const [fiche, overview, objections] = await Promise.all([
+// Le dernier envoi, rejoué à blanc avec les réglages et les valeurs actuelles
+// du deal : rien n'est écrit.
+async function buildExample(
+  last: HubspotPushEntry | undefined,
+  mapping: HubspotMapping,
+  all: HubspotDealPropertyFull[],
+  hubspotUser: string
+): Promise<HubspotOverview["example"]> {
+  if (!last?.dealId) return null;
+  const hubspotDealId = await getDealHubspotId(last.dealId);
+  if (!hubspotDealId) return null;
+  const definitions: Record<string, PropertyDefinition> = Object.fromEntries(
+    all.map((p) => [p.name, { type: p.type, options: p.options.map((o) => o.value), readOnly: p.readOnly }])
+  );
+  const linked = [...new Set(Object.values(mapping).map((e) => e!.property))].filter((name) => name in definitions);
+  const [fiche, overview, objections, current, lastWritten, snapshot] = await Promise.all([
     getCallDealMemory(last.callId),
     getDealOverview(last.dealId, last.callId),
     getDealMemoryObjections(last.callId),
+    getHubSpotDealValues(hubspotUser, hubspotDealId, linked),
+    getLastBriefWrites(hubspotDealId),
+    getHubSpotDealSnapshot(hubspotUser, hubspotDealId).catch(() => null),
   ]);
   if (!fiche) return null;
   const callDay = fiche.callAt
@@ -92,7 +125,14 @@ async function buildExample(last: HubspotPushEntry | undefined, mapping: Partial
     callTitle: last.callTitle,
     callDay,
     pushedAt: last.pushedAt,
-    properties: buildHubspotProperties(overview?.memory ?? {}, mapping),
+    plans: planWrites({
+      mapping,
+      memory: overview?.memory ?? {},
+      current,
+      lastWritten: mergeWritten(lastWritten, briefCandidates(mapping, overview?.memory ?? {})),
+      definitions,
+      dealClosed: snapshot?.closed ?? false,
+    }),
     noteHtml: buildHubspotNote({
       callTitle: last.callTitle,
       callDay,

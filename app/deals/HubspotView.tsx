@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { DEAL_MEMORY_FIELDS, type DealMemoryFieldKey } from "@/lib/deal-memory-schema";
 import { buildFieldPlans } from "@/lib/hubspot-overview";
+import { defaultMode, WRITE_MODES, type MappingEntry } from "@/lib/hubspot-mapping";
 import type { HubspotOverview } from "@/lib/hubspot-overview-load";
 
 // Onglet « HubSpot » de Deals de l'équipe (demande de Jean du 27/10/2026) :
@@ -20,10 +21,20 @@ function when(iso: string): string {
   return new Date(iso).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" });
 }
 
-function rule(key: DealMemoryFieldKey, written: boolean): string {
-  if (!written) return "Pas écrite dans une propriété : elle figure dans la note.";
-  if (key === "prochaines_etapes") return "Remplacée après chaque call par les prochaines étapes qu'il a fixées.";
-  return "Remplacée par ce qu'en a dit le dernier call qui en parle. Si aucun call n'en parle, la valeur saisie reste.";
+// Comment une information est écrite, d'après son réglage (lib/hubspot-mapping.ts).
+function rule(key: DealMemoryFieldKey, entry: MappingEntry | null): string {
+  if (!entry) return "Pas écrite dans une propriété : elle figure dans la note.";
+  const what =
+    entry.type === "number"
+      ? "le montant, quand le prospect a donné un chiffre précis"
+      : entry.type === "date" || entry.type === "datetime"
+        ? "la date, quand le prospect a donné un jour précis"
+        : entry.type === "enumeration" || entry.type === "bool"
+          ? `l'option « ${entry.options?.confirme ?? "—"} » quand le prospect l'a confirmée`
+          : key === "prochaines_etapes"
+            ? "les prochaines étapes fixées au dernier call"
+            : "ce que le prospect a confirmé au dernier call qui en parle";
+  return `${WRITE_MODES[entry.mode]}, avec ${what}. Une information seulement évoquée reste dans la note.`;
 }
 
 const STEPS = [
@@ -61,6 +72,15 @@ export default function HubspotView({ initial = null }: { initial?: HubspotOverv
   if (!data) return <p className="text-[13.5px] text-slate-500">Lecture de votre HubSpot…</p>;
 
   const plans = buildFieldPlans(draft, data.properties);
+  // Le réglage d'une ligne : celui enregistré si la propriété n'a pas changé,
+  // sinon celui que prendra la nouvelle propriété (texte, mode par défaut).
+  const entryFor = (key: DealMemoryFieldKey): MappingEntry | null => {
+    const property = draft[key];
+    if (!property) return null;
+    const saved = data.entries[key];
+    return saved?.property === property ? saved : { property, type: "string", mode: defaultMode(key) };
+  };
+  const labelOf = (name: string) => data.properties.find((p) => p.name === name)?.label ?? name;
   const linked = plans.filter((p) => p.property).length;
   const dirty = autoPush !== data.autoPush || DEAL_MEMORY_FIELDS.some((f) => (draft[f.key] ?? "") !== (data.mapping[f.key] ?? ""));
   const set = (key: DealMemoryFieldKey, value: string) => {
@@ -134,7 +154,8 @@ export default function HubspotView({ initial = null }: { initial?: HubspotOverv
           ))}
         </ol>
         <p className="mt-4 text-[12.5px] text-slate-500">
-          Brief ne crée jamais de deal, n&apos;efface jamais ce qu&apos;un commercial a saisi, et n&apos;écrit que dans les propriétés reliées ci-dessous.
+          Brief ne crée jamais de deal, n&apos;écrit que dans les propriétés reliées ci-dessous, et seulement ce que le prospect a confirmé. Par défaut il
+          remplit une propriété vide et ne touche pas à celles déjà remplies.
         </p>
       </section>
 
@@ -144,8 +165,8 @@ export default function HubspotView({ initial = null }: { initial?: HubspotOverv
           <h2 className={LABEL}>Ce que Brief écrit dans vos deals HubSpot</h2>
           {data.connected && !data.propertiesError && (
             <p className="text-[12.5px] text-slate-500">
-              {data.properties.length} propriété{data.properties.length > 1 ? "s" : ""} texte modifiable{data.properties.length > 1 ? "s" : ""} trouvée
-              {data.properties.length > 1 ? "s" : ""} dans votre HubSpot · {linked} information{linked > 1 ? "s" : ""} reliée{linked > 1 ? "s" : ""}
+              {data.properties.length} propriété{data.properties.length > 1 ? "s" : ""} modifiable{data.properties.length > 1 ? "s" : ""} (texte, nombre, date)
+              dans votre HubSpot · {linked} information{linked > 1 ? "s" : ""} reliée{linked > 1 ? "s" : ""}
             </p>
           )}
         </div>
@@ -192,7 +213,7 @@ export default function HubspotView({ initial = null }: { initial?: HubspotOverv
                       </p>
                     )}
                   </td>
-                  <td className="py-3 text-[12.5px] leading-snug text-slate-600">{rule(p.key, !!p.property)}</td>
+                  <td className="py-3 text-[12.5px] leading-snug text-slate-600">{rule(p.key, entryFor(p.key))}</td>
                 </tr>
               ))}
               <tr className="border-t border-border align-top">
@@ -236,24 +257,32 @@ export default function HubspotView({ initial = null }: { initial?: HubspotOverv
         <section className={CARD}>
           <h2 className={LABEL}>Un exemple réel</h2>
           <p className="mt-2 text-[13.5px] text-slate-700">
-            Ce que Brief écrirait aujourd&apos;hui pour le dernier envoi, avec les réglages ci-dessus : le call{" "}
+            Le dernier envoi rejoué à blanc, avec les réglages ci-dessus et les valeurs actuelles du deal : le call{" "}
             <span className="font-medium">{data.example.callTitle ?? `du ${data.example.callDay ?? "—"}`}</span>, dans le deal{" "}
             <span className="font-medium">{data.example.dealName ?? "—"}</span>.
           </p>
           <div className="mt-4 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
             <div>
-              <h3 className="mb-2 text-[12px] font-semibold text-slate-500">Propriétés mises à jour</h3>
-              {Object.keys(data.example.properties).length === 0 ? (
+              <h3 className="mb-2 text-[12px] font-semibold text-slate-500">Les propriétés reliées</h3>
+              {data.example.plans.length === 0 ? (
                 <p className="text-[13px] text-slate-500">Aucune : aucune information n&apos;est reliée à une propriété.</p>
               ) : (
-                <dl className="space-y-2.5">
-                  {Object.entries(data.example.properties).map(([name, value]) => (
-                    <div key={name} className="rounded-xl bg-slate-50 px-3.5 py-2.5">
-                      <dt className="text-[12px] font-semibold text-slate-500">{data.properties.find((p) => p.name === name)?.label ?? name}</dt>
-                      <dd className="mt-0.5 whitespace-pre-line text-[13px] leading-snug text-slate-800">{value}</dd>
-                    </div>
+                <ul className="space-y-2.5">
+                  {data.example.plans.map((p) => (
+                    <li key={p.property} className="rounded-xl bg-slate-50 px-3.5 py-2.5">
+                      <p className="flex flex-wrap items-center gap-2 text-[12px] font-semibold text-slate-500">
+                        {labelOf(p.property)}
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[11px] ${p.action === "write" ? "bg-emerald-50 text-emerald-700" : "bg-white text-slate-500 ring-1 ring-slate-200"}`}
+                        >
+                          {p.action === "write" ? "Serait écrite" : `Pas écrite : ${p.reason?.toLowerCase()}`}
+                        </span>
+                      </p>
+                      {p.value && <p className="mt-1 whitespace-pre-line text-[13px] leading-snug text-slate-800">{p.value}</p>}
+                      {p.current && p.action !== "write" && p.reason !== "Déjà à jour" && <p className="mt-1 text-[12px] text-slate-400">Valeur actuelle dans HubSpot : {p.current}</p>}
+                    </li>
                   ))}
-                </dl>
+                </ul>
               )}
             </div>
             <div>
@@ -265,6 +294,36 @@ export default function HubspotView({ initial = null }: { initial?: HubspotOverv
               />
             </div>
           </div>
+        </section>
+      )}
+
+      {/* Le journal */}
+      {data.journal.some((j) => j.reason !== "Pas abordée") && (
+        <section className={CARD}>
+          <h2 className={`${LABEL} mb-3`}>Journal des propriétés</h2>
+          <ul className="divide-y divide-border">
+            {data.journal
+              .filter((j) => j.reason !== "Pas abordée")
+              .slice(0, 20)
+              .map((j, i) => (
+                <li key={`${j.callId}-${j.property}-${i}`} className="grid grid-cols-1 gap-x-3 py-2.5 text-[13px] sm:grid-cols-[110px_160px_minmax(0,1fr)]">
+                  <span className="tabular-nums text-slate-500">{when(j.createdAt)}</span>
+                  <span className="truncate font-semibold text-slate-900">
+                    {j.dealName ?? "Deal"} · <span className="font-normal text-slate-600">{labelOf(j.property)}</span>
+                  </span>
+                  <span className="min-w-0 text-slate-700">
+                    {j.status === "written" ? (
+                      <>
+                        <span className="font-medium text-emerald-700">Écrite</span>
+                        {j.oldValue ? <span className="text-slate-400"> · avant : {j.oldValue}</span> : <span className="text-slate-400"> · était vide</span>}
+                      </>
+                    ) : (
+                      <span className="text-slate-500">Pas écrite : {j.reason?.toLowerCase()}</span>
+                    )}
+                  </span>
+                </li>
+              ))}
+          </ul>
         </section>
       )}
 

@@ -2091,10 +2091,104 @@ export async function getHubspotPushHistory(organizationId: string, limit = 8): 
   });
 }
 
-export async function getOrganizationHubspotMapping(organizationId: string): Promise<Record<string, string>> {
+// Journal des écritures dans HubSpot (migration 038). Fail-soft : sans la
+// table, rien n'est journalisé et le mode « mise à jour sauf modification à
+// la main » ne remplace rien de déjà rempli.
+export type HubspotWriteRow = {
+  organizationId: string;
+  callId: string;
+  dealId: string | null;
+  hubspotDealId: string;
+  field: string;
+  property: string;
+  oldValue: string | null;
+  newValue: string | null;
+  status: "written" | "skipped";
+  reason: string | null;
+};
+
+export async function recordHubspotWrites(rows: HubspotWriteRow[]): Promise<void> {
+  if (rows.length === 0) return;
+  const { error } = await supabaseAdmin.from("hubspot_writes").insert(
+    rows.map((r) => ({
+      organization_id: r.organizationId,
+      call_id: r.callId,
+      deal_id: r.dealId,
+      hubspot_deal_id: r.hubspotDealId,
+      field: r.field,
+      property: r.property,
+      old_value: r.oldValue,
+      new_value: r.newValue,
+      status: r.status,
+      reason: r.reason,
+    }))
+  );
+  if (error) console.error("[db] recordHubspotWrites failed (migration 038 ?):", error.message);
+}
+
+// La dernière valeur que Brief a écrite dans ce deal, par propriété.
+export async function getLastBriefWrites(hubspotDealId: string): Promise<Record<string, string>> {
+  const { data, error } = await supabaseAdmin
+    .from("hubspot_writes")
+    .select("property, new_value")
+    .eq("hubspot_deal_id", hubspotDealId)
+    .eq("status", "written")
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error) {
+    console.error("[db] getLastBriefWrites failed (migration 038 ?):", error.message);
+    return {};
+  }
+  const out: Record<string, string> = {};
+  for (const r of (data ?? []) as { property: string; new_value: string | null }[]) {
+    if (!(r.property in out) && r.new_value !== null) out[r.property] = r.new_value;
+  }
+  return out;
+}
+
+export type HubspotWriteEntry = HubspotWriteRow & { createdAt: string; dealName: string | null };
+
+export async function getRecentHubspotWrites(organizationId: string, limit = 40): Promise<HubspotWriteEntry[]> {
+  const { data, error } = await supabaseAdmin
+    .from("hubspot_writes")
+    .select("call_id, deal_id, hubspot_deal_id, field, property, old_value, new_value, status, reason, created_at, deals(name)")
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) {
+    console.error("[db] getRecentHubspotWrites failed (migration 038 ?):", error.message);
+    return [];
+  }
+  type Row = {
+    call_id: string; deal_id: string | null; hubspot_deal_id: string; field: string; property: string;
+    old_value: string | null; new_value: string | null; status: "written" | "skipped"; reason: string | null; created_at: string;
+    deals: { name: string } | { name: string }[] | null;
+  };
+  return ((data ?? []) as Row[]).map((r) => {
+    const deal = Array.isArray(r.deals) ? r.deals[0] : r.deals;
+    return {
+      organizationId,
+      callId: r.call_id,
+      dealId: r.deal_id,
+      hubspotDealId: r.hubspot_deal_id,
+      field: r.field,
+      property: r.property,
+      oldValue: r.old_value,
+      newValue: r.new_value,
+      status: r.status,
+      reason: r.reason,
+      createdAt: r.created_at,
+      dealName: deal?.name ?? null,
+    };
+  });
+}
+
+// Brut tel qu'en base : un nom de propriété par champ (avant le 27/10/2026)
+// ou une entrée complète (lib/hubspot-mapping.ts, coerceMapping).
+export async function getOrganizationHubspotMapping(organizationId: string): Promise<Record<string, unknown>> {
   const { data, error } = await supabaseAdmin.from("organizations").select("hubspot_field_mapping").eq("id", organizationId).maybeSingle();
   if (error) throw error;
-  return ((data as { hubspot_field_mapping?: Record<string, string> | null } | null)?.hubspot_field_mapping ?? {}) as Record<string, string>;
+  return ((data as { hubspot_field_mapping?: Record<string, unknown> | null } | null)?.hubspot_field_mapping ?? {}) as Record<string, unknown>;
 }
 
 // HubSpot mis à jour tout seul après chaque call (migration 035, allumé par
@@ -2116,7 +2210,7 @@ export async function setHubspotAutoPush(organizationId: string, enabled: boolea
   if (error) throw error;
 }
 
-export async function setOrganizationHubspotMapping(organizationId: string, mapping: Record<string, string>): Promise<void> {
+export async function setOrganizationHubspotMapping(organizationId: string, mapping: Record<string, unknown>): Promise<void> {
   const { error } = await supabaseAdmin.from("organizations").update({ hubspot_field_mapping: mapping }).eq("id", organizationId);
   if (error) throw error;
 }

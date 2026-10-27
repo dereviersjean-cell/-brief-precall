@@ -54,6 +54,8 @@ ${DEAL_MEMORY_FIELDS.map((f) => `   - "${f.key}" : ${f.definition}.`).join("\n")
      · "confirme" quand le PROSPECT l'a dit clairement : un montant ou une fourchette pour le budget, un nom et un rôle pour le décideur, une date ou un délai pour l'échéance, un chiffre pour l'impact, des étapes et des personnes pour le processus ;
      · "evoque" quand le sujet a été abordé sans réponse nette (« on a un budget, mais pas 18 000 € », « il faudra en parler en interne »), ou quand c'est le commercial qui l'avance sans que le prospect le confirme.
      Au moindre doute : "evoque". Le commercial s'appuie sur ce niveau pour savoir ce qu'il lui reste à aller chercher.
+   - Pour "budget", chaque élément porte aussi "amount" : le montant en euros (un nombre, sans symbole) quand le prospect a donné UN chiffre précis d'enveloppe ou de budget, sinon null. Une fourchette, un prix proposé par le commercial ou un « pas plus de » sans chiffre : null.
+   - Pour "echeance", chaque élément porte aussi "date" : le jour visé au format AAAA-MM-JJ quand un jour précis a été dit, sinon null. « Début novembre » ou « d'ici la fin de l'année » ne sont pas des jours : null.
    - Pour "prochaines_etapes" seulement, chaque élément porte aussi "date" : le jour convenu pour cette action au format AAAA-MM-JJ, calculé à partir de la date du call quand elle est relative (« lundi prochain », « dans quinze jours »), ou null si aucun jour n'a été fixé. « Début de semaine prochaine » ou « fin du mois » ne sont pas des jours : null.
 
 2. ALERTES — lève uniquement celles dont tu es certain, parmi :
@@ -182,6 +184,13 @@ export function cleanDate(raw: unknown): string | null {
   return Number.isFinite(d.getTime()) && d.toISOString().slice(0, 10) === value ? value : null;
 }
 
+// Un montant positif et fini, sinon null : le modèle peut répondre « 15k » ou
+// un texte.
+export function cleanAmount(raw: unknown): number | null {
+  const n = typeof raw === "number" ? raw : typeof raw === "string" && /^\d+(\.\d+)?$/.test(raw.trim()) ? Number(raw.trim()) : NaN;
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : null;
+}
+
 export function shapeDealMemory(raw: unknown, lines: TranscriptLine[], options: { hasHistory?: boolean } = {}): DealMemoryContent {
   const root = (raw && typeof raw === "object" ? raw : {}) as { fields?: unknown; alerts?: unknown };
   const rawFields = (root.fields && typeof root.fields === "object" ? root.fields : {}) as Record<string, unknown>;
@@ -191,7 +200,7 @@ export function shapeDealMemory(raw: unknown, lines: TranscriptLine[], options: 
     if (!FIELD_KEYS.has(key) || !Array.isArray(value)) continue;
     const items: DealMemoryItem[] = [];
     for (const entry of value) {
-      const e = (entry && typeof entry === "object" ? entry : {}) as { text?: unknown; lines?: unknown; date?: unknown; level?: unknown };
+      const e = (entry && typeof entry === "object" ? entry : {}) as { text?: unknown; lines?: unknown; date?: unknown; level?: unknown; amount?: unknown };
       const text = cleanText(e.text);
       if (!text) continue;
       const range = resolveRange(e.lines, lines);
@@ -201,7 +210,8 @@ export function shapeDealMemory(raw: unknown, lines: TranscriptLine[], options: 
         verbatim: range.verbatim,
         quote: quoteSegments(range.startIndex, range.endIndex, lines),
         startMs: range.startMs,
-        ...(key === "prochaines_etapes" ? { date: cleanDate(e.date) } : {}),
+        ...(key === "prochaines_etapes" || key === "echeance" ? { date: cleanDate(e.date) } : {}),
+        ...(key === "budget" ? { amount: cleanAmount(e.amount) } : {}),
         // Seul un « confirme » explicite compte comme obtenu : un niveau
         // absent ou inconnu est un doute.
         ...(LEVEL_KEYS.has(key) ? { level: e.level === "confirme" ? ("confirme" as const) : ("evoque" as const) } : {}),

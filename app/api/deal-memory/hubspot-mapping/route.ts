@@ -10,7 +10,8 @@ import {
   setHubspotAutoPush,
   setOrganizationHubspotMapping,
 } from "@/lib/db";
-import { listHubSpotDealTextProperties } from "@/lib/crm/hubspot-deals";
+import { listHubSpotDealProperties, listHubSpotDealTextProperties } from "@/lib/crm/hubspot-deals";
+import { coerceMapping, defaultMode, serializeMapping, type HubspotMapping, type MappingEntry } from "@/lib/hubspot-mapping";
 import { DEAL_MEMORY_FIELDS } from "@/lib/deal-memory-schema";
 import { effectiveMapping } from "@/lib/deal-memory-hubspot";
 
@@ -52,15 +53,35 @@ export async function PUT(request: Request) {
   const hubspotUser = await getHubspotUserForOrganization(g.organizationId, [g.userId]);
   if (!hubspotUser) return NextResponse.json({ error: "HubSpot n'est pas connecté." }, { status: 400 });
 
-  // Seules les propriétés réellement présentes dans le HubSpot du client sont
-  // acceptées : une faute de frappe ferait échouer chaque envoi.
-  const known = new Set((await listHubSpotDealTextProperties(hubspotUser)).map((p) => p.name));
-  const mapping: Record<string, string> = {};
+  // Seules les propriétés réellement présentes dans le HubSpot du client, et
+  // modifiables, sont acceptées : une faute de frappe ferait échouer chaque
+  // envoi. Une propriété déjà reliée garde son réglage complet (type, mode,
+  // options) ; une nouvelle prend le type lu dans HubSpot et le mode par
+  // défaut (lib/hubspot-mapping.ts). Les listes et cases à cocher demandent de
+  // choisir leurs options : elles se règlent au setup, pas ici.
+  const definitions = new Map((await listHubSpotDealProperties(hubspotUser)).map((p) => [p.name, p]));
+  const existing = coerceMapping(await getOrganizationHubspotMapping(g.organizationId));
+  const next: HubspotMapping = {};
   for (const field of DEAL_MEMORY_FIELDS) {
     const value = body?.mapping?.[field.key];
-    if (value === "") mapping[field.key] = "";
-    else if (typeof value === "string" && known.has(value)) mapping[field.key] = value;
+    const previous = existing[field.key];
+    if (value === "") continue;
+    if (typeof value !== "string") {
+      if (previous) next[field.key] = previous;
+      continue;
+    }
+    if (previous?.property === value) {
+      next[field.key] = previous;
+      continue;
+    }
+    const def = definitions.get(value);
+    if (!def || def.readOnly || !["string", "number", "date", "datetime"].includes(def.type)) {
+      if (previous) next[field.key] = previous;
+      continue;
+    }
+    next[field.key] = { property: value, type: def.type as MappingEntry["type"], mode: defaultMode(field.key) };
   }
+  const mapping = serializeMapping(next);
   await setOrganizationHubspotMapping(g.organizationId, mapping);
   if (typeof body?.autoPush === "boolean") await setHubspotAutoPush(g.organizationId, body.autoPush);
   return NextResponse.json({ mapping: effectiveMapping(mapping), autoPush: await isHubspotAutoPushEnabled(g.organizationId) });

@@ -1,3 +1,4 @@
+import { coerceMapping } from "./hubspot-mapping";
 import {
   DEAL_ALERT_RULES,
   DEAL_MEMORY_FIELDS,
@@ -17,20 +18,17 @@ import {
 //    d'attention, puis ce que la fiche a retenu.
 
 // La prochaine étape a sa propriété standard dans HubSpot : écrite par défaut,
-// sauf si l'organisation l'envoie ailleurs.
+// sauf si l'organisation l'envoie ailleurs (lib/hubspot-mapping.ts).
 export const DEFAULT_HUBSPOT_MAPPING: Partial<Record<DealMemoryFieldKey, string>> = { prochaines_etapes: "hs_next_step" };
 
-const FIELD_KEYS = new Set<string>(DEAL_MEMORY_FIELDS.map((f) => f.key));
 const FIELD_LABELS = new Map<string, string>(DEAL_MEMORY_FIELDS.map((f) => [f.key, f.label]));
 const RULE_LABELS = new Map<string, string>(DEAL_ALERT_RULES.map((r) => [r.key, r.label]));
 
-export function effectiveMapping(orgMapping: Record<string, string>): Partial<Record<DealMemoryFieldKey, string>> {
-  const out: Partial<Record<DealMemoryFieldKey, string>> = { ...DEFAULT_HUBSPOT_MAPPING };
-  for (const [key, property] of Object.entries(orgMapping)) {
-    if (!FIELD_KEYS.has(key)) continue;
-    if (property) out[key as DealMemoryFieldKey] = property;
-    else delete out[key as DealMemoryFieldKey];
-  }
+// Le nom de la propriété reliée à chaque champ, quel que soit le format en
+// base.
+export function effectiveMapping(orgMapping: Record<string, unknown>): Partial<Record<DealMemoryFieldKey, string>> {
+  const out: Partial<Record<DealMemoryFieldKey, string>> = {};
+  for (const [key, entry] of Object.entries(coerceMapping(orgMapping))) if (entry) out[key as DealMemoryFieldKey] = entry.property;
   return out;
 }
 
@@ -81,6 +79,11 @@ export function buildHubspotNote(input: {
     `<p><strong>Prochaines étapes</strong></p>`,
     next.length > 0 ? list(next.map((i) => i.text)) : "<p>Aucune prochaine étape dite pendant le call.</p>",
     ...(attention.length > 0 ? [`<p><strong>Points d'attention</strong></p>`, list(attention)] : []),
-    ...others.flatMap((f) => [`<p><strong>${escapeHtml(FIELD_LABELS.get(f.key) ?? f.key)}</strong></p>`, list((content.fields[f.key] ?? []).map((i) => i.text))]),
+    // Une information abordée sans réponse nette est marquée « à préciser » :
+    // elle n'est écrite dans aucune propriété (lib/hubspot-mapping.ts).
+    ...others.flatMap((f) => [
+      `<p><strong>${escapeHtml(FIELD_LABELS.get(f.key) ?? f.key)}</strong></p>`,
+      list((content.fields[f.key] ?? []).map((i) => (i.level === "evoque" ? `${i.text} (à préciser)` : i.text))),
+    ]),
   ].join("");
 }

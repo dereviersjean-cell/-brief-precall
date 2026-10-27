@@ -181,8 +181,8 @@ export type QuoteSegment = { speaker: string | null; text: string };
 
 export type DealMemoryItem = {
   text: string;
-  // Engagements et prochaines étapes seulement (27/10/2026) : la date convenue
-  // pour cette action, AAAA-MM-JJ, ou null si aucune date n'a été fixée.
+  // Engagements et prochaines étapes (27/10/2026), et échéance : la date
+  // convenue ou visée, AAAA-MM-JJ, ou null si aucun jour n'a été dit.
   // Absent (undefined) des fiches générées avant : la date n'a pas été relevée.
   date?: string | null;
   // Informations de qualification seulement (27/10/2026, demande de Jean :
@@ -192,6 +192,10 @@ export type DealMemoryItem = {
   // commercial. Absent des fiches générées avant : lu comme « confirme »,
   // c'est ce que l'écran en disait jusque-là.
   level?: "confirme" | "evoque";
+  // Budget seulement (27/10/2026) : le montant en euros quand le prospect a
+  // donné un chiffre précis, pour une propriété HubSpot « nombre ». Absent ou
+  // null sinon.
+  amount?: number | null;
   // Phrase exacte du transcript qui justifie l'élément, extraite par le code.
   verbatim: string | null;
   // Absent des fiches générées avant le 27/10/2026 : l'écran retombe alors
