@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useState } from "react";
-import { LayoutDashboard, FileText, Video, Users, Settings, HelpCircle, LogOut, Sparkles, Menu, X, Lock, BookOpen, Library, Target } from "lucide-react";
+import { LayoutDashboard, FileText, Video, Users, Settings, HelpCircle, LogOut, Sparkles, Menu, X, Lock, BookOpen, Library, Target, Briefcase } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useChromeState } from "./ShellProvider";
 import { useModules } from "./ModulesProvider";
@@ -165,6 +165,9 @@ export default function AppSidebar() {
     ...(fullAccess
       ? [
           { href: "/feedback", label: "Analyse rendez-vous", icon: Video, active: feedbackActive },
+          // Vue commercial des deals (Deal Execution, 27/10/2026) : mêmes
+          // organisations en test que la vue manager.
+          ...(dealsEnabled ? [{ href: "/mes-deals", label: "Mes deals", icon: Briefcase, active: pathname.startsWith("/mes-deals") }] : []),
           { href: "/dashboard", label: "Performance", icon: LayoutDashboard, active: performanceActive },
         ]
       : []),

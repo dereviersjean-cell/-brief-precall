@@ -10,6 +10,7 @@ import type { DealHistoryEntry, DealMemoryContent, DealOverview, HubspotDealSnap
 import type { DealIdentity } from "./deal-grouping";
 import type { BoardFicheRow, BoardReview } from "./deal-board";
 import type { PipelineStats } from "./deal-pipeline-stats";
+import type { ProgressFiche } from "./deal-progress";
 
 export async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 500): Promise<T> {
   let lastError: unknown;
@@ -2110,6 +2111,51 @@ export async function getDealBoardRows(organizationId: string, ownerIds: string[
       callTitle: call?.meeting_title ?? null,
       ownerId: call?.user_id ?? "",
       generatedAt: r.generated_at,
+      alerts: r.alerts ?? [],
+    };
+  });
+}
+
+// Vue commercial « Mes deals » (27/10/2026) : toutes les fiches des deals où
+// ce commercial a au moins un call — y compris les calls d'un collègue sur
+// le même deal, qui font partie de son histoire.
+export async function getProgressFichesForUser(organizationId: string, userId: string): Promise<ProgressFiche[]> {
+  const { data: own, error: ownError } = await supabaseAdmin
+    .from("call_deal_memory")
+    .select("deal_id, calls!inner(user_id)")
+    .eq("organization_id", organizationId)
+    .eq("calls.user_id", userId)
+    .not("deal_id", "is", null);
+  if (ownError) throw ownError;
+  const dealIds = [...new Set(((own ?? []) as { deal_id: string }[]).map((r) => r.deal_id))];
+  if (dealIds.length === 0) return [];
+
+  const { data, error } = await supabaseAdmin
+    .from("call_deal_memory")
+    .select("call_id, deal_id, call_at, fields, alerts, calls(meeting_title), deals!inner(name, hubspot_snapshot)")
+    .eq("organization_id", organizationId)
+    .in("deal_id", dealIds);
+  if (error) throw error;
+  type Row = {
+    call_id: string;
+    deal_id: string;
+    call_at: string | null;
+    fields: ProgressFiche["fields"] | null;
+    alerts: ProgressFiche["alerts"] | null;
+    calls: { meeting_title: string | null } | { meeting_title: string | null }[] | null;
+    deals: { name: string; hubspot_snapshot: HubspotDealSnapshot | null } | { name: string; hubspot_snapshot: HubspotDealSnapshot | null }[];
+  };
+  return ((data ?? []) as Row[]).map((r) => {
+    const call = Array.isArray(r.calls) ? r.calls[0] : r.calls;
+    const deal = Array.isArray(r.deals) ? r.deals[0] : r.deals;
+    return {
+      dealId: r.deal_id,
+      dealName: deal?.name ?? "Deal",
+      hubspot: deal?.hubspot_snapshot ?? null,
+      callId: r.call_id,
+      callAt: r.call_at,
+      callTitle: call?.meeting_title ?? null,
+      fields: r.fields ?? {},
       alerts: r.alerts ?? [],
     };
   });
