@@ -64,7 +64,8 @@ describe("buildDealProgress", () => {
       ],
       NOW
     );
-    assert.deepEqual(deals.map((d) => d.id), ["down", "stop", "ok"]);
+    // À relancer (30 jours sans call) d'abord, puis à traiter (en recul).
+    assert.deepEqual(deals.map((d) => d.id), ["stop", "down", "ok"]);
   });
 });
 
@@ -98,5 +99,32 @@ describe("deal sans call depuis longtemps", () => {
     );
     assert.equal(d.nextStep.status, "en_retard");
     assert.match(d.topAction ?? "", /Relancer/);
+  });
+});
+
+describe("statut et action d'un deal (Mes deals)", () => {
+  test("à relancer : suite passée ou plus de 14 jours sans call", () => {
+    const [d] = buildDealProgress([fiche({ callAt: daysAgo(30) })], NOW);
+    assert.deepEqual(d.focus, { status: "relancer", action: "Relancer le prospect", detail: "aucun call depuis 30 jours" });
+  });
+
+  test("à traiter : le deal recule, avec l'action de l'alerte la plus lourde", () => {
+    const [d] = buildDealProgress([fiche({ alerts: [alert("concurrent_evoque"), alert("decideur_toujours_absent")] })], NOW);
+    assert.deepEqual(d.focus, { status: "traiter", action: "Obtenir le décideur", detail: "le deal recule" });
+  });
+
+  test("à traiter : aucune suite convenue", () => {
+    const [d] = buildDealProgress([fiche({ fields: { prochaines_etapes: [{ ...item("On se rappelle"), date: null }] } })], NOW);
+    assert.equal(d.focus.action, "Dater la prochaine étape");
+  });
+
+  test("en bonne voie : préparer le prochain call, à sa date", () => {
+    const [d] = buildDealProgress(
+      [fiche({ callId: "a", callAt: daysAgo(9) }), fiche({ callId: "b", fields: { prochaines_etapes: [{ ...item("Démo"), date: "2026-11-03" }] } })],
+      NOW
+    );
+    assert.equal(d.focus.status, "bonne_voie");
+    assert.equal(d.focus.action, "Préparer le R3");
+    assert.match(d.focus.detail ?? "", /3 nov/);
   });
 });

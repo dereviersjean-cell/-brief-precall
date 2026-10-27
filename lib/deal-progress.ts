@@ -75,7 +75,69 @@ export type DealProgress = {
   nextStep: { date: string | null; text: string | null; status: NextStepStatus };
   // Ce qu'il y a de plus utile à faire sur ce deal, pour le commercial.
   topAction: string | null;
+  // Vue « Mes deals » resserrée (demande de Jean du 27/10/2026 : plus concis,
+  // plus clair, plus actionnable) : UN statut et UNE action courte par deal.
+  focus: DealFocus;
 };
+
+export type FocusStatus = "relancer" | "traiter" | "bonne_voie";
+
+export type DealFocus = {
+  status: FocusStatus;
+  // Ce qu'il faut faire, en quelques mots, verbe en tête.
+  action: string;
+  // Le pourquoi, en quelques mots.
+  detail: string | null;
+};
+
+// Les actions courtes, une par règle, pour la liste « À faire ».
+export const SHORT_ACTIONS: Record<string, string> = {
+  concurrent_evoque: "Se démarquer du concurrent",
+  objection_cachee: "Faire sortir l'objection cachée",
+  preuve_sociale: "Envoyer un cas client",
+  interlocuteur_manquant: "Faire venir le bon interlocuteur",
+  decideur_absent: "Faire venir le décideur",
+  prochaine_etape_non_datee: "Dater la prochaine étape",
+  objection_recurrente: "Retravailler l'objection qui revient",
+  decideur_toujours_absent: "Obtenir le décideur",
+  sentiment_en_baisse: "Comprendre pourquoi le prospect recule",
+};
+
+function shortDay(iso: string): string {
+  return new Date(`${iso.slice(0, 10)}T12:00:00Z`).toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" });
+}
+
+// Le statut et l'action d'un deal, par ordre d'urgence :
+//  - à relancer : la suite convenue est passée sans nouveau call, ou plus de
+//    14 jours sans call ;
+//  - à traiter : le deal recule, n'a pas de suite datée, ou le dernier call a
+//    levé une alerte ;
+//  - en bonne voie : sinon — l'action est de préparer le prochain call.
+export function dealFocus(input: {
+  verdict: DealVerdict;
+  nextStep: DealProgress["nextStep"];
+  idleDays: number | null;
+  alerts: DealMemoryAlert[];
+  nextRank: number;
+}): DealFocus {
+  const { nextStep, idleDays } = input;
+  if (nextStep.status === "en_retard" || (idleDays !== null && idleDays >= INACTIVITY_DAYS)) {
+    return {
+      status: "relancer",
+      action: "Relancer le prospect",
+      detail: nextStep.date ? `prévu le ${shortDay(nextStep.date)}, sans nouveau call` : idleDays !== null ? `aucun call depuis ${idleDays} jours` : null,
+    };
+  }
+  const top = sortByWeight(input.alerts)[0];
+  if (input.verdict === "recul" && top) return { status: "traiter", action: SHORT_ACTIONS[top.rule] ?? "Reprendre le deal", detail: "le deal recule" };
+  if (nextStep.status === "sans_suite") return { status: "traiter", action: "Dater la prochaine étape", detail: "aucune suite convenue" };
+  if (top) return { status: "traiter", action: SHORT_ACTIONS[top.rule] ?? "Traiter le point de vigilance", detail: null };
+  return {
+    status: "bonne_voie",
+    action: `Préparer le R${input.nextRank}`,
+    detail: nextStep.date ? `le ${shortDay(nextStep.date)}` : null,
+  };
+}
 
 function nextStepOf(latest: ProgressFiche, today: string, idle: boolean): DealProgress["nextStep"] {
   const items = latest.fields.prochaines_etapes ?? [];
@@ -99,6 +161,7 @@ const FIELD_LABELS = new Map<string, string>(DEAL_MEMORY_FIELDS.map((f) => [f.ke
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const VERDICT_ORDER: Record<DealVerdict, number> = { recul: 0, arret: 1, progres: 2 };
+const FOCUS_ORDER: Record<FocusStatus, number> = { relancer: 0, traiter: 1, bonne_voie: 2 };
 
 function lowerFirst(label: string): string {
   return label.charAt(0).toLowerCase() + label.slice(1);
@@ -168,11 +231,24 @@ export function buildDealProgress(fiches: ProgressFiche[], now: number): DealPro
         const top = sortByWeight(latest.alerts)[0];
         return top ? REP_ACTIONS[top.rule] : null;
       })(),
+      focus: dealFocus({
+        verdict,
+        nextStep: nextStepOf(latest, new Date(now).toISOString().slice(0, 10), idle),
+        idleDays,
+        alerts: latest.alerts,
+        nextRank: sorted.length + 1,
+      }),
     });
   }
 
-  // Ce qui demande de l'attention d'abord, puis le plus récent.
-  return deals.sort((a, b) => VERDICT_ORDER[a.verdict] - VERDICT_ORDER[b.verdict] || (b.lastCall.at ?? "").localeCompare(a.lastCall.at ?? ""));
+  // Ce qui demande de l'attention d'abord (à relancer, à traiter, en bonne
+  // voie), puis la tendance, puis le plus récent.
+  return deals.sort(
+    (a, b) =>
+      FOCUS_ORDER[a.focus.status] - FOCUS_ORDER[b.focus.status] ||
+      VERDICT_ORDER[a.verdict] - VERDICT_ORDER[b.verdict] ||
+      (b.lastCall.at ?? "").localeCompare(a.lastCall.at ?? "")
+  );
 }
 
 export function buildDealProgressNow(fiches: ProgressFiche[]): DealProgress[] {

@@ -4,7 +4,7 @@ import type { DealProgress, ProgressFiche } from "@/lib/deal-progress";
 import type { DealReview } from "@/lib/deal-review";
 import { DEAL_ALERT_RULES } from "@/lib/deal-memory-schema";
 import { DealActionPlan, DealQualification } from "@/app/feedback/[id]/DealFocus";
-import { VERDICTS, formatAmount, formatDay } from "@/app/mes-deals/MesDealsView";
+import { VERDICTS, formatAmount, formatDay } from "@/app/mes-deals/deal-ui";
 
 const LABEL = "text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500";
 const CARD = "rounded-2xl border border-border bg-white";

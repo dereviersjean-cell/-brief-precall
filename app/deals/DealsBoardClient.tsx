@@ -4,8 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { alertLabel, formatDays, type BoardDeal, type StageColumn, type TeamRow } from "@/lib/deal-board";
-import type { DealProgress, DealVerdict } from "@/lib/deal-progress";
-import { PipeTable, STATUS } from "@/app/mes-deals/MesDealsView";
+import type { DealProgress, FocusStatus } from "@/lib/deal-progress";
+import { DealList, FOCUS } from "@/app/mes-deals/deal-ui";
 
 // Vue manager (Deal Execution, étape 4) : A = la file des deals où
 // intervenir, C = le bandeau des étapes au-dessus (un clic filtre la file),
@@ -211,11 +211,7 @@ function StageBanner({
   );
 }
 
-const VERDICT_CHIPS: { key: DealVerdict; label: string; tone: string }[] = [
-  { key: "recul", label: "en recul", tone: "bg-rose-50 text-rose-700" },
-  { key: "arret", label: "à l'arrêt", tone: "bg-amber-50 text-amber-700" },
-  { key: "progres", label: "en progrès", tone: "bg-emerald-50 text-emerald-700" },
-];
+const FOCUS_ORDER: FocusStatus[] = ["relancer", "traiter", "bonne_voie"];
 
 // Onglet Équipe, ouvert par défaut (structure cible de Jean, 27/10/2026 :
 // d'abord ce que font ses commerciaux) : une carte par personne — son
@@ -233,9 +229,8 @@ function TeamMember({
   deals: DealProgress[];
 }) {
   const [open, setOpen] = useState(true);
-  const counts = { recul: 0, arret: 0, progres: 0 } as Record<DealVerdict, number>;
-  for (const d of deals) counts[d.verdict]++;
-  const late = deals.filter((d) => d.nextStep.status === "en_retard").length;
+  const counts = { relancer: 0, traiter: 0, bonne_voie: 0 } as Record<FocusStatus, number>;
+  for (const d of deals) counts[d.focus.status]++;
   return (
     <section className={`${CARD} p-5`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -257,16 +252,11 @@ function TeamMember({
         {deals.length === 0 ? (
           <span className="text-[13px] text-slate-400">Aucun deal suivi.</span>
         ) : (
-          <>
-            {VERDICT_CHIPS.map((v) => (
-              <span key={v.key} className={`rounded-full px-2.5 py-1 text-[12.5px] font-medium ${counts[v.key] > 0 ? v.tone : "bg-slate-50 text-slate-400"}`}>
-                {counts[v.key]} {v.label}
-              </span>
-            ))}
-            <span className={`rounded-full px-2.5 py-1 text-[12.5px] font-medium ${late > 0 ? STATUS.en_retard.tone : "bg-slate-50 text-slate-400"}`}>
-              {late} en retard
+          FOCUS_ORDER.map((k) => (
+            <span key={k} className={`rounded-full px-2.5 py-1 text-[12.5px] font-medium ${counts[k] > 0 ? FOCUS[k].tone : "bg-slate-50 text-slate-400"}`}>
+              {counts[k]} {FOCUS[k].label.toLowerCase()}
             </span>
-          </>
+          ))
         )}
       </div>
 
@@ -295,8 +285,8 @@ function TeamMember({
       )}
 
       {open && deals.length > 0 && (
-        <div className="-mx-5 mt-4 overflow-x-auto border-t border-border">
-          <PipeTable deals={deals} />
+        <div className="-mx-5 -mb-5 mt-4 border-t border-border">
+          <DealList deals={deals} />
         </div>
       )}
     </section>
@@ -319,7 +309,7 @@ function TeamView({
   // Ceux dont les deals reculent ou stagnent passent devant.
   const weight = (id: string) => {
     const list = progress[id] ?? [];
-    return list.filter((d) => d.verdict === "recul").length * 100 + list.filter((d) => d.verdict === "arret").length;
+    return list.filter((d) => d.focus.status === "relancer").length * 100 + list.filter((d) => d.focus.status === "traiter").length;
   };
   const rows = team
     .filter((t) => t.deals > 0 || (progress[t.userId]?.length ?? 0) > 0 || (activity[t.userId]?.lastAt ?? null) !== null)
