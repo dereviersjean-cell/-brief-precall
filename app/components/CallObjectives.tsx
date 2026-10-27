@@ -3,7 +3,7 @@
 import { Line } from "@/app/components/CopyLine";
 import type { DealObjectives, NextItem, ObjectiveRow } from "@/lib/call-objectives";
 
-// Les objectifs par rendez-vous (demande de Jean du 28/10/2026) : ce que le
+// Les objectifs par rendez-vous (demande de Jean du 27/10/2026) : ce que le
 // dernier call devait aller chercher et ce qu'il a obtenu, puis ce qu'il faut
 // aller chercher au prochain, avec la question à poser. Le message s'adresse
 // au commercial, au tutoiement ; les questions, au prospect. Construit par

@@ -110,7 +110,7 @@ export function DealActionPlan({ callId, panel }: { callId: string; panel: DealM
   );
 }
 
-// Les objectifs du rendez-vous (28/10/2026) : en tête de la page du call et
+// Les objectifs du rendez-vous (27/10/2026) : en tête de la page du call et
 // de la page du deal.
 export function DealObjectives({ callId, panel }: { callId: string; panel: DealMemoryPanel }) {
   const fiche = panel.initial;

@@ -1,4 +1,4 @@
--- 037 — Questions du prochain call (chantier Deal Execution), 28/10/2026.
+-- 037 — Questions du prochain call (chantier Deal Execution), 27/10/2026.
 -- À exécuter dans le SQL editor Supabase (prod).
 --
 -- Après chaque fiche, Brief compare le call aux objectifs du rendez-vous fixés

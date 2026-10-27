@@ -5,7 +5,7 @@ import { DEFAULT_RULES, MAX_STAGES, METHODS, OBJECTIVE_RANKS, qualificationLabel
 
 // Onglet « Règles » de Deals de l'équipe (27/10/2026) : le manager règle
 // lui-même la méthode de qualification, les objectifs de chaque rendez-vous
-// (28/10/2026), les seuils et ce qui doit être connu à chaque étape
+// (27/10/2026), les seuils et ce qui doit être connu à chaque étape
 // (lib/deal-rules.ts). Les critères sont indicatifs : ils
 // lèvent une alerte, ils ne bloquent rien.
 

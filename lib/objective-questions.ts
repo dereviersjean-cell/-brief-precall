@@ -8,7 +8,7 @@ import type { QualificationKey } from "./deal-rules";
 // information à aller chercher, appuyée sur ce que le prospect a déjà dit.
 // Un appel par call, à partir de la fiche seule (pas du transcript).
 //
-// Haiku 5.5 (décision de Jean du 28/10/2026, après comparaison sur 4 deals
+// Haiku 5.5 (décision de Jean du 27/10/2026, après comparaison sur 4 deals
 // réels) : des questions presque aussi précises que Sonnet, environ 0,0006 $
 // par call contre 0,007 $. La fiche, elle, reste à Sonnet : Haiku y jugeait
 // trop souvent « confirmé » ce qui n'était qu'évoqué. En cas d'échec, les

@@ -25,7 +25,7 @@ export const QUALIFICATION_QUESTIONS: Record<QualificationKey, string> = {
 };
 
 // La question écrite pour ce prospect après le dernier call (objectifs du
-// rendez-vous, 28/10/2026), sinon la question générique.
+// rendez-vous, 27/10/2026), sinon la question générique.
 function questionFor(d: DealProgress, key: QualificationKey): string {
   return d.objectives?.plan.items.find((i) => i.key === key)?.question ?? `« ${QUALIFICATION_QUESTIONS[key]} »`;
 }

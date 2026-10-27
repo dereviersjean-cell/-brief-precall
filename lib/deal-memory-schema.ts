@@ -185,7 +185,7 @@ export type DealMemoryItem = {
   // pour cette action, AAAA-MM-JJ, ou null si aucune date n'a été fixée.
   // Absent (undefined) des fiches générées avant : la date n'a pas été relevée.
   date?: string | null;
-  // Informations de qualification seulement (28/10/2026, demande de Jean :
+  // Informations de qualification seulement (27/10/2026, demande de Jean :
   // savoir si l'objectif du call est vraiment atteint) : « confirme » quand le
   // prospect l'a dit clairement (un montant, un nom, une date), « evoque »
   // quand le sujet a été abordé sans réponse nette ou avancé par le seul

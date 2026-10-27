@@ -209,7 +209,7 @@ export function buildDealProgress(fiches: ProgressFiche[], now: number, rules: D
     const steps: DealStep[] = sorted.map((f) => {
       const learned: string[] = [];
       for (const key of fields) {
-        // Seul ce que le prospect a dit clairement compte (28/10/2026).
+        // Seul ce que le prospect a dit clairement compte (27/10/2026).
         if ((f.fields[key] ?? []).some((i) => itemLevel(i) === "confirme") && !seen.has(key)) {
           seen.add(key);
           learned.push(FIELD_LABELS.get(key) ?? key);

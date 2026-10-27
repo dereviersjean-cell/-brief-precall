@@ -79,7 +79,7 @@ export type DealMemoryInput = {
   callAt?: string | null;
   // Les calls précédents du même deal, du plus ancien au plus récent.
   history?: DealHistoryEntry[];
-  // Pour comparer un autre modèle (essai Haiku du 28/10/2026) ; MODEL sinon.
+  // Pour comparer un autre modèle (essai Haiku du 27/10/2026) ; MODEL sinon.
   model?: string;
 };
 

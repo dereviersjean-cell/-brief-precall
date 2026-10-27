@@ -18,7 +18,7 @@ export type DealBriefContext = {
   // Le rang du call qui arrive : 2 pour un deuxième call.
   callNumber: number;
   lastCall: { at: string | null; title: string | null };
-  // vague = abordé sans réponse nette (28/10/2026) : pas validé.
+  // vague = abordé sans réponse nette (27/10/2026) : pas validé.
   checklist: { label: string; done: boolean; vague: boolean; text: string | null }[];
   engagements: { text: string; date: string | null }[];
   points: { label: string; text: string; action: string }[];

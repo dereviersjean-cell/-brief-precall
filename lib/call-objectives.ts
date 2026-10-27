@@ -1,7 +1,7 @@
 import { DEAL_MEMORY_FIELDS, type DealMemoryFieldKey, type DealMemoryItem } from "./deal-memory-schema";
 import { OBJECTIVE_RANKS, qualificationFields, type DealRules, type QualificationKey } from "./deal-rules";
 
-// Les objectifs de chaque rendez-vous (demande de Jean du 28/10/2026) : le
+// Les objectifs de chaque rendez-vous (demande de Jean du 27/10/2026) : le
 // manager fixe ce que le commercial doit aller chercher au R1, au R2, au R3
 // (lib/deal-rules.ts, `callObjectives`). Après le call, Brief dit ce qui a été
 // obtenu ; avant le suivant, il dit au commercial « au dernier call tu es allé
@@ -191,7 +191,7 @@ function list(keys: QualificationKey[]): string {
 }
 
 // Le message au commercial, en clair et au tutoiement (décision de Jean du
-// 28/10/2026) : ce que le dernier call a obtenu, ce qui reste flou, ce qu'il
+// 27/10/2026) : ce que le dernier call a obtenu, ce qui reste flou, ce qu'il
 // faut aller chercher au prochain. Les questions, elles, s'adressent au
 // prospect et restent au vouvoiement.
 export function objectivesMessage(review: ObjectiveRow[], plan: { rank: number; items: NextItem[] }, lastRank: number): string[] {

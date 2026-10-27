@@ -124,7 +124,7 @@ export async function runDealMemoryForCall(call: CallWithAnalysis, organizationI
   return { ...stored, nextQuestions };
 }
 
-// Les questions du prochain call (28/10/2026) : ce qui reste à aller chercher
+// Les questions du prochain call (27/10/2026) : ce qui reste à aller chercher
 // d'après les objectifs du manager, une question par information, rédigée par
 // Haiku. Un échec ne touche pas la fiche : les écrans gardent les questions
 // fixes.

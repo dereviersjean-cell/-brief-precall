@@ -52,7 +52,7 @@ export type DealRules = {
   // étape du pipeline HubSpot, ou R1 hors HubSpot). Cumulatif : à l'étape 3,
   // ce que demandent les étapes 1, 2 et 3.
   stageRequirements: Partial<Record<number, QualificationKey[]>>;
-  // Ce que le commercial doit aller chercher à chaque rendez-vous (28/10/2026,
+  // Ce que le commercial doit aller chercher à chaque rendez-vous (27/10/2026,
   // demande de Jean : « dans un R1, l'objectif fixé par le manager c'est le
   // budget, le signataire… »). 1 = R1, 2 = R2, 3 = R3 et suivants. Ce qui
   // n'a pas été obtenu au rendez-vous prévu est reporté au suivant

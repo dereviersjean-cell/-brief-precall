@@ -6,7 +6,7 @@ import { ObjectivesMessage, ObjectivesPlan } from "@/app/components/CallObjectiv
 // deal (structure cible de Jean, 27/10/2026) : ce qui est validé dans la
 // checklist, ce qu'il reste à aller chercher, ce qui s'est dit la dernière
 // fois. Tiré des fiches des calls précédents (lib/deal-brief.ts). Depuis le
-// 28/10/2026, le conseil des objectifs par rendez-vous en tête : ce que le
+// 27/10/2026, le conseil des objectifs par rendez-vous en tête : ce que le
 // dernier call a obtenu, ce qu'il faut aller chercher à celui-ci et comment.
 
 const LABEL = "text-[11px] font-semibold uppercase tracking-[0.08em]";

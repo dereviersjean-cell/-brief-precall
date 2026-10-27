@@ -33,7 +33,7 @@ export type QualificationRow = {
   // connu = connu par un call précédent, pas abordé ici ; manquant = personne
   // n'en a encore parlé.
   status: "nouveau" | "precise" | "connu" | "manquant";
-  // Abordé sans réponse nette, sur ce call et les précédents (28/10/2026) :
+  // Abordé sans réponse nette, sur ce call et les précédents (27/10/2026) :
   // compte comme manquant, l'écran le dit « encore flou ».
   vague: boolean;
   // Ce qu'on en sait de plus récent, jusqu'à ce call compris.
@@ -69,7 +69,7 @@ export function buildQualification(
   return fields.map((key) => {
     const field = FIELD_DEFS.get(key)!;
     // Seul ce que le prospect a dit clairement compte comme connu ; un élément
-    // sans niveau (fiche antérieure au 28/10/2026) compte comme avant.
+    // sans niveau (fiche antérieure au 27/10/2026) compte comme avant.
     const nowAll = fiche.fields[key] ?? [];
     const beforeAll = prior[key] ?? [];
     const now = nowAll.filter((i) => itemLevel(i) === "confirme");
