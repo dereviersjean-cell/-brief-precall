@@ -11,6 +11,7 @@ import { computeCallInteractionMetrics } from "@/lib/call-analytics";
 import { detectMeetingStage, MEETING_STAGE_LABELS } from "@/lib/meeting-stage";
 import { parseTranscript } from "@/lib/transcript-import";
 import { inngest } from "@/lib/inngest";
+import { stageFromDealRank } from "@/lib/deal-stage";
 
 // Banc d'essai : rejoue le pipeline complet d'analyse (scores playbook,
 // extraction des objections, classification + évaluation, points clés,
@@ -127,7 +128,6 @@ export async function POST(request: NextRequest) {
   }
 
   const stageConfig = await getMeetingStageConfigForOrganization(organizationId);
-  const meetingStage = detectMeetingStage(meetingTitle, stageConfig);
 
   // Date saisie : le call est placé à 10 h (heure de Paris en hiver comme en
   // été, à une heure près) ce jour-là — seul l'ordre des jours compte pour un
@@ -138,6 +138,11 @@ export async function POST(request: NextRequest) {
   const startedAt = parsed.durationSeconds
     ? new Date(end.getTime() - parsed.durationSeconds * 1000).toISOString()
     : end.toISOString();
+
+  // Le vrai rang du call dans le deal du prospect prime sur le titre
+  // (lib/deal-stage.ts) ; le titre reste le repli.
+  const rankStage = await stageFromDealRank(targetUserId, { contactEmail, companyName }, startedAt).catch(() => null);
+  const meetingStage = rankStage ?? detectMeetingStage(meetingTitle, stageConfig);
 
   let call: { id: string };
   try {

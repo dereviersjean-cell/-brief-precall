@@ -3,6 +3,7 @@ import { Webhook } from "svix";
 import { createAsyncTranscript, getBotInfo, getTranscriptContent, transcriptToText, buildTranscriptJson, resolveSpeakerNames, countSpokenWords, MIN_SPOKEN_WORDS_FOR_ANALYSIS } from "@/lib/recall";
 import { createCall, getUserProfile, getUserName, getUserEmail, saveCallAnalysis, updateCallProspectIdentity, updateCallAnalysisKeyPoints, updateCallFollowUp, getContact, createContact, updateContact, generateTasksFromTemplates, getPlaybookSnapshotForUser, getUserOrganizationId, getMeetingStageConfigForOrganization, saveCallAnalytics, isDealMemoryEnabledForOrganization, type CallData } from "@/lib/db";
 import { inngest } from "@/lib/inngest";
+import { stageFromDealRank } from "@/lib/deal-stage";
 import { computeCallInteractionMetrics } from "@/lib/call-analytics";
 import { reportError, reportWarning } from "@/lib/monitoring";
 import { pushNewTasksToHubSpot } from "@/lib/tasks-hubspot-sync";
@@ -191,7 +192,14 @@ export async function POST(request: NextRequest) {
           // any error, and no org / no title / no match all yield null.
           const organizationId = await getUserOrganizationId(userId).catch(() => null);
           const stageConfig = organizationId ? await getMeetingStageConfigForOrganization(organizationId) : null;
-          const meetingStage = stageConfig ? detectMeetingStage(meetingTitle, stageConfig) : null;
+          // Le vrai rang du call dans le deal du prospect prime sur le titre
+          // (lib/deal-stage.ts, organisations en test) ; le titre reste le
+          // repli.
+          const rankStage = await stageFromDealRank(userId, { contactEmail, companyName }, timing.started_at ?? new Date().toISOString()).catch((err) => {
+            reportWarning("bot-webhook.stageFromDealRank", err, { botId });
+            return null;
+          });
+          const meetingStage = rankStage ?? (stageConfig ? detectMeetingStage(meetingTitle, stageConfig) : null);
           console.log("[bot-webhook] meetingTitle:", meetingTitle, "| detected stage:", meetingStage);
 
           // Step 2 — save call
