@@ -289,36 +289,40 @@ export const syncRecallCalendars = inngest.createFunction(
     // qui décalerait la plage d'une ou deux heures selon la saison.
     triggers: [{ cron: "TZ=Europe/Paris */5 7-21 * * 1-6" }],
   },
-  async ({ step }) => {
-    const users = (await step.run("get-users-with-recall", async () => {
-      return getAllUsersWithRecallCalendar();
-    })) as { id: string; email: string; recall_calendar_id: string }[];
-
+  // Sans `step.run` : chaque étape compte comme une exécution Inngest (plan
+  // gratuit : 50 000 par mois), et l'ancienne version en faisait 1 + 2 par
+  // agenda à chaque passage, soit l'essentiel du quota du mois (constaté le
+  // 27/10/2026 : ~27 600 exécutions). Une seule exécution par passage
+  // désormais. Un agenda en échec n'empêche pas les autres et sera repris au
+  // passage suivant, cinq minutes plus tard.
+  async () => {
+    const users = await getAllUsersWithRecallCalendar();
     console.log("[sync-recall-calendars] users with calendar:", users.length);
 
     let totalChecked = 0;
     let totalScheduled = 0;
     let totalSkipped = 0;
+    let failed = 0;
 
     for (const user of users) {
-      // Agenda coupé chez Recall : prévenir (une fois) et ne rien programmer —
-      // les événements d'un agenda coupé ne sont plus mis à jour, un bot y
-      // partirait sur un rendez-vous peut-être annulé depuis.
-      const health = (await step.run(`check-calendar-${user.id}`, async () => {
-        return checkCalendarHealth(user);
-      })) as { disconnected: boolean };
-      if (health.disconnected) continue;
+      try {
+        // Agenda coupé chez Recall : prévenir (une fois) et ne rien programmer —
+        // les événements d'un agenda coupé ne sont plus mis à jour, un bot y
+        // partirait sur un rendez-vous peut-être annulé depuis.
+        const health = await checkCalendarHealth(user);
+        if (health.disconnected) continue;
 
-      const result = (await step.run(`sync-user-${user.id}`, async () => {
-        return syncAndScheduleForUser(user.id, user.email);
-      })) as { checked: number; scheduled: number; skipped: number };
-
-      totalChecked += result.checked;
-      totalScheduled += result.scheduled;
-      totalSkipped += result.skipped;
+        const result = await syncAndScheduleForUser(user.id, user.email);
+        totalChecked += result.checked;
+        totalScheduled += result.scheduled;
+        totalSkipped += result.skipped;
+      } catch (err) {
+        failed++;
+        reportError("cron.syncRecallCalendars", err, { userId: user.id });
+      }
     }
 
-    const summary = { users: users.length, checked: totalChecked, scheduled: totalScheduled, skipped: totalSkipped };
+    const summary = { users: users.length, checked: totalChecked, scheduled: totalScheduled, skipped: totalSkipped, failed };
     console.log("[sync-recall-calendars] done —", JSON.stringify(summary));
     return summary;
   }
