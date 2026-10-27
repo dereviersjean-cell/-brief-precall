@@ -7,6 +7,40 @@ import { alertLabel, formatDays, type BoardDeal, type StageColumn, type TeamRow 
 import type { DealProgress, FocusStatus } from "@/lib/deal-progress";
 import { DealList, FOCUS } from "@/app/mes-deals/deal-ui";
 import DealRulesForm from "./DealRulesForm";
+import type { AlertImpact } from "@/lib/deal-impact";
+
+// L'effet des alertes sur 90 jours (lib/deal-impact.ts) : après un « Vu »,
+// le deal a-t-il eu un nouveau call dans le délai d'inactivité ? C'est la
+// mesure « deals remis en mouvement » du pilote (question 15).
+function ImpactStrip({ impact, windowDays }: { impact: AlertImpact; windowDays: number }) {
+  if (impact.seen === 0) {
+    return (
+      <p className="rounded-2xl border border-dashed border-border bg-white px-4 py-3 text-[13px] text-slate-500">
+        Effet des alertes : rien à mesurer encore. Chaque « Vu » sur un deal signalé sera suivi — le deal a-t-il un nouveau call dans les {windowDays} jours ?
+      </p>
+    );
+  }
+  return (
+    <section className="rounded-2xl border border-border bg-white px-5 py-4">
+      <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">Effet des alertes · 90 derniers jours</h2>
+      <p className="mt-2 text-[13.5px] text-slate-800">
+        <span className="font-semibold tabular-nums">{impact.seen}</span> deal{impact.seen > 1 ? "s" : ""} vu{impact.seen > 1 ? "s" : ""} ·{" "}
+        <span className="font-semibold tabular-nums text-emerald-700">{impact.moved}</span> remis en mouvement (nouveau call dans les {windowDays} jours)
+        {impact.rate !== null && <span className="text-slate-500"> · {Math.round(impact.rate * 100)} %</span>}
+        {impact.avgDays !== null && <span className="text-slate-500"> · {String(impact.avgDays).replace(".", ",")} j en moyenne</span>}
+        {impact.pending > 0 && <span className="text-slate-500"> · {impact.pending} trop récent{impact.pending > 1 ? "s" : ""} pour conclure</span>}
+      </p>
+      {impact.byRule.length > 0 && (
+        <p className="mt-1.5 text-[12.5px] text-slate-500">
+          {impact.byRule
+            .slice(0, 4)
+            .map((r) => `${r.label} : ${r.moved}/${r.seen}`)
+            .join(" · ")}
+        </p>
+      )}
+    </section>
+  );
+}
 
 // Vue manager (Deal Execution, étape 4) : A = la file des deals où
 // intervenir, C = le bandeau des étapes au-dessus (un clic filtre la file),
@@ -332,6 +366,8 @@ export default function DealsBoardClient({
   team,
   activity,
   progress,
+  impact,
+  impactWindowDays,
   people,
   initialTab,
   initialStage,
@@ -341,6 +377,8 @@ export default function DealsBoardClient({
   team: TeamRow[];
   activity: Record<string, { week: number; lastAt: string | null }>;
   progress: Record<string, DealProgress[]>;
+  impact: AlertImpact | null;
+  impactWindowDays: number;
   people: Record<string, string>;
   initialTab: "file" | "equipe" | "regles";
   initialStage: string | null;
@@ -375,6 +413,7 @@ export default function DealsBoardClient({
 
       {tab === "file" ? (
         <>
+          {impact && <ImpactStrip impact={impact} windowDays={impactWindowDays} />}
           <StageBanner stages={stages} active={stage} onSelect={setStage} />
           <section>
             <h2 className={`${LABEL} mb-3`}>

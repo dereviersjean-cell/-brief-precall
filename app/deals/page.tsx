@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getViewer } from "@/lib/session-user";
 import {
+  getAlertImpactData,
   getCallActivityForUsers,
   getCommercialsForManager,
   getDealBoardRows,
@@ -13,6 +14,8 @@ import {
 } from "@/lib/db";
 import { buildBoardNow, buildStages, buildTeam } from "@/lib/deal-board";
 import { buildDealProgressNow, type DealProgress } from "@/lib/deal-progress";
+import { buildAlertImpact } from "@/lib/deal-impact";
+import { nowMs } from "@/lib/format";
 import DealsBoardClient from "./DealsBoardClient";
 
 export default async function DealsPage({ searchParams }: { searchParams: Promise<{ tab?: string; stage?: string }> }) {
@@ -44,6 +47,12 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
     getCallActivityForUsers(people.map((p) => p.id)).catch(() => ({}) as Record<string, { week: number; lastAt: string | null }>),
     Promise.all(people.map((p) => getProgressFichesForUser(organizationId, p.id).catch(() => []))),
   ]);
+  // L'effet des alertes sur 90 jours (lib/deal-impact.ts) : un deal « vu »
+  // a-t-il eu un nouveau call dans le délai d'inactivité de l'organisation ?
+  const now = nowMs();
+  const impactData = await getAlertImpactData(organizationId, new Date(now - 90 * 24 * 60 * 60 * 1000).toISOString()).catch(() => null);
+  const impact = impactData ? buildAlertImpact(impactData.events, impactData.callsByDeal, now, rules.inactivityDays) : null;
+
   const progress: Record<string, DealProgress[]> = Object.fromEntries(
     people.map((p, i) => [p.id, buildDealProgressNow(progressLists[i], rules).filter((d) => !d.hubspot?.closed)])
   );
@@ -55,6 +64,8 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
       team={team}
       activity={activity}
       progress={progress}
+      impact={impact}
+      impactWindowDays={rules.inactivityDays}
       people={Object.fromEntries(people.map((p) => [p.id, p.name]))}
       initialTab={params.tab === "file" ? "file" : params.tab === "regles" ? "regles" : "equipe"}
       initialStage={params.stage ?? null}

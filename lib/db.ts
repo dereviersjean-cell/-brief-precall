@@ -2279,6 +2279,37 @@ export async function getCallActivityForUsers(userIds: string[]): Promise<Record
   return result;
 }
 
+// Effet des alertes (lib/deal-impact.ts) : les clics « Vu » / « Plus tard »
+// des managers de l'organisation depuis `since`, et les dates des calls des
+// deals concernés.
+export async function getAlertImpactData(
+  organizationId: string,
+  since: string
+): Promise<{ events: { dealId: string; status: "seen" | "later"; alertRules: string[]; at: string }[]; callsByDeal: Record<string, string[]> }> {
+  const { data, error } = await supabaseAdmin
+    .from("deal_review_events")
+    .select("deal_id, status, alert_rules, created_at, deals!inner(organization_id)")
+    .eq("deals.organization_id", organizationId)
+    .gte("created_at", since);
+  if (error) throw error;
+  const events = ((data ?? []) as { deal_id: string; status: "seen" | "later"; alert_rules: string[] | null; created_at: string }[]).map((r) => ({
+    dealId: r.deal_id,
+    status: r.status,
+    alertRules: r.alert_rules ?? [],
+    at: r.created_at,
+  }));
+  const dealIds = [...new Set(events.map((e) => e.dealId))];
+  const callsByDeal: Record<string, string[]> = {};
+  if (dealIds.length > 0) {
+    const { data: calls, error: callsError } = await supabaseAdmin.from("call_deal_memory").select("deal_id, call_at").in("deal_id", dealIds);
+    if (callsError) throw callsError;
+    for (const c of (calls ?? []) as { deal_id: string; call_at: string | null }[]) {
+      if (c.call_at) (callsByDeal[c.deal_id] ??= []).push(c.call_at);
+    }
+  }
+  return { events, callsByDeal };
+}
+
 export async function getDealReviews(userId: string): Promise<BoardReview[]> {
   const { data, error } = await supabaseAdmin.from("deal_reviews").select("deal_id, status, reviewed_at").eq("user_id", userId);
   if (error) throw error;
