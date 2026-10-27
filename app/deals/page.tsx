@@ -9,16 +9,19 @@ import {
   getOrganizationDealRules,
   getOrganizationPipelineStats,
   getProgressFichesForUser,
+  getUserAvatars,
   getUserName,
   isDealMemoryEnabledForOrganization,
 } from "@/lib/db";
-import { buildBoardNow, buildStages, buildTeam } from "@/lib/deal-board";
-import { buildDealProgressNow, type DealProgress } from "@/lib/deal-progress";
+import { buildBoardNow, buildStages } from "@/lib/deal-board";
+import { interventionLevel } from "@/lib/deal-coaching";
+import { buildDealProgressNow } from "@/lib/deal-progress";
 import { buildAlertImpact } from "@/lib/deal-impact";
 import { nowMs } from "@/lib/format";
 import DealsBoardClient from "./DealsBoardClient";
+import type { TeamPerson } from "./TeamCoachView";
 
-export default async function DealsPage({ searchParams }: { searchParams: Promise<{ tab?: string; stage?: string }> }) {
+export default async function DealsPage({ searchParams }: { searchParams: Promise<{ tab?: string; stage?: string; commercial?: string }> }) {
   const viewer = await getViewer();
   if (!viewer) redirect("/login");
   if (viewer.role !== "manager" || !viewer.organizationId || !(await isDealMemoryEnabledForOrganization(viewer.organizationId))) {
@@ -38,14 +41,14 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
   const rows = await getDealBoardRows(viewer.organizationId, people.map((p) => p.id));
 
   const deals = buildBoardNow(rows, reviews, pipelineStats, rules);
-  const team = buildTeam(deals, people.map((p) => p.id));
 
   // Onglet Équipe (27/10/2026) : ce que fait chaque commercial — son activité
   // et ses deals tels qu'il les voit dans « Mes deals ».
   const organizationId = viewer.organizationId;
-  const [activity, progressLists] = await Promise.all([
+  const [activity, progressLists, avatars] = await Promise.all([
     getCallActivityForUsers(people.map((p) => p.id)).catch(() => ({}) as Record<string, { week: number; lastAt: string | null }>),
     Promise.all(people.map((p) => getProgressFichesForUser(organizationId, p.id).catch(() => []))),
+    getUserAvatars(people.map((p) => p.id)),
   ]);
   // L'effet des alertes sur 90 jours (lib/deal-impact.ts) : un deal « vu »
   // a-t-il eu un nouveau call dans le délai d'inactivité de l'organisation ?
@@ -53,22 +56,33 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
   const impactData = await getAlertImpactData(organizationId, new Date(now - 90 * 24 * 60 * 60 * 1000).toISOString()).catch(() => null);
   const impact = impactData ? buildAlertImpact(impactData.events, impactData.callsByDeal, now, rules.inactivityDays) : null;
 
-  const progress: Record<string, DealProgress[]> = Object.fromEntries(
-    people.map((p, i) => [p.id, buildDealProgressNow(progressLists[i], rules).filter((d) => !d.hubspot?.closed)])
-  );
+  // Une carte par personne qui a des deals ou de l'activité récente ; celles
+  // dont un deal demande d'intervenir passent devant (version M3, 27/10/2026).
+  const weight = (p: TeamPerson) =>
+    p.deals.filter((d) => interventionLevel(d) === "oui").length * 100 + p.deals.filter((d) => interventionLevel(d) === "surveiller").length;
+  const teamPeople: TeamPerson[] = people
+    .map((p, i) => ({
+      id: p.id,
+      name: p.name,
+      avatarUrl: avatars[p.id] ?? null,
+      week: activity[p.id]?.week ?? 0,
+      lastAt: activity[p.id]?.lastAt ?? null,
+      deals: buildDealProgressNow(progressLists[i], rules).filter((d) => !d.hubspot?.closed),
+    }))
+    .filter((p) => p.deals.length > 0 || p.lastAt !== null)
+    .sort((a, b) => weight(b) - weight(a));
 
   return (
     <DealsBoardClient
       deals={deals}
       stages={buildStages(deals.filter((d) => !d.hiddenBecause), pipelineStats)}
-      team={team}
-      activity={activity}
-      progress={progress}
+      teamPeople={teamPeople}
       impact={impact}
       impactWindowDays={rules.inactivityDays}
       people={Object.fromEntries(people.map((p) => [p.id, p.name]))}
       initialTab={params.tab === "file" ? "file" : params.tab === "regles" ? "regles" : "equipe"}
       initialStage={params.stage ?? null}
+      initialCommercial={params.commercial ?? null}
     />
   );
 }

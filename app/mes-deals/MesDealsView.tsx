@@ -33,7 +33,7 @@ function hue(name: string): number {
 
 // Le logo de l'entreprise (trouvé par le serveur, app/api/company-logo),
 // sinon son initiale sur une teinte propre au deal.
-function Avatar({ d, size }: { d: DealProgress; size: 34 | 46 }) {
+export function Avatar({ d, size }: { d: DealProgress; size: 34 | 46 }) {
   const h = hue(d.name);
   return (
     <CompanyLogo
@@ -79,7 +79,7 @@ function Ring({ value, total }: { value: number; total: number }) {
 }
 
 // Une phrase prête à dire, copiable d'un clic.
-function Line({ text }: { text: string }) {
+export function Line({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   const quoted = /^«.*»$/.test(text.trim());
   return (

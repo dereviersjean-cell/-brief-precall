@@ -18,12 +18,13 @@ export default function DealsLayout({ children }: { children: ReactNode }) {
           <ImpersonationBanner />
           <BillingGraceBanner />
           <TopBar />
-          <div style={{ background: "linear-gradient(180deg, oklch(0.965 0.022 270) 0px, var(--background) 520px)" }}>
+          {/* Fond chaud, comme « Mes deals » (version M3 choisie par Jean le 27/10/2026). */}
+          <div className="min-h-screen bg-[#f7f6f3]">
             <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
               <PageHeader
                 eyebrow="Manager · test"
                 title="Deals de l'équipe"
-                subtitle="Ce que font vos commerciaux, leurs deals en cours et où ils en sont, et les deals où intervenir."
+                subtitle="Où votre intervention compte, et quoi dire à vos commerciaux."
               />
               <div className="mt-8">{children}</div>
             </div>

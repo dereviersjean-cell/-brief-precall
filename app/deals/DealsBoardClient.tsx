@@ -3,9 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { alertLabel, formatDays, type BoardDeal, type StageColumn, type TeamRow } from "@/lib/deal-board";
-import type { DealProgress, FocusStatus } from "@/lib/deal-progress";
-import { DealList, FOCUS } from "@/app/mes-deals/deal-ui";
+import { alertLabel, formatDays, type BoardDeal, type StageColumn } from "@/lib/deal-board";
+import TeamCoachView, { type Reviewable, type TeamPerson } from "./TeamCoachView";
 import DealRulesForm from "./DealRulesForm";
 import type { AlertImpact } from "@/lib/deal-impact";
 
@@ -246,142 +245,26 @@ function StageBanner({
   );
 }
 
-const FOCUS_ORDER: FocusStatus[] = ["relancer", "traiter", "bonne_voie"];
-
-// Onglet Équipe, ouvert par défaut (structure cible de Jean, 27/10/2026 :
-// d'abord ce que font ses commerciaux) : une carte par personne — son
-// activité, ses deals par tendance et en retard, son point à travailler — et
-// son pipe, un deal par ligne vers la page du deal (bilan du manager).
-function TeamMember({
-  row,
-  name,
-  activity,
-  deals,
-}: {
-  row: TeamRow;
-  name: string;
-  activity: { week: number; lastAt: string | null } | undefined;
-  deals: DealProgress[];
-}) {
-  const [open, setOpen] = useState(true);
-  const counts = { relancer: 0, traiter: 0, bonne_voie: 0 } as Record<FocusStatus, number>;
-  for (const d of deals) counts[d.focus.status]++;
-  return (
-    <section className={`${CARD} p-5`}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="text-[15px] font-semibold text-slate-900">{name}</h3>
-          <p className="mt-0.5 text-[12.5px] text-slate-500">
-            {activity ? `${activity.week} call${activity.week > 1 ? "s" : ""} ces 7 derniers jours` : "Activité indisponible"}
-            {activity?.lastAt ? ` · dernier le ${formatDay(activity.lastAt)}` : activity ? " · aucun call récent" : ""}
-          </p>
-        </div>
-        {deals.length > 0 && (
-          <button onClick={() => setOpen((v) => !v)} className="text-[13px] font-medium text-[color:var(--violet)] hover:underline">
-            {open ? "Replier ses deals" : `Voir ses deals (${deals.length})`}
-          </button>
-        )}
-      </div>
-
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {deals.length === 0 ? (
-          <span className="text-[13px] text-slate-400">Aucun deal suivi.</span>
-        ) : (
-          FOCUS_ORDER.map((k) => (
-            <span key={k} className={`rounded-full px-2.5 py-1 text-[12.5px] font-medium ${counts[k] > 0 ? FOCUS[k].tone : "bg-slate-50 text-slate-400"}`}>
-              {counts[k]} {FOCUS[k].label.toLowerCase()}
-            </span>
-          ))
-        )}
-      </div>
-
-      {row.deals > 0 && (
-        <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1 text-[13px] sm:grid-cols-2">
-          <div>
-            <dt className="inline text-slate-500">Prochaine étape datée : </dt>
-            <dd className="inline text-slate-900">
-              {row.datedNextStepShare === null ? "—" : `${Math.round(row.datedNextStepShare * 100)} % de ses deals`}
-            </dd>
-          </div>
-          <div>
-            <dt className="inline text-slate-500">Point à travailler : </dt>
-            <dd className="inline">
-              {row.recurring ? (
-                <>
-                  <span className="text-slate-900">{alertLabel(row.recurring.rule)}</span>
-                  <span className="text-slate-500"> · sur {row.recurring.count} deals</span>
-                </>
-              ) : (
-                <span className="text-slate-400">rien de récurrent</span>
-              )}
-            </dd>
-          </div>
-        </dl>
-      )}
-
-      {open && deals.length > 0 && (
-        <div className="-mx-5 -mb-5 mt-4 border-t border-border">
-          <DealList deals={deals} />
-        </div>
-      )}
-    </section>
-  );
-}
-
-function TeamView({
-  team,
-  people,
-  activity,
-  progress,
-}: {
-  team: TeamRow[];
-  people: Record<string, string>;
-  activity: Record<string, { week: number; lastAt: string | null }>;
-  progress: Record<string, DealProgress[]>;
-}) {
-  // Les personnes qui ont des deals ou de l'activité récente ; les autres
-  // n'ont rien à montrer.
-  // Ceux dont les deals reculent ou stagnent passent devant.
-  const weight = (id: string) => {
-    const list = progress[id] ?? [];
-    return list.filter((d) => d.focus.status === "relancer").length * 100 + list.filter((d) => d.focus.status === "traiter").length;
-  };
-  const rows = team
-    .filter((t) => t.deals > 0 || (progress[t.userId]?.length ?? 0) > 0 || (activity[t.userId]?.lastAt ?? null) !== null)
-    .sort((a, b) => weight(b.userId) - weight(a.userId));
-  if (rows.length === 0)
-    return <p className={`${CARD} p-5 text-[13.5px] text-slate-500`}>Aucune activité ni aucun deal suivi dans votre équipe pour l&apos;instant.</p>;
-  return (
-    <div className="space-y-3">
-      {rows.map((t) => (
-        <TeamMember key={t.userId} row={t} name={people[t.userId] ?? "—"} activity={activity[t.userId]} deals={progress[t.userId] ?? []} />
-      ))}
-    </div>
-  );
-}
-
 export default function DealsBoardClient({
   deals,
   stages,
-  team,
-  activity,
-  progress,
+  teamPeople,
   impact,
   impactWindowDays,
   people,
   initialTab,
   initialStage,
+  initialCommercial = null,
 }: {
   deals: BoardDeal[];
   stages: StageColumn[];
-  team: TeamRow[];
-  activity: Record<string, { week: number; lastAt: string | null }>;
-  progress: Record<string, DealProgress[]>;
+  teamPeople: TeamPerson[];
   impact: AlertImpact | null;
   impactWindowDays: number;
   people: Record<string, string>;
   initialTab: "file" | "equipe" | "regles";
   initialStage: string | null;
+  initialCommercial?: string | null;
 }) {
   const [tab, setTab] = useState(initialTab);
   const [stage, setStage] = useState<string | null>(initialStage);
@@ -390,6 +273,10 @@ export default function DealsBoardClient({
   const queue = deals.filter((d) => !d.hiddenBecause && d.alerts.length > 0 && inStage(d));
   const moving = deals.filter((d) => !d.hiddenBecause && d.alerts.length === 0 && inStage(d));
   const reviewed = deals.filter((d) => d.hiddenBecause && inStage(d));
+  // Le « Vu » de l'onglet Équipe agit sur les mêmes alertes que la file.
+  const reviewable: Reviewable = Object.fromEntries(
+    deals.map((d) => [d.id, { rules: d.alerts.map((a) => a.rule), seen: d.hiddenBecause === "seen" }])
+  );
 
   return (
     <div className="space-y-6">
@@ -436,7 +323,7 @@ export default function DealsBoardClient({
         tab === "regles" ? (
           <DealRulesForm stageLabels={Object.fromEntries(stages.filter((st) => st.index).map((st) => [st.index as number, st.label]))} />
         ) : (
-          <TeamView team={team} people={people} activity={activity} progress={progress} />
+          <TeamCoachView people={teamPeople} reviewable={reviewable} initialFilter={initialCommercial} />
         )
       )}
     </div>

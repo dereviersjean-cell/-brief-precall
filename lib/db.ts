@@ -4816,6 +4816,18 @@ export async function getUserName(userId: string): Promise<string | null> {
   return (data as { name: string | null } | null)?.name ?? null;
 }
 
+// Les photos de profil (posées à la connexion Google ou Microsoft) d'une liste
+// d'utilisateurs. Fail-soft : sans photo, l'écran affiche les initiales.
+export async function getUserAvatars(userIds: string[]): Promise<Record<string, string | null>> {
+  if (userIds.length === 0) return {};
+  const { data, error } = await supabaseAdmin.from("users").select("id, avatar_url").in("id", userIds);
+  if (error) {
+    console.error("[getUserAvatars]", error.message);
+    return {};
+  }
+  return Object.fromEntries((data ?? []).map((u) => [(u as { id: string }).id, (u as { avatar_url: string | null }).avatar_url ?? null]));
+}
+
 export async function markQuoteAsSent(
   quoteId: string,
   userId: string,
