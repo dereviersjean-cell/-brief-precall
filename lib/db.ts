@@ -2159,6 +2159,30 @@ export async function getDealPageFiches(
   });
 }
 
+// Bibliothèque des calls (27/10/2026) : pour chaque call, son deal et son
+// rang dans le deal (R1, R2…), en deux requêtes pour toute la liste.
+export async function getDealLinksForCalls(callIds: string[]): Promise<Record<string, { dealId: string; dealName: string; rank: number }>> {
+  if (callIds.length === 0) return {};
+  const { data: own, error } = await supabaseAdmin.from("call_deal_memory").select("deal_id").in("call_id", callIds).not("deal_id", "is", null);
+  if (error) throw error;
+  const dealIds = [...new Set(((own ?? []) as { deal_id: string }[]).map((r) => r.deal_id))];
+  if (dealIds.length === 0) return {};
+  const { data, error: allError } = await supabaseAdmin
+    .from("call_deal_memory")
+    .select("call_id, deal_id, call_at, deals!inner(name)")
+    .in("deal_id", dealIds)
+    .order("call_at", { ascending: true, nullsFirst: true });
+  if (allError) throw allError;
+  const result: Record<string, { dealId: string; dealName: string; rank: number }> = {};
+  const counters: Record<string, number> = {};
+  for (const row of (data ?? []) as { call_id: string; deal_id: string; deals: { name: string } | { name: string }[] }[]) {
+    counters[row.deal_id] = (counters[row.deal_id] ?? 0) + 1;
+    const deal = Array.isArray(row.deals) ? row.deals[0] : row.deals;
+    result[row.call_id] = { dealId: row.deal_id, dealName: deal?.name ?? "Deal", rank: counters[row.deal_id] };
+  }
+  return result;
+}
+
 // Liste des rendez-vous de /brief (27/10/2026) : de quoi dire, pour chaque
 // rendez-vous, s'il est le R1 d'un nouveau prospect ou le R2, R3… d'un deal
 // en cours — tous les deals de l'organisation et leur nombre de calls, en

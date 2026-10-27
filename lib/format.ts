@@ -64,3 +64,11 @@ export function formatContactDisplayName(
   if (contactEmail) return contactEmail;
   return "Contact inconnu";
 }
+
+// L'heure du serveur au moment du rendu, passée aux composants clients qui
+// filtrent par période : l'appeler dans le rendu d'un composant serait une
+// lecture impure (règle react-hooks/purity), et serveur et navigateur
+// tomberaient sur deux instants différents.
+export function nowMs(): number {
+  return Date.now();
+}
