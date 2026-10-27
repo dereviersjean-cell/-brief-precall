@@ -5,6 +5,7 @@ import {
   getCommercialsForManager,
   getDealBoardRows,
   getDealReviews,
+  getOrganizationDealRules,
   getOrganizationPipelineStats,
   getProgressFichesForUser,
   getUserName,
@@ -22,17 +23,18 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
   }
 
   // Les deals du manager : ceux de ses commerciaux liés, et les siens.
-  const [commercials, ownName, reviews, pipelineStats, params] = await Promise.all([
+  const [commercials, ownName, reviews, pipelineStats, rules, params] = await Promise.all([
     getCommercialsForManager(viewer.userId),
     getUserName(viewer.userId),
     getDealReviews(viewer.userId).catch(() => []),
     getOrganizationPipelineStats(viewer.organizationId),
+    getOrganizationDealRules(viewer.organizationId),
     searchParams,
   ]);
   const people = [{ id: viewer.userId, name: ownName ?? "Vous" }, ...commercials.map((c) => ({ id: c.id, name: c.name ?? c.email ?? "Commercial" }))];
   const rows = await getDealBoardRows(viewer.organizationId, people.map((p) => p.id));
 
-  const deals = buildBoardNow(rows, reviews, pipelineStats);
+  const deals = buildBoardNow(rows, reviews, pipelineStats, rules);
   const team = buildTeam(deals, people.map((p) => p.id));
 
   // Onglet Équipe (27/10/2026) : ce que fait chaque commercial — son activité
@@ -43,7 +45,7 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
     Promise.all(people.map((p) => getProgressFichesForUser(organizationId, p.id).catch(() => []))),
   ]);
   const progress: Record<string, DealProgress[]> = Object.fromEntries(
-    people.map((p, i) => [p.id, buildDealProgressNow(progressLists[i]).filter((d) => !d.hubspot?.closed)])
+    people.map((p, i) => [p.id, buildDealProgressNow(progressLists[i], rules).filter((d) => !d.hubspot?.closed)])
   );
 
   return (
@@ -54,7 +56,7 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
       activity={activity}
       progress={progress}
       people={Object.fromEntries(people.map((p) => [p.id, p.name]))}
-      initialTab={params.tab === "file" ? "file" : "equipe"}
+      initialTab={params.tab === "file" ? "file" : params.tab === "regles" ? "regles" : "equipe"}
       initialStage={params.stage ?? null}
     />
   );

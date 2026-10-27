@@ -7,7 +7,8 @@ import {
   type DealMemoryItem,
   type HubspotDealSnapshot,
 } from "./deal-memory-schema";
-import { QUALIFICATION_FIELDS, type QualificationKey } from "./deal-actions";
+import type { QualificationKey } from "./deal-actions";
+import { DEFAULT_RULES, missingForStage, qualificationFields, qualificationLabel, type DealRules } from "./deal-rules";
 import { REP_ACTIONS, sortByWeight } from "./deal-board";
 
 // Vue commercial « Mes deals » (demande de Jean du 27/10/2026) : l'évolution
@@ -78,6 +79,9 @@ export type DealProgress = {
   // Vue « Mes deals » resserrée (demande de Jean du 27/10/2026 : plus concis,
   // plus clair, plus actionnable) : UN statut et UNE action courte par deal.
   focus: DealFocus;
+  // Critères de passage : ce qui devrait être connu à l'étape où en est le
+  // deal et ne l'est pas (libellés).
+  missingForStage: string[];
 };
 
 export type FocusStatus = "relancer" | "traiter" | "bonne_voie";
@@ -119,9 +123,14 @@ export function dealFocus(input: {
   idleDays: number | null;
   alerts: DealMemoryAlert[];
   nextRank: number;
+  // Seuil d'inactivité de l'organisation (lib/deal-rules.ts).
+  inactivityDays?: number;
+  // Ce qui devrait être connu à l'étape où en est le deal, et ne l'est pas.
+  missingForStage?: QualificationKey[];
 }): DealFocus {
   const { nextStep, idleDays } = input;
-  if (nextStep.status === "en_retard" || (idleDays !== null && idleDays >= INACTIVITY_DAYS)) {
+  const threshold = input.inactivityDays ?? INACTIVITY_DAYS;
+  if (nextStep.status === "en_retard" || (idleDays !== null && idleDays >= threshold)) {
     return {
       status: "relancer",
       action: "Relancer le prospect",
@@ -131,6 +140,12 @@ export function dealFocus(input: {
   const top = sortByWeight(input.alerts)[0];
   if (input.verdict === "recul" && top) return { status: "traiter", action: SHORT_ACTIONS[top.rule] ?? "Reprendre le deal", detail: "le deal recule" };
   if (nextStep.status === "sans_suite") return { status: "traiter", action: "Dater la prochaine étape", detail: "aucune suite convenue" };
+  // Critère de passage non rempli (question 9 : indicatif, il alerte sans
+  // rien bloquer).
+  const missing = input.missingForStage ?? [];
+  if (missing.length > 0) {
+    return { status: "traiter", action: `Obtenir : ${missing.map((k) => qualificationLabel(k).toLowerCase()).join(", ")}`, detail: "requis à cette étape" };
+  }
   if (top) return { status: "traiter", action: SHORT_ACTIONS[top.rule] ?? "Traiter le point de vigilance", detail: null };
   return {
     status: "bonne_voie",
@@ -167,7 +182,8 @@ function lowerFirst(label: string): string {
   return label.charAt(0).toLowerCase() + label.slice(1);
 }
 
-export function buildDealProgress(fiches: ProgressFiche[], now: number): DealProgress[] {
+export function buildDealProgress(fiches: ProgressFiche[], now: number, rules: DealRules = DEFAULT_RULES): DealProgress[] {
+  const fields = qualificationFields(rules);
   const byDeal = new Map<string, ProgressFiche[]>();
   for (const f of fiches) byDeal.set(f.dealId, [...(byDeal.get(f.dealId) ?? []), f]);
 
@@ -177,7 +193,7 @@ export function buildDealProgress(fiches: ProgressFiche[], now: number): DealPro
     const seen = new Set<QualificationKey>();
     const steps: DealStep[] = sorted.map((f) => {
       const learned: string[] = [];
-      for (const key of QUALIFICATION_FIELDS) {
+      for (const key of fields) {
         if ((f.fields[key] ?? []).length > 0 && !seen.has(key)) {
           seen.add(key);
           learned.push(FIELD_LABELS.get(key) ?? key);
@@ -191,7 +207,10 @@ export function buildDealProgress(fiches: ProgressFiche[], now: number): DealPro
     const idleDays = latest.callAt ? Math.floor((now - Date.parse(latest.callAt)) / DAY_MS) : null;
     const comparison = latest.alerts.filter((a) => COMPARISON_RULES.has(a.rule));
     const undated = latest.alerts.some((a) => a.rule === "prochaine_etape_non_datee");
-    const idle = idleDays !== null && idleDays >= INACTIVITY_DAYS;
+    const idle = idleDays !== null && idleDays >= rules.inactivityDays;
+    // L'étape du deal : celle du pipeline HubSpot, sinon son rang (R1 = 1).
+    const stage = latest.hubspot && !latest.hubspot.closed ? latest.hubspot.stageIndex : latest.hubspot ? null : sorted.length;
+    const missing = missingForStage(rules, stage, seen);
 
     let verdict: DealVerdict;
     const reasons: string[] = [];
@@ -220,8 +239,9 @@ export function buildDealProgress(fiches: ProgressFiche[], now: number): DealPro
       verdict,
       reasons,
       known: seen.size,
-      total: QUALIFICATION_FIELDS.length,
-      toObtain: QUALIFICATION_FIELDS.filter((k) => !seen.has(k)).map((k) => FIELD_LABELS.get(k) ?? k),
+      total: fields.length,
+      toObtain: fields.filter((k) => !seen.has(k)).map((k) => FIELD_LABELS.get(k) ?? k),
+      missingForStage: missing.map((k) => qualificationLabel(k)),
       nextSteps: latest.fields.prochaines_etapes ?? [],
       alerts: latest.alerts.map((a) => RULE_LABELS.get(a.rule) ?? a.rule),
       nextStep: nextStepOf(latest, new Date(now).toISOString().slice(0, 10), idle),
@@ -237,6 +257,8 @@ export function buildDealProgress(fiches: ProgressFiche[], now: number): DealPro
         idleDays,
         alerts: latest.alerts,
         nextRank: sorted.length + 1,
+        inactivityDays: rules.inactivityDays,
+        missingForStage: missing,
       }),
     });
   }
@@ -251,6 +273,6 @@ export function buildDealProgress(fiches: ProgressFiche[], now: number): DealPro
   );
 }
 
-export function buildDealProgressNow(fiches: ProgressFiche[]): DealProgress[] {
-  return buildDealProgress(fiches, Date.now());
+export function buildDealProgressNow(fiches: ProgressFiche[], rules: DealRules = DEFAULT_RULES): DealProgress[] {
+  return buildDealProgress(fiches, Date.now(), rules);
 }

@@ -1,6 +1,6 @@
-import { DEAL_ALERT_RULES, DEAL_MEMORY_FIELDS, INACTIVITY_DAYS } from "./deal-memory-schema";
+import { DEAL_ALERT_RULES, DEAL_MEMORY_FIELDS } from "./deal-memory-schema";
 import { INTERVENTIONS, sortByWeight } from "./deal-board";
-import { QUALIFICATION_FIELDS } from "./deal-actions";
+import { DEFAULT_RULES, qualificationFields, type DealRules } from "./deal-rules";
 import type { DealProgress, ProgressFiche } from "./deal-progress";
 
 // Page d'un deal, version manager (demande de Jean du 27/10/2026) : voir très
@@ -33,8 +33,10 @@ function normalize(text: string): string {
 export function buildDealReview(
   fiches: ProgressFiche[],
   objectionsByCall: Record<string, ReviewObjection[]>,
-  progress: DealProgress
+  progress: DealProgress,
+  rules: DealRules = DEFAULT_RULES
 ): DealReview {
+  const fields = qualificationFields(rules);
   const sorted = [...fiches].sort((a, b) => (a.callAt ?? "").localeCompare(b.callAt ?? ""));
   const latest = sorted[sorted.length - 1];
   const good: string[] = [];
@@ -42,9 +44,9 @@ export function buildDealReview(
 
   // Bien fait : ce que les calls ont obtenu, une suite datée, le décideur
   // identifié, les objections bien traitées.
-  const known = QUALIFICATION_FIELDS.filter((k) => sorted.some((f) => (f.fields[k] ?? []).length > 0));
+  const known = fields.filter((k) => sorted.some((f) => (f.fields[k] ?? []).length > 0));
   if (known.length > 0) {
-    good.push(`${known.length} informations clés sur ${QUALIFICATION_FIELDS.length} obtenues : ${known.map((k) => lowerFirst(FIELD_LABELS.get(k) ?? k)).join(", ")}`);
+    good.push(`${known.length} informations clés sur ${fields.length} obtenues : ${known.map((k) => lowerFirst(FIELD_LABELS.get(k) ?? k)).join(", ")}`);
   }
   const latestRules = new Set(latest?.alerts.map((a) => a.rule) ?? []);
   if (latest && !latestRules.has("prochaine_etape_non_datee")) good.push("Le dernier call se termine sur une prochaine étape datée");
@@ -69,11 +71,12 @@ export function buildDealReview(
   // qui manque encore après plusieurs calls, l'inactivité.
   for (const a of sortByWeight(latest?.alerts ?? [])) bad.push(`${RULE_LABELS.get(a.rule) ?? a.rule} : ${a.text}`);
   for (const o of badlyHandled) bad.push(`Objection mal traitée : ${o}`);
-  const missing = QUALIFICATION_FIELDS.filter((k) => !known.includes(k));
+  const missing = fields.filter((k) => !known.includes(k));
   if (sorted.length >= 2 && missing.length > 0) {
     bad.push(`Toujours inconnu après ${sorted.length} calls : ${missing.map((k) => lowerFirst(FIELD_LABELS.get(k) ?? k)).join(", ")}`);
   }
-  if (progress.idleDays !== null && progress.idleDays >= INACTIVITY_DAYS) bad.push(`Aucun call depuis ${progress.idleDays} jours`);
+  if (progress.missingForStage.length > 0) bad.push(`Étape franchie sans : ${progress.missingForStage.map((l) => lowerFirst(l)).join(", ")}`);
+  if (progress.idleDays !== null && progress.idleDays >= rules.inactivityDays) bad.push(`Aucun call depuis ${progress.idleDays} jours`);
 
   // L'intervention suit l'alerte la plus lourde du dernier call ; sans
   // alerte, l'inactivité. Le manager ne reprend jamais le deal : chaque
@@ -81,7 +84,7 @@ export function buildDealReview(
   const top = sortByWeight(latest?.alerts ?? [])[0];
   const intervention = top
     ? INTERVENTIONS[top.rule]
-    : progress.idleDays !== null && progress.idleDays >= INACTIVITY_DAYS
+    : progress.idleDays !== null && progress.idleDays >= rules.inactivityDays
       ? INTERVENTIONS.inactivite
       : null;
 

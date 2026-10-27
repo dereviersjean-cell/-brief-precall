@@ -7,6 +7,7 @@ import {
   getDealCard,
   getDealReviews,
   getManagersForCommercial,
+  getOrganizationDealRules,
   getOrganizationPipelineStats,
 } from "./db";
 import { alertLabel, buildBoardNow, INTERVENTIONS, isHighRisk, morningQueue, REP_ACTIONS, sortByWeight, toBoardAlerts } from "./deal-board";
@@ -75,14 +76,15 @@ export async function sendDealMorningEmail(
   organizationId: string,
   options: { send: boolean }
 ): Promise<BuiltDealEmail | null> {
-  const [commercials, reviews, pipelineStats] = await Promise.all([
+  const [commercials, reviews, pipelineStats, rules] = await Promise.all([
     getCommercialsForManager(manager.id),
     getDealReviews(manager.id).catch(() => []),
     getOrganizationPipelineStats(organizationId),
+    getOrganizationDealRules(organizationId),
   ]);
   const people = [{ id: manager.id, name: manager.name }, ...commercials.map((c) => ({ id: c.id, name: c.name ?? c.email }))];
   const rows = await getDealBoardRows(organizationId, people.map((p) => p.id));
-  const { shown, total } = morningQueue(buildBoardNow(rows, reviews, pipelineStats));
+  const { shown, total } = morningQueue(buildBoardNow(rows, reviews, pipelineStats, rules));
   if (total === 0) return null;
 
   const names = new Map(people.map((p) => [p.id, p.name]));

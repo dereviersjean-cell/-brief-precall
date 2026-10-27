@@ -147,12 +147,13 @@ export function computePipelineStats(
 export function slowStage(
   stats: PipelineStats[] | null | undefined,
   deal: { pipelineId?: string | null; stageId?: string | null; stageEnteredAt?: string | null; closed: boolean },
-  now: number
+  now: number,
+  factor: number = SLOW_STAGE_FACTOR
 ): { days: number; medianDays: number; samples: number; label: string } | null {
   if (!stats || deal.closed || !deal.stageId || !deal.stageEnteredAt) return null;
   const stage = stats.find((p) => p.pipelineId === deal.pipelineId)?.stages.find((s) => s.stageId === deal.stageId);
   if (!stage?.medianDays) return null;
   const days = Math.floor((now - Date.parse(deal.stageEnteredAt)) / DAY_MS);
-  if (!Number.isFinite(days) || days <= stage.medianDays * SLOW_STAGE_FACTOR) return null;
+  if (!Number.isFinite(days) || days <= stage.medianDays * factor) return null;
   return { days, medianDays: stage.medianDays, samples: stage.durationSamples, label: stage.label };
 }

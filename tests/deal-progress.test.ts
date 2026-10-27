@@ -120,7 +120,11 @@ describe("statut et action d'un deal (Mes deals)", () => {
 
   test("en bonne voie : préparer le prochain call, à sa date", () => {
     const [d] = buildDealProgress(
-      [fiche({ callId: "a", callAt: daysAgo(9) }), fiche({ callId: "b", fields: { prochaines_etapes: [{ ...item("Démo"), date: "2026-11-03" }] } })],
+      [
+        // Les critères de passage d'un R2 (douleur, décideur, impact) sont remplis.
+        fiche({ callId: "a", callAt: daysAgo(9), fields: { douleur: [item("d")], decideur: [item("Paul")], impact: [item("+20 %")] } }),
+        fiche({ callId: "b", fields: { prochaines_etapes: [{ ...item("Démo"), date: "2026-11-03" }] } }),
+      ],
       NOW
     );
     assert.equal(d.focus.status, "bonne_voie");

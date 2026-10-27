@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { alertLabel, formatDays, type BoardDeal, type StageColumn, type TeamRow } from "@/lib/deal-board";
 import type { DealProgress, FocusStatus } from "@/lib/deal-progress";
 import { DealList, FOCUS } from "@/app/mes-deals/deal-ui";
+import DealRulesForm from "./DealRulesForm";
 
 // Vue manager (Deal Execution, étape 4) : A = la file des deals où
 // intervenir, C = le bandeau des étapes au-dessus (un clic filtre la file),
@@ -341,7 +342,7 @@ export default function DealsBoardClient({
   activity: Record<string, { week: number; lastAt: string | null }>;
   progress: Record<string, DealProgress[]>;
   people: Record<string, string>;
-  initialTab: "file" | "equipe";
+  initialTab: "file" | "equipe" | "regles";
   initialStage: string | null;
 }) {
   const [tab, setTab] = useState(initialTab);
@@ -359,6 +360,7 @@ export default function DealsBoardClient({
           [
             ["equipe", "Équipe"],
             ["file", "Où intervenir"],
+            ["regles", "Règles"],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -392,7 +394,11 @@ export default function DealsBoardClient({
           <Folded title="Vus ou remis à plus tard" deals={reviewed} people={people} />
         </>
       ) : (
-        <TeamView team={team} people={people} activity={activity} progress={progress} />
+        tab === "regles" ? (
+          <DealRulesForm stageLabels={Object.fromEntries(stages.filter((st) => st.index).map((st) => [st.index as number, st.label]))} />
+        ) : (
+          <TeamView team={team} people={people} activity={activity} progress={progress} />
+        )
       )}
     </div>
   );

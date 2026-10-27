@@ -3,11 +3,13 @@ import {
   getDealMemoryObjections,
   getDealPageFiches,
   getOrganizationEmailDomains,
+  getOrganizationDealRules,
   getOrganizationForUser,
   isDealMemoryEnabledForOrganization,
 } from "./db";
 import { dealIdentityFor } from "./deal-grouping";
 import { buildDealBriefContext, type DealBriefContext } from "./deal-brief";
+import { qualificationFields } from "./deal-rules";
 
 // Le deal d'un rendez-vous à venir, d'après l'email du contact ou le nom de
 // l'entreprise — les mêmes repères que le rattachement d'un call (étape 2).
@@ -33,5 +35,6 @@ export async function loadDealBriefContext(
   if (!fiches || fiches.length === 0) return null;
   const latest = [...fiches].sort((a, b) => (a.callAt ?? "").localeCompare(b.callAt ?? "")).at(-1)!;
   const objections = await getDealMemoryObjections(latest.callId).catch(() => []);
-  return buildDealBriefContext(fiches, objections);
+  const rules = await getOrganizationDealRules(org.id);
+  return buildDealBriefContext(fiches, objections, qualificationFields(rules));
 }

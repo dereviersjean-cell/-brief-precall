@@ -1,5 +1,5 @@
 import { DEAL_ALERT_RULES } from "./deal-memory-schema";
-import { buildQualification, type QualificationRow } from "./deal-actions";
+import { buildQualification, QUALIFICATION_FIELDS, type QualificationKey, type QualificationRow } from "./deal-actions";
 import { REP_ACTIONS, sortByWeight } from "./deal-board";
 import type { ProgressFiche } from "./deal-progress";
 
@@ -27,7 +27,8 @@ const RULE_LABELS = new Map<string, string>(DEAL_ALERT_RULES.map((r) => [r.key, 
 
 export function buildDealBriefContext(
   fiches: ProgressFiche[],
-  latestObjections: { objection: string; handlingQuality: string | null }[]
+  latestObjections: { objection: string; handlingQuality: string | null }[],
+  fields: readonly QualificationKey[] = QUALIFICATION_FIELDS
 ): DealBriefContext | null {
   const sorted = [...fiches].sort((a, b) => (a.callAt ?? "").localeCompare(b.callAt ?? ""));
   const latest = sorted[sorted.length - 1];
@@ -44,7 +45,8 @@ export function buildDealBriefContext(
   const rows: QualificationRow[] = buildQualification(
     { fields: latest.fields, alerts: latest.alerts, model: null, generatedAt: latest.callAt ?? "" },
     prior,
-    latest.callAt
+    latest.callAt,
+    fields
   );
 
   return {

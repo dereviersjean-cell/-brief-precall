@@ -57,7 +57,7 @@ export function DealActionPlan({ callId, panel }: { callId: string; panel: DealM
   const fiche = panel.initial;
   if (!fiche) return null;
   const callAt = panel.deal?.calls.find((c) => c.callId === callId)?.callAt ?? null;
-  const qualification = buildQualification(fiche, priorItems(panel.deal, callId), callAt);
+  const qualification = buildQualification(fiche, priorItems(panel.deal, callId), callAt, panel.qualificationFields);
   const plan = buildActionPlan(fiche, panel.objections, qualification);
   const empty = plan.engagements.length + plan.risks.length + plan.objections.length + plan.toObtain.length === 0;
 
@@ -120,7 +120,7 @@ export function DealQualification({ callId, panel }: { callId: string; panel: De
   const fiche = panel.initial;
   if (!fiche) return null;
   const callAt = panel.deal?.calls.find((c) => c.callId === callId)?.callAt ?? null;
-  const rows = buildQualification(fiche, priorItems(panel.deal, callId), callAt);
+  const rows = buildQualification(fiche, priorItems(panel.deal, callId), callAt, panel.qualificationFields);
   const known = rows.filter((r) => r.status !== "manquant").length;
   const learned = rows.filter((r) => r.status === "nouveau" || r.status === "precise").length;
 

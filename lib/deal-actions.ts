@@ -9,6 +9,9 @@ import {
   type StoredDealMemory,
 } from "./deal-memory-schema";
 import { REP_ACTIONS, sortByWeight } from "./deal-board";
+import { METHODS, type QualificationKey } from "./deal-rules";
+
+export type { QualificationKey };
 
 // L'analyse d'un call centrée sur le deal, de façon actionnable (demande de
 // Jean du 27/10/2026) : ce qu'il faut faire avant le prochain call, et où en
@@ -16,21 +19,10 @@ import { REP_ACTIONS, sortByWeight } from "./deal-board";
 // des règles fixes, sans appel IA : chaque point renvoie à ce que le call a
 // dit. Sans dépendance (réseau, base) : importé par l'écran et testé.
 
-// Les champs qui disent si un deal est qualifié (socle + MEDDIC). Concurrents,
-// engagements et interlocuteurs manquants se lisent ailleurs : ce ne sont pas
-// des cases à remplir.
-export const QUALIFICATION_FIELDS = [
-  "douleur",
-  "impact",
-  "decideur",
-  "champion",
-  "criteres",
-  "processus",
-  "budget",
-  "echeance",
-] as const satisfies readonly DealMemoryFieldKey[];
-
-export type QualificationKey = (typeof QUALIFICATION_FIELDS)[number];
+// Les champs qui disent si un deal est qualifié, par défaut (socle +
+// MEDDIC). Chaque organisation peut choisir sa méthode (lib/deal-rules.ts) :
+// les fonctions ci-dessous prennent alors sa liste en paramètre.
+export const QUALIFICATION_FIELDS: readonly QualificationKey[] = METHODS.socle.fields;
 
 export type QualificationRow = {
   key: QualificationKey;
@@ -64,8 +56,13 @@ export function priorItems(deal: DealOverview | null, currentCallId: string): Pr
 
 const FIELD_DEFS = new Map<string, (typeof DEAL_MEMORY_FIELDS)[number]>(DEAL_MEMORY_FIELDS.map((f) => [f.key, f]));
 
-export function buildQualification(fiche: StoredDealMemory, prior: PriorItems, callAt: string | null): QualificationRow[] {
-  return QUALIFICATION_FIELDS.map((key) => {
+export function buildQualification(
+  fiche: StoredDealMemory,
+  prior: PriorItems,
+  callAt: string | null,
+  fields: readonly QualificationKey[] = QUALIFICATION_FIELDS
+): QualificationRow[] {
+  return fields.map((key) => {
     const field = FIELD_DEFS.get(key)!;
     const now = fiche.fields[key] ?? [];
     const before = prior[key] ?? [];

@@ -5,6 +5,7 @@ import {
   getCommercialsForManager,
   getDealMemoryObjections,
   getDealPageFiches,
+  getOrganizationDealRules,
   getUserName,
   isDealMemoryEnabledForOrganization,
   loadDealMemoryPanel,
@@ -31,7 +32,8 @@ export default async function DealPage({ params }: { params: Promise<{ dealId: s
   const allowed = new Set([viewer.userId, ...(isManager ? (await getCommercialsForManager(viewer.userId)).map((c) => c.id) : [])]);
   if (!fiches.some((f) => allowed.has(f.ownerId))) notFound();
 
-  const [progress] = buildDealProgressNow(fiches);
+  const rules = await getOrganizationDealRules(viewer.organizationId);
+  const [progress] = buildDealProgressNow(fiches, rules);
   const latest = progress.lastCall.id;
   const ownerIds = [...new Set(fiches.map((f) => f.ownerId))];
   const [panel, objectionLists, ownerNames] = await Promise.all([
@@ -48,7 +50,7 @@ export default async function DealPage({ params }: { params: Promise<{ dealId: s
       fiches={fiches}
       owners={owners}
       panel={panel}
-      review={isManager ? buildDealReview(fiches, objectionsByCall, progress) : null}
+      review={isManager ? buildDealReview(fiches, objectionsByCall, progress, rules) : null}
       backHref={isManager ? "/deals" : "/mes-deals"}
       backLabel={isManager ? "Deals de l'équipe" : "Mes deals"}
     />

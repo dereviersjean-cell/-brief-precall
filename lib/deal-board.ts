@@ -1,11 +1,11 @@
 import {
   DEAL_ALERT_RULES,
-  INACTIVITY_DAYS,
   type DealAlertRuleKey,
   type DealMemoryAlert,
   type HubspotDealSnapshot,
 } from "./deal-memory-schema";
 import { slowStage, type PipelineStats } from "./deal-pipeline-stats";
+import { DEFAULT_RULES, missingForStage, qualificationLabel, type DealRules } from "./deal-rules";
 
 // Deal Execution, étape 4 (27/10/2026) : la vue manager. Sans dépendance
 // (réseau, base) pour être testée ; lib/db.ts lui fournit les lignes.
@@ -22,7 +22,7 @@ import { slowStage, type PipelineStats } from "./deal-pipeline-stats";
 // Les règles lues dans les données du deal plutôt que dans un call :
 // l'inactivité (date du dernier call) et l'étape qui dure plus que d'habitude
 // (historique HubSpot, étape 6).
-export type BoardRuleKey = DealAlertRuleKey | "inactivite" | "etape_longue";
+export type BoardRuleKey = DealAlertRuleKey | "inactivite" | "etape_longue" | "critere_passage";
 
 export const INTERVENTIONS: Record<BoardRuleKey, string> = {
   concurrent_evoque: "Voir avec le commercial comment se positionner face à cette alternative, et ce qui nous distingue pour ce prospect.",
@@ -36,6 +36,7 @@ export const INTERVENTIONS: Record<BoardRuleKey, string> = {
   sentiment_en_baisse: "Faire le point avec le commercial sur ce qui a changé depuis le call précédent, avant la prochaine relance.",
   inactivite: "Relancer le prospect avec le commercial : aucun échange depuis plus de deux semaines.",
   etape_longue: "Voir avec le commercial ce qui retient le deal à cette étape, et ce qu'il faut obtenir du prospect pour passer à la suivante.",
+  critere_passage: "Voir avec le commercial comment obtenir ce qui manque avant d'aller plus loin : le deal a avancé sans.",
 };
 
 // La même chose côté commercial, pour l'email qu'il reçoit après son call
@@ -53,6 +54,7 @@ export const REP_ACTIONS: Record<BoardRuleKey, string> = {
   sentiment_en_baisse: "Comprendre ce qui a changé depuis le call précédent, avant la prochaine relance.",
   inactivite: "Relancer le prospect : aucun échange depuis plus de deux semaines.",
   etape_longue: "Identifier ce qui retient le deal à cette étape, et le demander au prospect au prochain échange.",
+  critere_passage: "Obtenir au prochain call ce qui manque pour cette étape.",
 };
 
 // Poids d'une alerte dans le classement : ce qui compare plusieurs calls ou
@@ -65,6 +67,7 @@ const WEIGHTS: Partial<Record<BoardRuleKey, number>> = {
   prochaine_etape_non_datee: 2,
   inactivite: 2,
   etape_longue: 2,
+  critere_passage: 2,
 };
 
 const RULE_LABELS = new Map<string, string>(DEAL_ALERT_RULES.map((r) => [r.key, r.label]));
@@ -72,6 +75,7 @@ const RULE_LABELS = new Map<string, string>(DEAL_ALERT_RULES.map((r) => [r.key, 
 export function alertLabel(rule: BoardRuleKey): string {
   if (rule === "inactivite") return "Aucune activité";
   if (rule === "etape_longue") return "Étape plus longue que d'habitude";
+  if (rule === "critere_passage") return "Critère de passage manquant";
   return RULE_LABELS.get(rule) ?? rule;
 }
 
@@ -86,6 +90,9 @@ export type BoardFicheRow = {
   ownerId: string;
   generatedAt: string;
   alerts: DealMemoryAlert[];
+  // Les champs de la fiche qui ont au moins un élément (critères de passage,
+  // lib/deal-rules.ts). Absent : on ne sait pas, pas de critère évalué.
+  knownKeys?: string[];
 };
 
 export type BoardReview = { dealId: string; status: "seen" | "later"; reviewedAt: string };
@@ -122,8 +129,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Une règle lue dans les données du deal, pas dans un call : elle ne dit rien
 // de la méthode du commercial, et passe après un signal du call à poids égal.
-function isDerived(rule: BoardRuleKey): rule is "inactivite" | "etape_longue" {
-  return rule === "inactivite" || rule === "etape_longue";
+function isDerived(rule: BoardRuleKey): rule is "inactivite" | "etape_longue" | "critere_passage" {
+  return rule === "inactivite" || rule === "etape_longue" || rule === "critere_passage";
 }
 
 // Les alertes d'une fiche telles que la file et les emails les montrent : une
@@ -141,7 +148,13 @@ export function toBoardAlerts(alerts: DealMemoryAlert[]): BoardAlert[] {
 // la plus récente (l'état actuel), plus l'inactivité calculée sur son dernier
 // call et, quand le parcours est mesuré, l'étape HubSpot qui dure plus que
 // d'habitude. `now` est passé pour que le calcul soit testable.
-export function buildBoard(rows: BoardFicheRow[], reviews: BoardReview[], now: number, pipelineStats?: PipelineStats[] | null): BoardDeal[] {
+export function buildBoard(
+  rows: BoardFicheRow[],
+  reviews: BoardReview[],
+  now: number,
+  pipelineStats?: PipelineStats[] | null,
+  rules: DealRules = DEFAULT_RULES
+): BoardDeal[] {
   const byDeal = new Map<string, BoardFicheRow[]>();
   for (const row of rows) {
     const list = byDeal.get(row.dealId) ?? [];
@@ -157,10 +170,25 @@ export function buildBoard(rows: BoardFicheRow[], reviews: BoardReview[], now: n
     const idleDays = latest.callAt ? Math.floor((now - new Date(latest.callAt).getTime()) / DAY_MS) : null;
 
     const alerts = toBoardAlerts(latest.alerts);
-    if (idleDays !== null && idleDays >= INACTIVITY_DAYS) {
+    if (idleDays !== null && idleDays >= rules.inactivityDays) {
       alerts.unshift({ rule: "inactivite", text: `Aucun call depuis ${idleDays} jours.`, verbatim: null, speaker: null });
     }
-    const slow = latest.hubspot ? slowStage(pipelineStats, latest.hubspot, now) : null;
+    // Critère de passage (question 9, indicatif) : à l'étape où en est le
+    // deal (pipeline HubSpot, sinon son rang), ce qui devrait être connu.
+    if (list.every((r) => r.knownKeys)) {
+      const known = new Set(list.flatMap((r) => r.knownKeys ?? []));
+      const stage = latest.hubspot && !latest.hubspot.closed ? latest.hubspot.stageIndex : latest.hubspot ? null : list.length;
+      const missing = missingForStage(rules, stage, known);
+      if (missing.length > 0) {
+        alerts.push({
+          rule: "critere_passage",
+          text: `À cette étape, toujours inconnu : ${missing.map((k) => qualificationLabel(k).toLowerCase()).join(", ")}.`,
+          verbatim: null,
+          speaker: null,
+        });
+      }
+    }
+    const slow = latest.hubspot ? slowStage(pipelineStats, latest.hubspot, now, rules.slowStageFactor) : null;
     if (slow) {
       alerts.unshift({
         rule: "etape_longue",
@@ -209,8 +237,13 @@ export function buildBoard(rows: BoardFicheRow[], reviews: BoardReview[], now: n
 
 // La même chose à l'instant présent, pour les pages : l'heure est lue ici,
 // hors du rendu.
-export function buildBoardNow(rows: BoardFicheRow[], reviews: BoardReview[], pipelineStats?: PipelineStats[] | null): BoardDeal[] {
-  return buildBoard(rows, reviews, Date.now(), pipelineStats);
+export function buildBoardNow(
+  rows: BoardFicheRow[],
+  reviews: BoardReview[],
+  pipelineStats?: PipelineStats[] | null,
+  rules: DealRules = DEFAULT_RULES
+): BoardDeal[] {
+  return buildBoard(rows, reviews, Date.now(), pipelineStats, rules);
 }
 
 export function formatDays(days: number): string {

@@ -11,6 +11,7 @@ import type { DealIdentity } from "./deal-grouping";
 import type { BoardFicheRow, BoardReview } from "./deal-board";
 import type { PipelineStats } from "./deal-pipeline-stats";
 import type { ProgressFiche } from "./deal-progress";
+import { coerceDealRules, qualificationFields, type DealRules, type QualificationKey } from "./deal-rules";
 
 export async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 500): Promise<T> {
   let lastError: unknown;
@@ -2085,7 +2086,7 @@ export async function getDealBoardRows(organizationId: string, ownerIds: string[
   if (ownerIds.length === 0) return [];
   const { data, error } = await supabaseAdmin
     .from("call_deal_memory")
-    .select("call_id, deal_id, call_at, generated_at, alerts, calls!inner(user_id, meeting_title), deals!inner(name, hubspot_snapshot)")
+    .select("call_id, deal_id, call_at, generated_at, alerts, fields, calls!inner(user_id, meeting_title), deals!inner(name, hubspot_snapshot)")
     .eq("organization_id", organizationId)
     .not("deal_id", "is", null)
     .in("calls.user_id", ownerIds);
@@ -2096,6 +2097,7 @@ export async function getDealBoardRows(organizationId: string, ownerIds: string[
     call_at: string | null;
     generated_at: string;
     alerts: BoardFicheRow["alerts"] | null;
+    fields: Record<string, unknown[] | null> | null;
     calls: { user_id: string; meeting_title: string | null } | { user_id: string; meeting_title: string | null }[];
     deals: { name: string; hubspot_snapshot: HubspotDealSnapshot | null } | { name: string; hubspot_snapshot: HubspotDealSnapshot | null }[];
   };
@@ -2112,6 +2114,9 @@ export async function getDealBoardRows(organizationId: string, ownerIds: string[
       ownerId: call?.user_id ?? "",
       generatedAt: r.generated_at,
       alerts: r.alerts ?? [],
+      knownKeys: Object.entries(r.fields ?? {})
+        .filter(([, items]) => Array.isArray(items) && items.length > 0)
+        .map(([key]) => key),
     };
   });
 }
@@ -2297,6 +2302,27 @@ export async function saveDealReview(dealId: string, userId: string, status: "se
     .from("deal_review_events")
     .insert({ deal_id: dealId, user_id: userId, status, alert_rules: alertRules });
   if (eventError) throw eventError;
+}
+
+// ─── Règles des deals (Deal Execution, migration 036) ───────────────────────
+
+// Les règles réglées par le manager (lib/deal-rules.ts). Colonne absente,
+// lecture en échec ou valeur mal formée : les règles par défaut — une page ne
+// doit jamais tomber pour un réglage.
+export async function getOrganizationDealRules(organizationId: string): Promise<DealRules> {
+  try {
+    const { data, error } = await supabaseAdmin.from("organizations").select("deal_rules").eq("id", organizationId).maybeSingle();
+    if (error) throw error;
+    return coerceDealRules((data as { deal_rules: unknown } | null)?.deal_rules ?? null);
+  } catch (err) {
+    console.error("[db] getOrganizationDealRules failed (règles par défaut):", err instanceof Error ? err.message : String(err));
+    return coerceDealRules(null);
+  }
+}
+
+export async function setOrganizationDealRules(organizationId: string, rules: DealRules): Promise<void> {
+  const { error } = await supabaseAdmin.from("organizations").update({ deal_rules: rules }).eq("id", organizationId);
+  if (error) throw error;
 }
 
 // ─── Alertes par email (Deal Execution, migration 033) ────────────────────────
@@ -2519,6 +2545,8 @@ export type DealMemoryPanel = {
   deal: DealOverview | null;
   // Régénérer, envoyer dans HubSpot, régler les champs : managers seulement.
   canManage: boolean;
+  // Les champs de la méthode de qualification de l'organisation.
+  qualificationFields: QualificationKey[];
 };
 
 // Ce que la page d'un call montre de la fiche deal, ou null quand le lecteur
@@ -2546,7 +2574,8 @@ export async function loadDealMemoryPanel(
         return null;
       })
     : null;
-  return { initial, objections, deal, canManage: role === "manager" };
+  const rules = await getOrganizationDealRules(organizationId);
+  return { initial, objections, deal, canManage: role === "manager", qualificationFields: qualificationFields(rules) };
 }
 
 // Trace du CTA "Je veux débloquer ce module" (migration 004) — durable en
