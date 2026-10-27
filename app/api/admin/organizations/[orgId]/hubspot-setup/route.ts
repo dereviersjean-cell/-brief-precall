@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
-import { getHubspotUserForOrganization, setHubspotAutoPush, setOrganizationHubspotMapping } from "@/lib/db";
+import { getHubspotUserForOrganization, setHubspotAutoPush, setOrganizationDealRules, setOrganizationHubspotMapping } from "@/lib/db";
+import { coerceDealRules } from "@/lib/deal-rules";
 import { createBriefDealProperty, getHubspotScopes, listHubSpotDealProperties } from "@/lib/crm/hubspot-deals";
 import { DEAL_MEMORY_FIELDS } from "@/lib/deal-memory-schema";
 import { serializeMapping, type HubspotMapping } from "@/lib/hubspot-mapping";
@@ -9,9 +10,11 @@ import { loadHubspotSetup } from "@/lib/hubspot-setup-load";
 import { isUuid } from "@/lib/uuid";
 
 // Setup HubSpot d'un client (admin, 27/10/2026) : GET = le diagnostic et la
-// proposition ; PUT = appliquer les choix faits en call — créer les
-// propriétés « Brief » retenues, enregistrer le réglage, allumer ou couper la
-// mise à jour automatique.
+// proposition ; PUT = appliquer les choix faits en call — les règles des deals
+// (méthode, objectifs de chaque rendez-vous, seuils, critères par étape),
+// puis, si HubSpot est connecté, créer les propriétés retenues dans le groupe
+// « Brief », enregistrer le réglage, allumer ou couper la mise à jour
+// automatique.
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
   if (!(await isAdminAuthenticated())) return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
@@ -28,9 +31,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   if (!(await isAdminAuthenticated())) return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
   const { orgId } = await params;
   if (!isUuid(orgId)) return NextResponse.json({ error: "Client introuvable." }, { status: 404 });
-  const body = (await request.json().catch(() => null)) as { choices?: Record<string, SetupChoice>; autoPush?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as { choices?: Record<string, SetupChoice>; autoPush?: unknown; rules?: unknown } | null;
+  if (body?.rules) {
+    try {
+      await setOrganizationDealRules(orgId, coerceDealRules(body.rules));
+    } catch {
+      return NextResponse.json({ error: "Enregistrement des règles impossible." }, { status: 500 });
+    }
+  }
   const hubspotUser = await getHubspotUserForOrganization(orgId, []);
-  if (!hubspotUser) return NextResponse.json({ error: "Personne n'a connecté HubSpot chez ce client." }, { status: 400 });
+  if (!hubspotUser || !body?.choices) return NextResponse.json({ ok: true, created: [], hubspot: hubspotUser ? "unchanged" : "not-connected" });
 
   // Chaque choix est revérifié contre le HubSpot du client : propriété
   // existante, modifiable, de type compatible, option présente.
@@ -78,5 +88,5 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
   await setOrganizationHubspotMapping(orgId, serializeMapping(mapping));
   if (typeof body?.autoPush === "boolean") await setHubspotAutoPush(orgId, body.autoPush);
-  return NextResponse.json({ ok: true, created });
+  return NextResponse.json({ ok: true, created, hubspot: "applied" });
 }

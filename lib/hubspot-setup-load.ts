@@ -1,5 +1,6 @@
 import {
   getHubspotLinkedCalls,
+  getOrganizationDealRules,
   getHubspotUserForOrganization,
   getOrganizationHubspotMapping,
   getUserName,
@@ -13,6 +14,7 @@ import {
   type HubspotPipeline,
 } from "./crm/hubspot-deals";
 import { coerceMapping, type HubspotMapping } from "./hubspot-mapping";
+import { MAX_STAGES, type DealRules } from "./deal-rules";
 import { methodVerdict, proposeMappings, type DiagnosticProperty, type Proposal } from "./hubspot-setup";
 
 // Le diagnostic du HubSpot d'un client pour le setup admin (27/10/2026) : la
@@ -37,6 +39,12 @@ export type HubspotSetupData = {
   proposals: Proposal[];
   verdict: string;
   current: { mapping: HubspotMapping; autoPush: boolean };
+  // Les règles des deals du client (méthode, objectifs de chaque rendez-vous,
+  // seuils, critères par étape), réglées dans le même call.
+  rules: DealRules;
+  // Le nom de chaque étape de son pipeline principal (celui qui a le plus de
+  // deals), pour les critères par étape ; vide hors HubSpot.
+  stageLabels: Record<number, string>;
   calls: { id: string; meeting_title: string | null; started_at: string | null; created_at: string; dealName: string | null }[];
 };
 
@@ -46,11 +54,12 @@ function sampleValue(value: string | null, options: { label: string; value: stri
 }
 
 export async function loadHubspotSetup(organizationId: string): Promise<HubspotSetupData> {
-  const [hubspotUser, orgMapping, autoPush, calls] = await Promise.all([
+  const [hubspotUser, orgMapping, autoPush, calls, rules] = await Promise.all([
     getHubspotUserForOrganization(organizationId, []),
     getOrganizationHubspotMapping(organizationId),
     isHubspotAutoPushEnabled(organizationId),
     getHubspotLinkedCalls(organizationId).catch(() => []),
+    getOrganizationDealRules(organizationId),
   ]);
   const current = { mapping: coerceMapping(orgMapping), autoPush };
   if (!hubspotUser) {
@@ -65,6 +74,8 @@ export async function loadHubspotSetup(organizationId: string): Promise<HubspotS
       proposals: [],
       verdict: "",
       current,
+      rules,
+      stageLabels: {},
       calls,
     };
   }
@@ -95,6 +106,13 @@ export async function loadHubspotSetup(organizationId: string): Promise<HubspotS
   const counts = new Map<string, number>();
   for (const d of deals) if (d.dealstage) counts.set(`${d.pipeline}/${d.dealstage}`, (counts.get(`${d.pipeline}/${d.dealstage}`) ?? 0) + 1);
   const proposals = proposeMappings(properties);
+  const withCounts = pipelines.map((p) => ({ ...p, stages: p.stages.map((s) => ({ ...s, count: counts.get(`${p.id}/${s.id}`) ?? 0 })) }));
+  const main = [...withCounts].sort((a, b) => b.stages.reduce((n, s) => n + s.count, 0) - a.stages.reduce((n, s) => n + s.count, 0))[0];
+  // Même numérotation que la photo d'un deal (position dans le pipeline).
+  const stageLabels: Record<number, string> = {};
+  main?.stages.forEach((s, i) => {
+    if (!s.closed && i < MAX_STAGES) stageLabels[i + 1] = s.label;
+  });
 
   return {
     connected: true,
@@ -102,11 +120,13 @@ export async function loadHubspotSetup(organizationId: string): Promise<HubspotS
     portalId,
     canCreateProperties: scopes.includes("crm.schemas.deals.write"),
     dealsAnalyzed: deals.length,
-    pipelines: pipelines.map((p) => ({ ...p, stages: p.stages.map((s) => ({ ...s, count: counts.get(`${p.id}/${s.id}`) ?? 0 })) })),
+    pipelines: withCounts,
     properties,
     proposals,
     verdict: methodVerdict(proposals),
     current,
+    rules,
+    stageLabels,
     calls,
   };
 }

@@ -61,8 +61,11 @@ export function briefPropertyName(key: DealMemoryFieldKey): string {
   return `brief_${key}`;
 }
 
+// Le libellé d'une propriété créée par Brief : le nom de l'information, sans
+// préfixe (décision de Jean du 27/10/2026) ; elle est rangée dans le groupe
+// « Brief » du HubSpot du client, et son nom interne commence par brief_.
 export function briefPropertyLabel(key: DealMemoryFieldKey): string {
-  return `Brief · ${DEAL_MEMORY_FIELDS.find((f) => f.key === key)?.label ?? key}`;
+  return DEAL_MEMORY_FIELDS.find((f) => f.key === key)?.label ?? key;
 }
 
 function percent(rate: number): string {
@@ -85,7 +88,7 @@ export function typeLabel(type: string): string {
 // La proposition pour chaque information de la fiche :
 //  · une propriété du client qui lui correspond, de type compatible ;
 //  · sinon, pour la prochaine étape, la propriété standard « Next step » ;
-//  · sinon une propriété « Brief · … » à créer ;
+//  · sinon une propriété à créer dans le groupe « Brief » ;
 // avec la raison, en une phrase, pour la montrer au client.
 export function proposeMappings(properties: DiagnosticProperty[]): Proposal[] {
   const writable = properties.filter((p) => !p.readOnly && WRITABLE_TYPES.has(p.type) && !p.name.startsWith("brief_"));
@@ -137,7 +140,7 @@ export function proposeMappings(properties: DiagnosticProperty[]): Proposal[] {
         ? `La propriété « ${existingBrief.label} » existe déjà : Brief l'utilisera.`
         : lookalike
           ? `Leur propriété « ${lookalike.label} » n'a pas le bon type (${typeLabel(writable.find((p) => p.name === lookalike.name)?.type ?? "")}) : une propriété Brief évite de la fausser.`
-          : "Aucune propriété du client ne correspond : une propriété Brief à créer.",
+          : "Aucune propriété du client ne correspond : une propriété à créer dans le groupe « Brief ».",
     };
   });
 }

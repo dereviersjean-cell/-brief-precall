@@ -8,12 +8,15 @@ import type { DealMemoryFieldKey } from "@/lib/deal-memory-schema";
 import { WRITE_MODES, type HubspotPropertyType, type PlannedWrite, type WriteMode } from "@/lib/hubspot-mapping";
 import { briefPropertyLabel, typeCompatible, typeLabel, type SetupChoice } from "@/lib/hubspot-setup";
 import type { HubspotSetupData } from "@/lib/hubspot-setup-load";
+import type { DealRules } from "@/lib/deal-rules";
+import { RulesEditor } from "@/app/deals/DealRulesForm";
 
 // Setup HubSpot d'un client, mené en call par l'équipe Brief (27/10/2026,
 // demande de Jean). Dans l'ordre du call : la connexion et ses droits, le
-// diagnostic de son HubSpot, la proposition de Brief information par
-// information et les choix faits avec le client, une simulation sur un de ses
-// vrais calls, puis l'application.
+// diagnostic de son HubSpot, les règles de ses deals (méthode, objectifs de
+// chaque rendez-vous, seuils, critères par étape de son pipeline), la
+// proposition de Brief information par information et les choix faits avec
+// le client, une simulation sur un de ses vrais calls, puis l'application.
 
 const LABEL = "text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500";
 const SELECT = "h-9 w-full rounded-lg border border-border bg-white px-2 text-[13px] text-slate-900";
@@ -76,6 +79,7 @@ export default function HubspotSetupClient({
   const [simError, setSimError] = useState<string | null>(null);
   const [simulating, setSimulating] = useState(false);
   const [autoPush, setAutoPush] = useState(initial?.current.autoPush ?? true);
+  const [rules, setRules] = useState<DealRules | null>(initial?.rules ?? null);
   const [applying, setApplying] = useState(false);
   const [applied, setApplied] = useState<{ created: string[] } | null>(null);
   const [applyError, setApplyError] = useState<string | null>(null);
@@ -93,6 +97,7 @@ export default function HubspotSetupClient({
     setAutoPush(result.current.autoPush);
     setCallId(result.calls[0]?.id ?? "");
     setChoices(initialChoices(result));
+    setRules(result.rules);
   }
 
   function reload() {
@@ -112,7 +117,8 @@ export default function HubspotSetupClient({
   }, [organizationId]);
 
   const byName = useMemo(() => new Map((data?.properties ?? []).map((p) => [p.name, p])), [data]);
-  const labelOf = (name: string) => (name.startsWith("brief_") ? `Brief · ${name}` : byName.get(name)?.label ?? name);
+  const labelOf = (name: string) =>
+    byName.get(name)?.label ?? (name.startsWith("brief_") ? `${briefPropertyLabel(name.slice(6) as DealMemoryFieldKey)} (groupe Brief)` : name);
 
   function setChoice(key: DealMemoryFieldKey, value: string) {
     setSimulation(null);
@@ -170,7 +176,7 @@ export default function HubspotSetupClient({
     const res = await fetch(`/api/admin/organizations/${organizationId}/hubspot-setup`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ choices, autoPush }),
+      body: JSON.stringify({ rules, ...(data?.connected ? { choices, autoPush } : {}) }),
     }).catch(() => null);
     const json = (await res?.json().catch(() => null)) as { created?: string[]; error?: string } | null;
     setApplying(false);
@@ -284,8 +290,31 @@ export default function HubspotSetupClient({
                   </button>
                 )}
               </Section>
+            </>
+          )}
 
-              <Section step={3} title="Ce que Brief propose, et vos choix avec le client">
+          {rules && (
+            <section>
+              <p className={`${LABEL} mb-1 px-1`}>{data.connected ? 3 : 2} · Les règles de ses deals</p>
+              <p className="mb-3 px-1 text-[13px] text-slate-500">
+                Sa méthode de qualification, ce que ses commerciaux doivent aller chercher à chaque rendez-vous, les seuils et ce qui doit être connu à chaque
+                étape{Object.keys(data.stageLabels).length > 0 ? " de son pipeline HubSpot" : ""}. Modifiables ensuite par son manager (Deals de l&apos;équipe ›
+                Règles).
+              </p>
+              <RulesEditor
+                rules={rules}
+                onChange={(next) => {
+                  setRules(next);
+                  setApplied(null);
+                }}
+                stageLabels={data.stageLabels}
+              />
+            </section>
+          )}
+
+          {data.connected && (
+            <>
+              <Section step={4} title="Ce que Brief propose pour son HubSpot, et vos choix avec le client">
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[900px] text-left text-[13px]">
                     <thead>
@@ -317,7 +346,18 @@ export default function HubspotSetupClient({
                                   </option>
                                 ))}
                               </select>
-                              {choice.kind === "create" && byName.has(`brief_${p.key}`) && <p className="mt-1 text-[11.5px] text-slate-500">Déjà créée chez le client.</p>}
+                              {choice.kind === "create" && (
+                                <p className="mt-1 text-[11.5px] text-slate-500">
+                                  {byName.has(`brief_${p.key}`) ? "Déjà créée chez le client, groupe Brief." : "Nouvelle propriété, rangée dans le groupe Brief."}
+                                </p>
+                              )}
+                              {choice.kind === "create" &&
+                                !byName.has(`brief_${p.key}`) &&
+                                data.properties.some((x) => x.label.trim().toLowerCase() === briefPropertyLabel(p.key).toLowerCase()) && (
+                                  <p className="mt-1 text-[11.5px] text-amber-800">
+                                    Il a déjà une propriété « {briefPropertyLabel(p.key)} » : la nouvelle porterait le même nom. Voir avec lui laquelle utiliser.
+                                  </p>
+                                )}
                               {data.current.mapping[p.key] && (
                                 <p className="mt-1 text-[11.5px] text-slate-500">Réglage actuel : {labelOf(data.current.mapping[p.key]!.property)}</p>
                               )}
@@ -375,7 +415,7 @@ export default function HubspotSetupClient({
                 </p>
               </Section>
 
-              <Section step={4} title="Simuler sur un vrai call">
+              <Section step={5} title="Simuler sur un vrai call">
                 {data.calls.length === 0 ? (
                   <p className="text-[13.5px] text-slate-600">
                     Aucun call de ce client n&apos;est encore relié à un deal HubSpot. Pour montrer le résultat, importez le transcript d&apos;un de ses calls
@@ -426,39 +466,44 @@ export default function HubspotSetupClient({
                   </>
                 )}
               </Section>
+            </>
+          )}
 
-              <Section step={5} title="Appliquer">
+          <Section step={data.connected ? 6 : 3} title="Appliquer">
                 <div className="space-y-3 text-[13.5px] text-slate-700">
-                  {toCreate.length > 0 && (
+                  {data.connected && toCreate.length > 0 && (
                     <p>
                       Brief va créer {toCreate.length} propriété{toCreate.length > 1 ? "s" : ""} dans le groupe « Brief » de son HubSpot :{" "}
                       {toCreate.map(([key]) => briefPropertyLabel(key as DealMemoryFieldKey)).join(", ")}.
                       {!data.canCreateProperties && <span className="text-amber-800"> Il faut d&apos;abord que le client reconnecte HubSpot.</span>}
                     </p>
                   )}
-                  <label className="flex items-center gap-2.5">
-                    <input type="checkbox" checked={autoPush} onChange={(e) => setAutoPush(e.target.checked)} className="h-4 w-4" />
-                    Mettre à jour HubSpot automatiquement après chaque call
-                  </label>
+                  {data.connected ? (
+                    <label className="flex items-center gap-2.5">
+                      <input type="checkbox" checked={autoPush} onChange={(e) => setAutoPush(e.target.checked)} className="h-4 w-4" />
+                      Mettre à jour HubSpot automatiquement après chaque call
+                    </label>
+                  ) : (
+                    <p className="text-slate-500">HubSpot n&apos;est pas connecté : seules les règles seront enregistrées.</p>
+                  )}
                   <div className="flex flex-wrap items-center gap-3">
                     <button
                       onClick={apply}
                       disabled={applying}
                       className="inline-flex h-10 items-center rounded-lg bg-[color:var(--primary)] px-4 text-[13.5px] font-semibold text-white hover:brightness-110 disabled:opacity-60"
                     >
-                      {applying ? "Application…" : "Appliquer au HubSpot du client"}
+                      {applying ? "Application…" : data.connected ? "Appliquer les règles et le réglage HubSpot" : "Enregistrer les règles"}
                     </button>
                     {applied && (
                       <span className="text-[13px] text-emerald-700">
-                        Appliqué.{applied.created.length > 0 ? ` Propriétés créées : ${applied.created.join(", ")}.` : ""} Le prochain call suivra ce réglage.
+                        Appliqué.{applied.created.length > 0 ? ` Propriétés créées dans le groupe Brief : ${applied.created.join(", ")}.` : ""} Le prochain call
+                        suivra ces réglages.
                       </span>
                     )}
                     {applyError && <span className="text-[13px] text-rose-700">{applyError}</span>}
                   </div>
                 </div>
               </Section>
-            </>
-          )}
         </div>
       )}
     </AdminPageShell>

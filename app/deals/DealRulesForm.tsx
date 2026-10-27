@@ -12,54 +12,29 @@ import { DEFAULT_RULES, MAX_STAGES, METHODS, OBJECTIVE_RANKS, qualificationLabel
 const CARD = "rounded-2xl border border-border bg-white p-5 sm:p-6";
 const LABEL = "text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500";
 
-export default function DealRulesForm({ stageLabels }: { stageLabels: Record<number, string> }) {
-  const [rules, setRules] = useState<DealRules | null>(null);
-  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/deals/rules")
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data: { rules: DealRules }) => !cancelled && setRules(data.rules))
-      .catch(() => !cancelled && setRules(DEFAULT_RULES));
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  if (!rules) return <p className="text-[13.5px] text-slate-500">Chargement des règles…</p>;
-
+// L'éditeur des règles, sans lecture ni enregistrement : partagé par l'onglet
+// Règles du manager et le setup HubSpot de l'admin (27/10/2026).
+export function RulesEditor({
+  rules,
+  onChange,
+  stageLabels,
+}: {
+  rules: DealRules;
+  onChange: (rules: DealRules) => void;
+  stageLabels: Record<number, string>;
+}) {
   const fields = METHODS[rules.method].fields;
-  const update = (patch: Partial<DealRules>) => {
-    setRules({ ...rules, ...patch });
-    setStatus("idle");
-  };
+  const update = (patch: Partial<DealRules>) => onChange({ ...rules, ...patch });
   const toggle = (stage: number, key: (typeof fields)[number]) => {
     const current = rules.stageRequirements[stage] ?? [];
     const next = current.includes(key) ? current.filter((k) => k !== key) : [...current, key];
     update({ stageRequirements: { ...rules.stageRequirements, [stage]: next } });
   };
-
   const toggleObjective = (rank: number, key: (typeof fields)[number]) => {
     const current = rules.callObjectives[rank] ?? [];
     const next = current.includes(key) ? current.filter((k) => k !== key) : [...current, key];
     update({ callObjectives: { ...rules.callObjectives, [rank]: next } });
   };
-
-  async function save() {
-    setStatus("saving");
-    setError(null);
-    const res = await fetch("/api/deals/rules", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rules }) }).catch(() => null);
-    const data = (await res?.json().catch(() => ({}))) as { rules?: DealRules; error?: string };
-    if (res?.ok && data.rules) {
-      setRules(data.rules);
-      setStatus("saved");
-    } else {
-      setError(data.error ?? "Enregistrement impossible.");
-      setStatus("error");
-    }
-  }
 
   return (
     <div className="space-y-5">
@@ -198,6 +173,50 @@ export default function DealRulesForm({ stageLabels }: { stageLabels: Record<num
         </div>
       </section>
 
+    </div>
+  );
+}
+
+export default function DealRulesForm({ stageLabels }: { stageLabels: Record<number, string> }) {
+  const [rules, setRules] = useState<DealRules | null>(null);
+  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/deals/rules")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { rules: DealRules }) => !cancelled && setRules(data.rules))
+      .catch(() => !cancelled && setRules(DEFAULT_RULES));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!rules) return <p className="text-[13.5px] text-slate-500">Chargement des règles…</p>;
+
+  const update = (next: DealRules) => {
+    setRules(next);
+    setStatus("idle");
+  };
+
+  async function save() {
+    setStatus("saving");
+    setError(null);
+    const res = await fetch("/api/deals/rules", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rules }) }).catch(() => null);
+    const data = (await res?.json().catch(() => ({}))) as { rules?: DealRules; error?: string };
+    if (res?.ok && data.rules) {
+      setRules(data.rules);
+      setStatus("saved");
+    } else {
+      setError(data.error ?? "Enregistrement impossible.");
+      setStatus("error");
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      <RulesEditor rules={rules} onChange={update} stageLabels={stageLabels} />
       <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={save}
