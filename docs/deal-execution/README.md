@@ -130,6 +130,8 @@ Format de réponse proposé à Hubert : « OK pour les recos sauf le n° X ».
 
 10. **28/10/2026** : entre la vue d'ensemble et le détail, une page **chronologie** du deal (`/deal/<id>`, le détail passe à `/deal/<id>/detail`) : axe du temps avec les informations clés, les calls, les rendez-vous convenus tenus ou non, le silence depuis le dernier call ; puis le déroulé daté. Détail dans CLAUDE.md.
 
+11. **28/10/2026** : le **conseil de Brief** (Mes deals, onglet Équipe, chronologie) est rédigé par Haiku après chaque call — action précise pour le commercial, message de relance prêt à envoyer, questions du manager au commercial — à partir de ce que le deal a appris. Règles fixes en repli. Détail dans CLAUDE.md.
+
 ## Structure cible de la plateforme (Jean, 27/10/2026)
 
 Point de départ avant toute suite technique. Le reste de l'app ne bouge pas (Performance et Équipe sont masqués, pas supprimés).

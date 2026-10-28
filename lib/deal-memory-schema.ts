@@ -229,7 +229,24 @@ export type StoredDealMemory = DealMemoryContent & {
 
 // Une question par information à aller chercher au rendez-vous `rank`
 // (lib/call-objectives.ts), clé = le champ de qualification.
-export type NextQuestions = { rank: number; questions: Partial<Record<string, string>>; model: string; generatedAt: string };
+export type NextQuestions = { rank: number; questions: Partial<Record<string, string>>; model: string; generatedAt: string; advice?: AiDealAdvice | null };
+
+// Le conseil rédigé par Haiku après chaque call (28/10/2026, demande de Jean :
+// des conseils concrets et actionnables), lib/deal-advice-ai.ts. Rangé avec
+// les questions du prochain call : les deux préparent la suite du deal.
+//  - next : ce que le commercial fait maintenant (tutoiement), quand le deal
+//    vit ;
+//  - relance : le message à envoyer au prospect (vouvoiement) quand il ne
+//    répond plus — l'écran choisit selon le statut du deal au moment où on le
+//    regarde ;
+//  - manager : quoi en dire au commercial (questions en tutoiement).
+export type AiDealAdvice = {
+  next: { title: string; why: string; steps: string[] };
+  relance: { title: string; why: string; message: string };
+  manager: { title: string; why: string; questions: string[] };
+  model: string;
+  generatedAt: string;
+};
 
 // Ce qu'un deal a retenu de ses calls précédents, donné au modèle pour qu'il
 // compare (objection qui revient, décideur toujours absent…).

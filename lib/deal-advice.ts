@@ -6,7 +6,8 @@ import type { QualificationKey } from "./deal-rules";
 // choisie par Jean le 27/10/2026 : rester en posture de conseil actionnable).
 // Quatre parties qui portent toutes sur la MÊME action : quoi faire,
 // pourquoi (avec la phrase du call quand il y en a une), comment le dire,
-// pour quand. Tiré des fiches par des règles fixes, sans appel IA. Sans
+// pour quand. Rédigé par Haiku après chaque call quand il existe
+// (lib/deal-advice-ai.ts), sinon tiré des fiches par des règles fixes. Sans
 // dépendance : importé par l'écran et testé.
 
 // La question à poser pour obtenir chaque information de qualification.
@@ -38,6 +39,9 @@ export type DealAdvice = {
   // possible (entre guillemets).
   how: string[];
   when: string;
+  // Le titre du bloc « comment » : des phrases à dire, des étapes, ou le
+  // message de relance prêt à envoyer.
+  howLabel: string;
 };
 
 function longDay(iso: string): string {
@@ -48,8 +52,46 @@ function lowerFirst(text: string): string {
   return text.charAt(0).toLowerCase() + text.slice(1);
 }
 
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+// L'action du deal en quelques mots, pour les listes : celle du conseil
+// Haiku quand il existe (« Envoyer à Severin le récap… »), sinon l'action
+// générique (« Relancer le prospect »).
+export function actionLabel(d: DealProgress): string {
+  const ai = d.aiAdvice;
+  if (!ai) return d.focus.action;
+  return d.focus.status === "relancer" ? ai.relance.title : ai.next.title;
+}
+
 export function adviceFor(d: DealProgress): DealAdvice {
   const nextWhen = d.nextStep.date ? `Avant le ${longDay(d.nextStep.date)}` : "Au prochain échange";
+
+  // Le conseil rédigé par Haiku après le dernier call (28/10/2026) prime : il
+  // nomme les personnes, les chiffres, les engagements du deal. La relance
+  // est choisie au moment où on regarde : le deal a pu se taire depuis.
+  const ai = d.aiAdvice;
+  if (ai && d.focus.status === "relancer") {
+    return {
+      title: ai.relance.title,
+      why: `${d.focus.detail ? `${capitalize(d.focus.detail)}. ` : ""}${ai.relance.why}`,
+      quote: null,
+      how: [ai.relance.message],
+      when: "Aujourd'hui",
+      howLabel: "Le message à envoyer",
+    };
+  }
+  if (ai) {
+    return {
+      title: ai.next.title,
+      why: ai.next.why,
+      quote: d.topAlert?.quote ? { text: d.topAlert.quote, speaker: d.topAlert.speaker } : null,
+      how: ai.next.steps,
+      when: nextWhen,
+      howLabel: "Comment t'y prendre",
+    };
+  }
 
   if (d.focus.status === "relancer") {
     return {
@@ -61,6 +103,7 @@ export function adviceFor(d: DealProgress): DealAdvice {
         `« Je reviens vers vous suite à notre échange du ${d.lastCall.at ? longDay(d.lastCall.at) : "dernier call"} : seriez-vous disponible mardi ou jeudi pour faire le point ? »`,
       ],
       when: "Aujourd'hui",
+      howLabel: "Ce que vous pouvez dire",
     };
   }
 
@@ -75,6 +118,7 @@ export function adviceFor(d: DealProgress): DealAdvice {
       quote: null,
       how,
       when: nextWhen,
+      howLabel: "Ce que vous pouvez dire",
     };
   }
 
@@ -85,6 +129,7 @@ export function adviceFor(d: DealProgress): DealAdvice {
       quote: d.nextStep.text ? { text: d.nextStep.text, speaker: "Ce qui a été dit sur la suite" } : null,
       how: ["« Pour avancer, je vous propose qu'on cale dès maintenant le prochain point : plutôt en début ou en fin de semaine prochaine ? »"],
       when: "Aujourd'hui",
+      howLabel: "Ce que vous pouvez dire",
     };
   }
 
@@ -97,6 +142,7 @@ export function adviceFor(d: DealProgress): DealAdvice {
       quote: d.topAlert.quote ? { text: d.topAlert.quote, speaker: d.topAlert.speaker } : null,
       how,
       when: nextWhen,
+      howLabel: "Ce que vous pouvez dire",
     };
   }
 
@@ -107,5 +153,6 @@ export function adviceFor(d: DealProgress): DealAdvice {
     quote: null,
     how: d.missingKeys.length > 0 ? d.missingKeys.slice(0, 2).map((k) => questionFor(d, k)) : ["Faire valider la proposition et fixer la date de signature."],
     when: d.nextStep.date ? `Le ${longDay(d.nextStep.date)}` : "Au prochain échange",
+    howLabel: "Ce que vous pouvez dire",
   };
 }

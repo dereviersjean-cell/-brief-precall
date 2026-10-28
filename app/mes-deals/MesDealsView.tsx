@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import CompanyLogo from "@/app/components/CompanyLogo";
-import { adviceFor } from "@/lib/deal-advice";
+import { actionLabel, adviceFor } from "@/lib/deal-advice";
 import { Line } from "@/app/components/CopyLine";
 import { ObjectivesMessage, ObjectivesPlan } from "@/app/components/CallObjectives";
 
@@ -111,7 +111,9 @@ function Detail({ d }: { d: DealProgress }) {
       )}
 
       <div className="mt-6 rounded-2xl bg-stone-50 p-5">
-        <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-stone-500">Ce que vous pouvez dire · {a.when}</p>
+        <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-stone-500">
+          {a.howLabel} · {a.when}
+        </p>
         <ul className="mt-2.5 space-y-2.5">
           {a.how.map((h) => (
             <Line key={h} text={h} />
@@ -239,7 +241,7 @@ export default function MesDealsView({ deals, closed }: { deals: DealProgress[];
                         <Avatar d={d} size={34} />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[13.5px] font-semibold text-stone-900">{d.name}</p>
-                          <p className="truncate text-[12px] text-stone-500">{d.focus.action}</p>
+                          <p className="truncate text-[12px] text-stone-500">{actionLabel(d)}</p>
                         </div>
                       </button>
                     </li>

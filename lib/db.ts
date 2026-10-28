@@ -6,7 +6,7 @@ import type { TranscriptJson } from "./recall";
 import type { NotificationEventType, NotificationChannel, NotificationPreference } from "./notification-preferences";
 import { coerceMeetingStageConfig, type MeetingStage, type MeetingStageConfig } from "./meeting-stage";
 import { resolveAccessLevel, resolveEnabledModules, type AccessLevel, type ModuleKey } from "./modules";
-import type { DealHistoryEntry, DealMemoryContent, DealOverview, HubspotDealSnapshot, NextQuestions, StoredDealMemory } from "./deal-memory-schema";
+import type { AiDealAdvice, DealHistoryEntry, DealMemoryContent, DealOverview, HubspotDealSnapshot, NextQuestions, StoredDealMemory } from "./deal-memory-schema";
 import type { DealIdentity } from "./deal-grouping";
 import type { BoardFicheRow, BoardReview } from "./deal-board";
 import type { PipelineStats } from "./deal-pipeline-stats";
@@ -1913,6 +1913,24 @@ export async function getCallDealMemory(
 export async function setCallNextQuestions(callId: string, value: NextQuestions | null): Promise<void> {
   const { error } = await supabaseAdmin.from("call_deal_memory").update({ next_questions: value }).eq("call_id", callId);
   if (error) console.error("[db] setCallNextQuestions failed (migration 037 ?):", error.message);
+}
+
+// Le conseil Haiku du deal (lib/deal-advice-ai.ts, 28/10/2026), rangé dans
+// next_questions à côté des questions du prochain call : pas de migration, et
+// les deux se lisent ensemble. Un call sans questions (plan vide) garde quand
+// même son conseil.
+export async function setCallDealAdvice(callId: string, advice: AiDealAdvice | null, rank: number): Promise<void> {
+  const { data, error } = await supabaseAdmin.from("call_deal_memory").select("next_questions").eq("call_id", callId).maybeSingle();
+  if (error) {
+    console.error("[db] setCallDealAdvice read failed:", error.message);
+    return;
+  }
+  const current = (data as { next_questions: NextQuestions | null } | null)?.next_questions ?? null;
+  const value: NextQuestions = current
+    ? { ...current, advice }
+    : { rank, questions: {}, model: advice?.model ?? "", generatedAt: advice?.generatedAt ?? new Date().toISOString(), advice };
+  const { error: writeError } = await supabaseAdmin.from("call_deal_memory").update({ next_questions: value }).eq("call_id", callId);
+  if (writeError) console.error("[db] setCallDealAdvice failed:", writeError.message);
 }
 
 export async function getNextQuestionsForCalls(callIds: string[]): Promise<Record<string, NextQuestions>> {

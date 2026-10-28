@@ -33,7 +33,15 @@ function lowerFirst(text: string): string {
   return text.charAt(0).toLowerCase() + text.slice(1);
 }
 
+// Le conseil Haiku du dernier call (lib/deal-advice-ai.ts, 28/10/2026) prime
+// sur les règles fixes dès qu'il y a quelque chose à faire.
+function aiManager(d: DealProgress) {
+  return interventionLevel(d) !== "non" ? (d.aiAdvice?.manager ?? null) : null;
+}
+
 export function managerTitle(d: DealProgress, owner: string): string {
+  const ai = aiManager(d);
+  if (ai) return ai.title;
   const level = interventionLevel(d);
   if (level === "oui") return `Parler ${withDe(d.name)} avec ${firstName(owner)}`;
   if (level === "surveiller") return `Garder un œil : ${lowerFirst(d.focus.action)}`;
@@ -41,6 +49,8 @@ export function managerTitle(d: DealProgress, owner: string): string {
 }
 
 export function managerWhy(d: DealProgress): string {
+  const ai = aiManager(d);
+  if (ai) return d.focus.status === "relancer" && d.focus.detail ? `${capitalize(d.focus.detail)}. ${ai.why}` : ai.why;
   if (d.focus.status === "relancer") return `${d.focus.detail ? capitalize(d.focus.detail) : "Plus de nouvelles du prospect"} : le deal refroidit.`;
   if (d.missingForStage.length > 0) {
     const missing = d.missingForStage.join(", ").toLowerCase();
@@ -54,6 +64,8 @@ export function managerWhy(d: DealProgress): string {
 export function coachingQuestions(d: DealProgress): string[] {
   const q: string[] = [];
   if (d.focus.status === "relancer") q.push(`« Où en es-tu avec ${d.name} ? Qu'est-ce qui t'empêche de le relancer cette semaine ? »`);
+  const ai = aiManager(d);
+  if (ai) return [...new Set([...q, ...ai.questions])].slice(0, 3);
   if (d.missingForStage.length > 0) {
     q.push(`« Le deal a avancé sans ${d.missingForStage.join(", ").toLowerCase()}. Comment comptes-tu l'obtenir au prochain échange ? »`);
   }

@@ -2,6 +2,7 @@ import {
   DEAL_ALERT_RULES,
   DEAL_MEMORY_FIELDS,
   INACTIVITY_DAYS,
+  type AiDealAdvice,
   type DealMemoryAlert,
   type DealMemoryContent,
   type DealMemoryItem,
@@ -97,6 +98,9 @@ export type DealProgress = {
   // Les objectifs du prochain call (lib/call-objectives.ts) : ce que le
   // dernier a obtenu, ce qu'il reste à aller chercher, les questions.
   objectives: DealObjectives | null;
+  // Le conseil rédigé par Haiku après le dernier call (lib/deal-advice-ai.ts,
+  // 28/10/2026) ; absent, les écrans gardent les conseils fixes.
+  aiAdvice?: AiDealAdvice | null;
 };
 
 export type FocusStatus = "relancer" | "traiter" | "bonne_voie";
@@ -283,6 +287,7 @@ export function buildDealProgress(fiches: ProgressFiche[], now: number, rules: D
         rules,
         latest.nextQuestions
       ),
+      aiAdvice: latest.nextQuestions?.advice ?? null,
       nextSteps: latest.fields.prochaines_etapes ?? [],
       alerts: latest.alerts.map((a) => RULE_LABELS.get(a.rule) ?? a.rule),
       nextStep: nextStepOf(latest, new Date(now).toISOString().slice(0, 10), idle),

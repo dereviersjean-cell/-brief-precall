@@ -1,4 +1,4 @@
-import { DEAL_MEMORY_FIELDS, type DealMemoryFieldKey, type DealMemoryItem } from "./deal-memory-schema";
+import { DEAL_MEMORY_FIELDS, type AiDealAdvice, type DealMemoryFieldKey, type DealMemoryItem } from "./deal-memory-schema";
 import { OBJECTIVE_RANKS, qualificationFields, type DealRules, type QualificationKey } from "./deal-rules";
 
 // Les objectifs de chaque rendez-vous (demande de Jean du 27/10/2026) : le
@@ -208,7 +208,7 @@ export function objectivesMessage(review: ObjectiveRow[], plan: { rank: number; 
   return lines;
 }
 
-export type StoredQuestions = { rank: number; questions: Partial<Record<string, string>> };
+export type StoredQuestions = { rank: number; questions: Partial<Record<string, string>>; advice?: AiDealAdvice | null };
 
 // Les questions rédigées par Haiku après le dernier call (migration 037),
 // quand elles visent bien ce rendez-vous ; la question fixe sinon, information

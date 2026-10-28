@@ -3,6 +3,7 @@ import { Avatar } from "@/app/mes-deals/MesDealsView";
 import { FOCUS, VERDICTS, formatAmount } from "@/app/mes-deals/deal-ui";
 import type { ChronoCall, ChronoPlanned, DealChronology, PlannedStatus } from "@/lib/deal-chronology";
 import type { DealProgress } from "@/lib/deal-progress";
+import { actionLabel } from "@/lib/deal-advice";
 
 // La chronologie d'un deal (demande de Jean du 28/10/2026) : la page entre la
 // vue d'ensemble et le détail. En haut, l'évolution sur un axe du temps — les
@@ -360,7 +361,7 @@ export default function DealChronologyView({
                     <div className={`rounded-2xl border p-4 ${silent ? "border-rose-200 bg-rose-50/60" : "border-border bg-white"}`}>
                       <p className={`text-[13.5px] font-semibold ${silent ? "text-rose-800" : "text-slate-900"}`}>
                         {chrono.silenceDays !== null && chrono.silenceDays > 0 ? `${chrono.silenceDays} jours sans call · ` : ""}
-                        {progress.focus.action}
+                        {actionLabel(progress)}
                       </p>
                       {progress.focus.detail && <p className="mt-0.5 text-[13px] text-slate-600">{progress.focus.detail}</p>}
                       <Link href={`/deal/${dealId}/detail`} className="mt-2 inline-block text-[12.5px] font-medium text-[color:var(--violet)] hover:underline">

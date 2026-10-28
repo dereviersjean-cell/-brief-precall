@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Avatar } from "@/app/mes-deals/MesDealsView";
 import { Line } from "@/app/components/CopyLine";
+import { actionLabel } from "@/lib/deal-advice";
 import {
   coachingQuestions,
   firstName,
@@ -157,7 +158,7 @@ function DealDetail({ d, owner, review }: { d: DealProgress; owner: string; revi
       <div className="mt-5 grid grid-cols-1 gap-6 border-t border-stone-100 pt-5 sm:grid-cols-2">
         <section>
           <h3 className="mb-2 text-[12px] font-semibold text-stone-500">Ce que {first} doit faire</h3>
-          <p className="text-[14px] font-semibold text-stone-900">{d.focus.action}</p>
+          <p className="text-[14px] font-semibold text-stone-900">{actionLabel(d)}</p>
           {d.focus.detail && <p className="text-[12.5px] text-stone-500">{d.focus.detail}</p>}
         </section>
         <section>
@@ -323,7 +324,7 @@ export default function TeamCoachView({
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-[13.5px] font-semibold text-stone-900">{x.d.name}</p>
                             <p className="truncate text-[12px] text-stone-500">
-                              {firstName(x.owner)} · {x.d.focus.action}
+                              {firstName(x.owner)} · {actionLabel(x.d)}
                             </p>
                           </div>
                         </button>

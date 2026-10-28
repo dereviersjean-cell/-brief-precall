@@ -3,13 +3,17 @@ import {
   findDealByHubspotId,
   findDealByIdentity,
   findOrCreateDeal,
+  getCallDealMemory,
   getDealHistory,
+  getDealMemoryObjections,
+  getDealPageFiches,
   getOrganizationEmailDomains,
   getOrganizationForUser,
   getHubspotUserForOrganization,
   getOrganizationDealRules,
   getUserName,
   saveCallDealMemory,
+  setCallDealAdvice,
   setCallNextQuestions,
   setDealHubspot,
   teachDealDomain,
@@ -17,9 +21,11 @@ import {
 } from "./db";
 import { generateDealMemory } from "./deal-memory";
 import { dealIdentityFor } from "./deal-grouping";
-import type { DealHistoryEntry, DealMemoryContent, HubspotDealSnapshot, NextQuestions, StoredDealMemory } from "./deal-memory-schema";
+import type { AiDealAdvice, DealHistoryEntry, DealMemoryContent, HubspotDealSnapshot, NextQuestions, StoredDealMemory } from "./deal-memory-schema";
 import { dealObjectives, mergeKnown, type ItemsByField } from "./call-objectives";
 import { tailorObjectiveQuestions } from "./objective-questions";
+import { writeDealAdvice } from "./deal-advice-ai";
+import { buildDealProgressNow } from "./deal-progress";
 import { findHubSpotDealForProspect, getHubSpotDealDomains, getHubSpotDealSnapshot } from "./crm/hubspot-deals";
 import { reportWarning } from "./monitoring";
 
@@ -137,7 +143,55 @@ export async function runDealMemoryForCall(call: CallWithAnalysis, organizationI
     prospectCompany: result.prospectCompany,
   });
   const nextQuestions = await writeNextQuestions(call.id, organizationId, result.prospectCompany ?? call.company_name ?? "le prospect", history, result);
-  return { ...stored, nextQuestions };
+  // Après les questions : le conseil les reprend.
+  const advice = await writeDealAdviceForCall(call, organizationId);
+  return { ...stored, nextQuestions: nextQuestions ? { ...nextQuestions, advice } : nextQuestions };
+}
+
+function fold(name: string): string {
+  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
+// Le conseil de Brief rédigé par Haiku (lib/deal-advice-ai.ts, 28/10/2026),
+// à partir de la fiche du call et de celles des calls précédents du même
+// deal. Partagé avec le script de backfill. Un échec ne touche pas la fiche :
+// les écrans gardent les conseils fixes.
+export async function writeDealAdviceForCall(call: CallWithAnalysis, organizationId: string): Promise<AiDealAdvice | null> {
+  try {
+    const memory = await getCallDealMemory(call.id);
+    if (!memory?.dealId) return null;
+    const all = (await getDealPageFiches(memory.dealId, organizationId)) ?? [];
+    const index = all.findIndex((f) => f.callId === call.id);
+    if (index < 0) return null;
+    const fiches = all.slice(0, index + 1);
+    const rules = await getOrganizationDealRules(organizationId);
+    const [progress] = buildDealProgressNow(fiches, rules);
+    const latest = fiches[fiches.length - 1];
+    const [objections, commercialName] = await Promise.all([getDealMemoryObjections(call.id).catch(() => []), getUserName(call.user_id).catch(() => null)]);
+    const override = call.speaker_names_override ?? {};
+    const participants = [
+      ...new Set((call.transcript_json?.turns ?? []).map((t) => (override[t.speaker_id] || t.speaker_name_raw || "").trim()).filter(Boolean)),
+    ].filter((name) => !commercialName || fold(name) !== fold(commercialName));
+
+    const result = await writeDealAdvice({
+      dealName: progress.name,
+      commercialName,
+      participants,
+      rank: fiches.length,
+      callAt: latest.callAt,
+      known: mergeKnown(fiches.map((f) => f.fields)),
+      commitments: (latest.fields.prochaines_etapes ?? []).map((c) => ({ text: c.text, date: c.date ?? null })),
+      objections,
+      alerts: latest.alerts,
+      summary: call.analysis?.summary ?? null,
+      nextPlan: progress.objectives ? { rank: progress.objectives.plan.rank, items: progress.objectives.plan.items.map((i) => ({ label: i.label, question: i.question })) } : null,
+    });
+    await setCallDealAdvice(call.id, result.advice, fiches.length + 1);
+    return result.advice;
+  } catch (err) {
+    reportWarning("deal-memory.advice", err, { callId: call.id });
+    return null;
+  }
 }
 
 // Les questions du prochain call (27/10/2026) : ce qui reste à aller chercher
