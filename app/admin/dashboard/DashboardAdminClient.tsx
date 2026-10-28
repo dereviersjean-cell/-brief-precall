@@ -207,8 +207,10 @@ function DashboardTable({ stats, onChanged }: { stats: UserDashboardStat[]; onCh
               <td className="py-3 pr-4 text-slate-700 text-right tabular-nums">{u.emails_sent_count}</td>
               <td className="py-3 pr-4 text-slate-500 whitespace-nowrap">{formatAdminDate(u.last_activity_at)}</td>
               <td className="py-3 pr-4">
-                {u.recall_connected ? (
+                {u.recall_state === "connected" ? (
                   <span className="inline-flex items-center rounded-full bg-[color:var(--lavender)] px-2 py-0.5 text-[11.5px] font-semibold text-[color:var(--violet)]">Connecté</span>
+                ) : u.recall_state === "disconnected" ? (
+                  <span className="inline-flex items-center rounded-full bg-[color:var(--danger-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-rose-700">Coupé</span>
                 ) : (
                   <span className="text-[12px] text-slate-300">—</span>
                 )}

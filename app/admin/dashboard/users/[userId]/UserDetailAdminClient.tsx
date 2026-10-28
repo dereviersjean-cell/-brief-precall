@@ -149,10 +149,14 @@ export default function UserDetailAdminClient({
           <div className="rounded-2xl border border-border bg-white p-5">
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-500">Connexions</p>
             <div className="flex flex-wrap items-center gap-1.5">
-              {user.recall_connected ? (
-                <span className="inline-flex items-center rounded-full bg-[color:var(--lavender)] px-2 py-0.5 text-[11.5px] font-semibold text-[color:var(--violet)]">Recall connecté</span>
+              {user.recall_state === "connected" ? (
+                <span className="inline-flex items-center rounded-full bg-[color:var(--lavender)] px-2 py-0.5 text-[11.5px] font-semibold text-[color:var(--violet)]">Agenda Recall connecté</span>
+              ) : user.recall_state === "disconnected" ? (
+                <span className="inline-flex items-center rounded-full bg-[color:var(--danger-soft)] px-2 py-0.5 text-[11.5px] font-semibold text-rose-700">
+                  Agenda Recall coupé : à reconnecter par l&apos;utilisateur
+                </span>
               ) : (
-                <span className="text-[12px] text-slate-400">Recall non connecté</span>
+                <span className="text-[12px] text-slate-400">Agenda Recall non connecté</span>
               )}
               {user.crm_connected.map((p) => (
                 <CrmBadge key={p} provider={p} />

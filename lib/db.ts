@@ -177,12 +177,22 @@ export async function saveRecallCalendarId(userId: string, calendarId: string): 
   if (error) throw error;
 }
 
+// L'état enregistré part avec l'agenda (28/10/2026) : un agenda retiré
+// laissait « connected », et l'état d'un compte sans agenda se lisait faux.
 export async function clearRecallCalendarId(userId: string): Promise<void> {
   const { error } = await supabaseAdmin
     .from("users")
-    .update({ recall_calendar_id: null })
+    .update({ recall_calendar_id: null, recall_calendar_status: null, recall_calendar_status_at: null })
     .eq("id", userId);
   if (error) throw error;
+}
+
+// L'état de l'agenda d'enregistrement tel qu'il faut l'afficher : sans
+// identifiant, il n'y a pas d'agenda, quoi que dise l'état enregistré.
+export type RecallAgendaState = "connected" | "disconnected" | "missing";
+export function recallAgendaState(calendarId: string | null, status: string | null | undefined): RecallAgendaState {
+  if (!calendarId) return "missing";
+  return status === "disconnected" ? "disconnected" : "connected";
 }
 
 export async function getRecallCalendarId(userId: string): Promise<string | null> {
@@ -1390,6 +1400,9 @@ export type UserDashboardStat = {
   emails_sent_count: number;
   last_activity_at: string | null;
   recall_connected: boolean;
+  // Connecté, coupé chez Recall (jeton expiré…) ou absent (28/10/2026) :
+  // recall_connected seul affichait « Connecté » pour un agenda coupé.
+  recall_state: RecallAgendaState;
   crm_connected: string[];
 };
 
@@ -1397,7 +1410,7 @@ export async function getAdminDashboardStats(): Promise<UserDashboardStat[]> {
   const [usersRes, briefsRes, callsRes, crmRes] = await Promise.all([
     supabaseAdmin
       .from("users")
-      .select("id, email, created_at, role, recall_calendar_id, disabled_at, invited_at, google_id, microsoft_id")
+      .select("id, email, created_at, role, recall_calendar_id, recall_calendar_status, disabled_at, invited_at, google_id, microsoft_id")
       .order("created_at", { ascending: false }),
     supabaseAdmin.from("briefs").select("user_id, created_at"),
     supabaseAdmin.from("calls").select("user_id, created_at, follow_up_sent_at"),
@@ -1410,6 +1423,7 @@ export async function getAdminDashboardStats(): Promise<UserDashboardStat[]> {
     created_at: string;
     role: UserRole | null;
     recall_calendar_id: string | null;
+    recall_calendar_status?: string | null;
     disabled_at: string | null;
     invited_at: string | null;
     google_id: string | null;
@@ -1439,6 +1453,7 @@ export async function getAdminDashboardStats(): Promise<UserDashboardStat[]> {
       emails_sent_count: userCalls.filter((c) => c.follow_up_sent_at != null).length,
       last_activity_at: allDates[0] ?? null,
       recall_connected: user.recall_calendar_id != null,
+      recall_state: recallAgendaState(user.recall_calendar_id, user.recall_calendar_status),
       crm_connected: crm.filter((c) => c.user_id === user.id).map((c) => c.provider),
     };
   });
@@ -1451,7 +1466,7 @@ export type UserDetailForAdmin = UserDashboardStat & { name: string | null };
 export async function getUserDetailForAdmin(userId: string): Promise<UserDetailForAdmin | null> {
   const { data: userData, error: userError } = await supabaseAdmin
     .from("users")
-    .select("id, email, name, created_at, role, recall_calendar_id, disabled_at, invited_at, google_id, microsoft_id")
+    .select("id, email, name, created_at, role, recall_calendar_id, recall_calendar_status, disabled_at, invited_at, google_id, microsoft_id")
     .eq("id", userId)
     .maybeSingle();
   if (userError) throw userError;
@@ -1464,6 +1479,7 @@ export async function getUserDetailForAdmin(userId: string): Promise<UserDetailF
     created_at: string;
     role: UserRole | null;
     recall_calendar_id: string | null;
+    recall_calendar_status?: string | null;
     disabled_at: string | null;
     invited_at: string | null;
     google_id: string | null;
@@ -1502,6 +1518,7 @@ export async function getUserDetailForAdmin(userId: string): Promise<UserDetailF
     emails_sent_count: calls.filter((c) => c.follow_up_sent_at != null).length,
     last_activity_at: allDates[0] ?? null,
     recall_connected: user.recall_calendar_id != null,
+    recall_state: recallAgendaState(user.recall_calendar_id, user.recall_calendar_status),
     crm_connected: crm.map((c) => c.provider),
   };
 }
