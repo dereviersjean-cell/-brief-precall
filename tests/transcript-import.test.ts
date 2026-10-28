@@ -108,4 +108,21 @@ describe("format « Nom à 00:07 - 00:18 »", () => {
     assert.equal(parsed.transcriptJson?.turns[1].start_ms, 20000);
     assert.equal(parsed.transcriptJson?.turns[1].end_ms, 25000);
   });
+
+  test("texte sur la ligne de l'en-tête, une heure citée dans le texte n'est pas un locuteur", () => {
+    const parsed = parseTranscript(
+      [
+        "Guislain De La Rochefoucauld à 00:00 - 00:03 Le français, c'est le lundi",
+        "au soleil. On se voit à 10:00 - 11:00 demain ?",
+        "",
+        "Severin Michel à 00:03 - 00:04 C'est ça, exactement.",
+        "",
+        "Guislain De La Rochefoucauld à 00:04 - 00:05 Comment allez-vous ?",
+      ].join("\n")
+    );
+    assert.equal(parsed.format, "speaker_range");
+    assert.deepEqual(Object.keys(parsed.speakerNames), ["Guislain De La Rochefoucauld", "Severin Michel"]);
+    assert.equal(parsed.transcriptJson?.turns[0].text, "Le français, c'est le lundi au soleil. On se voit à 10:00 - 11:00 demain ?");
+    assert.equal(parsed.transcriptJson?.turns[1].start_ms, 3000);
+  });
 });

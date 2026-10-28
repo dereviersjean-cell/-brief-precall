@@ -143,17 +143,40 @@ function parseTimestampedText(content: string): Entry[] {
 // fin sont donnés : timing exact. Sans ce format, le parseur générique
 // coupait au premier « : » de l'horodatage et prenait « Nom à 00 » pour un
 // locuteur (le piège du bug documenté dans CLAUDE.md, « Banc d'essai »).
-const SPEAKER_RANGE = /^\s*(.{1,60}?)\s+(?:à|at)\s+(\d{1,2}:\d{2}(?::\d{2})?)\s*[-–]\s*(\d{1,2}:\d{2}(?::\d{2})?)\s*$/;
+// Variante vue le 28/10/2026 (calls Sarawak France de Guislain) : le texte
+// commence sur la ligne de l'en-tête, « Nom à 00:00 - 00:03 Bonjour… ». Elle
+// n'est reconnue qu'en début de paragraphe : au milieu d'une prise de parole,
+// « on se voit à 10:00 - 11:00 » est du texte, pas un locuteur.
+const SPEAKER_RANGE = /^\s*(.{1,60}?)\s+(?:à|at)\s+(\d{1,2}:\d{2}(?::\d{2})?)\s*[-–]\s*(\d{1,2}:\d{2}(?::\d{2})?)(?:\s+(\S.*))?\s*$/;
+
+function speakerRangeHeader(line: string, paragraphStart: boolean): RegExpMatchArray | null {
+  const header = line.match(SPEAKER_RANGE);
+  if (!header) return null;
+  return header[4] && !paragraphStart ? null : header;
+}
+
+function speakerRangeHeaderCount(content: string): number {
+  let count = 0;
+  let previousBlank = true;
+  for (const line of content.split(/\r?\n/)) {
+    if (speakerRangeHeader(line, previousBlank)) count++;
+    previousBlank = !line.trim();
+  }
+  return count;
+}
 
 function parseSpeakerRange(content: string): Entry[] {
   const entries: Entry[] = [];
+  let previousBlank = true;
   for (const rawLine of content.split(/\r?\n/)) {
     const line = rawLine.trim();
+    const paragraphStart = previousBlank;
+    previousBlank = !line;
     if (!line) continue;
-    const header = line.match(SPEAKER_RANGE);
+    const header = speakerRangeHeader(line, paragraphStart);
     if (header) {
-      const [, speaker, rawStart, rawEnd] = header;
-      entries.push({ speaker: speaker.trim(), startMs: parseTimestamp(rawStart), endMs: parseTimestamp(rawEnd), text: "" });
+      const [, speaker, rawStart, rawEnd, text] = header;
+      entries.push({ speaker: speaker.trim(), startMs: parseTimestamp(rawStart), endMs: parseTimestamp(rawEnd), text: text?.trim() ?? "" });
       continue;
     }
     const last = entries[entries.length - 1];
@@ -251,7 +274,7 @@ function detectFormat(content: string, fileName?: string): ParsedTranscript["for
 
   // Au moins trois en-têtes « Nom à 00:07 - 00:18 » : ce format passe avant
   // « 00:45 Nom: … », dont il partage les horodatages.
-  if (content.split(/\r?\n/).filter((line) => SPEAKER_RANGE.test(line)).length >= 3) return "speaker_range";
+  if (speakerRangeHeaderCount(content) >= 3) return "speaker_range";
 
   // Au moins trois lignes « 00:45 Nom: … » : un seul horodatage isolé peut
   // être une date ou une heure citée dans le corps du texte, trois lignes
