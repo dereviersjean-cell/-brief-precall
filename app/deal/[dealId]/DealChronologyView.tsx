@@ -4,6 +4,9 @@ import { FOCUS, VERDICTS, formatAmount } from "@/app/mes-deals/deal-ui";
 import type { ChronoCall, ChronoPlanned, DealChronology, PlannedStatus } from "@/lib/deal-chronology";
 import type { DealProgress } from "@/lib/deal-progress";
 import { actionLabel } from "@/lib/deal-advice";
+import { Line } from "@/app/components/CopyLine";
+
+export type ChronoAdvice = { title: string; why: string; label: string; lines: string[] };
 
 // La chronologie d'un deal (demande de Jean du 28/10/2026) : la page entre la
 // vue d'ensemble et le détail. En haut, l'évolution sur un axe du temps — les
@@ -255,6 +258,7 @@ export default function DealChronologyView({
   inactivityDays,
   backHref,
   backLabel,
+  advice,
 }: {
   dealId: string;
   progress: DealProgress;
@@ -264,6 +268,9 @@ export default function DealChronologyView({
   inactivityDays: number;
   backHref: string;
   backLabel: string;
+  // Le conseil de Brief pour celui qui regarde : le commercial du deal, ou son
+  // manager (28/10/2026).
+  advice: ChronoAdvice | null;
 }) {
   const v = VERDICTS[progress.verdict];
   const f = FOCUS[progress.focus.status];
@@ -358,13 +365,30 @@ export default function DealChronologyView({
                 </p>
                 <div className="space-y-2 sm:pl-6">
                   {isToday ? (
-                    <div className={`rounded-2xl border p-4 ${silent ? "border-rose-200 bg-rose-50/60" : "border-border bg-white"}`}>
-                      <p className={`text-[13.5px] font-semibold ${silent ? "text-rose-800" : "text-slate-900"}`}>
-                        {chrono.silenceDays !== null && chrono.silenceDays > 0 ? `${chrono.silenceDays} jours sans call · ` : ""}
-                        {actionLabel(progress)}
-                      </p>
-                      {progress.focus.detail && <p className="mt-0.5 text-[13px] text-slate-600">{progress.focus.detail}</p>}
-                      <Link href={`/deal/${dealId}/detail`} className="mt-2 inline-block text-[12.5px] font-medium text-[color:var(--violet)] hover:underline">
+                    <div className={`rounded-2xl border p-4 sm:p-5 ${silent ? "border-rose-200 bg-rose-50/40" : "border-border bg-white"}`}>
+                      {chrono.silenceDays !== null && chrono.silenceDays > 0 && (
+                        <p className={`text-[12.5px] font-semibold ${silent ? "text-rose-700" : "text-slate-500"}`}>{chrono.silenceDays} jours sans call</p>
+                      )}
+                      {advice ? (
+                        <>
+                          <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-emerald-700">Le conseil de Brief</p>
+                          <p className="mt-1 text-[17px] font-semibold leading-snug tracking-[-0.01em] text-slate-900">{advice.title}</p>
+                          <p className="mt-1 max-w-[70ch] text-[13.5px] leading-relaxed text-slate-600">{advice.why}</p>
+                          {advice.lines.length > 0 && (
+                            <div className="mt-3 rounded-xl bg-stone-50 p-4">
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-stone-500">{advice.label}</p>
+                              <ul className="mt-2 space-y-2">
+                                {advice.lines.map((line) => (
+                                  <Line key={line} text={line} />
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <p className="mt-1 text-[13.5px] font-semibold text-slate-900">{actionLabel(progress)}</p>
+                      )}
+                      <Link href={`/deal/${dealId}/detail`} className="mt-3 inline-block text-[12.5px] font-medium text-[color:var(--violet)] hover:underline">
                         Ce qu&apos;il faut aller chercher au prochain call →
                       </Link>
                     </div>

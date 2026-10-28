@@ -132,6 +132,8 @@ Format de réponse proposé à Hubert : « OK pour les recos sauf le n° X ».
 
 11. **28/10/2026** : le **conseil de Brief** (Mes deals, onglet Équipe, chronologie) est rédigé par Haiku après chaque call — action précise pour le commercial, message de relance prêt à envoyer, questions du manager au commercial — à partir de ce que le deal a appris. Règles fixes en repli. Détail dans CLAUDE.md.
 
+12. **28/10/2026** : « Mes deals » prend le même parcours que le manager — vue d'ensemble de ses deals, chronologie, détail ; le conseil de Brief passe dans la chronologie (bloc « Aujourd'hui »). Détail dans CLAUDE.md.
+
 ## Structure cible de la plateforme (Jean, 27/10/2026)
 
 Point de départ avant toute suite technique. Le reste de l'app ne bouge pas (Performance et Équipe sont masqués, pas supprimés).

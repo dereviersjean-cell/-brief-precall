@@ -24,7 +24,7 @@ export default function MesDealsLayout({ children }: { children: ReactNode }) {
               <PageHeader
                 eyebrow="Commercial · test"
                 title="Mes deals"
-                subtitle="Pour chaque deal, ce que nous vous conseillons de faire maintenant."
+                subtitle="Tous vos deals en cours, leur chronologie et ce qu'il faut faire maintenant."
               />
               <div className="mt-8">{children}</div>
             </div>
