@@ -3,6 +3,7 @@ import { getViewer } from "@/lib/session-user";
 import {
   getAlertImpactData,
   getCallActivityForUsers,
+  getCommercialAdvice,
   getCommercialsForManager,
   getDealBoardRows,
   getDealReviews,
@@ -45,10 +46,11 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
   // Onglet Équipe (27/10/2026) : ce que fait chaque commercial — son activité
   // et ses deals tels qu'il les voit dans « Mes deals ».
   const organizationId = viewer.organizationId;
-  const [activity, progressLists, avatars] = await Promise.all([
+  const [activity, progressLists, avatars, personAdvice] = await Promise.all([
     getCallActivityForUsers(people.map((p) => p.id)).catch(() => ({}) as Record<string, { week: number; lastAt: string | null }>),
     Promise.all(people.map((p) => getProgressFichesForUser(organizationId, p.id).catch(() => []))),
     getUserAvatars(people.map((p) => p.id)),
+    getCommercialAdvice(people.map((p) => p.id)),
   ]);
   // L'effet des alertes sur 90 jours (lib/deal-impact.ts) : un deal « vu »
   // a-t-il eu un nouveau call dans le délai d'inactivité de l'organisation ?
@@ -68,6 +70,7 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
       week: activity[p.id]?.week ?? 0,
       lastAt: activity[p.id]?.lastAt ?? null,
       deals: buildDealProgressNow(progressLists[i], rules).filter((d) => !d.hubspot?.closed),
+      aiAdvice: personAdvice[p.id] ?? null,
     }))
     .filter((p) => p.deals.length > 0 || p.lastAt !== null)
     .sort((a, b) => weight(b) - weight(a));

@@ -6,7 +6,7 @@ import type { TranscriptJson } from "./recall";
 import type { NotificationEventType, NotificationChannel, NotificationPreference } from "./notification-preferences";
 import { coerceMeetingStageConfig, type MeetingStage, type MeetingStageConfig } from "./meeting-stage";
 import { resolveAccessLevel, resolveEnabledModules, type AccessLevel, type ModuleKey } from "./modules";
-import type { AiDealAdvice, DealHistoryEntry, DealMemoryContent, DealOverview, HubspotDealSnapshot, NextQuestions, StoredDealMemory } from "./deal-memory-schema";
+import type { AiDealAdvice, AiPersonAdvice, DealHistoryEntry, DealMemoryContent, DealOverview, HubspotDealSnapshot, NextQuestions, StoredDealMemory } from "./deal-memory-schema";
 import type { DealIdentity } from "./deal-grouping";
 import type { BoardFicheRow, BoardReview } from "./deal-board";
 import type { PipelineStats } from "./deal-pipeline-stats";
@@ -2539,6 +2539,25 @@ export async function getDealCallDetails(
       return [row.id, { durationSeconds: row.duration_seconds, summary: analysis?.summary ?? null, score: typeof score === "number" ? score : null }];
     })
   );
+}
+
+// Le conseil Haiku sur chaque commercial (migration 039, 28/10/2026).
+// Fail-soft : sans la table, l'onglet Équipe garde les règles fixes.
+export async function getCommercialAdvice(userIds: string[]): Promise<Record<string, AiPersonAdvice>> {
+  if (userIds.length === 0) return {};
+  const { data, error } = await supabaseAdmin.from("commercial_advice").select("user_id, advice").in("user_id", userIds);
+  if (error) {
+    console.error("[db] getCommercialAdvice failed (migration 039 ?):", error.message);
+    return {};
+  }
+  return Object.fromEntries(((data ?? []) as { user_id: string; advice: AiPersonAdvice }[]).map((r) => [r.user_id, r.advice]));
+}
+
+export async function setCommercialAdvice(userId: string, organizationId: string, advice: AiPersonAdvice): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("commercial_advice")
+    .upsert({ user_id: userId, organization_id: organizationId, advice, model: advice.model, generated_at: advice.generatedAt }, { onConflict: "user_id" });
+  if (error) console.error("[db] setCommercialAdvice failed (migration 039 ?):", error.message);
 }
 
 // Vue manager, onglet Équipe (27/10/2026) : l'activité de chaque commercial —

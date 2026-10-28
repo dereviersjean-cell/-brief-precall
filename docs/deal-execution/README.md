@@ -134,6 +134,8 @@ Format de réponse proposé à Hubert : « OK pour les recos sauf le n° X ».
 
 12. **28/10/2026** : « Mes deals » prend le même parcours que le manager — vue d'ensemble de ses deals, chronologie, détail ; le conseil de Brief passe dans la chronologie (bloc « Aujourd'hui »). Détail dans CLAUDE.md.
 
+13. **28/10/2026** : le conseil sur un **commercial** (bandeau de l'onglet Équipe) est rédigé par Haiku à partir de tous ses deals. **Migration 039.** Détail dans CLAUDE.md.
+
 ## Structure cible de la plateforme (Jean, 27/10/2026)
 
 Point de départ avant toute suite technique. Le reste de l'app ne bouge pas (Performance et Équipe sont masqués, pas supprimés).

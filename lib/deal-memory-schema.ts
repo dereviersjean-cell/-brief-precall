@@ -240,6 +240,11 @@ export type NextQuestions = { rank: number; questions: Partial<Record<string, st
 //    répond plus — l'écran choisit selon le statut du deal au moment où on le
 //    regarde ;
 //  - manager : quoi en dire au commercial (questions en tutoiement).
+// Le conseil sur un commercial (lib/person-advice-ai.ts, 28/10/2026), pour le
+// manager : ce qui revient sur ses deals et les questions pour le prochain
+// point avec lui. Table commercial_advice (migration 039).
+export type AiPersonAdvice = { title: string; why: string; questions: string[]; model: string; generatedAt: string };
+
 export type AiDealAdvice = {
   next: { title: string; why: string; steps: string[] };
   relance: { title: string; why: string; message: string };

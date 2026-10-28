@@ -3,6 +3,7 @@ import {
   findDealByHubspotId,
   findDealByIdentity,
   findOrCreateDeal,
+  getCallActivityForUsers,
   getCallDealMemory,
   getDealHistory,
   getDealMemoryObjections,
@@ -11,8 +12,10 @@ import {
   getOrganizationForUser,
   getHubspotUserForOrganization,
   getOrganizationDealRules,
+  getProgressFichesForUser,
   getUserName,
   saveCallDealMemory,
+  setCommercialAdvice,
   setCallDealAdvice,
   setCallNextQuestions,
   setDealHubspot,
@@ -21,10 +24,11 @@ import {
 } from "./db";
 import { generateDealMemory } from "./deal-memory";
 import { dealIdentityFor } from "./deal-grouping";
-import type { AiDealAdvice, DealHistoryEntry, DealMemoryContent, HubspotDealSnapshot, NextQuestions, StoredDealMemory } from "./deal-memory-schema";
+import type { AiDealAdvice, AiPersonAdvice, DealHistoryEntry, DealMemoryContent, HubspotDealSnapshot, NextQuestions, StoredDealMemory } from "./deal-memory-schema";
 import { dealObjectives, mergeKnown, type ItemsByField } from "./call-objectives";
 import { tailorObjectiveQuestions } from "./objective-questions";
 import { writeDealAdvice } from "./deal-advice-ai";
+import { writePersonAdvice } from "./person-advice-ai";
 import { buildDealProgressNow } from "./deal-progress";
 import { findHubSpotDealForProspect, getHubSpotDealDomains, getHubSpotDealSnapshot } from "./crm/hubspot-deals";
 import { reportWarning } from "./monitoring";
@@ -145,6 +149,8 @@ export async function runDealMemoryForCall(call: CallWithAnalysis, organizationI
   const nextQuestions = await writeNextQuestions(call.id, organizationId, result.prospectCompany ?? call.company_name ?? "le prospect", history, result);
   // Après les questions : le conseil les reprend.
   const advice = await writeDealAdviceForCall(call, organizationId);
+  // Puis le conseil sur le commercial, qui reprend ceux de ses deals.
+  await writePersonAdviceForUser(call.user_id, organizationId);
   return { ...stored, nextQuestions: nextQuestions ? { ...nextQuestions, advice } : nextQuestions };
 }
 
@@ -218,6 +224,28 @@ async function writeNextQuestions(
     return value;
   } catch (err) {
     reportWarning("deal-memory.next-questions", err, { callId });
+    return null;
+  }
+}
+
+// Le conseil sur un commercial pour son manager (lib/person-advice-ai.ts,
+// 28/10/2026), réécrit après chacun de ses calls à partir de tous ses deals en
+// cours. Partagé avec le script de backfill. Un échec ne touche rien d'autre :
+// l'onglet Équipe garde les règles fixes.
+export async function writePersonAdviceForUser(userId: string, organizationId: string): Promise<AiPersonAdvice | null> {
+  try {
+    const [fiches, rules, name, activity] = await Promise.all([
+      getProgressFichesForUser(organizationId, userId),
+      getOrganizationDealRules(organizationId),
+      getUserName(userId).catch(() => null),
+      getCallActivityForUsers([userId]).catch(() => ({}) as Record<string, { week: number }>),
+    ]);
+    const deals = buildDealProgressNow(fiches, rules).filter((d) => !d.hubspot?.closed);
+    const result = await writePersonAdvice({ name: name ?? "le commercial", deals, week: activity[userId]?.week ?? 0 });
+    if (result.advice) await setCommercialAdvice(userId, organizationId, result.advice);
+    return result.advice;
+  } catch (err) {
+    reportWarning("deal-memory.person-advice", err, { userId });
     return null;
   }
 }

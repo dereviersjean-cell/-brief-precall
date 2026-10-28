@@ -18,6 +18,7 @@ import {
   type InterventionLevel,
 } from "@/lib/deal-coaching";
 import type { DealProgress } from "@/lib/deal-progress";
+import type { AiPersonAdvice } from "@/lib/deal-memory-schema";
 
 // Onglet Équipe de « Deals de l'équipe », version M3 choisie par Jean le
 // 27/10/2026 parmi trois propositions, dans le même esprit que « Mes deals »
@@ -27,7 +28,17 @@ import type { DealProgress } from "@/lib/deal-progress";
 // deal choisi : faut-il intervenir, pourquoi (la phrase du call), quoi dire
 // au commercial. Le conseil est construit par lib/deal-coaching.ts.
 
-export type TeamPerson = { id: string; name: string; avatarUrl: string | null; week: number; lastAt: string | null; deals: DealProgress[] };
+export type TeamPerson = {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  week: number;
+  lastAt: string | null;
+  deals: DealProgress[];
+  // Le conseil Haiku sur la personne (lib/person-advice-ai.ts, 28/10/2026) ;
+  // absent, le bandeau garde les règles fixes.
+  aiAdvice?: AiPersonAdvice | null;
+};
 // Le « Vu » de l'onglet « Où intervenir », pour les deals qui ont des alertes.
 export type Reviewable = Record<string, { rules: string[]; seen: boolean }>;
 
@@ -216,7 +227,7 @@ function PersonCard({ p, selected, onClick }: { p: TeamPerson; selected: boolean
 // Le conseil sur la personne filtrée : son point qui revient, les questions
 // pour le prochain point avec elle.
 function PersonBanner({ p }: { p: TeamPerson }) {
-  const advice = personAdvice(p.name, p.deals);
+  const advice = p.aiAdvice ?? personAdvice(p.name, p.deals);
   return (
     <section className="rounded-2xl bg-white p-5 ring-1 ring-stone-200 sm:p-6">
       <div className="flex items-start gap-3.5">
