@@ -29,6 +29,7 @@ On te donne tous les deals en cours du commercial : où en est chacun, ce qui ma
 
 Règles :
 - On s'adresse au manager sans le tutoyer ; seules les questions tutoient le commercial.
+- « Aujourd'hui », « demain », « lundi » dans une étape convenue se lisent par rapport à la date du call où elle a été convenue, pas à la date du jour.
 - Une étape convenue dont la date est passée (date du jour donnée) se dit au passé : elle a eu lieu ou pas, tu ne le sais pas — demande-le.
 - Ne reproche pas au commercial son nombre de calls de la semaine : c'est un repère, pas un fait du deal.
 - N'invente aucun fait, nom, chiffre ou date absent de ce qu'on te donne.
@@ -54,7 +55,8 @@ export function buildPersonPrompt(input: { name: string; deals: DealProgress[]; 
       `- Informations clés : ${d.known}/${d.total}${d.toObtain.length ? ` ; manque : ${d.toObtain.join(", ")}` : ""}`,
       d.alerts.length ? `- Alertes du dernier call : ${d.alerts.join(", ")}` : "- Pas d'alerte au dernier call",
       d.nextStep.text
-        ? `- Prochaine étape convenue : ${d.nextStep.text}${d.nextStep.date ? ` (${d.nextStep.date})` : ""}`
+        ? // La date du call : « aujourd'hui », « demain » dans le texte se lisent par rapport à elle.
+          `- Prochaine étape convenue au call du ${d.lastCall.at?.slice(0, 10) ?? "?"} : ${d.nextStep.text}${d.nextStep.date ? ` (${d.nextStep.date})` : ""}`
         : "- Aucune prochaine étape convenue",
       ai ? `- Conseil du deal : ${ai.manager.title}. ${ai.manager.why}` : `- Action : ${d.focus.action}`,
       ""
