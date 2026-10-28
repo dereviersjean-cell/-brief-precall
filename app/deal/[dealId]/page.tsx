@@ -1,64 +1,26 @@
-import { notFound, redirect } from "next/navigation";
-import { getViewer } from "@/lib/session-user";
-import { isUuid } from "@/lib/uuid";
-import {
-  getCommercialsForManager,
-  getDealCallDetails,
-  getDealMemoryObjections,
-  getDealPageFiches,
-  getOrganizationDealRules,
-  getUserName,
-  isDealMemoryEnabledForOrganization,
-  loadDealMemoryPanel,
-} from "@/lib/db";
-import { buildDealProgressNow } from "@/lib/deal-progress";
-import { buildDealReview } from "@/lib/deal-review";
-import { buildDealTimeline } from "@/lib/deal-timeline";
-import DealPageView from "./DealPageView";
+import { buildDealChronology } from "@/lib/deal-chronology";
+import { nowMs } from "@/lib/format";
+import DealChronologyView from "./DealChronologyView";
+import { loadDealPage } from "./load";
 
-// Page d'un deal (demande de Jean du 27/10/2026) : où en est le deal, de
-// façon claire. Le commercial la voit pour ses deals ; le manager pour ceux
-// de ses commerciaux liés et les siens, avec en plus le bilan : bien fait,
-// mal fait, faut-il intervenir.
+// Page d'un deal : sa chronologie (demande de Jean du 28/10/2026), entre la
+// vue d'ensemble des deals et le détail (/deal/<id>/detail). Le commercial la
+// voit pour ses deals ; le manager pour ceux de ses commerciaux liés et les
+// siens.
 export default async function DealPage({ params }: { params: Promise<{ dealId: string }> }) {
   const { dealId } = await params;
-  if (!isUuid(dealId)) notFound();
-  const viewer = await getViewer();
-  if (!viewer) redirect("/login");
-  if (!viewer.organizationId || !(await isDealMemoryEnabledForOrganization(viewer.organizationId))) redirect("/brief");
-
-  const fiches = await getDealPageFiches(dealId, viewer.organizationId);
-  if (!fiches || fiches.length === 0) notFound();
-
-  const isManager = viewer.role === "manager";
-  const allowed = new Set([viewer.userId, ...(isManager ? (await getCommercialsForManager(viewer.userId)).map((c) => c.id) : [])]);
-  if (!fiches.some((f) => allowed.has(f.ownerId))) notFound();
-
-  const rules = await getOrganizationDealRules(viewer.organizationId);
-  const [progress] = buildDealProgressNow(fiches, rules);
-  const latest = progress.lastCall.id;
-  const ownerIds = [...new Set(fiches.map((f) => f.ownerId))];
-  const [panel, objectionLists, ownerNames, callDetails] = await Promise.all([
-    loadDealMemoryPanel(viewer.role, viewer.organizationId, latest),
-    Promise.all(fiches.map((f) => getDealMemoryObjections(f.callId).catch(() => []))),
-    Promise.all(ownerIds.map((id) => getUserName(id).catch(() => null))),
-    getDealCallDetails(fiches.map((f) => f.callId)).catch(() => ({})),
-  ]);
-  const objectionsByCall = Object.fromEntries(fiches.map((f, i) => [f.callId, objectionLists[i]]));
-  const owners = Object.fromEntries(ownerIds.map((id, i) => [id, ownerNames[i] ?? "Commercial"]));
-
-  // Le fil des calls (28/10/2026) : dans l'ordre où ils ont eu lieu.
-  const timeline = buildDealTimeline(fiches, rules, callDetails, objectionsByCall);
-
+  const deal = await loadDealPage(dealId);
+  const now = nowMs();
   return (
-    <DealPageView
-      timeline={timeline}
-      progress={progress}
-      owners={owners}
-      panel={panel}
-      review={isManager ? buildDealReview(fiches, objectionsByCall, progress, rules) : null}
-      backHref={isManager ? "/deals" : "/mes-deals"}
-      backLabel={isManager ? "Deals de l'équipe" : "Mes deals"}
+    <DealChronologyView
+      dealId={dealId}
+      progress={deal.progress}
+      chrono={buildDealChronology(deal.timeline, now)}
+      owners={deal.owners}
+      now={now}
+      inactivityDays={deal.rules.inactivityDays}
+      backHref={deal.backHref}
+      backLabel={deal.backLabel}
     />
   );
 }

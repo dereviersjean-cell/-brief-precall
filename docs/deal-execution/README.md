@@ -128,6 +128,8 @@ Format de réponse proposé à Hubert : « OK pour les recos sauf le n° X ».
 
 9. **28/10/2026** : « Deals de l'équipe » s'ouvre sur une **vue d'ensemble** de tous les deals en cours (tableau, compteurs, filtres par commercial et statut) ; la page d'un deal montre **le fil de ses calls** (grille information × call, puis un bloc par call : objectifs et statut, appris, objections, alertes, convenu pour la suite, jours écoulés). Détail dans CLAUDE.md.
 
+10. **28/10/2026** : entre la vue d'ensemble et le détail, une page **chronologie** du deal (`/deal/<id>`, le détail passe à `/deal/<id>/detail`) : axe du temps avec les informations clés, les calls, les rendez-vous convenus tenus ou non, le silence depuis le dernier call ; puis le déroulé daté. Détail dans CLAUDE.md.
+
 ## Structure cible de la plateforme (Jean, 27/10/2026)
 
 Point de départ avant toute suite technique. Le reste de l'app ne bouge pas (Performance et Équipe sont masqués, pas supprimés).
