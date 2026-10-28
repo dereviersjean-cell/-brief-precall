@@ -66,11 +66,21 @@ export function computeCallInteractionMetrics(
   const turns = transcriptJson.turns;
   if (turns.length < MIN_TURNS_FOR_METRICS) return null;
 
-  const normalizedCommercialName = commercialName?.trim() || null;
+  // Majuscules et accents ignorés (28/10/2026) : « Guislain de La
+  // Rochefoucauld » dans Brief, « Guislain De La Rochefoucauld » dans un
+  // transcript importé — c'est la même personne.
+  const fold = (name: string) =>
+    name
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+  const normalizedCommercialName = commercialName?.trim() ? fold(commercialName) : null;
   const isCommercialSpeaker = (speakerId: string): boolean => {
     if (commercialSpeakerId != null) return speakerId === commercialSpeakerId;
     if (!normalizedCommercialName) return false;
-    return (speakerNamesOverride[speakerId] || speakerId).trim() === normalizedCommercialName;
+    return fold(speakerNamesOverride[speakerId] || speakerId) === normalizedCommercialName;
   };
 
   // Aucun speaker rattaché au commercial : on ne produit RIEN plutôt que des

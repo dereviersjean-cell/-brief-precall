@@ -85,3 +85,27 @@ describe("computeCallInteractionMetrics", () => {
     assert.equal(metrics.patience_ms, null);
   });
 });
+
+describe("format « Nom à 00:07 - 00:18 »", () => {
+  test("une ligne d'en-tête par prise de parole, début et fin exacts", () => {
+    const parsed = parseTranscript(
+      [
+        "Guislain De La Rochefoucauld à 00:07 - 00:18",
+        "On va voir. Donc, quoi de neuf ?",
+        "",
+        "Maxime Dumant à 00:20 - 00:25",
+        "Rien de fou. Écoute, et toi ?",
+        "",
+        "Guislain De La Rochefoucauld à 00:26 - 00:28",
+        "Je ne sais plus.",
+        "Oui, ça doit être mes tâches de rappel.",
+      ].join("\n")
+    );
+    assert.equal(parsed.format, "speaker_range");
+    assert.equal(parsed.timingPrecision, "exact");
+    assert.deepEqual(Object.keys(parsed.speakerNames), ["Guislain De La Rochefoucauld", "Maxime Dumant"]);
+    assert.equal(parsed.transcriptJson?.turns[2].text, "Je ne sais plus. Oui, ça doit être mes tâches de rappel.");
+    assert.equal(parsed.transcriptJson?.turns[1].start_ms, 20000);
+    assert.equal(parsed.transcriptJson?.turns[1].end_ms, 25000);
+  });
+});

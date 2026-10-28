@@ -32,7 +32,7 @@ export type ParsedTranscript = {
   speakerNames: Record<string, string>;
   durationSeconds: number | null;
   timingPrecision: TimingPrecision;
-  format: "vtt" | "srt" | "json" | "timestamped" | "text";
+  format: "vtt" | "srt" | "json" | "timestamped" | "speaker_range" | "text";
 };
 
 type Entry = { speaker: string; startMs: number | null; endMs: number | null; text: string };
@@ -137,6 +137,31 @@ function parseTimestampedText(content: string): Entry[] {
   return entries;
 }
 
+// Format « Nom à 00:07 - 00:18 » sur sa propre ligne, puis le texte de la
+// prise de parole sur les lignes suivantes (exports en français, Claap
+// notamment ; vu le 28/10/2026 sur les calls Euronext de Guislain). Début ET
+// fin sont donnés : timing exact. Sans ce format, le parseur générique
+// coupait au premier « : » de l'horodatage et prenait « Nom à 00 » pour un
+// locuteur (le piège du bug documenté dans CLAUDE.md, « Banc d'essai »).
+const SPEAKER_RANGE = /^\s*(.{1,60}?)\s+(?:à|at)\s+(\d{1,2}:\d{2}(?::\d{2})?)\s*[-–]\s*(\d{1,2}:\d{2}(?::\d{2})?)\s*$/;
+
+function parseSpeakerRange(content: string): Entry[] {
+  const entries: Entry[] = [];
+  for (const rawLine of content.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const header = line.match(SPEAKER_RANGE);
+    if (header) {
+      const [, speaker, rawStart, rawEnd] = header;
+      entries.push({ speaker: speaker.trim(), startMs: parseTimestamp(rawStart), endMs: parseTimestamp(rawEnd), text: "" });
+      continue;
+    }
+    const last = entries[entries.length - 1];
+    if (last) last.text = `${last.text} ${line}`.trim();
+  }
+  return entries.filter((e) => e.text);
+}
+
 // Débit de parole français courant, ~150 mots/minute. Sert UNIQUEMENT à
 // donner une fin au dernier tour d'un transcript qui n'a que des débuts —
 // jamais à fabriquer les durées de tous les tours.
@@ -224,6 +249,10 @@ function detectFormat(content: string, fileName?: string): ParsedTranscript["for
   if (name.endsWith(".vtt") || /^WEBVTT/m.test(content)) return "vtt";
   if (name.endsWith(".srt") || /^\d+\s*\r?\n\d{2}:\d{2}:\d{2},\d{3}\s*-->/m.test(content)) return "srt";
 
+  // Au moins trois en-têtes « Nom à 00:07 - 00:18 » : ce format passe avant
+  // « 00:45 Nom: … », dont il partage les horodatages.
+  if (content.split(/\r?\n/).filter((line) => SPEAKER_RANGE.test(line)).length >= 3) return "speaker_range";
+
   // Au moins trois lignes « 00:45 Nom: … » : un seul horodatage isolé peut
   // être une date ou une heure citée dans le corps du texte, trois lignes
   // structurées de la sorte ne sont pas un hasard.
@@ -251,6 +280,8 @@ export function parseTranscript(content: string, fileName?: string): ParsedTrans
         ? parseCueBased(content)
         : format === "timestamped"
         ? parseTimestampedText(content)
+        : format === "speaker_range"
+        ? parseSpeakerRange(content)
         : parsePlainText(content);
   }
   if (entries.length === 0) {
