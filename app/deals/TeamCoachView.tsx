@@ -44,7 +44,7 @@ function hue(name: string): number {
 
 // La photo de profil (Google ou Microsoft), sinon les initiales sur une
 // teinte propre à la personne.
-function PersonPhoto({ name, url, size }: { name: string; url: string | null; size: 28 | 44 }) {
+export function PersonPhoto({ name, url, size }: { name: string; url: string | null; size: 28 | 44 }) {
   const [broken, setBroken] = useState(false);
   const box = size > 40 ? "h-11 w-11" : "h-7 w-7";
   if (url && !broken) {

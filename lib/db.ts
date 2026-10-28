@@ -2505,6 +2505,24 @@ export async function getProgressFichesForUser(organizationId: string, userId: s
   });
 }
 
+// Le fil d'un deal (lib/deal-timeline.ts, 28/10/2026) : durée, résumé et
+// score de chacun de ses calls. L'appelant a déjà vérifié l'accès au deal.
+export async function getDealCallDetails(
+  callIds: string[]
+): Promise<Record<string, { durationSeconds: number | null; summary: string | null; score: number | null }>> {
+  if (callIds.length === 0) return {};
+  const { data, error } = await supabaseAdmin.from("calls").select("id, duration_seconds, call_analysis(summary, scores)").in("id", callIds);
+  if (error) throw error;
+  type Row = { id: string; duration_seconds: number | null; call_analysis: unknown };
+  return Object.fromEntries(
+    ((data ?? []) as Row[]).map((row) => {
+      const analysis = normalizeCallAnalysis(row.call_analysis as { summary: string | null; scores: { global_score?: number } | null } | null);
+      const score = analysis?.scores?.global_score;
+      return [row.id, { durationSeconds: row.duration_seconds, summary: analysis?.summary ?? null, score: typeof score === "number" ? score : null }];
+    })
+  );
+}
+
 // Vue manager, onglet Équipe (27/10/2026) : l'activité de chaque commercial —
 // ses calls des 7 derniers jours et la date de son dernier call (sur les 120
 // derniers jours ; au-delà, « aucun call récent »).

@@ -1,22 +1,54 @@
 import Link from "next/link";
 import type { DealMemoryPanel } from "@/lib/db";
-import type { DealProgress, ProgressFiche } from "@/lib/deal-progress";
+import type { DealProgress } from "@/lib/deal-progress";
 import type { DealReview } from "@/lib/deal-review";
-import { DEAL_ALERT_RULES } from "@/lib/deal-memory-schema";
 import { DealActionPlan, DealObjectives, DealQualification } from "@/app/feedback/[id]/DealFocus";
 import { VERDICTS, formatAmount, formatDay } from "@/app/mes-deals/deal-ui";
+import type { DealTimeline as Timeline } from "@/lib/deal-timeline";
+import DealTimeline from "./DealTimeline";
 
 const LABEL = "text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500";
 const CARD = "rounded-2xl border border-border bg-white";
-type OwnedFiche = ProgressFiche & { ownerId: string };
-
-const RULE_LABELS = new Map<string, string>(DEAL_ALERT_RULES.map((r) => [r.key, r.label]));
 
 const INTERVENE: Record<DealReview["intervene"], { label: string; tone: string }> = {
   oui: { label: "Oui, intervenir", tone: "bg-rose-50 text-rose-700" },
   surveiller: { label: "À surveiller", tone: "bg-amber-50 text-amber-700" },
   non: { label: "Pas besoin pour l'instant", tone: "bg-emerald-50 text-emerald-700" },
 };
+
+// Trois points visibles, le reste replié : déplié, le bilan d'un deal à
+// quatre calls tenait un écran entier et cachait le fil des calls dessous.
+const VISIBLE = 3;
+
+function Points({ items, mark, tone }: { items: string[]; mark: string; tone: string }) {
+  return (
+    <ul className="space-y-1.5 text-[13.5px] leading-relaxed text-slate-800">
+      {items.map((item) => (
+        <li key={item} className="flex gap-2">
+          <span className={tone}>{mark}</span>
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Folded({ items, mark, tone }: { items: string[]; mark: string; tone: string }) {
+  const rest = items.slice(VISIBLE);
+  return (
+    <>
+      <Points items={items.slice(0, VISIBLE)} mark={mark} tone={tone} />
+      {rest.length > 0 && (
+        <details className="group mt-1.5">
+          <summary className="cursor-pointer list-none text-[12.5px] font-medium text-[color:var(--violet)] hover:underline group-open:hidden">
+            Voir {rest.length === 1 ? "l'autre point" : `les ${rest.length} autres points`}
+          </summary>
+          <Points items={rest} mark={mark} tone={tone} />
+        </details>
+      )}
+    </>
+  );
+}
 
 // Le bilan du manager : bien fait, à corriger, faut-il intervenir.
 function Review({ review }: { review: DealReview }) {
@@ -28,14 +60,7 @@ function Review({ review }: { review: DealReview }) {
         {review.good.length === 0 ? (
           <p className="text-[13px] text-slate-400">Rien à relever pour l&apos;instant.</p>
         ) : (
-          <ul className="space-y-1.5 text-[13.5px] leading-relaxed text-slate-800">
-            {review.good.map((g) => (
-              <li key={g} className="flex gap-2">
-                <span className="text-emerald-600">✓</span>
-                <span>{g}</span>
-              </li>
-            ))}
-          </ul>
+          <Folded items={review.good} mark="✓" tone="text-emerald-600" />
         )}
       </div>
       <div>
@@ -43,14 +68,7 @@ function Review({ review }: { review: DealReview }) {
         {review.bad.length === 0 ? (
           <p className="text-[13px] text-slate-400">Rien à corriger.</p>
         ) : (
-          <ul className="space-y-1.5 text-[13.5px] leading-relaxed text-slate-800">
-            {review.bad.map((b) => (
-              <li key={b} className="flex gap-2">
-                <span className="text-amber-600">△</span>
-                <span>{b}</span>
-              </li>
-            ))}
-          </ul>
+          <Folded items={review.bad} mark="△" tone="text-amber-600" />
         )}
       </div>
       <div>
@@ -63,62 +81,17 @@ function Review({ review }: { review: DealReview }) {
   );
 }
 
-// Les calls du deal dans l'ordre : ce que chacun a appris et levé.
-function Calls({ progress, fiches, owners }: { progress: DealProgress; fiches: OwnedFiche[]; owners: Record<string, string> }) {
-  const byId = new Map(fiches.map((f) => [f.callId, f]));
-  const multipleOwners = Object.keys(owners).length > 1;
-  return (
-    <section className={`${CARD} p-5 sm:p-6`}>
-      <h2 className={`${LABEL} mb-4`}>Les calls du deal</h2>
-      <ol className="space-y-4">
-        {progress.steps.map((step, i) => {
-          const fiche = byId.get(step.callId);
-          const owner = fiche ? owners[fiche.ownerId] : null;
-          return (
-            <li key={step.callId} className="relative border-l-2 border-slate-200 pl-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="text-[13.5px] font-semibold text-slate-900">
-                  R{i + 1}
-                  {step.callAt ? ` · ${formatDay(step.callAt)}` : ""}
-                  {step.title ? <span className="font-normal text-slate-500"> · {step.title}</span> : null}
-                </p>
-                <Link href={`/feedback/${step.callId}`} className="text-[12.5px] font-medium text-[color:var(--violet)] hover:underline">
-                  Ouvrir le call
-                </Link>
-              </div>
-              <p className="mt-0.5 text-[12.5px] text-slate-500">
-                {multipleOwners && owner ? `${owner} · ` : ""}
-                {step.known}/{progress.total} informations clés connues
-                {step.learned.length > 0 ? ` · appris : ${step.learned.map((l) => l.charAt(0).toLowerCase() + l.slice(1)).join(", ")}` : ""}
-              </p>
-              {fiche && fiche.alerts.length > 0 && (
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {fiche.alerts.map((a) => (
-                    <span key={a.rule} className="rounded-full bg-amber-50 px-2 py-0.5 text-[11.5px] font-medium text-amber-800">
-                      {RULE_LABELS.get(a.rule) ?? a.rule}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </li>
-          );
-        })}
-      </ol>
-    </section>
-  );
-}
-
 export default function DealPageView({
+  timeline,
   progress,
-  fiches,
   owners,
   panel,
   review,
   backHref,
   backLabel,
 }: {
+  timeline: Timeline;
   progress: DealProgress;
-  fiches: OwnedFiche[];
   owners: Record<string, string>;
   panel: DealMemoryPanel | null;
   review: DealReview | null;
@@ -170,14 +143,22 @@ export default function DealPageView({
 
       {review && <Review review={review} />}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-        <div className="min-w-0 space-y-6">
-          {panel?.initial && <DealObjectives callId={progress.lastCall.id} panel={panel} />}
-          {panel?.initial && <DealActionPlan callId={progress.lastCall.id} panel={panel} />}
-          <Calls progress={progress} fiches={fiches} owners={owners} />
-        </div>
-        <div className="min-w-0 space-y-6">{panel?.initial && <DealQualification callId={progress.lastCall.id} panel={panel} />}</div>
-      </div>
+      <DealTimeline timeline={timeline} owners={owners} />
+
+      {panel?.initial && (
+        <section className="space-y-4">
+          <h2 className="text-[18px] font-semibold tracking-[-0.02em] text-slate-900">Et maintenant</h2>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+            <div className="min-w-0 space-y-6">
+              <DealObjectives callId={progress.lastCall.id} panel={panel} />
+              <DealActionPlan callId={progress.lastCall.id} panel={panel} />
+            </div>
+            <div className="min-w-0 space-y-6">
+              <DealQualification callId={progress.lastCall.id} panel={panel} />
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

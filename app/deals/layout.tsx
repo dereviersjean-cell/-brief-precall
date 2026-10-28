@@ -24,7 +24,7 @@ export default function DealsLayout({ children }: { children: ReactNode }) {
               <PageHeader
                 eyebrow="Manager · test"
                 title="Deals de l'équipe"
-                subtitle="Où votre intervention compte, et quoi dire à vos commerciaux."
+                subtitle="Tous les deals en cours de l'équipe, et le fil des calls de chacun."
               />
               <div className="mt-8">{children}</div>
             </div>

@@ -7,6 +7,7 @@ import { alertLabel, formatDays, type BoardDeal, type StageColumn } from "@/lib/
 import TeamCoachView, { type Reviewable, type TeamPerson } from "./TeamCoachView";
 import DealRulesForm from "./DealRulesForm";
 import HubspotView from "./HubspotView";
+import DealsOverview from "./DealsOverview";
 import type { AlertImpact } from "@/lib/deal-impact";
 
 // L'effet des alertes sur 90 jours (lib/deal-impact.ts) : après un « Vu »,
@@ -269,11 +270,11 @@ export default function DealsBoardClient({
   impact: AlertImpact | null;
   impactWindowDays: number;
   people: Record<string, string>;
-  initialTab: "file" | "equipe" | "regles" | "hubspot";
+  initialTab: "ensemble" | "file" | "equipe" | "regles" | "hubspot";
   initialStage: string | null;
   initialCommercial?: string | null;
 }) {
-  const [tab, setTab] = useState(initialTab === "file" && !SHOW_FILE_TAB ? "equipe" : initialTab);
+  const [tab, setTab] = useState(initialTab === "file" && !SHOW_FILE_TAB ? "ensemble" : initialTab);
   const [stage, setStage] = useState<string | null>(initialStage);
 
   const inStage = (d: BoardDeal) => !stage || (d.hubspot?.stage ?? "hors-hubspot") === stage;
@@ -290,6 +291,7 @@ export default function DealsBoardClient({
       <div className="inline-flex items-center rounded-full bg-slate-100 p-1">
         {(
           [
+            ["ensemble", "Vue d'ensemble"],
             ["equipe", "Équipe"],
             ["file", "Où intervenir"],
             ["regles", "Règles"],
@@ -330,7 +332,9 @@ export default function DealsBoardClient({
           <Folded title="Vus ou remis à plus tard" deals={reviewed} people={people} />
         </>
       ) : (
-        tab === "hubspot" ? (
+        tab === "ensemble" ? (
+          <DealsOverview people={teamPeople} />
+        ) : tab === "hubspot" ? (
           <HubspotView />
         ) : tab === "regles" ? (
           <DealRulesForm stageLabels={Object.fromEntries(stages.filter((st) => st.index).map((st) => [st.index as number, st.label]))} />

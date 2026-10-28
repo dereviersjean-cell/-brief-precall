@@ -3,6 +3,7 @@ import { getViewer } from "@/lib/session-user";
 import { isUuid } from "@/lib/uuid";
 import {
   getCommercialsForManager,
+  getDealCallDetails,
   getDealMemoryObjections,
   getDealPageFiches,
   getOrganizationDealRules,
@@ -12,6 +13,7 @@ import {
 } from "@/lib/db";
 import { buildDealProgressNow } from "@/lib/deal-progress";
 import { buildDealReview } from "@/lib/deal-review";
+import { buildDealTimeline } from "@/lib/deal-timeline";
 import DealPageView from "./DealPageView";
 
 // Page d'un deal (demande de Jean du 27/10/2026) : où en est le deal, de
@@ -36,18 +38,22 @@ export default async function DealPage({ params }: { params: Promise<{ dealId: s
   const [progress] = buildDealProgressNow(fiches, rules);
   const latest = progress.lastCall.id;
   const ownerIds = [...new Set(fiches.map((f) => f.ownerId))];
-  const [panel, objectionLists, ownerNames] = await Promise.all([
+  const [panel, objectionLists, ownerNames, callDetails] = await Promise.all([
     loadDealMemoryPanel(viewer.role, viewer.organizationId, latest),
     Promise.all(fiches.map((f) => getDealMemoryObjections(f.callId).catch(() => []))),
     Promise.all(ownerIds.map((id) => getUserName(id).catch(() => null))),
+    getDealCallDetails(fiches.map((f) => f.callId)).catch(() => ({})),
   ]);
   const objectionsByCall = Object.fromEntries(fiches.map((f, i) => [f.callId, objectionLists[i]]));
   const owners = Object.fromEntries(ownerIds.map((id, i) => [id, ownerNames[i] ?? "Commercial"]));
 
+  // Le fil des calls (28/10/2026) : dans l'ordre où ils ont eu lieu.
+  const timeline = buildDealTimeline(fiches, rules, callDetails, objectionsByCall);
+
   return (
     <DealPageView
+      timeline={timeline}
       progress={progress}
-      fiches={fiches}
       owners={owners}
       panel={panel}
       review={isManager ? buildDealReview(fiches, objectionsByCall, progress, rules) : null}
