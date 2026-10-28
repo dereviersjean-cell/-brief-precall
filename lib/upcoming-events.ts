@@ -57,6 +57,16 @@ export type UpcomingEvent = CalendarEvent & {
   dealName?: string;
 };
 
+// Un deal dont le nom commence par le même mot distinctif (« peatch » pour
+// « peatch ai »), seulement s'il est le seul : même règle que le brief
+// (findDealByNamePrefix, 28/10/2026).
+function nearName<T extends { nameKey: string | null }>(deals: T[], nameKey: string): T | undefined {
+  const word = nameKey.split(" ")[0];
+  if (!word || word.length < 4) return undefined;
+  const matches = deals.filter((d) => d.nameKey === word || d.nameKey?.startsWith(`${word} `));
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
 // Chaque rendez-vous reçoit son rang : le deal du prospect est cherché par le
 // domaine de l'invité ou l'entreprise saisie (mêmes repères que le
 // rattachement d'un call), et son nombre de calls donne le rang du suivant.
@@ -75,7 +85,8 @@ async function withDealRanks(userId: string, events: UpcomingEvent[]): Promise<U
     if (!identity) return event;
     const deal =
       (identity.domain ? index.deals.find((d) => d.domain === identity.domain) : undefined) ??
-      (identity.nameKey ? index.deals.find((d) => d.nameKey === identity.nameKey) : undefined);
+      (identity.nameKey ? index.deals.find((d) => d.nameKey === identity.nameKey) : undefined) ??
+      (identity.nameKey ? nearName(index.deals, identity.nameKey) : undefined);
     const calls = deal ? index.calls[deal.id] ?? 0 : 0;
     return calls > 0 ? { ...event, dealRank: calls + 1, dealName: deal!.name } : { ...event, dealRank: 1 };
   });

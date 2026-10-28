@@ -12,6 +12,7 @@ import {
   saveCallDealMemory,
   setCallNextQuestions,
   setDealHubspot,
+  teachDealDomain,
   type CallWithAnalysis,
 } from "./db";
 import { generateDealMemory } from "./deal-memory";
@@ -19,7 +20,7 @@ import { dealIdentityFor } from "./deal-grouping";
 import type { DealHistoryEntry, DealMemoryContent, HubspotDealSnapshot, NextQuestions, StoredDealMemory } from "./deal-memory-schema";
 import { dealObjectives, mergeKnown, type ItemsByField } from "./call-objectives";
 import { tailorObjectiveQuestions } from "./objective-questions";
-import { findHubSpotDealForProspect, getHubSpotDealSnapshot } from "./crm/hubspot-deals";
+import { findHubSpotDealForProspect, getHubSpotDealDomains, getHubSpotDealSnapshot } from "./crm/hubspot-deals";
 import { reportWarning } from "./monitoring";
 
 // Étape 3 : le deal HubSpot du prospect, lu avec la connexion HubSpot du
@@ -42,6 +43,20 @@ async function findHubspotDeal(
   } catch (err) {
     reportWarning("deal-memory.hubspot", err, { callId: call.id });
     return null;
+  }
+}
+
+// Un deal retrouvé par HubSpot mais sans domaine (calls sans email de contact,
+// cf. Peatch AI) : le domaine de l'entreprise ou des contacts HubSpot du deal
+// lui est appris, pour que le brief du rendez-vous suivant le retrouve par
+// l'email du contact (28/10/2026). Un échec ne touche pas la fiche.
+async function learnDomainFromHubspot(organizationId: string, dealId: string, hubspotDealId: string, call: CallWithAnalysis, ownDomains: string[]) {
+  try {
+    const hubspotUser = await getHubspotUserForOrganization(organizationId, [call.user_id]);
+    if (!hubspotUser) return;
+    await teachDealDomain(organizationId, dealId, await getHubSpotDealDomains(hubspotUser, hubspotDealId), ownDomains);
+  } catch (err) {
+    reportWarning("deal-memory.learn-domain", err, { callId: call.id });
   }
 }
 
@@ -89,6 +104,7 @@ export async function runDealMemoryForCall(call: CallWithAnalysis, organizationI
       (await findDealByHubspotId(organizationId, hubspot.id)) ??
       (knownIdentity ? await findOrCreateDeal(organizationId, knownIdentity) : await createDealFromHubspot(organizationId, hubspot));
     await setDealHubspot(dealId, hubspot);
+    await learnDomainFromHubspot(organizationId, dealId, hubspot.id, call, ownDomains);
   } else if (knownIdentity) {
     dealId = await findOrCreateDeal(organizationId, knownIdentity);
   }

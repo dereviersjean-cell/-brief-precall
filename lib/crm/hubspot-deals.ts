@@ -1,6 +1,7 @@
 import { createHubSpotNoteOnDeal, resolveContactId, withHubspotAuth } from "./hubspot";
 import type { HubspotDealSnapshot } from "../deal-memory-schema";
 import { computePipelineStats, stageStays, type PipelineStageDef, type PipelineStats } from "../deal-pipeline-stats";
+import { companyDomainFromEmail } from "../company-domain";
 
 export type { HubspotDealSnapshot };
 
@@ -86,16 +87,32 @@ async function latestOpenDeal(accessToken: string, dealIds: string[], pipelines:
   return open[0]?.id ?? null;
 }
 
+// Mots trop courants pour désigner une entreprise à eux seuls.
+const GENERIC_NAME_WORDS = new Set(["groupe", "group", "societe", "cabinet", "agence", "atelier", "studio", "france", "conseil", "consulting", "services", "the", "les"]);
+
 async function dealIdsNamed(accessToken: string, name: string): Promise<string[]> {
-  const data = await getJson<{ results?: { id: string }[] }>(accessToken, "/crm/v3/objects/deals/search", {
-    method: "POST",
-    body: JSON.stringify({
-      filterGroups: [{ filters: [{ propertyName: "dealname", operator: "EQ", value: name }] }],
-      properties: ["dealname"],
-      limit: 10,
-    }),
-  });
-  return (data?.results ?? []).map((d) => d.id);
+  const search = async (operator: "EQ" | "CONTAINS_TOKEN", value: string) =>
+    (
+      (
+        await getJson<{ results?: { id: string }[] }>(accessToken, "/crm/v3/objects/deals/search", {
+          method: "POST",
+          body: JSON.stringify({ filterGroups: [{ filters: [{ propertyName: "dealname", operator, value }] }], properties: ["dealname"], limit: 10 }),
+        })
+      )?.results ?? []
+    ).map((d) => d.id);
+  const exact = await search("EQ", name);
+  if (exact.length > 0) return exact;
+  // Un nom approché (« Peatch » pour le deal « Peatch AI ») : par son premier
+  // mot, s'il est distinctif, et seulement si un seul deal le porte (28/10/2026).
+  const word = name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .find(Boolean);
+  if (!word || word.length < 4 || GENERIC_NAME_WORDS.has(word)) return [];
+  const loose = await search("CONTAINS_TOKEN", word);
+  return loose.length === 1 ? loose : [];
 }
 
 // Le deal HubSpot d'un prospect : celui du contact d'abord (l'email du call),
@@ -125,6 +142,39 @@ export async function findHubSpotDealForProspect(
     }
     if (prospect.companyName) return latestOpenDeal(accessToken, await dealIdsNamed(accessToken, prospect.companyName), pipelines);
     return null;
+  });
+}
+
+// Les domaines du prospect d'un deal HubSpot (28/10/2026) : celui des
+// entreprises associées, puis ceux des emails des contacts associés (sans les
+// messageries grand public). Sert à apprendre au deal Brief son domaine, pour
+// qu'un rendez-vous suivant le retrouve par l'email du contact.
+export async function getHubSpotDealDomains(userId: string, dealId: string): Promise<string[]> {
+  return withHubspotAuth(userId, async (accessToken) => {
+    const assoc = async (to: "companies" | "contacts") =>
+      ((await getJson<{ results?: { toObjectId: string | number }[] }>(accessToken, `/crm/v4/objects/deals/${dealId}/associations/${to}`))?.results ?? []).map(
+        (r) => String(r.toObjectId)
+      );
+    const read = async (type: "companies" | "contacts", ids: string[], property: string) =>
+      ids.length === 0
+        ? []
+        : (
+            (
+              await getJson<{ results?: { properties: Record<string, string | null> }[] }>(accessToken, `/crm/v3/objects/${type}/batch/read`, {
+                method: "POST",
+                body: JSON.stringify({ properties: [property], inputs: ids.slice(0, 20).map((id) => ({ id })) }),
+              })
+            )?.results ?? []
+          )
+            .map((r) => r.properties[property])
+            .filter((v): v is string => !!v);
+    const [companyIds, contactIds] = await Promise.all([assoc("companies"), assoc("contacts")]);
+    const [companyDomains, emails] = await Promise.all([read("companies", companyIds, "domain"), read("contacts", contactIds, "email")]);
+    const domains = [
+      ...companyDomains.map((d) => d.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0]),
+      ...emails.map((e) => companyDomainFromEmail(e)).filter((d): d is string => !!d),
+    ];
+    return [...new Set(domains.filter(Boolean))];
   });
 }
 

@@ -1973,6 +1973,24 @@ export async function findDealByIdentity(
   return null;
 }
 
+// Un deal dont le nom commence par le même mot distinctif (« peatch » pour
+// « peatch ai »), seulement s'il est le seul (28/10/2026) : le brief d'un
+// rendez-vous dont l'entreprise n'est connue que par son domaine. Jamais pour
+// rattacher un call : une fiche mal rattachée fausserait le deal.
+export async function findDealByNamePrefix(organizationId: string, nameKey: string): Promise<string | null> {
+  const word = nameKey.split(" ")[0];
+  if (!word || word.length < 4) return null;
+  const { data, error } = await supabaseAdmin
+    .from("deals")
+    .select("id, name_key")
+    .eq("organization_id", organizationId)
+    .or(`name_key.eq.${word},name_key.like.${word} %`)
+    .limit(2);
+  if (error) throw error;
+  const rows = (data ?? []) as { id: string }[];
+  return rows.length === 1 ? rows[0].id : null;
+}
+
 // Retrouve le deal d'un prospect, ou le crée. Un deal trouvé par un seul des
 // deux repères apprend l'autre : le call suivant le retrouvera par l'un ou
 // l'autre. Un deal qui ne portait que son domaine pour nom prend celui de
@@ -2038,6 +2056,31 @@ export async function setDealHubspot(dealId: string, snapshot: HubspotDealSnapsh
     .update({ hubspot_deal_id: snapshot.id, hubspot_snapshot: snapshot, hubspot_synced_at: new Date().toISOString() })
     .eq("id", dealId);
   if (error) throw error;
+}
+
+// Apprend son domaine à un deal qui n'en a pas (28/10/2026) : le premier des
+// domaines proposés qui n'est ni celui de l'équipe ni déjà celui d'un autre
+// deal de l'organisation (un domaine doit désigner un seul deal). Rend le
+// domaine retenu, ou null.
+export async function teachDealDomain(organizationId: string, dealId: string, domains: string[], ownDomains: string[]): Promise<string | null> {
+  const { data: deal, error } = await supabaseAdmin.from("deals").select("domain").eq("id", dealId).eq("organization_id", organizationId).maybeSingle();
+  if (error) throw error;
+  if (!deal || (deal as { domain: string | null }).domain) return null;
+  for (const domain of domains) {
+    if (ownDomains.includes(domain)) continue;
+    const { data: taken, error: takenError } = await supabaseAdmin
+      .from("deals")
+      .select("id")
+      .eq("organization_id", organizationId)
+      .eq("domain", domain)
+      .limit(1);
+    if (takenError) throw takenError;
+    if ((taken ?? []).length > 0) continue;
+    const { error: updateError } = await supabaseAdmin.from("deals").update({ domain }).eq("id", dealId).is("domain", null);
+    if (updateError) throw updateError;
+    return domain;
+  }
+  return null;
 }
 
 export async function getDealHubspotId(dealId: string): Promise<string | null> {
