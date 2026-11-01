@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { Webhook } from "svix";
 import { createAsyncTranscript, getBotInfo, getTranscriptContent, transcriptToText, buildTranscriptJson, resolveSpeakerNames, countSpokenWords, MIN_SPOKEN_WORDS_FOR_ANALYSIS } from "@/lib/recall";
-import { createCall, getUserProfile, getUserName, getUserEmail, saveCallAnalysis, updateCallProspectIdentity, updateCallAnalysisKeyPoints, updateCallFollowUp, getContact, createContact, updateContact, generateTasksFromTemplates, getPlaybookSnapshotForUser, getUserOrganizationId, getMeetingStageConfigForOrganization, saveCallAnalytics, isDealMemoryEnabledForOrganization, type CallData } from "@/lib/db";
+import { createCall, getUserProfile, getUserName, getUserEmail, saveCallAnalysis, updateCallProspectIdentity, updateCallAnalysisKeyPoints, updateCallFollowUp, getContact, createContact, updateContact, generateTasksFromTemplates, getPlaybookSnapshotForUser, getUserOrganizationId, getMeetingStageConfigForOrganization, saveCallAnalytics, isDealMemoryEnabledForOrganization, getRecallCallState, type CallData } from "@/lib/db";
 import { inngest } from "@/lib/inngest";
 import { stageFromDealRank } from "@/lib/deal-stage";
 import { computeCallInteractionMetrics } from "@/lib/call-analytics";
@@ -16,6 +16,14 @@ import { generateKeyPoints } from "@/lib/key-points";
 import { dispatchCallAnalysis } from "@/lib/notifications-dispatcher";
 import { formatContactDisplayName } from "@/lib/format";
 import Anthropic from "@anthropic-ai/sdk";
+
+// L'analyse tourne en arrière-plan (after) jusqu'à 5 minutes : un call d'une
+// heure enchaîne analyse, objections, points clés et email de suivi.
+export const maxDuration = 300;
+
+// Un call créé il y a moins longtemps que ça, et pas encore analysé, est
+// considéré comme en cours d'analyse : un renvoi ne le relance pas.
+const IN_PROGRESS_MS = 15 * 60 * 1000;
 
 type StatusChange = { code: string; created_at: string };
 
@@ -131,366 +139,380 @@ export async function POST(request: NextRequest) {
       console.log("[bot-webhook] transcript.done — transcriptId:", transcriptId, "botId:", botId);
       console.log("[bot-webhook] metadata — userId:", userId, "calendarEventId:", calendarEventId, "contactEmail:", contactEmail);
 
+      // Une seule analyse par call (01/11/2026). Recall envoie ses webhooks
+      // par Svix, qui n'attend qu'une quinzaine de secondes : quand l'analyse
+      // tournait avant la réponse (plusieurs minutes), chaque envoi passait
+      // pour raté et Recall le renvoyait (5 s, 5 min, 30 min, 2 h, 5 h, 10 h,
+      // 10 h). Chaque renvoi relançait toute l'analyse — vu le 31/10 sur un
+      // call de Hubert analysé de nouveau 27 h après, 0,91 $ pour rien.
+      // Désormais : réponse immédiate, analyse en arrière-plan, et un renvoi
+      // d'un call déjà analysé (ou en cours) est ignoré.
+      const existing = botId ? await getRecallCallState(botId).catch(() => null) : null;
+      const inProgress = existing && !existing.analyzed && Date.now() - Date.parse(existing.createdAt) < IN_PROGRESS_MS;
       if (!transcriptId || !userId) {
         console.log("[bot-webhook] missing transcriptId or userId, skipping");
+      } else if (existing?.analyzed || inProgress) {
+        console.log("[bot-webhook] renvoi ignoré — call", existing?.id, existing?.analyzed ? "déjà analysé" : "en cours d'analyse");
       } else {
-        try {
-          // Step 1 — fetch transcript content
-          const content = await getTranscriptContent(transcriptId);
-          const transcriptText = transcriptToText(content);
-          console.log("[bot-webhook] transcript text length:", transcriptText.length, "| preview:", transcriptText.slice(0, 200));
-
-          // Step 1b — fetch bot info for timing
-          let timing: { started_at: string | null; ended_at: string | null; duration_seconds: number | null; participant_count: number | null } =
-            { started_at: null, ended_at: null, duration_seconds: null, participant_count: null };
-          if (botId) {
-            try {
-              const botInfo = await getBotInfo(botId);
-              timing = await extractCallTiming(botInfo);
-              console.log("[bot-webhook] timing — started_at:", timing.started_at, "ended_at:", timing.ended_at, "duration_seconds:", timing.duration_seconds, "participant_count:", timing.participant_count);
-            } catch (err) {
-              reportWarning("bot-webhook.getBotInfo", err, { botId });
-            }
-          }
-
-          // Step 1c — normalize transcript_json + resolve an initial
-          // speaker_names_override (sous-étape A). Non-blocking: neither must
-          // ever prevent the call row itself from being saved — transcript_json
-          // stays null and speaker_names_override stays {} on failure, same as
-          // for any historical call ingested before this existed.
-          let transcriptJson: ReturnType<typeof buildTranscriptJson> | null = null;
-          let speakerNamesOverride: Record<string, string> = {};
-          // Hoisté hors du try : réutilisé à l'étape 2b pour identifier le
-          // commercial parmi les speakers (métriques d'interaction).
-          let commercialName: string | null = null;
+        after(async () => {
           try {
-            transcriptJson = buildTranscriptJson(content);
-            let commercialEmail: string | null;
-            [commercialName, commercialEmail] = await Promise.all([getUserName(userId), getUserEmail(userId)]);
-            speakerNamesOverride = resolveSpeakerNames(content, {
-              commercialName,
-              commercialEmail,
-              contactEmail,
-              contactCompanyName: companyName,
-            });
-            console.log(
-              "[bot-webhook] transcript_json turns:",
-              transcriptJson.turns.length,
-              "| speaker_names_override:",
-              JSON.stringify(speakerNamesOverride)
-            );
-          } catch (err) {
-            console.error(
-              "[bot-webhook] buildTranscriptJson/resolveSpeakerNames failed (non-blocking):",
-              err instanceof Error ? err.message : String(err)
-            );
-          }
+            // Step 1 — fetch transcript content
+            const content = await getTranscriptContent(transcriptId);
+            const transcriptText = transcriptToText(content);
+            console.log("[bot-webhook] transcript text length:", transcriptText.length, "| preview:", transcriptText.slice(0, 200));
 
-          // Step 1d — detect the R1/R2/R3 stage from the meeting title and
-          // the org's configured patterns. Non-blocking by construction:
-          // getMeetingStageConfigForOrganization falls back to defaults on
-          // any error, and no org / no title / no match all yield null.
-          const organizationId = await getUserOrganizationId(userId).catch(() => null);
-          const stageConfig = organizationId ? await getMeetingStageConfigForOrganization(organizationId) : null;
-          // Le vrai rang du call dans le deal du prospect prime sur le titre
-          // (lib/deal-stage.ts, organisations en test) ; le titre reste le
-          // repli.
-          const rankStage = await stageFromDealRank(userId, { contactEmail, companyName }, timing.started_at ?? new Date().toISOString()).catch((err) => {
-            reportWarning("bot-webhook.stageFromDealRank", err, { botId });
-            return null;
-          });
-          const meetingStage = rankStage ?? (stageConfig ? detectMeetingStage(meetingTitle, stageConfig) : null);
-          console.log("[bot-webhook] meetingTitle:", meetingTitle, "| detected stage:", meetingStage);
-
-          // Step 2 — save call
-          const callData = {
-            user_id: userId,
-            calendar_event_id: calendarEventId,
-            contact_email: contactEmail,
-            company_name: companyName,
-            meeting_title: meetingTitle,
-            meeting_stage: meetingStage,
-            transcript: transcriptText,
-            status: "done",
-            duration_seconds: timing.duration_seconds,
-            started_at: timing.started_at,
-            ended_at: timing.ended_at,
-            participant_count: timing.participant_count,
-            recall_bot_id: botId ?? null,
-            recording_id: recordingId ?? null,
-            transcript_id: transcriptId,
-            transcript_json: transcriptJson,
-            speaker_names_override: speakerNamesOverride,
-          };
-          let call: { id: string };
-          try {
-            call = await createCall(callData);
-          } catch (createErr) {
-            // Pattern bug #14 : si la migration 001 (meeting_title/
-            // meeting_stage) n'est pas encore passée en prod, ne jamais
-            // perdre l'ingestion du call — on réessaie sans les colonnes.
-            console.error(
-              "[bot-webhook] createCall failed, retrying without meeting stage fields (migration 001 pas encore appliquée ?):",
-              createErr instanceof Error ? createErr.message : String(createErr)
-            );
-            const legacyCallData: CallData = { ...callData };
-            delete legacyCallData.meeting_title;
-            delete legacyCallData.meeting_stage;
-            call = await createCall(legacyCallData);
-          }
-          console.log("[bot-webhook] call created:", call.id);
-
-          // Step 2b — métriques d'interaction (onglet Performance >
-          // Analytics). Précalculées ici plutôt qu'à l'affichage : l'onglet
-          // agrège tous les calls de l'organisation, relire chaque
-          // transcript_json à chaque rendu serait intenable. Non bloquant, et
-          // silencieux quand le transcript est trop pauvre (< 5 tours) — un
-          // call sans ligne call_analytics est simplement absent des
-          // moyennes, jamais compté comme un zéro.
-          if (transcriptJson) {
-            try {
-              const metrics = computeCallInteractionMetrics(transcriptJson, speakerNamesOverride, commercialName);
-              if (metrics) {
-                await saveCallAnalytics({
-                  callId: call.id,
-                  userId,
-                  organizationId,
-                  occurredAt: timing.started_at ?? new Date().toISOString(),
-                  ...metrics,
-                });
-                console.log("[bot-webhook] call_analytics saved, talk_ratio_pct:", metrics.talk_ratio_pct);
-              }
-            } catch (analyticsErr) {
-              reportWarning("bot-webhook.saveCallAnalytics", analyticsErr, { callId: call.id });
-            }
-          }
-
-          // Pas de parole, pas d'analyse (voir countSpokenWords) : le call est
-          // enregistré avec sa vidéo, mais ni analyse, ni email de suivi, ni
-          // notification — et donc aucun 0/5 dans les moyennes.
-          const spokenWords = countSpokenWords(content);
-          const hasSpeech = spokenWords >= MIN_SPOKEN_WORDS_FOR_ANALYSIS;
-
-          // Step 3 — analyze call with Claude (non-blocking, result shared with step 4)
-          let savedAnalysis: Awaited<ReturnType<typeof analyzeCall>> | null = null;
-          let keyPoints: string | null = null;
-          if (!hasSpeech) {
-            console.log("[bot-webhook] no speech in transcript (", spokenWords, "words ), skipping analysis and follow-up email");
-          } else {
-            try {
-              const profile = await getUserProfile(userId);
-              const meetingDate = new Date().toISOString().split("T")[0] ?? "";
-              // Snapshot the org's playbook now (sous-étape B) — falls back to
-              // the hardcoded 4-dimension default when the user has no org or
-              // no playbook yet, so this always resolves to something.
-              const playbookSnapshot = await getPlaybookSnapshotForUser(userId);
-              savedAnalysis = await analyzeCall(
-                transcriptText,
-                {
-                  clientName: profile?.company_name ?? "",
-                  clientWebsite: "",
-                  prospectName: companyName ?? "",
-                  prospectWebsite: contactEmail ? contactEmail.split("@")[1] ?? "" : "",
-                  meetingDate,
-                  meetingStage:
-                    meetingStage && stageConfig
-                      ? { label: MEETING_STAGE_LABELS[meetingStage], guidance: stageConfig[meetingStage].guidance }
-                      : null,
-                },
-                playbookSnapshot
-              );
-              const { id: analysisId } = await saveCallAnalysis(call.id, savedAnalysis, playbookSnapshot);
-              console.log("[bot-webhook] call analysis saved, global_score:", savedAnalysis.scores.global_score);
-
-              // Qui était en face (migration 015). Le résumé le dit en toutes
-              // lettres, mais en prose : un petit appel Haiku le met sous une
-              // forme qu'une liste peut afficher. Après l'enregistrement de
-              // l'analyse et sans await bloquant sa suite : c'est un confort
-              // d'affichage, son échec ne doit rien emporter.
+            // Step 1b — fetch bot info for timing
+            let timing: { started_at: string | null; ended_at: string | null; duration_seconds: number | null; participant_count: number | null } =
+              { started_at: null, ended_at: null, duration_seconds: null, participant_count: null };
+            if (botId) {
               try {
-                const identity = await extractCallIdentity({
-                  summary: savedAnalysis.summary,
-                  keyPoints: null,
-                  speakerNames: Object.values(speakerNamesOverride ?? {}),
-                  commercialCompany: profile?.company_name ?? null,
-                });
-                if (identity) {
-                  await updateCallProspectIdentity(call.id, identity);
-                  console.log("[bot-webhook] prospect identity:", identity.prospectCompany, identity.prospectContacts);
-                }
-              } catch (identityErr) {
-                reportError("bot-webhook.extractCallIdentity", identityErr, { callId: call.id });
+                const botInfo = await getBotInfo(botId);
+                timing = await extractCallTiming(botInfo);
+                console.log("[bot-webhook] timing — started_at:", timing.started_at, "ended_at:", timing.ended_at, "duration_seconds:", timing.duration_seconds, "participant_count:", timing.participant_count);
+              } catch (err) {
+                reportWarning("bot-webhook.getBotInfo", err, { botId });
               }
+            }
 
-              if (savedAnalysis.objections.length > 0) {
-                if (organizationId) {
-                  await indexCallObjections(organizationId, call.id, contactEmail, savedAnalysis.objections, transcriptText, transcriptJson?.turns ?? null).catch((err) =>
-                      reportError("bot-webhook.indexCallObjections", err, { callId: call.id })
+            // Step 1c — normalize transcript_json + resolve an initial
+            // speaker_names_override (sous-étape A). Non-blocking: neither must
+            // ever prevent the call row itself from being saved — transcript_json
+            // stays null and speaker_names_override stays {} on failure, same as
+            // for any historical call ingested before this existed.
+            let transcriptJson: ReturnType<typeof buildTranscriptJson> | null = null;
+            let speakerNamesOverride: Record<string, string> = {};
+            // Hoisté hors du try : réutilisé à l'étape 2b pour identifier le
+            // commercial parmi les speakers (métriques d'interaction).
+            let commercialName: string | null = null;
+            try {
+              transcriptJson = buildTranscriptJson(content);
+              let commercialEmail: string | null;
+              [commercialName, commercialEmail] = await Promise.all([getUserName(userId), getUserEmail(userId)]);
+              speakerNamesOverride = resolveSpeakerNames(content, {
+                commercialName,
+                commercialEmail,
+                contactEmail,
+                contactCompanyName: companyName,
+              });
+              console.log(
+                "[bot-webhook] transcript_json turns:",
+                transcriptJson.turns.length,
+                "| speaker_names_override:",
+                JSON.stringify(speakerNamesOverride)
+              );
+            } catch (err) {
+              console.error(
+                "[bot-webhook] buildTranscriptJson/resolveSpeakerNames failed (non-blocking):",
+                err instanceof Error ? err.message : String(err)
+              );
+            }
+
+            // Step 1d — detect the R1/R2/R3 stage from the meeting title and
+            // the org's configured patterns. Non-blocking by construction:
+            // getMeetingStageConfigForOrganization falls back to defaults on
+            // any error, and no org / no title / no match all yield null.
+            const organizationId = await getUserOrganizationId(userId).catch(() => null);
+            const stageConfig = organizationId ? await getMeetingStageConfigForOrganization(organizationId) : null;
+            // Le vrai rang du call dans le deal du prospect prime sur le titre
+            // (lib/deal-stage.ts, organisations en test) ; le titre reste le
+            // repli.
+            const rankStage = await stageFromDealRank(userId, { contactEmail, companyName }, timing.started_at ?? new Date().toISOString()).catch((err) => {
+              reportWarning("bot-webhook.stageFromDealRank", err, { botId });
+              return null;
+            });
+            const meetingStage = rankStage ?? (stageConfig ? detectMeetingStage(meetingTitle, stageConfig) : null);
+            console.log("[bot-webhook] meetingTitle:", meetingTitle, "| detected stage:", meetingStage);
+
+            // Step 2 — save call
+            const callData = {
+              user_id: userId,
+              calendar_event_id: calendarEventId,
+              contact_email: contactEmail,
+              company_name: companyName,
+              meeting_title: meetingTitle,
+              meeting_stage: meetingStage,
+              transcript: transcriptText,
+              status: "done",
+              duration_seconds: timing.duration_seconds,
+              started_at: timing.started_at,
+              ended_at: timing.ended_at,
+              participant_count: timing.participant_count,
+              recall_bot_id: botId ?? null,
+              recording_id: recordingId ?? null,
+              transcript_id: transcriptId,
+              transcript_json: transcriptJson,
+              speaker_names_override: speakerNamesOverride,
+            };
+            let call: { id: string };
+            try {
+              call = await createCall(callData);
+            } catch (createErr) {
+              // Pattern bug #14 : si la migration 001 (meeting_title/
+              // meeting_stage) n'est pas encore passée en prod, ne jamais
+              // perdre l'ingestion du call — on réessaie sans les colonnes.
+              console.error(
+                "[bot-webhook] createCall failed, retrying without meeting stage fields (migration 001 pas encore appliquée ?):",
+                createErr instanceof Error ? createErr.message : String(createErr)
+              );
+              const legacyCallData: CallData = { ...callData };
+              delete legacyCallData.meeting_title;
+              delete legacyCallData.meeting_stage;
+              call = await createCall(legacyCallData);
+            }
+            console.log("[bot-webhook] call created:", call.id);
+
+            // Step 2b — métriques d'interaction (onglet Performance >
+            // Analytics). Précalculées ici plutôt qu'à l'affichage : l'onglet
+            // agrège tous les calls de l'organisation, relire chaque
+            // transcript_json à chaque rendu serait intenable. Non bloquant, et
+            // silencieux quand le transcript est trop pauvre (< 5 tours) — un
+            // call sans ligne call_analytics est simplement absent des
+            // moyennes, jamais compté comme un zéro.
+            if (transcriptJson) {
+              try {
+                const metrics = computeCallInteractionMetrics(transcriptJson, speakerNamesOverride, commercialName);
+                if (metrics) {
+                  await saveCallAnalytics({
+                    callId: call.id,
+                    userId,
+                    organizationId,
+                    occurredAt: timing.started_at ?? new Date().toISOString(),
+                    ...metrics,
+                  });
+                  console.log("[bot-webhook] call_analytics saved, talk_ratio_pct:", metrics.talk_ratio_pct);
+                }
+              } catch (analyticsErr) {
+                reportWarning("bot-webhook.saveCallAnalytics", analyticsErr, { callId: call.id });
+              }
+            }
+
+            // Pas de parole, pas d'analyse (voir countSpokenWords) : le call est
+            // enregistré avec sa vidéo, mais ni analyse, ni email de suivi, ni
+            // notification — et donc aucun 0/5 dans les moyennes.
+            const spokenWords = countSpokenWords(content);
+            const hasSpeech = spokenWords >= MIN_SPOKEN_WORDS_FOR_ANALYSIS;
+
+            // Step 3 — analyze call with Claude (non-blocking, result shared with step 4)
+            let savedAnalysis: Awaited<ReturnType<typeof analyzeCall>> | null = null;
+            let keyPoints: string | null = null;
+            if (!hasSpeech) {
+              console.log("[bot-webhook] no speech in transcript (", spokenWords, "words ), skipping analysis and follow-up email");
+            } else {
+              try {
+                const profile = await getUserProfile(userId);
+                const meetingDate = new Date().toISOString().split("T")[0] ?? "";
+                // Snapshot the org's playbook now (sous-étape B) — falls back to
+                // the hardcoded 4-dimension default when the user has no org or
+                // no playbook yet, so this always resolves to something.
+                const playbookSnapshot = await getPlaybookSnapshotForUser(userId);
+                savedAnalysis = await analyzeCall(
+                  transcriptText,
+                  {
+                    clientName: profile?.company_name ?? "",
+                    clientWebsite: "",
+                    prospectName: companyName ?? "",
+                    prospectWebsite: contactEmail ? contactEmail.split("@")[1] ?? "" : "",
+                    meetingDate,
+                    meetingStage:
+                      meetingStage && stageConfig
+                        ? { label: MEETING_STAGE_LABELS[meetingStage], guidance: stageConfig[meetingStage].guidance }
+                        : null,
+                  },
+                  playbookSnapshot
+                );
+                const { id: analysisId } = await saveCallAnalysis(call.id, savedAnalysis, playbookSnapshot);
+                console.log("[bot-webhook] call analysis saved, global_score:", savedAnalysis.scores.global_score);
+
+                // Qui était en face (migration 015). Le résumé le dit en toutes
+                // lettres, mais en prose : un petit appel Haiku le met sous une
+                // forme qu'une liste peut afficher. Après l'enregistrement de
+                // l'analyse et sans await bloquant sa suite : c'est un confort
+                // d'affichage, son échec ne doit rien emporter.
+                try {
+                  const identity = await extractCallIdentity({
+                    summary: savedAnalysis.summary,
+                    keyPoints: null,
+                    speakerNames: Object.values(speakerNamesOverride ?? {}),
+                    commercialCompany: profile?.company_name ?? null,
+                  });
+                  if (identity) {
+                    await updateCallProspectIdentity(call.id, identity);
+                    console.log("[bot-webhook] prospect identity:", identity.prospectCompany, identity.prospectContacts);
+                  }
+                } catch (identityErr) {
+                  reportError("bot-webhook.extractCallIdentity", identityErr, { callId: call.id });
+                }
+
+                if (savedAnalysis.objections.length > 0) {
+                  if (organizationId) {
+                    await indexCallObjections(organizationId, call.id, contactEmail, savedAnalysis.objections, transcriptText, transcriptJson?.turns ?? null).catch((err) =>
+                        reportError("bot-webhook.indexCallObjections", err, { callId: call.id })
+                    );
+                  }
+                }
+
+                try {
+                  const { createdCount, toPushToHubSpot } = await generateTasksFromTemplates(userId, "call", call.id, {
+                    contact_id: null,
+                    contact_email: contactEmail,
+                    contact_name: null,
+                  });
+                  console.log("[bot-webhook] tasks generated from post_call templates:", createdCount);
+                  await pushNewTasksToHubSpot(userId, toPushToHubSpot, contactEmail).catch((hubspotErr) =>
+                    console.warn(
+                      "[bot-webhook] pushNewTasksToHubSpot failed (non-blocking):",
+                      hubspotErr instanceof Error ? hubspotErr.message : String(hubspotErr)
+                    )
+                  );
+                } catch (taskErr) {
+                  console.warn(
+                    "[bot-webhook] generateTasksFromTemplates failed (non-blocking):",
+                    taskErr instanceof Error ? taskErr.message : String(taskErr)
                   );
                 }
-              }
 
-              try {
-                const { createdCount, toPushToHubSpot } = await generateTasksFromTemplates(userId, "call", call.id, {
-                  contact_id: null,
-                  contact_email: contactEmail,
-                  contact_name: null,
-                });
-                console.log("[bot-webhook] tasks generated from post_call templates:", createdCount);
-                await pushNewTasksToHubSpot(userId, toPushToHubSpot, contactEmail).catch((hubspotErr) =>
-                  console.warn(
-                    "[bot-webhook] pushNewTasksToHubSpot failed (non-blocking):",
-                    hubspotErr instanceof Error ? hubspotErr.message : String(hubspotErr)
-                  )
-                );
-              } catch (taskErr) {
-                console.warn(
-                  "[bot-webhook] generateTasksFromTemplates failed (non-blocking):",
-                  taskErr instanceof Error ? taskErr.message : String(taskErr)
-                );
+                // Step 3b — generate + persist key_points now (module Distribution
+                // Flexible, sous-étape B) so the post-call notification email
+                // (Step 6 below) has real content instead of an empty section.
+                // app/api/feedback/[id]/key-points/route.ts remains the on-demand
+                // fallback for calls where this fails, or that predate it.
+                try {
+                  const transcriptForKeyPoints = transcriptJson
+                    ? transcriptJson.turns
+                        .map((t) => `${speakerNamesOverride[t.speaker_id] || t.speaker_id}: ${t.text}`)
+                        .join("\n")
+                    : transcriptText;
+                  keyPoints = await generateKeyPoints(transcriptForKeyPoints);
+                  if (keyPoints) {
+                    await updateCallAnalysisKeyPoints(analysisId, call.id, keyPoints);
+                    console.log("[bot-webhook] key_points generated and saved");
+                  } else {
+                    console.log("[bot-webhook] generateKeyPoints returned null (non-blocking)");
+                  }
+                } catch (keyPointsErr) {
+                  console.log(
+                    "[bot-webhook] key_points generation failed (non-blocking):",
+                    keyPointsErr instanceof Error ? keyPointsErr.message : String(keyPointsErr)
+                  );
+                }
+              } catch (analysisErr) {
+                reportError("bot-webhook.analyzeCall", analysisErr, { callId: call.id });
               }
+            }
 
-              // Step 3b — generate + persist key_points now (module Distribution
-              // Flexible, sous-étape B) so the post-call notification email
-              // (Step 6 below) has real content instead of an empty section.
-              // app/api/feedback/[id]/key-points/route.ts remains the on-demand
-              // fallback for calls where this fails, or that predate it.
-              try {
-                const transcriptForKeyPoints = transcriptJson
-                  ? transcriptJson.turns
-                      .map((t) => `${speakerNamesOverride[t.speaker_id] || t.speaker_id}: ${t.text}`)
-                      .join("\n")
-                  : transcriptText;
-                keyPoints = await generateKeyPoints(transcriptForKeyPoints);
-                if (keyPoints) {
-                  await updateCallAnalysisKeyPoints(analysisId, call.id, keyPoints);
-                  console.log("[bot-webhook] key_points generated and saved");
+            // Step 4 — upsert contact (non-blocking)
+            try {
+              if (contactEmail && savedAnalysis?.summary) {
+                const newSummary = savedAnalysis.summary;
+                const existing = await getContact(userId, contactEmail);
+                if (existing) {
+                  const mergedSummary = existing.last_call_summary
+                    ? await mergeSummaries(existing.last_call_summary, newSummary)
+                    : newSummary;
+                  await updateContact(userId, contactEmail, {
+                    total_calls: existing.total_calls + 1,
+                    last_call_summary: mergedSummary,
+                    ...(companyName ? { company_name: companyName } : {}),
+                  });
+                  console.log("[bot-webhook] contact updated, total_calls:", existing.total_calls + 1);
                 } else {
-                  console.log("[bot-webhook] generateKeyPoints returned null (non-blocking)");
+                  await createContact({
+                    user_id: userId,
+                    email: contactEmail,
+                    company_name: companyName,
+                    total_calls: 1,
+                    last_call_summary: newSummary,
+                    relationship_stage: "prospect",
+                  });
+                  console.log("[bot-webhook] contact created for:", contactEmail);
                 }
-              } catch (keyPointsErr) {
+              }
+            } catch (contactErr) {
+              reportWarning("bot-webhook.contactUpsert", contactErr, { callId: call.id });
+            }
+
+            // Step 5 — generate follow-up email (non-blocking), from the full
+            // transcript plus the analysis summary and key points, signed by
+            // the commercial (lib/email-followup.ts).
+            try {
+              if (!hasSpeech) {
+                // Déjà journalisé à l'étape 3 : un email de suivi écrit sur un
+                // call sans parole ne peut qu'inventer.
+              } else if (!contactEmail) {
+                console.log("[bot-webhook] no contactEmail, skipping follow-up email");
+              } else {
+                const followUp = await generateFollowUpEmail({
+                  transcript: transcriptText,
+                  transcriptJson,
+                  speakerNames: speakerNamesOverride,
+                  summary: savedAnalysis?.summary ?? null,
+                  keyPoints,
+                  nextSteps: savedAnalysis?.next_steps ?? [],
+                  contactEmail,
+                  prospectCompany: companyName,
+                  senderUserId: userId,
+                });
+                if (followUp.status === "ok") {
+                  await updateCallFollowUp(call.id, followUp.email);
+                  console.log("[bot-webhook] follow-up email saved, subject:", followUp.email.subject);
+                } else if (followUp.status === "skipped") {
+                  console.log("[bot-webhook] follow-up email skipped: no usable sales exchange in this call");
+                }
+              }
+            } catch (followUpErr) {
+              reportWarning("bot-webhook.followUpEmail", followUpErr, { callId: call.id });
+            }
+
+            // Step 6 — dispatch post-call analysis notifications (module
+            // Distribution Flexible, sous-étape B; non-blocking). Only
+            // meaningful once Step 3 actually produced an analysis.
+            if (savedAnalysis) {
+              try {
+                const results = await dispatchCallAnalysis(
+                  userId,
+                  {
+                    keyPoints,
+                    globalScore: savedAnalysis.scores.global_score,
+                    sentiment: savedAnalysis.sentiment,
+                  },
+                  {
+                    callId: call.id,
+                    callTitle: companyName ? `Call avec ${companyName}` : "Votre call",
+                    contactName: contactEmail ? formatContactDisplayName(companyName, contactEmail) : null,
+                    contactEmail,
+                  }
+                );
+                console.log("[bot-webhook] dispatchCallAnalysis results:", results);
+              } catch (dispatchErr) {
                 console.log(
-                  "[bot-webhook] key_points generation failed (non-blocking):",
-                  keyPointsErr instanceof Error ? keyPointsErr.message : String(keyPointsErr)
+                  "[bot-webhook] dispatchCallAnalysis failed (non-blocking):",
+                  dispatchErr instanceof Error ? dispatchErr.message : String(dispatchErr)
                 );
               }
-            } catch (analysisErr) {
-              reportError("bot-webhook.analyzeCall", analysisErr, { callId: call.id });
             }
-          }
 
-          // Step 4 — upsert contact (non-blocking)
-          try {
-            if (contactEmail && savedAnalysis?.summary) {
-              const newSummary = savedAnalysis.summary;
-              const existing = await getContact(userId, contactEmail);
-              if (existing) {
-                const mergedSummary = existing.last_call_summary
-                  ? await mergeSummaries(existing.last_call_summary, newSummary)
-                  : newSummary;
-                await updateContact(userId, contactEmail, {
-                  total_calls: existing.total_calls + 1,
-                  last_call_summary: mergedSummary,
-                  ...(companyName ? { company_name: companyName } : {}),
-                });
-                console.log("[bot-webhook] contact updated, total_calls:", existing.total_calls + 1);
-              } else {
-                await createContact({
-                  user_id: userId,
-                  email: contactEmail,
-                  company_name: companyName,
-                  total_calls: 1,
-                  last_call_summary: newSummary,
-                  relationship_stage: "prospect",
-                });
-                console.log("[bot-webhook] contact created for:", contactEmail);
-              }
-            }
-          } catch (contactErr) {
-            reportWarning("bot-webhook.contactUpsert", contactErr, { callId: call.id });
-          }
-
-          // Step 5 — generate follow-up email (non-blocking), from the full
-          // transcript plus the analysis summary and key points, signed by
-          // the commercial (lib/email-followup.ts).
-          try {
-            if (!hasSpeech) {
-              // Déjà journalisé à l'étape 3 : un email de suivi écrit sur un
-              // call sans parole ne peut qu'inventer.
-            } else if (!contactEmail) {
-              console.log("[bot-webhook] no contactEmail, skipping follow-up email");
-            } else {
-              const followUp = await generateFollowUpEmail({
-                transcript: transcriptText,
-                transcriptJson,
-                speakerNames: speakerNamesOverride,
-                summary: savedAnalysis?.summary ?? null,
-                keyPoints,
-                nextSteps: savedAnalysis?.next_steps ?? [],
-                contactEmail,
-                prospectCompany: companyName,
-                senderUserId: userId,
-              });
-              if (followUp.status === "ok") {
-                await updateCallFollowUp(call.id, followUp.email);
-                console.log("[bot-webhook] follow-up email saved, subject:", followUp.email.subject);
-              } else if (followUp.status === "skipped") {
-                console.log("[bot-webhook] follow-up email skipped: no usable sales exchange in this call");
-              }
-            }
-          } catch (followUpErr) {
-            reportWarning("bot-webhook.followUpEmail", followUpErr, { callId: call.id });
-          }
-
-          // Step 6 — dispatch post-call analysis notifications (module
-          // Distribution Flexible, sous-étape B; non-blocking). Only
-          // meaningful once Step 3 actually produced an analysis.
-          if (savedAnalysis) {
-            try {
-              const results = await dispatchCallAnalysis(
-                userId,
-                {
-                  keyPoints,
-                  globalScore: savedAnalysis.scores.global_score,
-                  sentiment: savedAnalysis.sentiment,
-                },
-                {
-                  callId: call.id,
-                  callTitle: companyName ? `Call avec ${companyName}` : "Votre call",
-                  contactName: contactEmail ? formatContactDisplayName(companyName, contactEmail) : null,
-                  contactEmail,
+            // Step 7 — fiche deal (Deal Execution) : générée par Inngest
+            // (lib/inngest-functions.ts, generateDealMemoryAfterCall), qui
+            // envoie ensuite les alertes au commercial et, si le risque est
+            // élevé, à ses managers. L'id par call évite une double génération
+            // quand Recall rejoue le webhook.
+            if (savedAnalysis && hasSpeech && organizationId) {
+              try {
+                if (await isDealMemoryEnabledForOrganization(organizationId)) {
+                  await inngest.send({
+                    id: `deal-memory-${call.id}`,
+                    name: "deal-memory/call.analyzed",
+                    data: { callId: call.id, userId, organizationId },
+                  });
                 }
-              );
-              console.log("[bot-webhook] dispatchCallAnalysis results:", results);
-            } catch (dispatchErr) {
-              console.log(
-                "[bot-webhook] dispatchCallAnalysis failed (non-blocking):",
-                dispatchErr instanceof Error ? dispatchErr.message : String(dispatchErr)
-              );
-            }
-          }
-
-          // Step 7 — fiche deal (Deal Execution) : générée par Inngest
-          // (lib/inngest-functions.ts, generateDealMemoryAfterCall), qui
-          // envoie ensuite les alertes au commercial et, si le risque est
-          // élevé, à ses managers. L'id par call évite une double génération
-          // quand Recall rejoue le webhook.
-          if (savedAnalysis && hasSpeech && organizationId) {
-            try {
-              if (await isDealMemoryEnabledForOrganization(organizationId)) {
-                await inngest.send({
-                  id: `deal-memory-${call.id}`,
-                  name: "deal-memory/call.analyzed",
-                  data: { callId: call.id, userId, organizationId },
-                });
+              } catch (dealErr) {
+                reportWarning("bot-webhook.dealMemory", dealErr, { callId: call.id });
               }
-            } catch (dealErr) {
-              reportWarning("bot-webhook.dealMemory", dealErr, { callId: call.id });
             }
+          } catch (err) {
+            reportError("bot-webhook.pipeline", err, { transcriptId, botId });
           }
-        } catch (err) {
-          reportError("bot-webhook.pipeline", err, { transcriptId, botId });
-        }
+        });
       }
     }
   } catch {

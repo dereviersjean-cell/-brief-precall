@@ -378,9 +378,22 @@ export type CallData = {
   speaker_names_override?: Record<string, string>;
 };
 
-// Upsert, not a plain insert — the bot-webhook's transcript.done handler does
-// slow synchronous work (transcript fetch, Claude analysis, follow-up email)
-// before responding, so Recall can and does retry the same webhook delivery;
+// Le call d'un bot Recall, s'il existe déjà, et s'il est déjà analysé : le
+// bot-webhook s'en sert pour ignorer un renvoi du même événement (cf. « Webhook
+// Recall : une seule analyse par call » dans CLAUDE.md, 01/11/2026).
+export async function getRecallCallState(botId: string): Promise<{ id: string; analyzed: boolean; createdAt: string } | null> {
+  const { data, error } = await supabaseAdmin.from("calls").select("id, created_at, call_analysis(id)").eq("recall_bot_id", botId).maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const row = data as { id: string; created_at: string; call_analysis: unknown };
+  return { id: row.id, analyzed: normalizeCallAnalysis(row.call_analysis as { id: string } | { id: string }[] | null) !== null, createdAt: row.created_at };
+}
+
+// Upsert, not a plain insert — the bot-webhook's transcript.done handler used
+// to do slow synchronous work (transcript fetch, Claude analysis, follow-up
+// email) before responding, so Recall can and does retry the same webhook
+// delivery (since 01/11/2026 the work runs in after() and an already-analyzed
+// call is skipped, see getRecallCallState — the upsert stays as a safety net);
 // without a conflict target on recall_bot_id each retry created a brand-new
 // duplicate call row (and its own independent, non-deterministic analysis).
 // DO UPDATE (the default) rather than DO NOTHING, so `.select("id")` always
