@@ -273,8 +273,12 @@ export default function TeamCoachView({
 
   const person = people.find((p) => p.id === filter) ?? null;
   const all = (person ? [person] : people).flatMap((p) => p.deals.map((d) => ({ d, owner: p.name })));
-  const selected = all.find((x) => x.d.id === selectedId) ?? all.find((x) => interventionLevel(x.d) !== "non") ?? all[0];
-  const everyDeal = people.flatMap((p) => p.deals);
+  // Par défaut, le premier deal où intervenir, sinon à surveiller.
+  const selected =
+    all.find((x) => x.d.id === selectedId) ??
+    all.find((x) => interventionLevel(x.d) === "oui") ??
+    all.find((x) => interventionLevel(x.d) === "surveiller") ??
+    all[0];
 
   function select(id: string) {
     setSelectedId(id);
@@ -284,14 +288,6 @@ export default function TeamCoachView({
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap gap-2 text-[12.5px]">
-        {INTERVENTION_ORDER.map((l) => (
-          <span key={l} className="rounded-full px-2.5 py-1 font-semibold" style={{ background: LEVEL[l].soft, color: LEVEL[l].text }}>
-            {everyDeal.filter((d) => interventionLevel(d) === l).length} {LEVEL[l].label.toLowerCase()}
-          </span>
-        ))}
-      </div>
-
       <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6 lg:mx-0 lg:grid lg:grid-cols-[repeat(auto-fill,minmax(180px,1fr))] lg:overflow-visible lg:px-0 lg:pb-0">
         {people.map((p) => (
           <PersonCard
@@ -313,35 +309,42 @@ export default function TeamCoachView({
           {person ? `${firstName(person.name)} n'a aucun deal suivi pour l'instant.` : "Aucun deal suivi pour l'instant."}
         </p>
       ) : (
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
-          <div className="min-w-0 space-y-5">
+        <>
+          {/* Les trois niveaux côte à côte : où intervenir, quoi surveiller, ce
+              qui avance se voient d'un coup d'œil (02/11/2026). Le détail du
+              deal choisi s'ouvre dessous. */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             {INTERVENTION_ORDER.map((l) => {
               const list = all.filter((x) => interventionLevel(x.d) === l);
-              if (list.length === 0) return null;
               return (
-                <section key={l}>
-                  <h3 className="mb-2 px-1 text-[12px] font-semibold text-stone-500">
-                    {LEVEL[l].group} · {list.length}
+                <section key={l} className="overflow-hidden rounded-2xl bg-white ring-1 ring-stone-200">
+                  <h3 className="flex items-center justify-between px-4 py-3 text-[13px] font-semibold" style={{ background: LEVEL[l].soft, color: LEVEL[l].text }}>
+                    <span>{LEVEL[l].group}</span>
+                    <span className="tabular-nums">{list.length}</span>
                   </h3>
-                  <ul className="overflow-hidden rounded-2xl bg-white ring-1 ring-stone-200">
-                    {list.map((x) => (
-                      <li key={x.d.id} className="border-b border-stone-100 last:border-0">
-                        <button
-                          onClick={() => select(x.d.id)}
-                          aria-current={x.d.id === selected?.d.id}
-                          className={`flex w-full items-center gap-3 px-3.5 py-3 text-left ${x.d.id === selected?.d.id ? "bg-emerald-50/70" : "hover:bg-stone-50"}`}
-                        >
-                          <Avatar d={x.d} size={34} />
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-[13.5px] font-semibold text-stone-900">{x.d.name}</p>
-                            <p className="truncate text-[12px] text-stone-500">
-                              {firstName(x.owner)} · {actionLabel(x.d)}
-                            </p>
-                          </div>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
+                  {list.length === 0 ? (
+                    <p className="px-4 py-3.5 text-[12.5px] text-stone-400">Aucun deal.</p>
+                  ) : (
+                    <ul>
+                      {list.map((x) => (
+                        <li key={x.d.id} className="border-t border-stone-100">
+                          <button
+                            onClick={() => select(x.d.id)}
+                            aria-current={x.d.id === selected?.d.id}
+                            className={`flex w-full items-center gap-3 px-4 py-3 text-left ${x.d.id === selected?.d.id ? "bg-stone-100" : "hover:bg-stone-50"}`}
+                          >
+                            <Avatar d={x.d} size={34} />
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-[13.5px] font-semibold text-stone-900">{x.d.name}</p>
+                              <p className="truncate text-[12px] text-stone-500">
+                                {firstName(x.owner)} · {x.d.reasons[0] ?? actionLabel(x.d)}
+                              </p>
+                            </div>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </section>
               );
             })}
@@ -349,7 +352,7 @@ export default function TeamCoachView({
           <div ref={detailRef} className="min-w-0 scroll-mt-20">
             {selected && <DealDetail d={selected.d} owner={selected.owner} review={reviewable[selected.d.id]} />}
           </div>
-        </div>
+        </>
       )}
     </div>
   );
