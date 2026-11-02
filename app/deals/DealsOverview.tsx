@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Avatar } from "@/app/mes-deals/MesDealsView";
 import { firstName } from "@/lib/deal-coaching";
-import { actionLabel } from "@/lib/deal-advice";
 import type { DealProgress, FocusStatus } from "@/lib/deal-progress";
 import { PersonPhoto, type TeamPerson } from "./TeamCoachView";
 
@@ -130,11 +129,7 @@ function NextStep({ deal }: { deal: DealProgress }) {
   return <p className="text-[12.5px] text-stone-400">Aucune étape convenue</p>;
 }
 
-// `self` (28/10/2026, « Mes deals » du commercial, même parcours que le
-// manager : vue d'ensemble → chronologie → détail) : ses seuls deals, sans
-// filtre ni colonne par commercial, avec la colonne « À faire » — l'action
-// du conseil de Brief.
-export default function DealsOverview({ people, self = false, closed = 0 }: { people: TeamPerson[]; self?: boolean; closed?: number }) {
+export default function DealsOverview({ people }: { people: TeamPerson[] }) {
   const router = useRouter();
   const [owner, setOwner] = useState<string | null>(null);
   const [status, setStatus] = useState<FocusStatus | null>(null);
@@ -159,7 +154,7 @@ export default function DealsOverview({ people, self = false, closed = 0 }: { pe
   if (all.length === 0) {
     return (
       <p className="rounded-2xl bg-white p-5 text-[13.5px] text-stone-500 ring-1 ring-stone-200">
-        {self ? "Aucun deal suivi pour l'instant" : "Aucun deal en cours dans l'équipe"} : chaque call enregistré crée ou complète le deal de son prospect.
+        Aucun deal en cours dans l&apos;équipe : chaque call enregistré crée ou complète le deal de son prospect.
       </p>
     );
   }
@@ -204,7 +199,7 @@ export default function DealsOverview({ people, self = false, closed = 0 }: { pe
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className={`no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1 ${self ? "hidden" : ""}`}>
+        <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">
           <button
             onClick={() => setOwner(null)}
             className={`h-8 shrink-0 rounded-full px-3 text-[12.5px] font-medium ${owner === null ? "bg-stone-900 text-white" : "bg-white text-stone-700 ring-1 ring-stone-200 hover:bg-stone-50"}`}
@@ -242,12 +237,11 @@ export default function DealsOverview({ people, self = false, closed = 0 }: { pe
               <thead>
                 <tr className="whitespace-nowrap border-b border-stone-100 text-[11px] font-semibold uppercase tracking-[0.08em] text-stone-500">
                   <th className="px-4 py-3 font-semibold">Deal</th>
-                  {!self && <th className="px-3 py-3 font-semibold">Commercial</th>}
+                  <th className="px-3 py-3 font-semibold">Commercial</th>
                   <th className="px-3 py-3 font-semibold">Calls</th>
                   <th className="px-3 py-3 font-semibold">Infos clés</th>
                   <th className="px-3 py-3 font-semibold">Dernier call</th>
                   <th className="px-3 py-3 font-semibold">Prochaine étape</th>
-                  {self && <th className="px-3 py-3 font-semibold">À faire</th>}
                   <th className="px-4 py-3 font-semibold">Statut</th>
                 </tr>
               </thead>
@@ -276,14 +270,12 @@ export default function DealsOverview({ people, self = false, closed = 0 }: { pe
                         </div>
                       </div>
                     </td>
-                    {!self && (
-                      <td className="px-3 py-3" data-label="Commercial">
-                        <span className="flex items-center gap-2 text-[13px] text-stone-800">
-                          <PersonPhoto name={person.name} url={person.avatarUrl} size={28} />
-                          {firstName(person.name)}
-                        </span>
-                      </td>
-                    )}
+                    <td className="px-3 py-3" data-label="Commercial">
+                      <span className="flex items-center gap-2 text-[13px] text-stone-800">
+                        <PersonPhoto name={person.name} url={person.avatarUrl} size={28} />
+                        {firstName(person.name)}
+                      </span>
+                    </td>
                     <td className="px-3 py-3" data-label="Calls">
                       <CallTrail deal={deal} />
                     </td>
@@ -297,11 +289,6 @@ export default function DealsOverview({ people, self = false, closed = 0 }: { pe
                     <td className="max-w-[240px] px-3 py-3" data-label="Prochaine étape">
                       <NextStep deal={deal} />
                     </td>
-                    {self && (
-                      <td className="max-w-[240px] px-3 py-3" data-label="À faire">
-                        <p className="line-clamp-2 text-[12.5px] font-medium text-stone-900">{actionLabel(deal)}</p>
-                      </td>
-                    )}
                     <td className="px-4 py-3">
                       <StatusPill status={deal.focus.status} />
                     </td>
@@ -312,11 +299,6 @@ export default function DealsOverview({ people, self = false, closed = 0 }: { pe
           </div>
         )}
       </div>
-      {closed > 0 && (
-        <p className="px-1 text-[12px] text-stone-400">
-          {closed} deal{closed > 1 ? "s" : ""} clos dans HubSpot, non affiché{closed > 1 ? "s" : ""}.
-        </p>
-      )}
     </div>
   );
 }
