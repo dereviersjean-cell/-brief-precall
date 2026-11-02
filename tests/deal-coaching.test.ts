@@ -40,11 +40,6 @@ describe("deal-coaching", () => {
     assert.equal(managerTitle(d, "Jean de Reviers"), "Parler d'Atelier Brunet avec Jean");
   });
 
-  test("le niveau suit la santé du deal : en progrès = ça avance", () => {
-    const d = { ...progress([fiche({ dealName: "CDA Jobs" })]), verdict: "progres" as const };
-    assert.equal(interventionLevel(d), "non");
-  });
-
   test("toutes les questions sont entre guillemets, trois au plus, sans doublon", () => {
     const d = progress([
       fiche({

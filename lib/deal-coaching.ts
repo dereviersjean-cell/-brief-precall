@@ -9,13 +9,11 @@ import type { DealProgress } from "./deal-progress";
 export type InterventionLevel = "oui" | "surveiller" | "non";
 export const INTERVENTION_ORDER: InterventionLevel[] = ["oui", "surveiller", "non"];
 
-// Le niveau suit la santé du deal, celle que montre la vue d'ensemble
-// (02/11/2026 : l'onglet Équipe disait « 0 ça avance » à côté de deals « en
-// progrès ») : en recul → intervenir, à l'arrêt → surveiller, en progrès →
-// ça avance.
+// Un deal qui recule demande d'intervenir ; un deal à relancer ou à traiter
+// se surveille ; un deal en bonne voie n'a besoin de rien.
 export function interventionLevel(d: DealProgress): InterventionLevel {
   if (d.verdict === "recul") return "oui";
-  return d.verdict === "arret" ? "surveiller" : "non";
+  return d.focus.status === "bonne_voie" ? "non" : "surveiller";
 }
 
 export function firstName(name: string): string {
