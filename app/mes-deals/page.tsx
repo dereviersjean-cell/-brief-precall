@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getViewer } from "@/lib/session-user";
 import { getOrganizationDealRules, getProgressFichesForUser, isDealMemoryEnabledForOrganization } from "@/lib/db";
 import { buildDealProgressNow } from "@/lib/deal-progress";
-import MesDealsList from "./MesDealsList";
+import DealsList from "@/app/components/DealsList";
 
 // « Mes deals » (02/11/2026, demande de Jean) : une ligne par deal en cours —
 // nom, étape, dernier échange, santé — et rien d'autre pour l'instant. Un
@@ -20,5 +20,7 @@ export default async function MesDealsPage() {
   ]);
   // Un deal clos dans HubSpot n'a plus de suite à préparer.
   const deals = buildDealProgressNow(fiches, rules).filter((d) => !d.hubspot?.closed);
-  return <MesDealsList deals={deals} />;
+  return (
+    <DealsList rows={deals.map((deal) => ({ deal }))} emptyText="Aucun deal en cours : chaque call enregistré crée ou complète le deal de son prospect." />
+  );
 }

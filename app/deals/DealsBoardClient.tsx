@@ -7,7 +7,7 @@ import { alertLabel, formatDays, type BoardDeal, type StageColumn } from "@/lib/
 import TeamCoachView, { type Reviewable, type TeamPerson } from "./TeamCoachView";
 import DealRulesForm from "./DealRulesForm";
 import HubspotView from "./HubspotView";
-import DealsOverview from "./DealsOverview";
+import DealsList from "@/app/components/DealsList";
 import type { AlertImpact } from "@/lib/deal-impact";
 
 // L'effet des alertes sur 90 jours (lib/deal-impact.ts) : après un « Vu »,
@@ -333,7 +333,10 @@ export default function DealsBoardClient({
         </>
       ) : (
         tab === "ensemble" ? (
-          <DealsOverview people={teamPeople} />
+          <DealsList
+            rows={teamPeople.flatMap((p) => p.deals.map((deal) => ({ deal, owner: { name: p.name, avatarUrl: p.avatarUrl } })))}
+            emptyText="Aucun deal en cours dans l'équipe : chaque call enregistré crée ou complète le deal de son prospect."
+          />
         ) : tab === "hubspot" ? (
           <HubspotView />
         ) : tab === "regles" ? (
