@@ -190,6 +190,8 @@ export async function writeDealAdviceForCall(call: CallWithAnalysis, organizatio
       objections,
       alerts: latest.alerts,
       summary: call.analysis?.summary ?? null,
+      strengths: call.analysis?.strengths ?? [],
+      weaknesses: call.analysis?.weaknesses ?? [],
       nextPlan: progress.objectives ? { rank: progress.objectives.plan.rank, items: progress.objectives.plan.items.map((i) => ({ label: i.label, question: i.question })) } : null,
     });
     await setCallDealAdvice(call.id, result.advice, fiches.length + 1);

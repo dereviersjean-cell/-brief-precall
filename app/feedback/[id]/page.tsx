@@ -1,5 +1,15 @@
 import { isUuid } from "@/lib/uuid";
-import { getCallWithAnalysis, getCallWithAnalysisForManager, getUserName, loadDealMemoryPanel } from "@/lib/db";
+import {
+  getCallWithAnalysis,
+  getCallWithAnalysisForManager,
+  getDealCallDetails,
+  getDealMemoryObjections,
+  getDealPageFiches,
+  getUserName,
+  loadDealMemoryPanel,
+} from "@/lib/db";
+import { buildDealTimeline } from "@/lib/deal-timeline";
+import { buildMeetingOverview, type MeetingOverview } from "@/lib/meeting-overview";
 import { computeConversationAnalytics } from "@/lib/transcript-analytics";
 import { getViewer } from "@/lib/session-user";
 import { notFound } from "next/navigation";
@@ -43,5 +53,42 @@ export default async function FeedbackDetailPage({
     ? computeConversationAnalytics(call.transcript_json, call.speaker_names_override, ownerName)
     : null;
 
-  return <FeedbackDetailClient call={call} analytics={analytics} initialTab={initialTab} dealMemory={dealMemory} />;
+  const meeting = await loadMeetingOverview(call, dealMemory, viewer.organizationId).catch((err) => {
+    console.error("[feedback] meeting overview failed:", err instanceof Error ? err.message : String(err));
+    return null;
+  });
+
+  return <FeedbackDetailClient call={call} analytics={analytics} initialTab={initialTab} dealMemory={dealMemory} meeting={meeting} />;
+}
+
+// L'Overview en cinq blocs (synthèse produit du 03/11/2026) quand le call a sa
+// fiche deal ; sinon l'écran garde l'ancienne vue d'ensemble.
+async function loadMeetingOverview(
+  call: NonNullable<Awaited<ReturnType<typeof getCallWithAnalysis>>>,
+  dealMemory: Awaited<ReturnType<typeof loadDealMemoryPanel>>,
+  organizationId: string | null
+): Promise<MeetingOverview | null> {
+  const dealId = dealMemory?.deal?.id;
+  if (!dealMemory?.initial || !dealId || !organizationId) return null;
+  const fiches = (await getDealPageFiches(dealId, organizationId)) ?? [];
+  if (!fiches.some((f) => f.callId === call.id)) return null;
+  const [objectionLists, details] = await Promise.all([
+    Promise.all(fiches.map((f) => getDealMemoryObjections(f.callId).catch(() => []))),
+    getDealCallDetails(fiches.map((f) => f.callId)).catch(() => ({})),
+  ]);
+  const timeline = buildDealTimeline(
+    fiches,
+    dealMemory.rules,
+    details,
+    Object.fromEntries(fiches.map((f, i) => [f.callId, objectionLists[i]]))
+  );
+  return buildMeetingOverview({
+    fiches,
+    callId: call.id,
+    timeline,
+    rules: dealMemory.rules,
+    summary: call.analysis?.summary ?? null,
+    strengths: call.analysis?.strengths ?? null,
+    weaknesses: call.analysis?.weaknesses ?? null,
+  });
 }

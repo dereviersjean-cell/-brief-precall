@@ -249,6 +249,10 @@ export type AiDealAdvice = {
   next: { title: string; why: string; steps: string[] };
   relance: { title: string; why: string; message: string };
   manager: { title: string; why: string; questions: string[] };
+  // La recommandation de coaching de la page du meeting (03/11/2026) : une
+  // phrase concrète au commercial, tirée de ce call. Absente des conseils
+  // rédigés avant.
+  coaching?: { recommendation: string } | null;
   model: string;
   generatedAt: string;
 };

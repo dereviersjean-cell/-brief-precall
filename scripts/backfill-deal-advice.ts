@@ -9,7 +9,12 @@
 // Depuis la racine du repo :
 //   node --env-file=.env.local --experimental-strip-types \
 //     --import ./scripts/lib/register-loader.mjs \
-//     scripts/backfill-deal-advice.ts --org=<id> [--apply] [--force]
+//     scripts/backfill-deal-advice.ts --org=<id> [--apply] [--force] [--all-calls]
+//
+// `--all-calls` (03/11/2026) : chaque call de chaque deal, pas seulement le
+// dernier — la page d'un meeting lit la recommandation de coaching de SON
+// call. Sans `--force`, seulement les calls dont le conseil n'a pas encore de
+// recommandation.
 
 import { supabaseAdmin } from "../lib/supabase";
 import { getCallWithAnalysis } from "../lib/db";
@@ -20,6 +25,7 @@ const args = process.argv.slice(2);
 const org = args.find((a) => a.startsWith("--org="))?.slice("--org=".length);
 const apply = args.includes("--apply");
 const force = args.includes("--force");
+const allCalls = args.includes("--all-calls");
 if (!org) {
   console.error("Usage : --org=<id> [--apply] [--force]");
   process.exit(1);
@@ -45,8 +51,9 @@ for (const row of (data ?? []) as Row[]) {
   const current = latest.get(row.deal_id);
   if (!current || (row.call_at ?? "") > (current.call_at ?? "")) latest.set(row.deal_id, row);
 }
-const todo = [...latest.values()].filter((r) => force || !r.next_questions?.advice);
-console.log(`${latest.size} deals, ${todo.length} à traiter${apply ? "" : " (simulation, --apply pour générer)"}`);
+const pool = allCalls ? ((data ?? []) as Row[]) : [...latest.values()];
+const todo = pool.filter((r) => force || !r.next_questions?.advice || (allCalls && !r.next_questions.advice.coaching));
+console.log(`${latest.size} deals, ${pool.length} calls, ${todo.length} à traiter${apply ? "" : " (simulation, --apply pour générer)"}`);
 
 let done = 0;
 for (const row of todo) {
@@ -58,7 +65,7 @@ for (const row of todo) {
   const call = await getCallWithAnalysis(row.call_id, ownerId);
   if (!call) continue;
   const advice = await writeDealAdviceForCall(call, org);
-  console.log(`${advice ? "✓" : "✗"} ${row.call_id} ${advice?.next.title ?? "(pas de conseil, voir les logs)"}`);
+  console.log(`${advice ? "✓" : "✗"} ${row.call_id} ${advice?.coaching?.recommendation ?? advice?.next.title ?? "(pas de conseil, voir les logs)"}`);
   if (advice) done++;
 }
 if (apply) console.log(`${done}/${todo.length} conseils enregistrés`);

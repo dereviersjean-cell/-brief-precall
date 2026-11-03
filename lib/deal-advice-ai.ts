@@ -25,7 +25,7 @@ const SYSTEM_PROMPT = `Tu es un expert de la vente B2B qui conseille un commerci
 
 On te donne ce que les calls du deal ont appris (avec le niveau : confirmé ou évoqué), ce qui a été convenu au dernier call, les objections, les alertes, et ce qu'il faut aller chercher au prochain rendez-vous.
 
-Écris trois conseils, tous sur CE deal :
+Écris quatre conseils, tous sur CE deal :
 
 1. "next" — pour le commercial (tutoiement), ce qu'il fait maintenant pour faire avancer le deal :
    - "title" : l'action, à l'impératif, 12 mots au plus, avec son objet précis (qui, quoi). Interdit : un titre qui vaudrait pour n'importe quel deal (« Relancer le prospect », « Préparer le prochain call », « Faire avancer le deal »).
@@ -42,13 +42,16 @@ On te donne ce que les calls du deal ont appris (avec le niveau : confirmé ou �
    - "why" : le risque ou l'enjeu précis (35 mots au plus).
    - "questions" : 2 ou 3 questions que le manager pose au commercial, au tutoiement, entre « », chacune sur un point précis du deal (une personne, un chiffre, une objection, une date). Le manager ne reprend jamais le deal : il aide le commercial à trouver.
 
+4. "coaching" — pour le commercial (tutoiement), sur sa façon de mener CE call, à partir de ce qu'on te dit de ce qu'il a bien fait et moins bien fait :
+   - "recommendation" : UNE recommandation concrète pour son prochain rendez-vous, 40 mots au plus : le geste précis à faire (une question à poser, un moment où la poser, un chiffre à utiliser), pas un principe général (« mieux écouter », « structurer la découverte »). Une phrase à dire au prospect se met entre « » et au vouvoiement.
+
 Règles :
-- Dans "next" et "relance", tu tutoies le commercial partout (« tes arguments », jamais « vos »), sauf dans les phrases entre « » destinées au prospect.
+- Dans "next", "relance" et "coaching", tu tutoies le commercial partout (« tes arguments », jamais « vos »), sauf dans les phrases entre « » destinées au prospect.
 - Reprends les noms, chiffres, dates et mots du prospect quand ils sont donnés. N'invente aucun fait, nom, chiffre ou date absent de ce qu'on te donne ; s'il manque, dis comment l'obtenir.
 - Pas de jargon (pas de « MEDDIC », « champion », « closing ») : écris comme un directeur commercial qui parle à son équipe.
 
 Réponds UNIQUEMENT en JSON strict :
-{"next": {"title": "", "why": "", "steps": [""]}, "relance": {"title": "", "why": "", "message": ""}, "manager": {"title": "", "why": "", "questions": [""]}}`;
+{"next": {"title": "", "why": "", "steps": [""]}, "relance": {"title": "", "why": "", "message": ""}, "manager": {"title": "", "why": "", "questions": [""]}, "coaching": {"recommendation": ""}}`;
 
 export type DealAdviceInput = {
   dealName: string;
@@ -63,6 +66,9 @@ export type DealAdviceInput = {
   objections: { objection: string; handlingQuality: string | null }[];
   alerts: DealMemoryAlert[];
   summary: string | null;
+  // Ce que l'analyse du call retient de la façon de le mener (pour "coaching").
+  strengths?: string[];
+  weaknesses?: string[];
   // Le prochain rendez-vous : ce qu'il faut y aller chercher, avec la question.
   nextPlan: { rank: number; items: { label: string; question: string }[] } | null;
   model?: string;
@@ -95,6 +101,8 @@ export function buildAdvicePrompt(input: DealAdviceInput): string {
       : "- aucune",
     "\nAlertes du dernier call :",
     input.alerts.length ? input.alerts.map((a) => `- ${ALERT_LABELS.get(a.rule) ?? a.rule} : ${a.text}`).join("\n") : "- aucune",
+    input.strengths?.length ? `\nCe que le commercial a bien fait pendant ce call :\n${input.strengths.map((x) => `- ${x}`).join("\n")}` : "",
+    input.weaknesses?.length ? `\nCe qu'il aurait dû mieux faire :\n${input.weaknesses.map((x) => `- ${x}`).join("\n")}` : "",
     input.nextPlan && input.nextPlan.items.length
       ? `\nÀ aller chercher au R${input.nextPlan.rank} :\n${input.nextPlan.items.map((i) => `- ${i.label} — question prévue : ${i.question}`).join("\n")}`
       : "",
@@ -132,6 +140,7 @@ export function parseAdvice(raw: string, model: string, generatedAt: string): Ai
   const next = parsed.next ?? {};
   const relance = parsed.relance ?? {};
   const manager = parsed.manager ?? {};
+  const coaching = text((parsed.coaching ?? {}).recommendation, 400);
   const advice = {
     next: { title: text(next.title, 140), why: text(next.why, 400), steps: list(next.steps, 3) },
     relance: { title: text(relance.title, 140), why: text(relance.why, 400), message: text(relance.message, 900) },
@@ -144,6 +153,8 @@ export function parseAdvice(raw: string, model: string, generatedAt: string): Ai
     next: { title: advice.next.title, why: advice.next.why, steps: advice.next.steps },
     relance: { title: advice.relance.title, why: advice.relance.why, message: quoted(advice.relance.message) },
     manager: { title: advice.manager.title, why: advice.manager.why, questions: advice.manager.questions },
+    // Facultatif : son absence ne fait pas perdre les trois autres conseils.
+    coaching: coaching ? { recommendation: coaching } : null,
     model,
     generatedAt,
   };

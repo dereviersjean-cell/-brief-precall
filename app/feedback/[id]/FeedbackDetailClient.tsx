@@ -1,5 +1,7 @@
 "use client";
 
+import MeetingOverviewView from "./MeetingOverviewView";
+import type { MeetingOverview } from "@/lib/meeting-overview";
 import Link from "next/link";
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import { Search, Pencil } from "lucide-react";
@@ -615,6 +617,7 @@ export default function FeedbackDetailClient({
   backLabel = "Retour aux feedbacks",
   initialTab = "overview",
   dealMemory = null,
+  meeting = null,
 }: {
   call: CallWithAnalysis;
   analytics: ConversationAnalytics | null;
@@ -624,6 +627,8 @@ export default function FeedbackDetailClient({
   initialTab?: Tab;
   /** Fiche deal (Deal Execution) : null = le lecteur ne la voit pas (organisation hors test). */
   dealMemory?: DealMemoryPanel | null;
+  /** L'Overview en cinq blocs (03/11/2026) quand le call a sa fiche deal ; null = l'ancienne vue d'ensemble. */
+  meeting?: MeetingOverview | null;
 }) {
   const [tab, setTab] = useState<Tab>(initialTab);
   const { isEnabled: isModuleEnabled } = useModules();
@@ -850,7 +855,10 @@ export default function FeedbackDetailClient({
     // colonne de droite, il allongeait la page sans être lu à chaque fois.
     // La vidéo reste dans le bandeau : un clic sur une ligne y saute toujours.
     { key: "transcript" as const, label: "Transcript" },
-    ...(dealMemory ? [{ key: "deal" as const, label: "Fiche deal" }] : []),
+    // La vue Deal remplace la fiche (synthèse produit du 03/11/2026) : l'onglet
+    // disparaît avec la nouvelle Overview, mais `?tab=deal` l'ouvre encore
+    // (régénérer, envoyer dans HubSpot).
+    ...(dealMemory && !meeting ? [{ key: "deal" as const, label: "Fiche deal" }] : []),
   ];
   const activeTab: Tab = (tab === "email" && !followUpEnabled) || (tab === "deal" && !dealMemory) ? "overview" : tab;
 
@@ -872,7 +880,11 @@ export default function FeedbackDetailClient({
             note et le résumé de l'évaluation sont dans le bandeau sombre. */}
         <header className="mb-6">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13.5px] text-slate-500">
-            {call.meeting_stage && (
+            {meeting ? (
+              <span className="inline-flex items-center rounded-full bg-[color:var(--lavender)] px-2.5 py-0.5 text-[12px] font-semibold text-[color:var(--violet)]">
+                R{meeting.rank}
+              </span>
+            ) : call.meeting_stage && (
               <span
                 title={call.meeting_title ?? undefined}
                 className="inline-flex items-center rounded-full bg-[color:var(--lavender)] px-2.5 py-0.5 text-[12px] font-semibold text-[color:var(--violet)]"
@@ -925,8 +937,12 @@ export default function FeedbackDetailClient({
                 l'enregistrement et qui a parlé à gauche ; la note, les scores
                 par dimension et les prochaines étapes à droite. L'essentiel
                 du call se lit sans faire défiler. */}
+            {/* Avec la nouvelle Overview, le bandeau ne garde que
+                l'enregistrement : pas de note sur 5, et les prochaines étapes
+                sont dans « Engagements & suite ». */}
+            {(!meeting || hasBandLeft) && (
             <section className="overflow-hidden rounded-[28px] bg-slate-900 text-white">
-              <div className={`grid grid-cols-1 ${hasBandLeft ? "lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]" : ""}`}>
+              <div className={`grid grid-cols-1 ${hasBandLeft && !meeting ? "lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]" : ""}`}>
                 {hasBandLeft && (
                   <div className="p-4 sm:p-5">
                     {bandVideo}
@@ -943,6 +959,7 @@ export default function FeedbackDetailClient({
                     )}
                   </div>
                 )}
+                {!meeting && (
                 <div className={`flex flex-col gap-6 px-6 py-6 sm:px-8 ${hasBandLeft ? "border-t border-white/10 lg:border-l lg:border-t-0" : ""}`}>
                   {(globalScore !== null || a.sentiment) && (
                     <div className="flex flex-wrap items-baseline gap-3">
@@ -985,8 +1002,10 @@ export default function FeedbackDetailClient({
                     </div>
                   )}
                 </div>
+                )}
               </div>
             </section>
+            )}
 
             {TABS.length > 1 && (
               <div className="mt-8 inline-flex items-center rounded-full bg-slate-100 p-1">
@@ -1006,7 +1025,9 @@ export default function FeedbackDetailClient({
               </div>
             )}
 
-            {activeTab === "overview" && (
+            {activeTab === "overview" && meeting && <MeetingOverviewView m={meeting} />}
+
+            {activeTab === "overview" && !meeting && (
               <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
                 {/* Gauche : ce qu'il faut faire pour le deal (demande de Jean
                     du 27/10/2026 : l'analyse du call centrée sur la fiche
