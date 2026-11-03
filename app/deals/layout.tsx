@@ -23,8 +23,8 @@ export default function DealsLayout({ children }: { children: ReactNode }) {
             <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
               <PageHeader
                 eyebrow="Manager · test"
-                title="Deals de l'équipe"
-                subtitle="Tous les deals en cours de l'équipe, et le fil des calls de chacun."
+                title="Suivi des deals"
+                subtitle="Les deals de vos commerciaux, et où votre intervention compte."
               />
               <div className="mt-8">{children}</div>
             </div>

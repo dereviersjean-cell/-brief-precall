@@ -11,7 +11,6 @@ import {
   getOrganizationPipelineStats,
   getProgressFichesForUser,
   getUserAvatars,
-  getUserName,
   isDealMemoryEnabledForOrganization,
 } from "@/lib/db";
 import { buildBoardNow, buildStages } from "@/lib/deal-board";
@@ -29,16 +28,16 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
     redirect("/brief");
   }
 
-  // Les deals du manager : ceux de ses commerciaux liés, et les siens.
-  const [commercials, ownName, reviews, pipelineStats, rules, params] = await Promise.all([
+  // Suivi des deals (03/11/2026, décision de Jean) : les deals de ses
+  // commerciaux liés seulement — les siens sont dans « Deals ».
+  const [commercials, reviews, pipelineStats, rules, params] = await Promise.all([
     getCommercialsForManager(viewer.userId),
-    getUserName(viewer.userId),
     getDealReviews(viewer.userId).catch(() => []),
     getOrganizationPipelineStats(viewer.organizationId),
     getOrganizationDealRules(viewer.organizationId),
     searchParams,
   ]);
-  const people = [{ id: viewer.userId, name: ownName ?? "Vous" }, ...commercials.map((c) => ({ id: c.id, name: c.name ?? c.email ?? "Commercial" }))];
+  const people = commercials.map((c) => ({ id: c.id, name: c.name ?? c.email ?? "Commercial" }));
   const rows = await getDealBoardRows(viewer.organizationId, people.map((p) => p.id));
 
   const deals = buildBoardNow(rows, reviews, pipelineStats, rules);

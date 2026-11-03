@@ -53,7 +53,9 @@ export async function loadDealPage(rawDealId: string) {
     owners,
     objectionsByCall,
     timeline,
-    backHref: isManager ? "/deals" : "/mes-deals",
-    backLabel: isManager ? "Deals de l'équipe" : "Mes deals",
+    // Son propre deal se range dans « Deals » ; celui d'un commercial, dans
+    // « Suivi des deals » (menu du 03/11/2026).
+    backHref: fiches[fiches.length - 1].ownerId === viewer.userId ? "/mes-deals" : "/deals",
+    backLabel: fiches[fiches.length - 1].ownerId === viewer.userId ? "Deals" : "Suivi des deals",
   };
 }

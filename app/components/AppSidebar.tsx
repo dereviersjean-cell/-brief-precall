@@ -158,7 +158,26 @@ export default function AppSidebar() {
   const settingsActive = pathname.startsWith("/settings");
   const helpActive = pathname.startsWith("/help");
 
-  const commercialGroup: { href: string; label: string; icon: LucideIcon; active: boolean; badge?: number }[] = [
+  // Menu de la synthèse produit (03/11/2026, validé par Jean) pour les
+  // organisations en test des deals : Brief · Deals · Suivi des deals. Plus
+  // d'entrée « Analyse rendez-vous » : un call s'ouvre depuis son deal
+  // (/feedback reste joignable par URL). Les autres organisations gardent le
+  // menu d'avant.
+  const dealMenu = fullAccess && dealsEnabled;
+  const commercialGroup: { href: string; label: string; icon: LucideIcon; active: boolean; badge?: number }[] = dealMenu
+    ? [
+        { href: "/brief", label: "Brief", icon: FileText, active: briefActive },
+        {
+          href: "/mes-deals",
+          label: "Deals",
+          icon: Briefcase,
+          active: pathname.startsWith("/mes-deals") || feedbackActive || (!isManager && pathname.startsWith("/deal/")),
+        },
+        ...(isManager
+          ? [{ href: "/deals", label: "Suivi des deals", icon: Target, active: pathname.startsWith("/deals") || pathname.startsWith("/deal/") }]
+          : []),
+      ]
+    : [
     { href: "/brief", label: "Brief", icon: FileText, active: briefActive },
     ...(fullAccess
       ? [
@@ -247,7 +266,7 @@ export default function AppSidebar() {
       {/* Nav */}
       <nav className="flex-1 px-3 pb-3 space-y-4 overflow-y-auto">
         <div>
-          <NavGroupLabel>Commercial</NavGroupLabel>
+          {!dealMenu && <NavGroupLabel>Commercial</NavGroupLabel>}
           <div className="space-y-0.5">
             {commercialGroup.map((item) => (
               <NavLink
@@ -271,17 +290,6 @@ export default function AppSidebar() {
             )}
           </div>
         </div>
-
-        {/* Manager : la vue des deals de l'équipe (« Équipe » retirée le
-            27/10/2026, voir plus haut). */}
-        {isManager && fullAccess && dealsEnabled && (
-          <div>
-            <NavGroupLabel>Manager</NavGroupLabel>
-            <div className="space-y-0.5">
-              <NavLink href="/deals" label="Deals" icon={Target} active={pathname.startsWith("/deals") || pathname.startsWith("/deal/")} />
-            </div>
-          </div>
-        )}
 
         {/* Méthode de vente partagée par l'équipe : la grille et les
             objections, les références clients (15/10/2026). */}

@@ -335,7 +335,11 @@ export default function DealsBoardClient({
         tab === "ensemble" ? (
           <DealsList
             rows={teamPeople.flatMap((p) => p.deals.map((deal) => ({ deal, owner: { name: p.name, avatarUrl: p.avatarUrl } })))}
-            emptyText="Aucun deal en cours dans l'équipe : chaque call enregistré crée ou complète le deal de son prospect."
+            emptyText={
+              Object.keys(people).length === 0
+                ? "Aucun commercial ne vous est rattaché : demandez à l'administrateur de Brief de vous lier à votre équipe pour suivre ses deals."
+                : "Aucun deal en cours dans l'équipe : chaque call enregistré crée ou complète le deal de son prospect."
+            }
           />
         ) : tab === "hubspot" ? (
           <HubspotView />

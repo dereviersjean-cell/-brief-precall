@@ -58,7 +58,11 @@ export default async function FeedbackDetailPage({
     return null;
   });
 
-  return <FeedbackDetailClient call={call} analytics={analytics} initialTab={initialTab} dealMemory={dealMemory} meeting={meeting} />;
+  // « Analyse rendez-vous » n'est plus au menu des organisations en test des
+  // deals (03/11/2026) : on revient au deal du call.
+  const back = meeting && dealMemory?.deal ? { backHref: `/deal/${dealMemory.deal.id}`, backLabel: `Retour au deal ${dealMemory.deal.name}` } : {};
+
+  return <FeedbackDetailClient call={call} analytics={analytics} initialTab={initialTab} dealMemory={dealMemory} meeting={meeting} {...back} />;
 }
 
 // L'Overview en cinq blocs (synthèse produit du 03/11/2026) quand le call a sa
