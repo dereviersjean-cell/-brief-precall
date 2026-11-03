@@ -19,7 +19,7 @@ import { buildDealProgressNow } from "@/lib/deal-progress";
 import { buildAlertImpact } from "@/lib/deal-impact";
 import { nowMs } from "@/lib/format";
 import DealsBoardClient from "./DealsBoardClient";
-import type { TeamPerson } from "./TeamCoachView";
+import type { TeamPerson } from "./team";
 
 export default async function DealsPage({ searchParams }: { searchParams: Promise<{ tab?: string; stage?: string; commercial?: string }> }) {
   const viewer = await getViewer();

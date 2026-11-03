@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { CalendarDays, CheckCircle2, Circle, Clock3, Layers, Target, Wallet } from "lucide-react";
-import { Avatar } from "@/app/mes-deals/MesDealsView";
+import DealAvatar from "@/app/components/DealAvatar";
 import { VERDICTS } from "@/app/mes-deals/deal-ui";
 import type { DealProgress } from "@/lib/deal-progress";
 import { commitmentKey, type DealMacro, type MacroCommitment } from "@/lib/deal-macro";
@@ -151,7 +151,7 @@ export default function DealMacroView({
       {/* En-tête compact */}
       <header className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-start gap-4">
-          <Avatar d={d} size={46} />
+          <DealAvatar d={d} size={46} />
           <div className="min-w-0">
             <h1 className="truncate text-[26px] font-semibold tracking-[-0.02em] text-slate-900 sm:text-[28px]">{d.name}</h1>
             <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13.5px] text-slate-500">
@@ -173,7 +173,7 @@ export default function DealMacroView({
         {macro.amount !== null && (
           <span className="inline-flex shrink-0 items-center gap-2 self-start rounded-xl bg-slate-100 px-3.5 py-2 text-[14px] font-medium text-slate-800">
             <Wallet className="h-4 w-4 text-slate-500" />
-            {Math.round(macro.amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "\u202f")} €
+            {`${Math.round(macro.amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0")}\u00a0€`}
           </span>
         )}
       </header>

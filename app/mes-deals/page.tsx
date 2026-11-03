@@ -4,11 +4,9 @@ import { getOrganizationDealRules, getProgressFichesForUser, isDealMemoryEnabled
 import { buildDealProgressNow } from "@/lib/deal-progress";
 import DealsList from "@/app/components/DealsList";
 
-// « Mes deals » (02/11/2026, demande de Jean) : une ligne par deal en cours —
-// nom, étape, dernier échange, santé — et rien d'autre pour l'instant. Un
-// clic ouvre la chronologie du deal (/deal/<id>), puis son détail
-// (/deal/<id>/detail) ; le conseil de Brief est dans la chronologie.
-// L'ancienne vue liste + conseil (MesDealsView, version D3) reste dans le code.
+// « Deals » (ex-« Mes deals », menu du 03/11/2026) : une ligne par deal en
+// cours — nom, étape, dernier échange, santé. Un clic ouvre la vue Deal
+// (/deal/<id>), qui porte la priorité, les engagements et l'état du deal.
 export default async function MesDealsPage() {
   const viewer = await getViewer();
   if (!viewer) redirect("/login");

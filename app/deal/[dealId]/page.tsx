@@ -39,14 +39,14 @@ export default async function DealPage({ params }: { params: Promise<{ dealId: s
   if (late && isOwner) {
     priority = {
       title: "Rattraper un engagement en retard",
-      why: `Promis au dernier call${late.date ? `, pour le ${dayLabel(late.date)}` : ""} : ${lowerFirst(late.text)} Le prospect l'attend.`,
+      why: `Promis au dernier call${late.date ? ` pour le ${dayLabel(late.date)}` : ""} : « ${late.text.replace(/\.$/, "")} ». Le prospect l'attend.`,
       action: "Fais-le aujourd'hui, ou écris au prospect pour lui donner une nouvelle date.",
       tags,
     };
   } else if (late) {
     priority = {
       title: `Un engagement de ${firstName(owner)} est en retard`,
-      why: `Promis au dernier call${late.date ? `, pour le ${dayLabel(late.date)}` : ""} : ${lowerFirst(late.text)}`,
+      why: `Promis au dernier call${late.date ? ` pour le ${dayLabel(late.date)}` : ""} : « ${late.text.replace(/\.$/, "")} ».`,
       action: `Demandez à ${firstName(owner)} où en est cet engagement et pour quand il sera fait.`,
       tags,
     };
@@ -79,8 +79,4 @@ export default async function DealPage({ params }: { params: Promise<{ dealId: s
 
 function dayLabel(iso: string): string {
   return new Date(`${iso.slice(0, 10)}T12:00:00Z`).toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "Europe/Paris" });
-}
-
-function lowerFirst(text: string): string {
-  return text.charAt(0).toLowerCase() + text.slice(1);
 }

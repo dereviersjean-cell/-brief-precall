@@ -12,7 +12,7 @@
 
 ## Vue simplifiée — 27 octobre 2026 (demande de Jean)
 
-**« Performance » et « Équipe » ne sont plus dans la barre latérale.** Rien n'est supprimé : `/dashboard` (et ses onglets), `/team` (et ses sous-pages, dont l'invitation des commerciaux) restent en place et joignables par leur URL, pour les réactiver si le besoin revient (le commentaire en tête d'`AppSidebar.tsx` dit quoi remettre). La barre ne garde que Brief, Analyse rendez-vous, Mes deals (organisations en test), Deals côté manager, et la Méthode. Les redirections de repli qui menaient à `/dashboard` (pages réservées, tâches et devis masqués, imitation admin, sortie de la visite guidée) mènent à `/brief` ; le logo aussi. La visite guidée cible encore l'entrée Performance : son étape s'affiche sans surbrillance.
+**« Performance » et « Équipe » ne sont plus dans la barre latérale.** Rien n'est supprimé : `/dashboard` (et ses onglets), `/team` (et ses sous-pages, dont l'invitation des commerciaux) restent en place et joignables par leur URL, pour les réactiver si le besoin revient (le commentaire en tête d'`AppSidebar.tsx` dit quoi remettre). La barre ne garde que Brief, Analyse rendez-vous et la Méthode — et, pour les organisations en test des deals, Brief · Deals · Suivi des deals depuis le 03/11/2026 (section « Menu des organisations en test des deals »). Les redirections de repli qui menaient à `/dashboard` (pages réservées, tâches et devis masqués, imitation admin, sortie de la visite guidée) mènent à `/brief` ; le logo aussi. La visite guidée cible encore l'entrée Performance : son étape s'affiche sans surbrillance.
 
 ## Menu des organisations en test des deals — 3 novembre 2026 (synthèse produit validée par Jean)
 
@@ -313,8 +313,8 @@ Ce que l'audit a refermé, pour ne pas rouvrir les mêmes portes :
 
 - **`/api/calendar/events` passe par `requireActiveUser`.** Elle ne vérifiait que la présence d'une session. Or c'est `requireActiveUser` qui applique `disabled_at` et le blocage de facturation, et **le middleware ne couvre que des pages, jamais `/api`** : un compte désactivé gardait cet endpoint en état de marche. À vérifier sur toute nouvelle route API.
 - **`requireActiveUserContext` (`lib/api-auth.ts`) rend le garde ET le contexte en une requête** — `disabled_at`, `role`, `organization_id` d'un seul select. Le motif `requireActiveUser` + `getUserRole` + `getUserOrganizationId` était trois allers-retours séquentiels sur la même ligne. Généralisé le 15/10/2026 aux 36 routes qui portaient le motif (palier 3 du plan performance) ; côté pages serveur, `getViewer()` (`lib/session-user.ts`) joue le même rôle — utilisateur effectif + rôle + organisation en un select — et remplace `getEffectiveUserId` + `Promise.all([getUserRole, getUserOrganizationId])`. **Toute nouvelle route ou page part de là.** Le type `UserRole` y est importé en `import type` pour que ce module ne tire pas `lib/db.ts` dans le bundle de chaque route.
-- **`enforceAiGenerationLimit`** (mémoire puis partagé) sur les 16 routes de génération. Le limiteur en mémoire ne voit qu'une instance Vercel, éphémère : il attrape le double-clic, pas un client qui boucle. Dépend de la **migration 011, non exécutée**.
-- **Next 16.3.4 et next-auth 4.24.15** (31/08). La montée de Next corrige un contournement de middleware en App Router — pas théorique ici, le middleware est devenu le garde d'authentification le même jour. `next` est **épinglé à une version exacte** dans `package.json` : npm remet un caret à chaque installation, le remettre à l'exact.
+- **`enforceAiGenerationLimit`** (mémoire puis partagé) sur les 16 routes de génération. Le limiteur en mémoire ne voit qu'une instance Vercel, éphémère : il attrape le double-clic, pas un client qui boucle. Dépend de la migration 011 (appliquée — vérifié en base le 03/11/2026, comme les 40 migrations du dossier).
+- **Next 16.4.4** (03/11/2026, correctif de deux failles critiques de 16.3 — `next/og` et `use cache`, non utilisés par Brief) **et next-auth 4.24.15** (31/08). La montée de Next en 16.3 corrige un contournement de middleware en App Router — pas théorique ici, le middleware est devenu le garde d'authentification le même jour. `next` est **épinglé à une version exacte** dans `package.json` : npm remet un caret à chaque installation, le remettre à l'exact.
 - **En-têtes de sécurité dans `next.config.ts`** : `frame-ancestors 'none'` + `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS deux ans. **Pas de CSP complète** : l'app charge des polices Google, des images de CRM et des enregistrements Recall — ça se construit en `report-only` d'abord, c'est un chantier.
 - **Deux lectures non cadrées supprimées** : `getBriefById` et `getBriefByCalendarEventIdGlobal`. Sans appelant depuis le bug #28, leur nom invitait à rejouer la faille.
 
@@ -473,7 +473,7 @@ npx ts-node scripts/backfill-single-call.ts <call_id>
 #   backfill-call-analytics.ts              remplit call_analytics (local, aucun appel IA)
 #   dedupe-call-objections.ts [--apply]     nettoie les doublons de ré-analyses (simulation par défaut)
 #   eval-objections.ts --org=<id>           mesure le pipeline contre le jeu de référence annoté
-#   backfill-deal-advice.ts --org=<id>      conseil Haiku du dernier call de chaque deal (--apply, --force)
+#   backfill-deal-advice.ts --org=<id>      conseil Haiku du dernier call de chaque deal (--apply, --force ; --all-calls : chaque call, pour la recommandation de coaching)
 #   backfill-commercial-advice.ts --org=<id> conseil Haiku sur chaque commercial (--apply, migration 039)
 
 # Toujours avant push

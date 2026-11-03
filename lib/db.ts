@@ -2780,6 +2780,21 @@ export async function getDealOrganizationId(dealId: string): Promise<string | nu
   return (data as { organization_id: string } | null)?.organization_id ?? null;
 }
 
+// Le commercial du dernier call d'un deal : son propriétaire, pour la barre
+// latérale de la page du deal.
+export async function getDealOwnerId(dealId: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin
+    .from("call_deal_memory")
+    .select("call_at, calls!inner(user_id)")
+    .eq("deal_id", dealId)
+    .order("call_at", { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  const calls = (data as { calls: { user_id: string } | { user_id: string }[] } | null)?.calls;
+  return (Array.isArray(calls) ? calls[0] : calls)?.user_id ?? null;
+}
+
 // Engagements cochés « fait » sur la vue Deal (migration 040), en clés
 // commitmentKey (lib/deal-macro.ts). Throw si la table manque : la page en
 // déduit qu'elle n'affiche pas les cases.

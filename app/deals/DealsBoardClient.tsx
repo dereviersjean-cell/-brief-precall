@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { alertLabel, formatDays, type BoardDeal, type StageColumn } from "@/lib/deal-board";
-import type { TeamPerson } from "./TeamCoachView";
+import type { TeamPerson } from "./team";
 import SuiviView from "./SuiviView";
 import DealRulesForm from "./DealRulesForm";
 import HubspotView from "./HubspotView";

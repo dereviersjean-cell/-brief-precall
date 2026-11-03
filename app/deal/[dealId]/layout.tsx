@@ -4,14 +4,22 @@ import ImpersonationBanner from "@/app/components/ImpersonationBanner";
 import BillingGraceBanner from "@/app/components/BillingGraceBanner";
 import TopBar from "@/app/components/TopBar";
 import type { ReactNode } from "react";
+import { getViewer } from "@/lib/session-user";
+import { getDealOwnerId } from "@/lib/db";
+import { isUuid } from "@/lib/uuid";
 
-// Page d'un deal (Deal Execution, 27/10/2026) : ouverte depuis « Mes deals »
-// par le commercial, depuis « Deals » par le manager.
-export default function DealLayout({ children }: { children: ReactNode }) {
+// Page d'un deal (Deal Execution, 27/10/2026). Son propre deal se range dans
+// « Deals », celui d'un commercial dans « Suivi des deals » (menu du
+// 03/11/2026) : la barre latérale ne connaît pas le propriétaire, la mise en
+// page le lui dit.
+export default async function DealLayout({ children, params }: { children: ReactNode; params: Promise<{ dealId: string }> }) {
+  const { dealId } = await params;
+  const [viewer, ownerId] = await Promise.all([getViewer().catch(() => null), isUuid(dealId) ? getDealOwnerId(dealId).catch(() => null) : null]);
+  const section = viewer && ownerId && ownerId !== viewer.userId ? "suivi" : "deals";
   return (
     <AppShell>
       <div className="flex min-h-screen">
-        <AppSidebar />
+        <AppSidebar dealSection={section} />
         <div className="flex-1 ml-0 lg:ml-60 min-w-0">
           <ImpersonationBanner />
           <BillingGraceBanner />

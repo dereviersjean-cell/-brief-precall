@@ -98,7 +98,10 @@ function NavGroupLabel({ children }: { children: string }) {
   );
 }
 
-export default function AppSidebar() {
+// `dealSection` : sur la page d'un deal, l'entrée à allumer — « Deals » pour
+// son propre deal, « Suivi des deals » pour celui d'un commercial (calculé par
+// app/deal/[dealId]/layout.tsx).
+export default function AppSidebar({ dealSection }: { dealSection?: "deals" | "suivi" } = {}) {
   const pathname = usePathname();
   const { data: session } = useSession();
   // Rendu par le serveur (AppShell) ; repli sur /api/chrome sans lui.
@@ -171,10 +174,10 @@ export default function AppSidebar() {
           href: "/mes-deals",
           label: "Deals",
           icon: Briefcase,
-          active: pathname.startsWith("/mes-deals") || feedbackActive || (!isManager && pathname.startsWith("/deal/")),
+          active: pathname.startsWith("/mes-deals") || feedbackActive || (pathname.startsWith("/deal/") && (dealSection ?? (isManager ? "suivi" : "deals")) === "deals"),
         },
         ...(isManager
-          ? [{ href: "/deals", label: "Suivi des deals", icon: Target, active: pathname.startsWith("/deals") || pathname.startsWith("/deal/") }]
+          ? [{ href: "/deals", label: "Suivi des deals", icon: Target, active: pathname.startsWith("/deals") || (pathname.startsWith("/deal/") && (dealSection ?? "suivi") === "suivi") }]
           : []),
       ]
     : [

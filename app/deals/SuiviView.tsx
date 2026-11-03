@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Avatar } from "@/app/mes-deals/MesDealsView";
+import DealAvatar from "@/app/components/DealAvatar";
+import PersonPhoto from "@/app/components/PersonPhoto";
 import { firstName, managerTitle, managerWhy } from "@/lib/deal-coaching";
 import { suiviLevel, suiviReason } from "@/lib/deal-suivi";
 import type { DealProgress } from "@/lib/deal-progress";
-import { PersonPhoto, type TeamPerson } from "./TeamCoachView";
+import type { TeamPerson } from "./team";
 
 // Suivi des deals, vue « Par commercial » (choisie par Jean le 03/11/2026
 // parmi trois propositions sur aperçu) : un bloc par commercial — ce qui
@@ -80,7 +81,7 @@ function PersonBlock({ p }: { p: TeamPerson }) {
           {act.map((d) => (
             <li key={d.id} className="py-3">
               <div className="flex items-center gap-2.5">
-                <Avatar d={d} size={34} />
+                <DealAvatar d={d} size={34} />
                 <Link href={`/deal/${d.id}`} className="min-w-0 flex-1 truncate text-[14px] font-semibold text-slate-900 hover:underline">
                   {d.name}
                 </Link>

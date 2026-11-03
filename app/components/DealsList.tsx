@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Avatar } from "@/app/mes-deals/MesDealsView";
+import DealAvatar from "@/app/components/DealAvatar";
 import { VERDICTS } from "@/app/mes-deals/deal-ui";
-import { PersonPhoto } from "@/app/deals/TeamCoachView";
+import PersonPhoto from "@/app/components/PersonPhoto";
 import { firstName } from "@/lib/deal-coaching";
 import type { DealProgress } from "@/lib/deal-progress";
 
@@ -52,7 +52,7 @@ export default function DealsList({ rows, emptyText }: { rows: DealsListRow[]; e
             <li key={d.id} className="border-b border-stone-100 last:border-0">
               <Link href={`/deal/${d.id}`} className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 px-5 py-3.5 hover:bg-stone-50 ${columns}`}>
                 <span className="flex min-w-0 items-center gap-3">
-                  <Avatar d={d} size={34} />
+                  <DealAvatar d={d} size={34} />
                   <span className="truncate text-[14px] font-semibold text-stone-900">{d.name}</span>
                 </span>
                 {withOwner && (
