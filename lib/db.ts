@@ -2780,6 +2780,30 @@ export async function getDealOrganizationId(dealId: string): Promise<string | nu
   return (data as { organization_id: string } | null)?.organization_id ?? null;
 }
 
+// Engagements cochés « fait » sur la vue Deal (migration 040), en clés
+// commitmentKey (lib/deal-macro.ts). Throw si la table manque : la page en
+// déduit qu'elle n'affiche pas les cases.
+export async function getDoneCommitments(dealId: string): Promise<Set<string>> {
+  const { data, error } = await supabaseAdmin.from("deal_commitment_done").select("call_id, item_index, item_text").eq("deal_id", dealId);
+  if (error) throw error;
+  return new Set(((data ?? []) as { call_id: string; item_index: number; item_text: string }[]).map((r) => `${r.call_id}#${r.item_index}#${r.item_text}`));
+}
+
+export async function setCommitmentDone(input: { dealId: string; callId: string; index: number; text: string; userId: string; done: boolean }): Promise<void> {
+  if (input.done) {
+    const { error } = await supabaseAdmin
+      .from("deal_commitment_done")
+      .upsert(
+        { call_id: input.callId, item_index: input.index, item_text: input.text, deal_id: input.dealId, done_by: input.userId, done_at: new Date().toISOString() },
+        { onConflict: "call_id,item_index" }
+      );
+    if (error) throw error;
+    return;
+  }
+  const { error } = await supabaseAdmin.from("deal_commitment_done").delete().eq("call_id", input.callId).eq("item_index", input.index);
+  if (error) throw error;
+}
+
 type DealFicheRow = {
   call_id: string;
   call_at: string | null;

@@ -136,6 +136,8 @@ Format de réponse proposé à Hubert : « OK pour les recos sauf le n° X ».
 
 13. **28/10/2026** : le conseil sur un **commercial** (bandeau de l'onglet Équipe) est rédigé par Haiku à partir de tous ses deals. **Migration 039.** Détail dans CLAUDE.md.
 
+14. **03/11/2026** : la page d'un deal (`/deal/<id>`) devient la **vue Deal « macro »** de la synthèse produit, validée par Jean sur aperçu : en-tête compact (étape, santé, owner, prochain RDV, montant), **une** priorité, les engagements du dernier call avec leur statut, l'état du deal en 8 lignes (Confirmé / À préciser / Inconnu), un historique léger qui ouvre le meeting. Elle remplace la chronologie (`DealChronologyView` supprimée) ; `/deal/<id>/detail` reste joignable par URL mais n'est plus lié. Calcul dans `lib/deal-macro.ts` (testé). Règles : un rendez-vous convenu se constate tout seul (tenu / pas eu lieu), le reste se coche « fait » à la main (**migration 040**, sans elle pas de case) ; un engagement daté passé et non coché est « en retard » et **passe devant le conseil Haiku**, qui ne sait pas que la date est passée ; un rendez-vous tenu n'est pas répété dans l'historique. Pas encore fait : l'heure du prochain RDV (seul le jour est relevé), le responsable de chaque engagement séparé du texte.
+
 ## Structure cible de la plateforme (Jean, 27/10/2026)
 
 Point de départ avant toute suite technique. Le reste de l'app ne bouge pas (Performance et Équipe sont masqués, pas supprimés).
