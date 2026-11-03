@@ -4,10 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { alertLabel, formatDays, type BoardDeal, type StageColumn } from "@/lib/deal-board";
-import TeamCoachView, { type Reviewable, type TeamPerson } from "./TeamCoachView";
+import type { TeamPerson } from "./TeamCoachView";
+import SuiviView from "./SuiviView";
 import DealRulesForm from "./DealRulesForm";
 import HubspotView from "./HubspotView";
-import DealsList from "@/app/components/DealsList";
 import type { AlertImpact } from "@/lib/deal-impact";
 
 // L'effet des alertes sur 90 jours (lib/deal-impact.ts) : après un « Vu »,
@@ -262,7 +262,6 @@ export default function DealsBoardClient({
   people,
   initialTab,
   initialStage,
-  initialCommercial = null,
 }: {
   deals: BoardDeal[];
   stages: StageColumn[];
@@ -270,29 +269,25 @@ export default function DealsBoardClient({
   impact: AlertImpact | null;
   impactWindowDays: number;
   people: Record<string, string>;
-  initialTab: "ensemble" | "file" | "equipe" | "regles" | "hubspot";
+  initialTab: "suivi" | "file" | "regles" | "hubspot";
   initialStage: string | null;
-  initialCommercial?: string | null;
 }) {
-  const [tab, setTab] = useState(initialTab === "file" && !SHOW_FILE_TAB ? "ensemble" : initialTab);
+  const [tab, setTab] = useState(initialTab === "file" && !SHOW_FILE_TAB ? "suivi" : initialTab);
   const [stage, setStage] = useState<string | null>(initialStage);
 
   const inStage = (d: BoardDeal) => !stage || (d.hubspot?.stage ?? "hors-hubspot") === stage;
   const queue = deals.filter((d) => !d.hiddenBecause && d.alerts.length > 0 && inStage(d));
   const moving = deals.filter((d) => !d.hiddenBecause && d.alerts.length === 0 && inStage(d));
   const reviewed = deals.filter((d) => d.hiddenBecause && inStage(d));
-  // Le « Vu » de l'onglet Équipe agit sur les mêmes alertes que la file.
-  const reviewable: Reviewable = Object.fromEntries(
-    deals.map((d) => [d.id, { rules: d.alerts.map((a) => a.rule), seen: d.hiddenBecause === "seen" }])
-  );
 
   return (
     <div className="space-y-6">
       <div className="inline-flex items-center rounded-full bg-slate-100 p-1">
         {(
           [
-            ["ensemble", "Vue d'ensemble"],
-            ["equipe", "Équipe"],
+            // Suivi des deals, vue « Par commercial » (03/11/2026) : remplace
+            // « Vue d'ensemble » et « Équipe ».
+            ["suivi", "Par commercial"],
             ["file", "Où intervenir"],
             ["regles", "Règles"],
             ["hubspot", "HubSpot"],
@@ -332,22 +327,13 @@ export default function DealsBoardClient({
           <Folded title="Vus ou remis à plus tard" deals={reviewed} people={people} />
         </>
       ) : (
-        tab === "ensemble" ? (
-          <DealsList
-            rows={teamPeople.flatMap((p) => p.deals.map((deal) => ({ deal, owner: { name: p.name, avatarUrl: p.avatarUrl } })))}
-            emptyText={
-              Object.keys(people).length === 0
-                ? "Aucun commercial ne vous est rattaché : demandez à l'administrateur de Brief de vous lier à votre équipe pour suivre ses deals."
-                : "Aucun deal en cours dans l'équipe : chaque call enregistré crée ou complète le deal de son prospect."
-            }
-          />
+        tab === "suivi" ? (
+          <SuiviView people={teamPeople} hasTeam={Object.keys(people).length > 0} />
         ) : tab === "hubspot" ? (
           <HubspotView />
         ) : tab === "regles" ? (
           <DealRulesForm stageLabels={Object.fromEntries(stages.filter((st) => st.index).map((st) => [st.index as number, st.label]))} />
-        ) : (
-          <TeamCoachView people={teamPeople} reviewable={reviewable} initialFilter={initialCommercial} />
-        )
+        ) : null
       )}
     </div>
   );
