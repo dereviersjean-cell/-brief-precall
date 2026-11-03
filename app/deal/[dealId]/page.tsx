@@ -14,10 +14,11 @@ import { loadDealPage } from "./load";
 // siens.
 export default async function DealPage({ params }: { params: Promise<{ dealId: string }> }) {
   const { dealId } = await params;
-  const deal = await loadDealPage(dealId);
+  // Les engagements cochés partent avec le reste (lus seulement, affichés
+  // après le contrôle d'accès de loadDealPage). Sans la migration 040, pas de
+  // case à cocher (et rien de coché).
+  const [deal, done] = await Promise.all([loadDealPage(dealId), getDoneCommitments(dealId).catch(() => null)]);
   const now = nowMs();
-  // Sans la migration 040, pas de case à cocher (et rien de coché).
-  const done = await getDoneCommitments(dealId).catch(() => null);
   const macro = buildDealMacro({
     fiches: deal.fiches,
     progress: deal.progress,

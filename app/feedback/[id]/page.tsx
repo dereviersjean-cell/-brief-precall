@@ -43,12 +43,14 @@ export default async function FeedbackDetailPage({
 
   if (!call) notFound();
 
-  const dealMemory = await loadDealMemoryPanel(role, viewer.organizationId, call.id);
-
   // call.user_id is always the actual owner (correct even when a manager is
   // viewing) — computeConversationAnalytics needs the commercial's real name
-  // to identify them among the transcript's speakers.
-  const ownerName = call.user_id === userId ? viewerName : await getUserName(call.user_id);
+  // to identify them among the transcript's speakers. Read alongside the deal
+  // panel (03/11/2026, fluidité).
+  const [dealMemory, ownerName] = await Promise.all([
+    loadDealMemoryPanel(role, viewer.organizationId, call.id),
+    call.user_id === userId ? Promise.resolve(viewerName) : getUserName(call.user_id),
+  ]);
   const analytics = call.transcript_json
     ? computeConversationAnalytics(call.transcript_json, call.speaker_names_override, ownerName)
     : null;

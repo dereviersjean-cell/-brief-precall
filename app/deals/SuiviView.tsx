@@ -4,9 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import DealAvatar from "@/app/components/DealAvatar";
 import PersonPhoto from "@/app/components/PersonPhoto";
-import { firstName, managerTitle, managerWhy } from "@/lib/deal-coaching";
-import { suiviLevel, suiviReason } from "@/lib/deal-suivi";
-import type { DealProgress } from "@/lib/deal-progress";
+import { firstName } from "@/lib/deal-coaching";
+import type { SuiviDeal } from "@/lib/deal-suivi";
 import type { TeamPerson } from "./team";
 
 // Suivi des deals, vue « Par commercial » (choisie par Jean le 03/11/2026
@@ -22,9 +21,9 @@ function ago(days: number | null): string {
   return `il y a ${Math.round(days / 30)} mois`;
 }
 
-const byIdle = (a: DealProgress, b: DealProgress) => (a.idleDays ?? 9999) - (b.idleDays ?? 9999);
+const byIdle = (a: SuiviDeal, b: SuiviDeal) => (a.idleDays ?? 9999) - (b.idleDays ?? 9999);
 
-function Others({ deals }: { deals: DealProgress[] }) {
+function Others({ deals }: { deals: SuiviDeal[] }) {
   const [open, setOpen] = useState(false);
   if (deals.length === 0) return null;
   return (
@@ -35,16 +34,15 @@ function Others({ deals }: { deals: DealProgress[] }) {
       {open && (
         <ul className="mt-2 divide-y divide-slate-100">
           {deals.map((d) => {
-            const level = suiviLevel(d);
             return (
               <li key={d.id} className="flex items-center gap-3 py-2 text-[13.5px]">
                 <Link href={`/deal/${d.id}`} className="min-w-0 flex-1 truncate font-medium text-slate-900 hover:underline">
                   {d.name}
                 </Link>
                 <span
-                  className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${level === "surveiller" ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}
+                  className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${d.level === "surveiller" ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}
                 >
-                  {level === "surveiller" ? "À surveiller" : "Avance"}
+                  {d.level === "surveiller" ? "À surveiller" : "Avance"}
                 </span>
                 <span className="w-[100px] text-right text-[12.5px] text-slate-500">{ago(d.idleDays)}</span>
               </li>
@@ -57,8 +55,8 @@ function Others({ deals }: { deals: DealProgress[] }) {
 }
 
 function PersonBlock({ p }: { p: TeamPerson }) {
-  const act = p.deals.filter((d) => suiviLevel(d) === "intervenir").sort(byIdle);
-  const others = p.deals.filter((d) => suiviLevel(d) !== "intervenir").sort(byIdle);
+  const act = p.deals.filter((d) => d.level === "intervenir").sort(byIdle);
+  const others = p.deals.filter((d) => d.level !== "intervenir").sort(byIdle);
   const first = firstName(p.name);
   return (
     <section className="rounded-2xl border border-border bg-white p-5 shadow-[var(--shadow-xs)] sm:p-6">
@@ -71,9 +69,9 @@ function PersonBlock({ p }: { p: TeamPerson }) {
           </p>
         </div>
       </div>
-      {p.aiAdvice && act.length > 0 && (
+      {p.advice && act.length > 0 && (
         <p className="mt-3 rounded-xl bg-blue-50 px-3.5 py-2.5 text-[13.5px] leading-relaxed text-slate-800">
-          <span className="font-semibold">{p.aiAdvice.title}</span> — {p.aiAdvice.why}
+          <span className="font-semibold">{p.advice.title}</span> — {p.advice.why}
         </p>
       )}
       {act.length > 0 && (
@@ -86,11 +84,11 @@ function PersonBlock({ p }: { p: TeamPerson }) {
                   {d.name}
                 </Link>
                 <span className="shrink-0 text-[12.5px] text-slate-500">
-                  R{d.steps.length} · {ago(d.idleDays)}
+                  R{d.rank} · {ago(d.idleDays)}
                 </span>
               </div>
-              <p className="mt-1.5 text-[13px] leading-relaxed text-rose-700">{suiviReason(d, managerWhy(d))}</p>
-              <p className="mt-1 text-[13.5px] font-medium text-slate-900">→ {managerTitle(d, p.name)}</p>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-rose-700">{d.reason}</p>
+              <p className="mt-1 text-[13.5px] font-medium text-slate-900">→ {d.action}</p>
             </li>
           ))}
         </ul>
@@ -103,7 +101,7 @@ function PersonBlock({ p }: { p: TeamPerson }) {
 export default function SuiviView({ people, hasTeam }: { people: TeamPerson[]; hasTeam: boolean }) {
   const shown = people
     .filter((p) => p.deals.length > 0)
-    .sort((a, b) => b.deals.filter((d) => suiviLevel(d) === "intervenir").length - a.deals.filter((d) => suiviLevel(d) === "intervenir").length);
+    .sort((a, b) => b.deals.filter((d) => d.level === "intervenir").length - a.deals.filter((d) => d.level === "intervenir").length);
   if (shown.length === 0) {
     return (
       <p className="rounded-2xl border border-border bg-white p-5 text-[13.5px] text-slate-500">

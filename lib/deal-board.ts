@@ -255,7 +255,10 @@ export function formatDays(days: number): string {
 // deal HubSpot rattaché à part. Quand le parcours est mesuré, toutes les
 // étapes ouvertes du pipeline y figurent, même sans deal suivi : c'est le
 // parcours entier qu'on lit, avec sa durée habituelle et son taux de passage.
-export function buildStages(deals: BoardDeal[], pipelineStats?: PipelineStats[] | null): StageColumn[] {
+// Les colonnes d'étapes HubSpot : pour la file (deals du tableau) comme pour
+// les libellés des règles (deals de « Suivi des deals »), seuls le deal HubSpot
+// et le nombre d'alertes comptent.
+export function buildStages(deals: Pick<BoardDeal, "hubspot" | "alerts">[] | { hubspot: BoardDeal["hubspot"]; alerts: unknown[] }[], pipelineStats?: PipelineStats[] | null): StageColumn[] {
   const columns = new Map<string, StageColumn>();
   const used = (pipelineStats ?? []).filter((p) =>
     deals.some((d) => d.hubspot && (d.hubspot.pipelineId ? d.hubspot.pipelineId === p.pipelineId : d.hubspot.pipeline === p.pipelineLabel))

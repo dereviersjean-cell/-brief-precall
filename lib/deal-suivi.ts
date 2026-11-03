@@ -1,5 +1,5 @@
 import type { DealProgress } from "./deal-progress";
-import { interventionLevel } from "./deal-coaching";
+import { interventionLevel, managerTitle, managerWhy } from "./deal-coaching";
 
 // « Suivi des deals » côté manager (synthèse produit du 03/11/2026, vue « Par
 // commercial » choisie par Jean le même jour) : pour chaque commercial, les
@@ -33,4 +33,31 @@ export function suiviReason(d: DealProgress, fallback: string): string {
     return `Engagement en retard : ${what}${d.nextStep.date ? ` (prévu le ${dayLabel(d.nextStep.date)})` : ""}`;
   }
   return fallback;
+}
+
+// Ce que la vue « Par commercial » affiche d'un deal, calculé côté serveur :
+// le navigateur ne reçoit que ces champs, pas tout le deal (fluidité,
+// 03/11/2026).
+export type SuiviDeal = {
+  id: string;
+  name: string;
+  domain: string | null;
+  rank: number;
+  idleDays: number | null;
+  level: SuiviLevel;
+  reason: string;
+  action: string;
+};
+
+export function suiviDeal(d: DealProgress, ownerName: string): SuiviDeal {
+  return {
+    id: d.id,
+    name: d.name,
+    domain: d.domain,
+    rank: d.steps.length,
+    idleDays: d.idleDays,
+    level: suiviLevel(d),
+    reason: suiviReason(d, managerWhy(d)),
+    action: managerTitle(d, ownerName),
+  };
 }

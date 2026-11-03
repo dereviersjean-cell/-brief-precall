@@ -29,6 +29,8 @@ function daysRemaining(iso: string): number {
 // halo. Nav/routes inchangées. Largeur gardée à w-60 pour ne pas devoir
 // retoucher le ml-60 de tous les layout.tsx.
 
+const FULL_PREFETCH = new Set(["/brief", "/mes-deals", "/deals"]);
+
 function NavLink({
   href,
   label,
@@ -50,10 +52,10 @@ function NavLink({
   return (
     <Link
       href={href}
-      // La page Brief se lit entièrement côté serveur (agenda compris) et n'a
-      // pas d'écran de chargement : préchargée en entier, le clic l'affiche
-      // aussitôt.
-      prefetch={href === "/brief" ? true : undefined}
+      // Brief, Deals et Suivi des deals se lisent entièrement côté serveur et
+      // n'ont pas d'écran de chargement : préchargées en entier, le clic les
+      // affiche aussitôt (Deals et Suivi : 03/11/2026, fluidité).
+      prefetch={FULL_PREFETCH.has(href) ? true : undefined}
       data-tour={tourId}
       className={`group relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-[14px] transition-colors ${
         active

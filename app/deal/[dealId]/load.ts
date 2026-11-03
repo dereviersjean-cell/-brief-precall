@@ -21,18 +21,26 @@ export async function loadDealPage(rawDealId: string) {
   const viewer = await getViewer();
   if (!viewer) redirect("/login");
   const organizationId = viewer.organizationId;
-  if (!organizationId || !(await isDealMemoryEnabledForOrganization(organizationId))) redirect("/brief");
+  if (!organizationId) redirect("/brief");
+  const isManager = viewer.role === "manager";
 
-  const fiches = await getDealPageFiches(rawDealId, organizationId);
+  // Tout ce qui ne dépend que du lecteur et du deal part en même temps
+  // (03/11/2026, fluidité : c'étaient six vagues de requêtes à la suite).
+  // Rien n'est montré avant les contrôles qui suivent.
+  const [enabled, fiches, commercials, rules] = await Promise.all([
+    isDealMemoryEnabledForOrganization(organizationId),
+    getDealPageFiches(rawDealId, organizationId),
+    isManager ? getCommercialsForManager(viewer.userId) : Promise.resolve([]),
+    getOrganizationDealRules(organizationId),
+  ]);
+  if (!enabled) redirect("/brief");
   if (!fiches || fiches.length === 0) notFound();
 
-  const isManager = viewer.role === "manager";
-  const allowed = new Set([viewer.userId, ...(isManager ? (await getCommercialsForManager(viewer.userId)).map((c) => c.id) : [])]);
+  const allowed = new Set([viewer.userId, ...commercials.map((c) => c.id)]);
   if (!fiches.some((f) => allowed.has(f.ownerId))) notFound();
 
   const ownerIds = [...new Set(fiches.map((f) => f.ownerId))];
-  const [rules, objectionLists, ownerNames, callDetails] = await Promise.all([
-    getOrganizationDealRules(organizationId),
+  const [objectionLists, ownerNames, callDetails] = await Promise.all([
     Promise.all(fiches.map((f) => getDealMemoryObjections(f.callId).catch(() => []))),
     Promise.all(ownerIds.map((id) => getUserName(id).catch(() => null))),
     getDealCallDetails(fiches.map((f) => f.callId)).catch(() => ({})),

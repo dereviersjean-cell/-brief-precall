@@ -1943,20 +1943,6 @@ export async function setCallDealAdvice(callId: string, advice: AiDealAdvice | n
   if (writeError) console.error("[db] setCallDealAdvice failed:", writeError.message);
 }
 
-export async function getNextQuestionsForCalls(callIds: string[]): Promise<Record<string, NextQuestions>> {
-  if (callIds.length === 0) return {};
-  const { data, error } = await supabaseAdmin.from("call_deal_memory").select("call_id, next_questions").in("call_id", callIds);
-  if (error) {
-    console.error("[db] getNextQuestionsForCalls failed (migration 037 ?):", error.message);
-    return {};
-  }
-  const result: Record<string, NextQuestions> = {};
-  for (const row of (data ?? []) as { call_id: string; next_questions: NextQuestions | null }[]) {
-    if (row.next_questions) result[row.call_id] = row.next_questions;
-  }
-  return result;
-}
-
 // Une fiche par call : la régénération remplace la précédente. `deal` vient de
 // la migration 030 : sans lui (fiche d'un call qu'aucun repère ne rattache),
 // les colonnes du deal restent vides.
@@ -2344,7 +2330,7 @@ export async function getDealBoardRows(organizationId: string, ownerIds: string[
   if (ownerIds.length === 0) return [];
   const { data, error } = await supabaseAdmin
     .from("call_deal_memory")
-    .select("call_id, deal_id, call_at, generated_at, alerts, fields, calls!inner(user_id, meeting_title), deals!inner(name, hubspot_snapshot)")
+    .select("call_id, deal_id, call_at, generated_at, alerts, fields, next_questions, calls!inner(user_id, meeting_title), deals!inner(name, hubspot_snapshot)")
     .eq("organization_id", organizationId)
     .not("deal_id", "is", null)
     .in("calls.user_id", ownerIds);
@@ -2354,20 +2340,18 @@ export async function getDealBoardRows(organizationId: string, ownerIds: string[
     deal_id: string;
     call_at: string | null;
     generated_at: string;
+    next_questions: NextQuestions | null;
     alerts: BoardFicheRow["alerts"] | null;
     fields: Record<string, unknown[] | null> | null;
     calls: { user_id: string; meeting_title: string | null } | { user_id: string; meeting_title: string | null }[];
     deals: { name: string; hubspot_snapshot: HubspotDealSnapshot | null } | { name: string; hubspot_snapshot: HubspotDealSnapshot | null }[];
   };
   const rows = (data ?? []) as Row[];
-  // Les questions du prochain call, lues à part : sans la migration 037, la
-  // liste s'affiche quand même (questions fixes).
-  const questions = await getNextQuestionsForCalls(rows.map((r) => r.call_id));
   return rows.map((r) => {
     const call = Array.isArray(r.calls) ? r.calls[0] : r.calls;
     const deal = Array.isArray(r.deals) ? r.deals[0] : r.deals;
     return {
-      nextQuestions: questions[r.call_id] ?? null,
+      nextQuestions: r.next_questions ?? null,
       dealId: r.deal_id,
       dealName: deal?.name ?? "Deal",
       hubspot: deal?.hubspot_snapshot ?? null,
@@ -2392,13 +2376,13 @@ export async function getDealPageFiches(
   dealId: string,
   organizationId: string
 ): Promise<(ProgressFiche & { ownerId: string })[] | null> {
-  const { data: deal, error: dealError } = await supabaseAdmin.from("deals").select("organization_id").eq("id", dealId).maybeSingle();
-  if (dealError) throw dealError;
-  if (!deal || (deal as { organization_id: string }).organization_id !== organizationId) return null;
+  // Une seule requête (03/11/2026, fluidité) : la fiche porte son
+  // organisation, un deal d'une autre organisation ne rend rien.
   const { data, error } = await supabaseAdmin
     .from("call_deal_memory")
-    .select("call_id, deal_id, call_at, fields, alerts, calls!inner(meeting_title, user_id), deals!inner(name, hubspot_snapshot)")
+    .select("call_id, deal_id, call_at, fields, alerts, next_questions, calls!inner(meeting_title, user_id), deals!inner(name, hubspot_snapshot)")
     .eq("deal_id", dealId)
+    .eq("organization_id", organizationId)
     .order("call_at", { ascending: true, nullsFirst: true });
   if (error) throw error;
   type Row = {
@@ -2407,11 +2391,11 @@ export async function getDealPageFiches(
     call_at: string | null;
     fields: ProgressFiche["fields"] | null;
     alerts: ProgressFiche["alerts"] | null;
+    next_questions: NextQuestions | null;
     calls: { meeting_title: string | null; user_id: string } | { meeting_title: string | null; user_id: string }[];
     deals: { name: string; hubspot_snapshot: HubspotDealSnapshot | null } | { name: string; hubspot_snapshot: HubspotDealSnapshot | null }[];
   };
   const rows = (data ?? []) as Row[];
-  const questions = await getNextQuestionsForCalls(rows.map((r) => r.call_id));
   return rows.map((r) => {
     const call = Array.isArray(r.calls) ? r.calls[0] : r.calls;
     const d = Array.isArray(r.deals) ? r.deals[0] : r.deals;
@@ -2425,7 +2409,7 @@ export async function getDealPageFiches(
       ownerId: call?.user_id ?? "",
       fields: r.fields ?? {},
       alerts: r.alerts ?? [],
-      nextQuestions: questions[r.call_id] ?? null,
+      nextQuestions: r.next_questions ?? null,
     };
   });
 }
@@ -2496,7 +2480,7 @@ export async function getProgressFichesForUser(organizationId: string, userId: s
 
   const { data, error } = await supabaseAdmin
     .from("call_deal_memory")
-    .select("call_id, deal_id, call_at, fields, alerts, calls(meeting_title), deals!inner(name, hubspot_snapshot, domain)")
+    .select("call_id, deal_id, call_at, fields, alerts, next_questions, calls(meeting_title), deals!inner(name, hubspot_snapshot, domain)")
     .eq("organization_id", organizationId)
     .in("deal_id", dealIds);
   if (error) throw error;
@@ -2506,20 +2490,18 @@ export async function getProgressFichesForUser(organizationId: string, userId: s
     call_at: string | null;
     fields: ProgressFiche["fields"] | null;
     alerts: ProgressFiche["alerts"] | null;
+    next_questions: NextQuestions | null;
     calls: { meeting_title: string | null } | { meeting_title: string | null }[] | null;
     deals:
       | { name: string; hubspot_snapshot: HubspotDealSnapshot | null; domain: string | null }
       | { name: string; hubspot_snapshot: HubspotDealSnapshot | null; domain: string | null }[];
   };
   const rows = (data ?? []) as Row[];
-  // Les questions du prochain call, lues à part : sans la migration 037, la
-  // liste s'affiche quand même (questions fixes).
-  const questions = await getNextQuestionsForCalls(rows.map((r) => r.call_id));
   return rows.map((r) => {
     const call = Array.isArray(r.calls) ? r.calls[0] : r.calls;
     const deal = Array.isArray(r.deals) ? r.deals[0] : r.deals;
     return {
-      nextQuestions: questions[r.call_id] ?? null,
+      nextQuestions: r.next_questions ?? null,
       dealId: r.deal_id,
       dealName: deal?.name ?? "Deal",
       hubspot: deal?.hubspot_snapshot ?? null,
@@ -2590,37 +2572,6 @@ export async function getCallActivityForUsers(userIds: string[]): Promise<Record
   return result;
 }
 
-// Effet des alertes (lib/deal-impact.ts) : les clics « Vu » / « Plus tard »
-// des managers de l'organisation depuis `since`, et les dates des calls des
-// deals concernés.
-export async function getAlertImpactData(
-  organizationId: string,
-  since: string
-): Promise<{ events: { dealId: string; status: "seen" | "later"; alertRules: string[]; at: string }[]; callsByDeal: Record<string, string[]> }> {
-  const { data, error } = await supabaseAdmin
-    .from("deal_review_events")
-    .select("deal_id, status, alert_rules, created_at, deals!inner(organization_id)")
-    .eq("deals.organization_id", organizationId)
-    .gte("created_at", since);
-  if (error) throw error;
-  const events = ((data ?? []) as { deal_id: string; status: "seen" | "later"; alert_rules: string[] | null; created_at: string }[]).map((r) => ({
-    dealId: r.deal_id,
-    status: r.status,
-    alertRules: r.alert_rules ?? [],
-    at: r.created_at,
-  }));
-  const dealIds = [...new Set(events.map((e) => e.dealId))];
-  const callsByDeal: Record<string, string[]> = {};
-  if (dealIds.length > 0) {
-    const { data: calls, error: callsError } = await supabaseAdmin.from("call_deal_memory").select("deal_id, call_at").in("deal_id", dealIds);
-    if (callsError) throw callsError;
-    for (const c of (calls ?? []) as { deal_id: string; call_at: string | null }[]) {
-      if (c.call_at) (callsByDeal[c.deal_id] ??= []).push(c.call_at);
-    }
-  }
-  return { events, callsByDeal };
-}
-
 export async function getDealReviews(userId: string): Promise<BoardReview[]> {
   const { data, error } = await supabaseAdmin.from("deal_reviews").select("deal_id, status, reviewed_at").eq("user_id", userId);
   if (error) throw error;
@@ -2629,21 +2580,6 @@ export async function getDealReviews(userId: string): Promise<BoardReview[]> {
     status: r.status,
     reviewedAt: r.reviewed_at,
   }));
-}
-
-// Un clic sur « Vu » ou « Plus tard » : l'état courant est remplacé, le clic
-// est gardé avec les alertes qui étaient affichées (mesure de l'effet des
-// alertes, décision du 26/10/2026).
-export async function saveDealReview(dealId: string, userId: string, status: "seen" | "later", alertRules: string[]): Promise<void> {
-  const reviewedAt = new Date().toISOString();
-  const { error } = await supabaseAdmin
-    .from("deal_reviews")
-    .upsert({ deal_id: dealId, user_id: userId, status, reviewed_at: reviewedAt }, { onConflict: "deal_id,user_id" });
-  if (error) throw error;
-  const { error: eventError } = await supabaseAdmin
-    .from("deal_review_events")
-    .insert({ deal_id: dealId, user_id: userId, status, alert_rules: alertRules });
-  if (eventError) throw eventError;
 }
 
 // ─── Règles des deals (Deal Execution, migration 036) ───────────────────────
@@ -2945,21 +2881,24 @@ export async function loadDealMemoryPanel(
   callId: string
 ): Promise<DealMemoryPanel | null> {
   if (!role || !organizationId) return null;
-  if (!(await isDealMemoryEnabledForOrganization(organizationId))) return null;
-  const [initial, objections] = await Promise.all([
+  // Lectures indépendantes lancées ensemble (03/11/2026, fluidité : quatre
+  // vagues à la suite auparavant) ; rien n'est rendu si le module est fermé.
+  const [enabled, initial, objections, rules] = await Promise.all([
+    isDealMemoryEnabledForOrganization(organizationId),
     getCallDealMemory(callId).catch((err) => {
       console.error("[db] getCallDealMemory failed:", err instanceof Error ? err.message : String(err));
       return null;
     }),
     getDealMemoryObjections(callId).catch(() => [] as DealMemoryObjection[]),
+    getOrganizationDealRules(organizationId),
   ]);
+  if (!enabled) return null;
   const deal = initial?.dealId
     ? await getDealOverview(initial.dealId, callId).catch((err) => {
         console.error("[db] getDealOverview failed:", err instanceof Error ? err.message : String(err));
         return null;
       })
     : null;
-  const rules = await getOrganizationDealRules(organizationId);
   return { initial, objections, deal, canManage: role === "manager", qualificationFields: qualificationFields(rules), rules };
 }
 
@@ -3444,25 +3383,23 @@ export type LinkedUser = {
 // A manager only ever sees commercials sharing their organization — if the
 // manager isn't in an org yet, there's nothing valid to return.
 export async function getCommercialsForManager(managerId: string): Promise<LinkedUser[]> {
-  const managerOrgId = await getUserOrganizationId(managerId);
-  if (!managerOrgId) return [];
-
-  const { data: links, error: linksError } = await supabaseAdmin
-    .from("manager_commercial_links")
-    .select("commercial_id")
-    .eq("manager_id", managerId);
-  if (linksError) throw linksError;
-
-  const commercialIds = (links ?? []).map((l) => (l as { commercial_id: string }).commercial_id);
-  if (commercialIds.length === 0) return [];
-
+  // Une seule requête (03/11/2026, fluidité ; c'en était trois à la suite) :
+  // les liens, le commercial et le manager ensemble. Même règle qu'avant :
+  // seulement les commerciaux de la même organisation que le manager.
+  type Person = { id?: string; name?: string | null; email?: string; organization_id: string | null };
+  type Row = { commercial: Person | Person[] | null; manager: Person | Person[] | null };
   const { data, error } = await supabaseAdmin
-    .from("users")
-    .select("id, name, email")
-    .in("id", commercialIds)
-    .eq("organization_id", managerOrgId);
+    .from("manager_commercial_links")
+    .select("commercial:users!commercial_id(id, name, email, organization_id), manager:users!manager_id(organization_id)")
+    .eq("manager_id", managerId);
   if (error) throw error;
-  return (data ?? []) as LinkedUser[];
+  const one = (p: Person | Person[] | null) => (Array.isArray(p) ? p[0] : p) ?? null;
+  return ((data ?? []) as Row[]).flatMap((r) => {
+    const c = one(r.commercial);
+    const m = one(r.manager);
+    if (!c?.id || !m?.organization_id || c.organization_id !== m.organization_id) return [];
+    return [{ id: c.id, name: c.name ?? null, email: c.email ?? "" } as LinkedUser];
+  });
 }
 
 // Symmetric to getCommercialsForManager — same-organization constraint.

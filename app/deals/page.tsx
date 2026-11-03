@@ -1,91 +1,74 @@
 import { redirect } from "next/navigation";
 import { getViewer } from "@/lib/session-user";
 import {
-  getAlertImpactData,
-  getCallActivityForUsers,
   getCommercialAdvice,
   getCommercialsForManager,
-  getDealBoardRows,
-  getDealReviews,
   getOrganizationDealRules,
   getOrganizationPipelineStats,
   getProgressFichesForUser,
   getUserAvatars,
   isDealMemoryEnabledForOrganization,
 } from "@/lib/db";
-import { buildBoardNow, buildStages } from "@/lib/deal-board";
-import { interventionLevel } from "@/lib/deal-coaching";
+import { buildStages } from "@/lib/deal-board";
 import { buildDealProgressNow } from "@/lib/deal-progress";
-import { buildAlertImpact } from "@/lib/deal-impact";
-import { nowMs } from "@/lib/format";
+import { suiviDeal } from "@/lib/deal-suivi";
 import DealsBoardClient from "./DealsBoardClient";
 import type { TeamPerson } from "./team";
 
-export default async function DealsPage({ searchParams }: { searchParams: Promise<{ tab?: string; stage?: string; commercial?: string }> }) {
+// Suivi des deals (manager) : la vue « Par commercial » (03/11/2026), les
+// règles des deals, la connexion HubSpot. Ne lit que ce que ces trois
+// onglets affichent (fluidité, 03/11/2026 : la file « Où intervenir », son
+// effet mesuré et ses revues ne sont plus affichés, ils ne sont plus lus).
+export default async function DealsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const viewer = await getViewer();
   if (!viewer) redirect("/login");
-  if (viewer.role !== "manager" || !viewer.organizationId || !(await isDealMemoryEnabledForOrganization(viewer.organizationId))) {
-    redirect("/brief");
-  }
+  if (viewer.role !== "manager" || !viewer.organizationId) redirect("/brief");
+  const organizationId = viewer.organizationId;
 
-  // Suivi des deals (03/11/2026, décision de Jean) : les deals de ses
-  // commerciaux liés seulement — les siens sont dans « Deals ».
-  const [commercials, reviews, pipelineStats, rules, params] = await Promise.all([
+  // Les deals de ses commerciaux liés seulement — les siens sont dans « Deals ».
+  // Le contrôle d'accès part avec les lectures, rien n'est affiché avant lui.
+  const [enabled, commercials, pipelineStats, rules, params] = await Promise.all([
+    isDealMemoryEnabledForOrganization(organizationId),
     getCommercialsForManager(viewer.userId),
-    getDealReviews(viewer.userId).catch(() => []),
-    getOrganizationPipelineStats(viewer.organizationId),
-    getOrganizationDealRules(viewer.organizationId),
+    getOrganizationPipelineStats(organizationId),
+    getOrganizationDealRules(organizationId),
     searchParams,
   ]);
+  if (!enabled) redirect("/brief");
   const people = commercials.map((c) => ({ id: c.id, name: c.name ?? c.email ?? "Commercial" }));
-  const rows = await getDealBoardRows(viewer.organizationId, people.map((p) => p.id));
-
-  const deals = buildBoardNow(rows, reviews, pipelineStats, rules);
-
-  // Onglet Équipe (27/10/2026) : ce que fait chaque commercial — son activité
-  // et ses deals tels qu'il les voit dans « Mes deals ».
-  const organizationId = viewer.organizationId;
-  const [activity, progressLists, avatars, personAdvice] = await Promise.all([
-    getCallActivityForUsers(people.map((p) => p.id)).catch(() => ({}) as Record<string, { week: number; lastAt: string | null }>),
+  const ids = people.map((p) => p.id);
+  const [progressLists, avatars, personAdvice] = await Promise.all([
     Promise.all(people.map((p) => getProgressFichesForUser(organizationId, p.id).catch(() => []))),
-    getUserAvatars(people.map((p) => p.id)),
-    getCommercialAdvice(people.map((p) => p.id)),
+    getUserAvatars(ids),
+    getCommercialAdvice(ids),
   ]);
-  // L'effet des alertes sur 90 jours (lib/deal-impact.ts) : un deal « vu »
-  // a-t-il eu un nouveau call dans le délai d'inactivité de l'organisation ?
-  const now = nowMs();
-  const impactData = await getAlertImpactData(organizationId, new Date(now - 90 * 24 * 60 * 60 * 1000).toISOString()).catch(() => null);
-  const impact = impactData ? buildAlertImpact(impactData.events, impactData.callsByDeal, now, rules.inactivityDays) : null;
 
-  // Une carte par personne qui a des deals ou de l'activité récente ; celles
-  // dont un deal demande d'intervenir passent devant (version M3, 27/10/2026).
-  const weight = (p: TeamPerson) =>
-    p.deals.filter((d) => interventionLevel(d) === "oui").length * 100 + p.deals.filter((d) => interventionLevel(d) === "surveiller").length;
-  const teamPeople: TeamPerson[] = people
-    .map((p, i) => ({
+  const progress = people.map((_, i) => buildDealProgressNow(progressLists[i], rules).filter((d) => !d.hubspot?.closed));
+  const teamPeople: TeamPerson[] = people.map((p, i) => {
+    const advice = personAdvice[p.id];
+    return {
       id: p.id,
       name: p.name,
       avatarUrl: avatars[p.id] ?? null,
-      week: activity[p.id]?.week ?? 0,
-      lastAt: activity[p.id]?.lastAt ?? null,
-      deals: buildDealProgressNow(progressLists[i], rules).filter((d) => !d.hubspot?.closed),
-      aiAdvice: personAdvice[p.id] ?? null,
-    }))
-    .filter((p) => p.deals.length > 0 || p.lastAt !== null)
-    .sort((a, b) => weight(b) - weight(a));
+      deals: progress[i].map((d) => suiviDeal(d, p.name)),
+      advice: advice ? { title: advice.title, why: advice.why } : null,
+    };
+  });
+  // Les libellés des étapes HubSpot, pour l'onglet Règles.
+  const stageLabels = Object.fromEntries(
+    buildStages(progress.flat(), pipelineStats)
+      .filter((s) => s.index)
+      .map((s) => [s.index as number, s.label])
+  );
 
   return (
     <DealsBoardClient
-      deals={deals}
-      stages={buildStages(deals.filter((d) => !d.hiddenBecause), pipelineStats)}
       teamPeople={teamPeople}
-      impact={impact}
-      impactWindowDays={rules.inactivityDays}
-      people={Object.fromEntries(people.map((p) => [p.id, p.name]))}
-      // Les anciens liens (?tab=ensemble, ?tab=equipe, ?commercial=) mènent
-      // à la vue « Par commercial ».
-      initialTab={params.tab === "file" ? "file" : params.tab === "regles" ? "regles" : params.tab === "hubspot" ? "hubspot" : "suivi"}
-      initialStage={params.stage ?? null}
+      hasTeam={people.length > 0}
+      stageLabels={stageLabels}
+      // Les anciens liens (?tab=ensemble, ?tab=equipe, ?tab=file) mènent à la
+      // vue « Par commercial ».
+      initialTab={params.tab === "regles" ? "regles" : params.tab === "hubspot" ? "hubspot" : "suivi"}
     />
   );
 }

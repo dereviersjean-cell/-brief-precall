@@ -10,12 +10,16 @@ import DealsList from "@/app/components/DealsList";
 export default async function MesDealsPage() {
   const viewer = await getViewer();
   if (!viewer) redirect("/login");
-  if (!viewer.organizationId || !(await isDealMemoryEnabledForOrganization(viewer.organizationId))) redirect("/brief");
+  if (!viewer.organizationId) redirect("/brief");
 
-  const [fiches, rules] = await Promise.all([
+  // Le contrôle d'accès part avec les lectures (03/11/2026, fluidité) ; rien
+  // n'est affiché avant lui.
+  const [enabled, fiches, rules] = await Promise.all([
+    isDealMemoryEnabledForOrganization(viewer.organizationId),
     getProgressFichesForUser(viewer.organizationId, viewer.userId),
     getOrganizationDealRules(viewer.organizationId),
   ]);
+  if (!enabled) redirect("/brief");
   // Un deal clos dans HubSpot n'a plus de suite à préparer.
   const deals = buildDealProgressNow(fiches, rules).filter((d) => !d.hubspot?.closed);
   return (
