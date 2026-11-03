@@ -6,15 +6,7 @@ import {
   saveClientReferences,
   updateImportJob,
   getAllUsersWithRecallCalendar,
-  generateTasksFromTemplates,
-  getCallsWithUnansweredFollowUps,
-  getQuotesAwaitingAcceptance,
   getUsersForDigestTiming,
-  getOpenTasksWithHubSpotLink,
-  getUsersImportingHubSpotTasks,
-  createTaskFromHubSpot,
-  completeTask,
-  dismissTask,
   getOrganizationsForUsageBilling,
   getOrganizationsInExpiredGracePeriod,
   updateOrganizationBilling,
@@ -22,8 +14,6 @@ import {
   getUserIdsConnectedToCrm,
   getContactEmailsNeedingDealOutcomeSync,
   upsertDealOutcome,
-  type UnansweredFollowUpCall,
-  type UnansweredQuote,
   type DigestRecipient,
   isModuleEnabledForUser,
   getCallWithAnalysis,
@@ -42,8 +32,7 @@ import { syncAndScheduleForUser } from "./recall";
 import { checkCalendarHealth } from "./calendar-health";
 import type { ModuleKey } from "./modules";
 import { sendWeeklyDigestForUser } from "./digest";
-import { pushNewTasksToHubSpot } from "./tasks-hubspot-sync";
-import { batchGetHubSpotTaskStatuses, getHubSpotOwnerId, findNewHubSpotTasksForOwner, findClosedDealsForEmail as findClosedHubspotDealForEmail } from "./crm/hubspot";
+import { findClosedDealsForEmail as findClosedHubspotDealForEmail } from "./crm/hubspot";
 import { findClosedDealsForEmail as findClosedPipedriveDealForEmail } from "./crm/pipedrive";
 import { reportMonthlyUsageForOrganization } from "./stripe";
 
@@ -328,194 +317,12 @@ export const syncRecallCalendars = inngest.createFunction(
   }
 );
 
-export const checkEmailsWithoutReply = inngest.createFunction(
-  {
-    id: "check-emails-without-reply",
-    triggers: [{ cron: "*/30 * * * *" }],
-  },
-  async ({ step }) => {
-    const calls = (await step.run("get-unanswered-followups", async () => {
-      return getCallsWithUnansweredFollowUps();
-    })) as UnansweredFollowUpCall[];
-
-    console.log("[check-emails-without-reply] candidate calls:", calls.length);
-
-    let totalCreated = 0;
-    for (const call of calls) {
-      const { createdCount } = await step.run(`generate-tasks-call-${call.id}`, async () => {
-        const result = await generateTasksFromTemplates(call.user_id, "email", call.id, {
-          contact_id: null,
-          contact_email: call.contact_email,
-          contact_name: null,
-        });
-        await pushNewTasksToHubSpot(call.user_id, result.toPushToHubSpot, call.contact_email);
-        return result;
-      });
-      totalCreated += createdCount;
-    }
-
-    const summary = { checked: calls.length, created: totalCreated };
-    console.log("[check-emails-without-reply] done —", JSON.stringify(summary));
-    return summary;
-  }
-);
-
-export const checkQuotesWithoutAcceptance = inngest.createFunction(
-  {
-    id: "check-quotes-without-acceptance",
-    triggers: [{ cron: "*/30 * * * *" }],
-  },
-  async ({ step }) => {
-    const quotes = (await step.run("get-quotes-awaiting-acceptance", async () => {
-      return getQuotesAwaitingAcceptance();
-    })) as UnansweredQuote[];
-
-    console.log("[check-quotes-without-acceptance] candidate quotes:", quotes.length);
-
-    let totalCreated = 0;
-    for (const quote of quotes) {
-      const { createdCount } = await step.run(`generate-tasks-quote-${quote.id}`, async () => {
-        const result = await generateTasksFromTemplates(quote.user_id, "quote", quote.id, {
-          contact_id: quote.contact_id,
-          contact_email: quote.client_email,
-          contact_name: quote.client_name,
-        });
-        await pushNewTasksToHubSpot(quote.user_id, result.toPushToHubSpot, quote.client_email);
-        return result;
-      });
-      totalCreated += createdCount;
-    }
-
-    const summary = { checked: quotes.length, created: totalCreated };
-    console.log("[check-quotes-without-acceptance] done —", JSON.stringify(summary));
-    return summary;
-  }
-);
-
-// ─── Sync statut tasks HubSpot (module HubSpot tasks) ──────────────────────
-//
-// HubSpot's Webhooks API doesn't support subscribing to engagement objects
-// (notes, meetings, calls, emails, tasks — confirmed against HubSpot's own
-// docs/community answers), so there's no way to be notified in real time
-// when a rep completes or deletes a task on the HubSpot side. This cron is
-// the only way to reconcile: for every Brief task still open locally with a
-// linked hubspot_task_id, check its current HubSpot status. A task missing
-// from the batch/read response was deleted on the HubSpot side (HubSpot
-// silently omits unknown ids rather than erroring) and is dismissed here;
-// hs_task_status === "COMPLETED" is completed here. Same 30-minute cadence
-// as the other "not urgent" task crons above.
-export const syncHubSpotTaskStatuses = inngest.createFunction(
-  {
-    id: "sync-hubspot-task-statuses",
-    triggers: [{ cron: "*/30 * * * *" }],
-  },
-  async ({ step }) => {
-    const openTasks = await step.run("get-open-hubspot-linked-tasks", async () => {
-      return getOpenTasksWithHubSpotLink();
-    });
-
-    const byUser = new Map<string, typeof openTasks>();
-    for (const task of openTasks) {
-      const list = byUser.get(task.user_id) ?? [];
-      list.push(task);
-      byUser.set(task.user_id, list);
-    }
-
-    let totalCompleted = 0;
-    let totalDismissed = 0;
-
-    for (const [userId, tasks] of byUser) {
-      await step.run(`sync-hubspot-tasks-user-${userId}`, async () => {
-        const statuses = await batchGetHubSpotTaskStatuses(
-          userId,
-          tasks.map((t) => t.hubspot_task_id)
-        ).catch((err) => {
-          console.warn(
-            `[sync-hubspot-task-statuses] batchGetHubSpotTaskStatuses failed for user ${userId} (non-blocking):`,
-            err instanceof Error ? err.message : String(err)
-          );
-          return new Map<string, string | null>();
-        });
-
-        for (const task of tasks) {
-          const status = statuses.get(task.hubspot_task_id);
-          if (status === undefined) {
-            // Missing from the response — deleted on the HubSpot side.
-            await dismissTask(task.id, userId).catch((err) =>
-              console.warn(`[sync-hubspot-task-statuses] dismissTask failed for ${task.id}:`, err)
-            );
-            totalDismissed += 1;
-          } else if (status === "COMPLETED") {
-            await completeTask(task.id, userId).catch((err) =>
-              console.warn(`[sync-hubspot-task-statuses] completeTask failed for ${task.id}:`, err)
-            );
-            totalCompleted += 1;
-          }
-        }
-      });
-    }
-
-    const importUsers = await step.run("get-users-importing-hubspot-tasks", async () => {
-      return getUsersImportingHubSpotTasks();
-    });
-
-    let totalImported = 0;
-
-    for (const { id: userId } of importUsers) {
-      await step.run(`import-hubspot-tasks-user-${userId}`, async () => {
-        const ownerId = await getHubSpotOwnerId(userId).catch((err) => {
-          console.warn(
-            `[sync-hubspot-task-statuses] getHubSpotOwnerId failed for user ${userId} (non-blocking):`,
-            err instanceof Error ? err.message : String(err)
-          );
-          return null;
-        });
-        if (!ownerId) return;
-
-        const sinceIso = new Date(Date.now() - 35 * 60 * 1000).toISOString();
-        const nativeTasks = await findNewHubSpotTasksForOwner(userId, ownerId, sinceIso).catch((err) => {
-          console.warn(
-            `[sync-hubspot-task-statuses] findNewHubSpotTasksForOwner failed for user ${userId} (non-blocking):`,
-            err instanceof Error ? err.message : String(err)
-          );
-          return [];
-        });
-
-        for (const t of nativeTasks) {
-          if (!t.contactEmail) continue;
-          const created = await createTaskFromHubSpot(userId, {
-            hubspotTaskId: t.id,
-            title: t.title ?? "Task HubSpot",
-            description: t.description,
-            dueAt: t.dueAt ?? new Date().toISOString(),
-            contactEmail: t.contactEmail,
-          }).catch((err) => {
-            console.warn(`[sync-hubspot-task-statuses] createTaskFromHubSpot failed for ${t.id}:`, err);
-            return false;
-          });
-          if (created) totalImported += 1;
-        }
-      });
-    }
-
-    const summary = {
-      checked: openTasks.length,
-      completed: totalCompleted,
-      dismissed: totalDismissed,
-      imported: totalImported,
-    };
-    console.log("[sync-hubspot-task-statuses] done —", JSON.stringify(summary));
-    return summary;
-  }
-);
-
 // ─── Sync des issues de deals CRM (module Bibliothèque d'objections / win-loss) ─
 //
-// Complète le signal "quote" (écrit de façon synchrone, sans cron, dans
-// acceptQuoteByPublicToken/rejectQuoteByPublicToken — lib/db.ts) avec le
-// statut closedwon/closedlost réel des CRM connectés, pour les deals qui ne
-// passent jamais par un devis Brief. Un step.run par user connecté (même
-// granularité que syncHubSpotTaskStatuses ci-dessus) : un échec sur un user
+// Le statut closedwon/closedlost réel des CRM connectés (le signal « devis »
+// a disparu avec le module Devis, supprimé le 03/11/2026). Cron débranché le
+// 27/10/2026 (quota Inngest), une ligne pour le relancer dans
+// app/api/inngest/route.ts. Un step.run par user connecté : un échec sur un user
 // (token expiré, rate limit) n'affecte pas les autres. Ne réinterroge que les
 // contacts sans résultat connu pour cette source (getContactEmailsNeedingDealOutcomeSync)
 // — pas tout l'historique à chaque run.

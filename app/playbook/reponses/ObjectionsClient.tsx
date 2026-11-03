@@ -257,7 +257,7 @@ export default function ObjectionsClient({
               <p className="text-[13px] leading-relaxed text-slate-600">
                 {unknownOutcomeCount} objection{unknownOutcomeCount > 1 ? "s" : ""}{" "}
                 sans issue connue — le
-                gagné/perdu vient des devis Brief acceptés/refusés et des deals fermés dans votre CRM connecté. Plus
+                gagné/perdu vient des deals fermés dans votre CRM connecté. Plus
                 l&apos;issue est connue, plus la bibliothèque dit quelles réponses gagnent.
               </p>
             </div>

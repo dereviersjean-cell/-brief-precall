@@ -58,6 +58,12 @@ const nextConfig: NextConfig = {
       // Notifications moved from a Settings sub-page to its own top-level
       // sidebar item — keeps old bookmarks/links working.
       { source: "/settings/notifications", destination: "/notifications", permanent: true },
+      // Modules Tâches et Devis supprimés le 03/11/2026 : les anciens liens
+      // ramènent à l'accueil plutôt qu'à une page introuvable.
+      { source: "/tasks/:path*", destination: "/brief", permanent: false },
+      { source: "/tasks", destination: "/brief", permanent: false },
+      { source: "/quotes/:path*", destination: "/brief", permanent: false },
+      { source: "/quotes", destination: "/brief", permanent: false },
     ];
   },
   async headers() {

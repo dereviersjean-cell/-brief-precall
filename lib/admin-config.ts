@@ -70,32 +70,6 @@ Reprends le registre du rendez-vous : tutoiement si le commercial et le prospect
 Ton professionnel et chaleureux, sans formules toutes faites. Cinq à huit lignes en paragraphes courts, sans liste à puces : le prospect doit pouvoir le lire en trente secondes, le détail viendra au prochain rendez-vous.
 Objet court et précis, qui dit de quoi parle l'email.`;
 
-export const DEFAULT_QUOTE_GENERATION_PROMPT =
-`Tu es un assistant qui aide un commercial à préparer un devis pour un prospect avec qui il a échangé.
-
-Contexte fourni :
-- Infos entreprise du commercial
-- Infos contact/entreprise du prospect
-- Historique des calls analysés (résumé, points clés, objections, budget évoqué)
-- Catalogue d'offres disponibles avec leurs IDs
-
-Tu dois retourner UNIQUEMENT un JSON strict, sans markdown, sans texte avant ou après, avec la structure suivante :
-{
-  "lines": [
-    {"offer_id": "uuid-ou-null", "name": "...", "description": "...", "quantity": 1, "unit": "unité", "unit_price": 500, "vat_rate": 20, "discount_type": "percent|amount|null", "discount_value": 0}
-  ],
-  "notes": "2-3 phrases contextuelles",
-  "validity_days": 30
-}
-
-Règles :
-- Privilégie les offres du catalogue quand elles matchent (utilise leur id exact dans offer_id, reprends leur nom/prix/unité/TVA)
-- N'utilise une ligne libre (offer_id: null) que si rien dans le catalogue ne correspond à ce qui a été discuté
-- Ne propose une réduction (discount_type / discount_value) QUE si le prospect a explicitement discuté du budget ou négocié
-- Si tu ne sais pas quoi proposer, retourne un tableau lines vide et explique dans notes pourquoi
-- Reste réaliste sur les quantités et prix
-- validity_days est un nombre entre 7 et 60`;
-
 // Used by /dashboard/playbook's "Importer depuis un doc" flow (sous-étape C) —
 // extracts a candidate dimensions/criteria structure from a pasted playbook
 // document, which the manager reviews and can apply via replacePlaybookDimensions.
@@ -126,63 +100,12 @@ Règles :
 - Ne fais pas de dimensions vagues type "compétence générale" — sois toujours actionnable
 - Si le document est trop court ou hors sujet, retourne { "dimensions": [] } et laisse le manager saisir à la main`;
 
-export const DEFAULT_QUOTE_EMAIL_PROMPT =
-`Tu rédiges un email professionnel et chaleureux pour envoyer un devis à un prospect avec qui le commercial a déjà échangé.
-
-Contexte fourni :
-- Infos du commercial (nom, entreprise)
-- Infos du prospect (nom, entreprise, email)
-- Historique récent des calls analysés
-- Contenu du devis (lignes, montant TTC, validité)
-
-Tu retournes UNIQUEMENT un JSON strict :
-{
-  "subject": "...",
-  "body": "..."
-}
-
-Règles :
-- Sujet clair et engageant, avec le nom du prospect ou de son entreprise
-- Corps 4-6 phrases : ouverture qui rappelle le contexte, présentation brève du devis, mention validité, appel à action, signature
-- Ton pro mais humain, en français
-- N'invente pas de faits qui ne sont pas dans le contexte
-- Le lien vers la page publique de signature sera injecté automatiquement, tu ne le mets pas dans le corps
-- Signature avec juste le prénom du commercial`;
-
-export const DEFAULT_TASK_EMAIL_PROMPT =
-`Tu rédiges un email professionnel pour un commercial, dans le cadre du suivi d'un prospect.
-
-Contexte fourni :
-- Type de task (mail_recap, relance_email, relance_call, other) et titre de la task
-- Informations sur le commercial (nom, entreprise)
-- Informations sur le prospect (nom, entreprise, email)
-- Contexte de la source ayant déclenché la task (call analysé, email envoyé précédent, ou devis envoyé)
-
-Tu retournes UNIQUEMENT un JSON strict :
-{
-  "subject": "...",
-  "body": "..."
-}
-
-Règles selon le type de task :
-- mail_recap : ton chaleureux, récapitule les points-clés discutés lors du call, mentionne les prochaines étapes concrètes, propose un follow-up
-- relance_email : court et direct, rappelle brièvement le contexte (référence l'échange précédent), demande gentiment un retour ou propose un créneau
-- relance_call : plus personnel, mentionne que tu préfères en discuter de vive voix, propose 2-3 créneaux
-- other : ton pro, adapté au titre de la task
-
-Règles générales :
-- 3-5 phrases MAX pour les relances, 5-8 pour un récap
-- Signature avec juste le prénom du commercial
-- Ton pro-humain en français, pas ampoulé, pas commercial forcé
-- N'invente pas de faits qui ne sont pas dans le contexte`;
-
 // Digest hebdo (module Distribution Flexible, sous-étape 3) — narratif
 // qualitatif ("ce qui a bien/mal fonctionné", "à ne pas oublier"), distinct
 // des stats chiffrées (calls_count, avg_score...) qui restent fixes/non
 // promptables. Un seul prompt par audience, pas un par timing : le type de
 // digest (rétrospective vendredi vs prospective lundi) est injecté comme
-// contexte dans le message utilisateur, la même logique de branchement
-// qu'utilise déjà DEFAULT_TASK_EMAIL_PROMPT pour ses 4 types de tasks.
+// contexte dans le message utilisateur.
 export const DEFAULT_DIGEST_COMMERCIAL_PROMPT =
 `Tu es un coach commercial qui aide un(e) commercial(e) B2B à progresser semaine après semaine.
 
@@ -307,9 +230,6 @@ export async function initializePromptDefaults(): Promise<{ initialized: string[
   const defaults: Record<string, string> = {
     call_analysis_system_prompt: DEFAULT_CALL_ANALYSIS_SYSTEM_PROMPT,
     email_followup_prompt: DEFAULT_EMAIL_FOLLOWUP_PROMPT,
-    quote_generation_prompt: DEFAULT_QUOTE_GENERATION_PROMPT,
-    quote_email_prompt: DEFAULT_QUOTE_EMAIL_PROMPT,
-    task_email_prompt: DEFAULT_TASK_EMAIL_PROMPT,
     digest_commercial_prompt: DEFAULT_DIGEST_COMMERCIAL_PROMPT,
     digest_manager_prompt: DEFAULT_DIGEST_MANAGER_PROMPT,
   };

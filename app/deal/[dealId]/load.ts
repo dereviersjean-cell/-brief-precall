@@ -13,7 +13,7 @@ import {
 import { buildDealProgressNow } from "@/lib/deal-progress";
 import { buildDealTimeline } from "@/lib/deal-timeline";
 
-// Ce que lisent les deux pages d'un deal — la chronologie et le détail —,
+// Ce que lit la page d'un deal (la vue Deal du 03/11/2026),
 // contrôle d'accès compris : le commercial voit ses deals, le manager ceux de
 // ses commerciaux liés et les siens.
 export async function loadDealPage(rawDealId: string) {

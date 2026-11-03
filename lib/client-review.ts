@@ -185,7 +185,6 @@ export async function getClientReview(organizationId: string, now: Date = new Da
     playbooks,
     crmRows,
     trainingRows,
-    tasks,
     upcomingMeetings,
   ] = await Promise.all([
     orEmpty<CallRow[]>(
@@ -232,7 +231,6 @@ export async function getClientReview(organizationId: string, now: Date = new Da
       []
     ),
     orEmpty<{ user_id: string }[]>(supabaseAdmin.from("training_sessions").select("user_id").eq("organization_id", organizationId), []),
-    orZero(supabaseAdmin.from("tasks").select("id", { count: "exact", head: true }).in("user_id", memberIds)),
     orZero(
       supabaseAdmin
         .from("scheduled_meetings")
@@ -362,7 +360,6 @@ export async function getClientReview(organizationId: string, now: Date = new Da
         objectionsTotal: objectionRows.length,
         topObjections: topObjections.map((o) => o.label),
         crmConnected: criterionInput.crmConnected,
-        tasks,
         trainingSessions: trainingRows.length,
       }),
     };
@@ -498,7 +495,6 @@ function readinessFor(
     objectionsTotal: number;
     topObjections: string[];
     crmConnected: boolean;
-    tasks: number;
     trainingSessions: number;
   }
 ): string[] {
@@ -524,10 +520,7 @@ function readinessFor(
         ...(d.topObjections.length ? [`Les plus fréquentes : ${d.topObjections.map((l) => `« ${l} »`).join(", ")}.`] : []),
       ];
     case 6:
-      return [
-        d.crmConnected ? "Un CRM est déjà connecté." : "Aucun CRM connecté : à brancher pendant le point.",
-        `${plural(d.tasks, "tâche déjà créée", "tâches déjà créées")}.`,
-      ];
+      return [d.crmConnected ? "Un CRM est déjà connecté." : "Aucun CRM connecté : à brancher pendant le point."];
     case 7:
       return [
         `${plural(d.objectionsTotal, "objection réelle", "objections réelles")} sur ${d.objectionsTotal > 1 ? "lesquelles" : "laquelle"} s'entraîner.`,

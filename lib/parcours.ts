@@ -115,10 +115,10 @@ export const PARCOURS_STEPS: ParcoursStep[] = [
   },
   {
     week: 6,
-    title: "CRM et tâches",
-    show: "Les notes et tâches qui arrivent seules dans HubSpot ou Pipedrive.",
+    title: "CRM",
+    show: "Les notes qui arrivent seules dans HubSpot ou Pipedrive.",
     criterion: "CRM connecté, premières notes visibles.",
-    modules: ["crm", "tasks"],
+    modules: ["crm"],
   },
   {
     week: 7,

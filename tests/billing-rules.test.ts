@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import {
   billingStatusFromStripeStatus,
   shouldActivateOnPaymentSucceeded,
-  canTransitionQuote,
   isBillingBlocked,
 } from "../lib/billing-rules";
 
@@ -47,22 +46,6 @@ describe("shouldActivateOnPaymentSucceeded — bug #15", () => {
     for (const status of ["active", "canceled", "blocked", "none"]) {
       assert.equal(shouldActivateOnPaymentSucceeded(status), false, `statut ${status}`);
     }
-  });
-});
-
-describe("canTransitionQuote — acceptation de devis", () => {
-  test("autorise la transition depuis les statuts ouverts", () => {
-    for (const status of ["draft", "sent", "viewed"]) {
-      assert.equal(canTransitionQuote(status), true, `statut ${status}`);
-    }
-  });
-
-  test("refuse une seconde acceptation ou un refus après acceptation", () => {
-    // La page de signature est accessible par simple lien : un rechargement ou
-    // un double envoi ne doit pas produire un second signal win/loss, qui
-    // fausserait les statistiques d'objections.
-    assert.equal(canTransitionQuote("accepted"), false);
-    assert.equal(canTransitionQuote("rejected"), false);
   });
 });
 

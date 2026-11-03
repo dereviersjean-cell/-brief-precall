@@ -41,8 +41,8 @@ describe("modulesForPath", () => {
     assert.deepEqual(modulesForPath("/dashboard/objections"), ["objections"]);
     assert.deepEqual(modulesForPath("/api/playbook/dimensions/42"), ["playbook"]);
     assert.deepEqual(modulesForPath("/api/feedback/abc/follow-up"), ["follow_up"]);
-    assert.deepEqual(modulesForPath("/tasks"), ["tasks"]);
-    assert.deepEqual(modulesForPath("/tasksettings"), []);
+    assert.deepEqual(modulesForPath("/training"), ["training"]);
+    assert.deepEqual(modulesForPath("/trainingsettings"), []);
   });
 
   test("un chemin qui relève de deux modules exige les deux", () => {

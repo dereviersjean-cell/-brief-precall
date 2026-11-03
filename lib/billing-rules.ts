@@ -41,14 +41,6 @@ export function shouldActivateOnPaymentSucceeded(currentStatus: string): boolean
   return currentStatus === "grace_period";
 }
 
-// Un devis ne peut être accepté ou refusé qu'une fois. La page publique est
-// accessible par simple lien : sans cette règle, un prospect qui recharge ou
-// renvoie le formulaire déclencherait une seconde acceptation, et donc un
-// second signal win/loss faussant les statistiques d'objections.
-export function canTransitionQuote(currentStatus: string): boolean {
-  return currentStatus !== "accepted" && currentStatus !== "rejected";
-}
-
 // Accès bloqué pour raison de facturation ? « canceled » bloque comme
 // « blocked » (une résiliation coupe l'accès tout de suite, la grâce ne vaut
 // que pour un échec de paiement). `billing_exempt` (migration 028) passe

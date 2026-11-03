@@ -21,7 +21,6 @@ export type ModuleKey =
   | "follow_up"
   | "objections"
   | "crm"
-  | "tasks"
   | "training"
   | "insights"
   | "weekly_digest"
@@ -77,16 +76,9 @@ export const MODULES: ModuleDefinition[] = [
   {
     key: "crm",
     label: "CRM",
-    description: "Notes et tâches poussées dans HubSpot ou Pipedrive.",
+    description: "Notes poussées dans HubSpot ou Pipedrive.",
     week: 6,
     paths: ["/api/crm"],
-  },
-  {
-    key: "tasks",
-    label: "Tâches",
-    description: "Tâches créées après chaque call, emails de relance.",
-    week: 6,
-    paths: ["/tasks", "/api/tasks"],
   },
   {
     key: "training",

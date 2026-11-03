@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { Webhook } from "svix";
 import { createAsyncTranscript, getBotInfo, getTranscriptContent, transcriptToText, buildTranscriptJson, resolveSpeakerNames, countSpokenWords, MIN_SPOKEN_WORDS_FOR_ANALYSIS } from "@/lib/recall";
-import { createCall, getUserProfile, getUserName, getUserEmail, saveCallAnalysis, updateCallProspectIdentity, updateCallAnalysisKeyPoints, updateCallFollowUp, getContact, createContact, updateContact, generateTasksFromTemplates, getPlaybookSnapshotForUser, getUserOrganizationId, getMeetingStageConfigForOrganization, saveCallAnalytics, isDealMemoryEnabledForOrganization, getRecallCallState, type CallData } from "@/lib/db";
+import { createCall, getUserProfile, getUserName, getUserEmail, saveCallAnalysis, updateCallProspectIdentity, updateCallAnalysisKeyPoints, updateCallFollowUp, getContact, createContact, updateContact, getPlaybookSnapshotForUser, getUserOrganizationId, getMeetingStageConfigForOrganization, saveCallAnalytics, isDealMemoryEnabledForOrganization, getRecallCallState, type CallData } from "@/lib/db";
 import { inngest } from "@/lib/inngest";
 import { stageFromDealRank } from "@/lib/deal-stage";
 import { computeCallInteractionMetrics } from "@/lib/call-analytics";
 import { reportError, reportWarning } from "@/lib/monitoring";
-import { pushNewTasksToHubSpot } from "@/lib/tasks-hubspot-sync";
 import { analyzeCall } from "@/lib/call-analysis";
 import { extractCallIdentity } from "@/lib/call-identity";
 import { detectMeetingStage, MEETING_STAGE_LABELS } from "@/lib/meeting-stage";
@@ -349,26 +348,6 @@ export async function POST(request: NextRequest) {
                         reportError("bot-webhook.indexCallObjections", err, { callId: call.id })
                     );
                   }
-                }
-
-                try {
-                  const { createdCount, toPushToHubSpot } = await generateTasksFromTemplates(userId, "call", call.id, {
-                    contact_id: null,
-                    contact_email: contactEmail,
-                    contact_name: null,
-                  });
-                  console.log("[bot-webhook] tasks generated from post_call templates:", createdCount);
-                  await pushNewTasksToHubSpot(userId, toPushToHubSpot, contactEmail).catch((hubspotErr) =>
-                    console.warn(
-                      "[bot-webhook] pushNewTasksToHubSpot failed (non-blocking):",
-                      hubspotErr instanceof Error ? hubspotErr.message : String(hubspotErr)
-                    )
-                  );
-                } catch (taskErr) {
-                  console.warn(
-                    "[bot-webhook] generateTasksFromTemplates failed (non-blocking):",
-                    taskErr instanceof Error ? taskErr.message : String(taskErr)
-                  );
                 }
 
                 // Step 3b — generate + persist key_points now (module Distribution

@@ -6,9 +6,6 @@ import {
   DEFAULT_CONFIG,
   DEFAULT_CALL_ANALYSIS_SYSTEM_PROMPT,
   DEFAULT_EMAIL_FOLLOWUP_PROMPT,
-  DEFAULT_QUOTE_GENERATION_PROMPT,
-  DEFAULT_QUOTE_EMAIL_PROMPT,
-  DEFAULT_TASK_EMAIL_PROMPT,
   DEFAULT_PLAYBOOK_EXTRACTION_PROMPT,
   DEFAULT_DIGEST_COMMERCIAL_PROMPT,
   DEFAULT_DIGEST_MANAGER_PROMPT,
@@ -20,9 +17,6 @@ type PromptKey =
   | "systemPrompt"
   | "call_analysis_system_prompt"
   | "email_followup_prompt"
-  | "quote_generation_prompt"
-  | "quote_email_prompt"
-  | "task_email_prompt"
   | "playbook_extraction_prompt"
   | "digest_commercial_prompt"
   | "digest_manager_prompt";
@@ -35,9 +29,6 @@ const DEFAULTS: Prompts = {
   systemPrompt: DEFAULT_CONFIG.systemPrompt,
   call_analysis_system_prompt: DEFAULT_CALL_ANALYSIS_SYSTEM_PROMPT,
   email_followup_prompt: DEFAULT_EMAIL_FOLLOWUP_PROMPT,
-  quote_generation_prompt: DEFAULT_QUOTE_GENERATION_PROMPT,
-  quote_email_prompt: DEFAULT_QUOTE_EMAIL_PROMPT,
-  task_email_prompt: DEFAULT_TASK_EMAIL_PROMPT,
   playbook_extraction_prompt: DEFAULT_PLAYBOOK_EXTRACTION_PROMPT,
   digest_commercial_prompt: DEFAULT_DIGEST_COMMERCIAL_PROMPT,
   digest_manager_prompt: DEFAULT_DIGEST_MANAGER_PROMPT,
@@ -61,24 +52,6 @@ const PROMPT_META: { key: PromptKey; tabLabel: string; title: string; descriptio
     tabLabel: "Email de suivi",
     title: "Prompt Email de suivi",
     description: "Mission et format injectés lors de la génération de l'email de suivi post-call envoyé au prospect.",
-  },
-  {
-    key: "quote_generation_prompt",
-    tabLabel: "Génération de devis",
-    title: "Prompt Génération de devis",
-    description: "Instructions pour pré-remplir un devis (lignes, réduction argumentée, notes) à partir des calls analysés avec un contact.",
-  },
-  {
-    key: "quote_email_prompt",
-    tabLabel: "Email de devis",
-    title: "Prompt Email d'envoi de devis",
-    description: "Instructions pour rédiger le sujet et le corps de l'email d'envoi d'un devis, personnalisé selon l'historique des calls avec le prospect.",
-  },
-  {
-    key: "task_email_prompt",
-    tabLabel: "Email de task",
-    title: "Prompt Email de task",
-    description: "Instructions pour rédiger le sujet et le corps de l'email généré depuis une task (récap post-call, relance email, relance devis), ton adapté au type de task.",
   },
   {
     key: "playbook_extraction_prompt",

@@ -55,7 +55,7 @@ describe("computeParcours", () => {
   });
 
   test("tout le parcours ouvert : plus de prochain module (Slack et Références sont à la demande)", () => {
-    const p = computeParcours("2026-07-01", ["playbook", "follow_up", "objections", "crm", "tasks", "training", "insights", "weekly_digest"], NOW);
+    const p = computeParcours("2026-07-01", ["playbook", "follow_up", "objections", "crm", "training", "insights", "weekly_digest"], NOW);
     assert.equal(p.nextModule, null);
   });
 });

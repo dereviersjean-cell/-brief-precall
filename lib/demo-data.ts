@@ -30,8 +30,6 @@ export const demoWeekStats: CommercialDigestData = {
   briefs_count: 6,
   avg_score: 3.4,
   prev_avg_score: 3.1,
-  quotes_sent: 0,
-  quotes_accepted: 0,
 };
 
 // Six semaines de progression, avec un creux — une courbe qui ne fait que
