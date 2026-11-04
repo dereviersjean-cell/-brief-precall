@@ -55,7 +55,9 @@ export function buildMeetingOverview(input: {
 
   return {
     rank,
-    summary: input.summary ?? call.summary,
+    // La synthèse de Haiku (bon numéro de rendez-vous, ce que le call a
+    // changé), sinon le résumé de l'analyse.
+    summary: fiche.nextQuestions?.advice?.synthesis ?? input.summary ?? call.summary,
     playbook: objectives.review.map((r) => ({ key: r.key, label: r.label, status: r.status, text: r.status === "pas_aborde" ? null : (r.item?.text ?? null) })),
     impact,
     commitments: call.commitments,

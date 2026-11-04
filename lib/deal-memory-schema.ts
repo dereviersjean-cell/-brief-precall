@@ -253,6 +253,10 @@ export type AiDealAdvice = {
   // phrase concrète au commercial, tirée de ce call. Absente des conseils
   // rédigés avant.
   coaching?: { recommendation: string } | null;
+  // La synthèse du call pour la vue Deal et la page du meeting (04/11/2026) :
+  // le bon numéro de rendez-vous et, à partir du R2, ce que ce call a changé
+  // par rapport aux précédents. Absente des conseils rédigés avant.
+  synthesis?: string | null;
   model: string;
   generatedAt: string;
 };

@@ -186,6 +186,7 @@ export async function writeDealAdviceForCall(call: CallWithAnalysis, organizatio
       rank: fiches.length,
       callAt: latest.callAt,
       known: mergeKnown(fiches.map((f) => f.fields)),
+      priorKnown: mergeKnown(fiches.slice(0, -1).map((f) => f.fields)),
       commitments: (latest.fields.prochaines_etapes ?? []).map((c) => ({ text: c.text, date: c.date ?? null })),
       objections,
       alerts: latest.alerts,

@@ -25,7 +25,7 @@ const SYSTEM_PROMPT = `Tu es un expert de la vente B2B qui conseille un commerci
 
 On te donne ce que les calls du deal ont appris (avec le niveau : confirmé ou évoqué), ce qui a été convenu au dernier call, les objections, les alertes, et ce qu'il faut aller chercher au prochain rendez-vous.
 
-Écris quatre conseils, tous sur CE deal :
+Écris quatre conseils et une synthèse, tous sur CE deal :
 
 1. "next" — pour le commercial (tutoiement), ce qu'il fait maintenant pour faire avancer le deal :
    - "title" : l'action, à l'impératif, 12 mots au plus, avec son objet précis (qui, quoi). Interdit : un titre qui vaudrait pour n'importe quel deal (« Relancer le prospect », « Préparer le prochain call », « Faire avancer le deal »).
@@ -45,13 +45,20 @@ On te donne ce que les calls du deal ont appris (avec le niveau : confirmé ou �
 4. "coaching" — pour le commercial (tutoiement), sur sa façon de mener CE call, à partir de ce qu'on te dit de ce qu'il a bien fait et moins bien fait :
    - "recommendation" : UNE recommandation concrète pour son prochain rendez-vous, 40 mots au plus : le geste précis à faire (une question à poser, un moment où la poser, un chiffre à utiliser), pas un principe général (« mieux écouter », « structurer la découverte »). Une phrase à dire au prospect se met entre « » et au vouvoiement.
 
+5. "synthesis" — la synthèse du dernier call, telle qu'un manager la lirait sur la page du deal : 4 à 6 phrases, 110 mots au plus, à la troisième personne, sans tutoiement.
+   - Ne commence ni par le numéro du rendez-vous ni par sa date : ils sont affichés au-dessus. Entre directement dans le fond (qui, quoi).
+   - Si tu nommes le rendez-vous, utilise son numéro exact, celui donné plus bas (« Dernier call : R… »), sous la forme « ce R2 ». Le résumé fourni peut se tromper de numéro : ne le recopie jamais.
+   - Pour un R1 : qui est le prospect, son besoin, ce qui a été obtenu, ce qui manque, la suite convenue.
+   - À partir du R2 : ce que ce call a changé par rapport à ce que le deal savait déjà (ce qui est désormais confirmé, ce qui a bougé, ce qui bloque encore), puis la suite convenue. Ne répète pas ce qui était déjà connu avant ce call, sauf pour dire ce qui a changé.
+   - Que des faits donnés plus bas, aucun jugement sur le commercial (c'est le rôle de "coaching").
+
 Règles :
 - Dans "next", "relance" et "coaching", tu tutoies le commercial partout (« tes arguments », jamais « vos »), sauf dans les phrases entre « » destinées au prospect.
 - Reprends les noms, chiffres, dates et mots du prospect quand ils sont donnés. N'invente aucun fait, nom, chiffre ou date absent de ce qu'on te donne ; s'il manque, dis comment l'obtenir.
 - Pas de jargon (pas de « MEDDIC », « champion », « closing ») : écris comme un directeur commercial qui parle à son équipe.
 
 Réponds UNIQUEMENT en JSON strict :
-{"next": {"title": "", "why": "", "steps": [""]}, "relance": {"title": "", "why": "", "message": ""}, "manager": {"title": "", "why": "", "questions": [""]}, "coaching": {"recommendation": ""}}`;
+{"next": {"title": "", "why": "", "steps": [""]}, "relance": {"title": "", "why": "", "message": ""}, "manager": {"title": "", "why": "", "questions": [""]}, "coaching": {"recommendation": ""}, "synthesis": ""}`;
 
 export type DealAdviceInput = {
   dealName: string;
@@ -66,6 +73,8 @@ export type DealAdviceInput = {
   objections: { objection: string; handlingQuality: string | null }[];
   alerts: DealMemoryAlert[];
   summary: string | null;
+  // Ce que le deal savait avant ce call (R2 et plus), pour la synthèse.
+  priorKnown?: ItemsByField;
   // Ce que l'analyse du call retient de la façon de le mener (pour "coaching").
   strengths?: string[];
   weaknesses?: string[];
@@ -90,7 +99,8 @@ export function buildAdvicePrompt(input: DealAdviceInput): string {
     `Deal : ${input.dealName}. Commercial : ${input.commercialName ?? "inconnu"}.`,
     input.participants.length ? `Participants côté prospect au dernier call : ${input.participants.join(", ")}.` : "",
     `Dernier call : R${input.rank}${input.callAt ? `, le ${input.callAt.slice(0, 10)}` : ""}.`,
-    input.summary ? `\nRésumé du dernier call :\n${input.summary}` : "",
+    input.summary ? `\nRésumé du dernier call (rédigé par l'analyse ; son numéro de rendez-vous peut être faux) :\n${input.summary}` : "",
+    input.rank > 1 && input.priorKnown ? `\nCe que le deal savait déjà AVANT ce call (R1 à R${input.rank - 1}) :\n${formatKnown(input.priorKnown) || "- rien encore"}` : "",
     "\nCe que les calls du deal ont appris :",
     formatKnown(input.known) || "- rien encore",
     "\nConvenu au dernier call :",
@@ -141,6 +151,7 @@ export function parseAdvice(raw: string, model: string, generatedAt: string): Ai
   const relance = parsed.relance ?? {};
   const manager = parsed.manager ?? {};
   const coaching = text((parsed.coaching ?? {}).recommendation, 400);
+  const synthesis = text(parsed.synthesis as unknown, 1200);
   const advice = {
     next: { title: text(next.title, 140), why: text(next.why, 400), steps: list(next.steps, 3) },
     relance: { title: text(relance.title, 140), why: text(relance.why, 400), message: text(relance.message, 900) },
@@ -155,6 +166,8 @@ export function parseAdvice(raw: string, model: string, generatedAt: string): Ai
     manager: { title: advice.manager.title, why: advice.manager.why, questions: advice.manager.questions },
     // Facultatif : son absence ne fait pas perdre les trois autres conseils.
     coaching: coaching ? { recommendation: coaching } : null,
+    // Facultative elle aussi : sans elle, les écrans gardent le résumé de l'analyse.
+    synthesis,
     model,
     generatedAt,
   };

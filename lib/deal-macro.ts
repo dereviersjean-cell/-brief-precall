@@ -53,6 +53,10 @@ export type DealMacro = {
   nextMeeting: { date: string; rank: number } | null;
   commitments: MacroCommitment[];
   state: MacroStateRow[];
+  // La synthèse du dernier call (04/11/2026) : celle de Haiku, qui connaît le
+  // vrai numéro du rendez-vous et ce que le deal savait avant, sinon le
+  // résumé de l'analyse. Elle suit le deal : au R2, c'est celle du R2.
+  synthesis: { rank: number; date: string | null; callId: string; text: string } | null;
   history: MacroHistoryRow[];
 };
 
@@ -166,12 +170,17 @@ export function buildDealMacro(input: {
     .filter((a): a is number => typeof a === "number")
     .pop();
 
+  const lastFiche = fiches[fiches.length - 1];
+  const synthesisText = lastFiche?.nextQuestions?.advice?.synthesis ?? last?.summary ?? null;
+  const synthesis = last && synthesisText ? { rank: last.rank, date: last.at, callId: last.callId, text: synthesisText } : null;
+
   return {
     rank: progress.steps.length,
     amount: progress.hubspot?.amount ?? budget ?? null,
     nextMeeting,
     commitments,
     state,
+    synthesis,
     history,
   };
 }

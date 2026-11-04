@@ -46,6 +46,31 @@ describe("deal-advice-ai", () => {
     assert.equal(parseAdvice("pas du JSON", "m", "t"), null);
   });
 
+  test("la synthèse et la recommandation sont facultatives, lues quand elles sont là", () => {
+    assert.equal(advice.synthesis, null);
+    const withSynthesis = parseAdvice(JSON.stringify({ ...JSON.parse(RAW), synthesis: "Ce R4 a levé l'objection du paiement." }), "m", "t") as AiDealAdvice;
+    assert.equal(withSynthesis.synthesis, "Ce R4 a levé l'objection du paiement.");
+  });
+
+  test("à partir du R2, le prompt dit ce que le deal savait avant ce call", () => {
+    const base = {
+      dealName: "CDA Jobs",
+      commercialName: "Hubert",
+      participants: [],
+      callAt: null,
+      known: { budget: [{ text: "1 500 € par mois", verbatim: null, startMs: null }] },
+      priorKnown: { douleur: [{ text: "Besoin de rendez-vous", verbatim: null, startMs: null }] },
+      commitments: [],
+      objections: [],
+      alerts: [],
+      summary: "Ce R1 est atypique",
+      nextPlan: null,
+    };
+    assert.match(buildAdvicePrompt({ ...base, rank: 2 }), /savait déjà AVANT ce call \(R1 à R1\)[\s\S]*Besoin de rendez-vous/);
+    assert.match(buildAdvicePrompt({ ...base, rank: 2 }), /numéro de rendez-vous peut être faux/);
+    assert.doesNotMatch(buildAdvicePrompt({ ...base, rank: 1 }), /savait déjà AVANT/);
+  });
+
   test("le prompt porte les faits du deal", () => {
     const prompt = buildAdvicePrompt({
       dealName: "Sarawak France",

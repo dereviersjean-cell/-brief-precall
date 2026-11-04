@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { CalendarDays, CheckCircle2, Circle, Clock3, Layers, Target, Wallet } from "lucide-react";
+import { CalendarDays, CheckCircle2, Circle, Clock3, FileText, Layers, Target, Wallet } from "lucide-react";
 import DealAvatar from "@/app/components/DealAvatar";
 import { VERDICTS } from "@/app/mes-deals/deal-ui";
 import type { DealProgress } from "@/lib/deal-progress";
@@ -238,6 +238,20 @@ export default function DealMacroView({
           ))}
         </div>
       </Card>
+
+      {/* Synthèse du dernier call (04/11/2026) */}
+      {macro.synthesis && (
+        <Card className="mt-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <CardTitle icon={FileText}>Synthèse du R{macro.synthesis.rank}</CardTitle>
+            {macro.synthesis.date && <span className="text-[13px] text-slate-500">{capitalize(longDay(macro.synthesis.date))}</span>}
+          </div>
+          <p className="mt-3 text-[14px] leading-relaxed text-slate-700">{macro.synthesis.text}</p>
+          <Link href={`/feedback/${macro.synthesis.callId}`} className="mt-2 inline-block text-[13px] font-medium text-[var(--violet)] hover:underline">
+            Voir le meeting →
+          </Link>
+        </Card>
+      )}
 
       {/* Historique léger */}
       <Card className="mt-4">
