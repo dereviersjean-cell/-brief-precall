@@ -1,23 +1,7 @@
 import { redirect } from "next/navigation";
-import { getUserRole, getTeamOverview, getOrganizationForUser } from "@/lib/db";
-import { getEffectiveUserId } from "@/lib/session-user";
-import TeamClient from "./TeamClient";
 
-// Onglet "Équipe" = pilotage pur (composition, invitations, rôles) — les
-// scores et statistiques détaillées vivent dans Performance (Scores,
-// Objections, Entraînement), pas ici (décision du 25/07/2026).
-export default async function TeamPage() {
-  const userId = await getEffectiveUserId();
-
-  const role = userId ? await getUserRole(userId) : null;
-  if (role !== "manager") {
-    redirect("/brief");
-  }
-
-  const [overview, organization] = await Promise.all([
-    getTeamOverview(userId!),
-    getOrganizationForUser(userId!),
-  ]);
-
-  return <TeamClient overview={overview} hasOrganization={organization !== null} />;
+// L'écran Équipe a rejoint Paramètres le 05/11/2026 (maquette H1 B) : cette
+// adresse reste pour les favoris et les liens déjà envoyés.
+export default function TeamPage() {
+  redirect("/settings/equipe");
 }

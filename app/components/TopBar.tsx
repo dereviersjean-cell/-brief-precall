@@ -19,6 +19,7 @@ const LABELS: Record<string, string> = {
   notifications: "Notifications",
   objections: "Objections",
   team: "Équipe",
+  equipe: "Équipe",
   playbook: "Méthode",
   methode: "Méthode",
   reponses: "Réponses aux objections",

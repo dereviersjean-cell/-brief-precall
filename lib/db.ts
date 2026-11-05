@@ -3638,6 +3638,121 @@ export async function getTeamMemberForManager(
   };
 }
 
+// ─── Équipe par manager (Paramètres › Équipe, maquette H1 B, 05/11/2026) ──
+// Toute l'organisation, rangée par manager : chaque manager voit toutes les
+// équipes, mais n'agit que sur la sienne (les routes /api/team/* le
+// vérifient). Un commercial rattaché à plusieurs managers apparaît dans
+// chacune de leurs équipes.
+export type OrgTeamMember = {
+  id: string;
+  name: string | null;
+  email: string;
+  role: UserRole | null;
+  avatarUrl: string | null;
+  // Agenda relié à Brief et pas coupé chez Recall : ses rendez-vous sont
+  // préparés et enregistrés.
+  calendarConnected: boolean;
+  invited_at: string | null;
+  has_logged_in: boolean;
+  // A déjà des calls ou des briefs (importés, par exemple) : son invitation
+  // ne s'annule pas, ce serait effacer ces données.
+  hasActivity: boolean;
+};
+
+export type OrgTeam = {
+  members: Record<string, OrgTeamMember>;
+  managers: { id: string; commercialIds: string[] }[];
+  unassignedIds: string[];
+};
+
+// Parmi ces comptes, ceux qui ont au moins un call ou un brief.
+async function activeUserIds(userIds: string[]): Promise<Set<string>> {
+  const [calls, briefs] = await Promise.all([
+    supabaseAdmin.from("calls").select("user_id").in("user_id", userIds),
+    supabaseAdmin.from("briefs").select("user_id").in("user_id", userIds),
+  ]);
+  if (calls.error) throw calls.error;
+  if (briefs.error) throw briefs.error;
+  return new Set([...(calls.data ?? []), ...(briefs.data ?? [])].map((r) => (r as { user_id: string }).user_id));
+}
+
+export async function userHasActivity(userId: string): Promise<boolean> {
+  return (await activeUserIds([userId])).has(userId);
+}
+
+export async function getOrganizationTeamByManager(organizationId: string): Promise<OrgTeam> {
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("id, name, email, role, avatar_url, invited_at, google_id, microsoft_id, recall_calendar_id, disabled_at")
+    .eq("organization_id", organizationId);
+  if (error) throw error;
+  const rows = ((data ?? []) as Array<{
+    id: string;
+    name: string | null;
+    email: string;
+    role: UserRole | null;
+    avatar_url: string | null;
+    invited_at: string | null;
+    google_id: string | null;
+    microsoft_id: string | null;
+    recall_calendar_id: string | null;
+    disabled_at: string | null;
+  }>).filter((u) => u.disabled_at == null);
+
+  // État de l'agenda chez Recall (migration 018), lu à part : sans elle, un
+  // agenda relié compte comme connecté.
+  const ids = rows.map((u) => u.id);
+  const [activeIds, statuses] = await Promise.all([
+    ids.length ? activeUserIds(ids) : Promise.resolve(new Set<string>()),
+    ids.length
+    ? supabaseAdmin
+        .from("users")
+        .select("id, recall_calendar_status")
+        .in("id", ids)
+        .then((res) =>
+          res.error ? new Map<string, string | null>() : new Map(((res.data ?? []) as { id: string; recall_calendar_status: string | null }[]).map((u) => [u.id, u.recall_calendar_status]))
+        )
+    : Promise.resolve(new Map<string, string | null>()),
+  ]);
+
+  const members: Record<string, OrgTeamMember> = {};
+  for (const u of rows) {
+    members[u.id] = {
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      avatarUrl: u.avatar_url,
+      calendarConnected: u.recall_calendar_id != null && statuses.get(u.id) !== "disconnected",
+      invited_at: u.invited_at,
+      has_logged_in: u.google_id != null || u.microsoft_id != null,
+      hasActivity: activeIds.has(u.id),
+    };
+  }
+
+  const managerIds = rows.filter((u) => u.role === "manager").map((u) => u.id);
+  const commercialIds = new Set(rows.filter((u) => u.role === "commercial").map((u) => u.id));
+  const { data: links, error: linksError } = managerIds.length
+    ? await supabaseAdmin.from("manager_commercial_links").select("manager_id, commercial_id").in("manager_id", managerIds)
+    : { data: [], error: null };
+  if (linksError) throw linksError;
+
+  const byManager = new Map<string, string[]>(managerIds.map((id) => [id, []]));
+  const linked = new Set<string>();
+  for (const l of (links ?? []) as { manager_id: string; commercial_id: string }[]) {
+    if (!commercialIds.has(l.commercial_id)) continue;
+    byManager.get(l.manager_id)?.push(l.commercial_id);
+    linked.add(l.commercial_id);
+  }
+  const byName = (a: string, b: string) => (members[a].name ?? members[a].email).localeCompare(members[b].name ?? members[b].email, "fr");
+
+  return {
+    members,
+    managers: managerIds.sort(byName).map((id) => ({ id, commercialIds: (byManager.get(id) ?? []).sort(byName) })),
+    unassignedIds: [...commercialIds].filter((id) => !linked.has(id)).sort(byName),
+  };
+}
+
 export async function getTeamOverview(managerId: string): Promise<TeamOverviewItem[]> {
   const commercials = await getCommercialsForManager(managerId);
   if (commercials.length === 0) return [];

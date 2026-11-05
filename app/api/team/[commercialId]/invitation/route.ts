@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { requireActiveUserContext } from "@/lib/api-auth";
 import { isUuid } from "@/lib/uuid";
-import { getOrganizationForUser, getTeamMemberForManager, hardDeleteUser } from "@/lib/db";
+import { getOrganizationForUser, getTeamMemberForManager, hardDeleteUser, userHasActivity } from "@/lib/db";
 import { syncSeatsForOrganization } from "@/lib/stripe";
 import { isPendingInvitation } from "@/lib/team-invitation";
 
@@ -55,6 +55,16 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   if (!isPendingInvitation(member)) {
     return NextResponse.json(
       { error: "Ce compte n'a pas d'invitation en attente." },
+      { status: 400 }
+    );
+  }
+
+  // Jamais connecté ne veut pas dire sans données : des calls peuvent avoir
+  // été importés sur son compte (Guislain, Dorian et Katell chez Oliverlist,
+  // 05/11/2026). Annuler l'invitation les effacerait avec lui.
+  if (await userHasActivity(commercialId)) {
+    return NextResponse.json(
+      { error: "Ce compte porte déjà des calls ou des briefs : son invitation ne peut pas être annulée depuis ici. Contactez votre administrateur." },
       { status: 400 }
     );
   }
