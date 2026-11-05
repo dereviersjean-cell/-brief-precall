@@ -88,10 +88,10 @@ const STEP_CONTENT: Record<
     cta: "Connecter l'agenda",
   },
   playbook: {
-    title: "Définir votre playbook",
-    why: "La grille sur laquelle vos rendez-vous sont notés. Sans elle, l'analyse utilise des critères génériques au lieu des vôtres.",
-    href: "/playbook",
-    cta: "Ouvrir le playbook",
+    title: "Régler votre méthode",
+    why: "Ce que vos commerciaux doivent obtenir à chaque rendez-vous et comment répondre aux objections. Sans elle, l'analyse reste générique.",
+    href: "/methode",
+    cta: "Ouvrir la méthode",
   },
   "premier-call": {
     title: "Attendre votre premier rendez-vous",

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, MessagesSquare, ListChecks } from "lucide-react";
+import { ArrowLeft, MessagesSquare, ListChecks } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ModuleKey } from "@/lib/modules";
 import { useModules } from "@/app/components/ModulesProvider";
@@ -10,9 +10,11 @@ import { useModules } from "@/app/components/ModulesProvider";
 // Section « Playbook & objections » (15/10/2026, demande de Jean) : la grille
 // de notation et tout ce qui touche aux objections, réunis sous une entrée de
 // la barre latérale au lieu d'être éparpillés entre Performance et
-// Paramètres. Un onglet par module ouvert (lib/modules.ts).
-const TABS: { href: string; label: string; icon: LucideIcon; module: ModuleKey }[] = [
-  { href: "/playbook", label: "Grille de notation", icon: BookOpen, module: "playbook" },
+// Paramètres. Un onglet par module ouvert (lib/modules.ts). Depuis le
+// 05/11/2026, la grille de notation a disparu (fin de la note sur 5) et ces
+// pages sont le détail de la page Méthode, d'où le retour en tête.
+const TABS: { href: string; label: string; icon: LucideIcon; module: ModuleKey | null }[] = [
+  { href: "/methode", label: "Méthode", icon: ArrowLeft, module: null },
   { href: "/playbook/objections", label: "Objections rencontrées", icon: MessagesSquare, module: "objections" },
   { href: "/playbook/reponses", label: "Réponses aux objections", icon: ListChecks, module: "objections" },
 ];
@@ -20,12 +22,12 @@ const TABS: { href: string; label: string; icon: LucideIcon; module: ModuleKey }
 export default function PlaybookTabs() {
   const pathname = usePathname();
   const { isEnabled } = useModules();
-  const tabs = TABS.filter((t) => isEnabled(t.module));
+  const tabs = TABS.filter((t) => !t.module || isEnabled(t.module));
   if (tabs.length < 2) return null;
   return (
     <nav className="sticky top-14 z-[9] flex items-center gap-1 overflow-x-auto no-scrollbar border-b border-border bg-[color:var(--background)]/80 px-4 backdrop-blur-xl lg:px-10">
       {tabs.map((tab) => {
-        const active = tab.href === "/playbook" ? pathname === "/playbook" : pathname.startsWith(tab.href);
+        const active = tab.module !== null && pathname.startsWith(tab.href);
         const Icon = tab.icon;
         return (
           <Link

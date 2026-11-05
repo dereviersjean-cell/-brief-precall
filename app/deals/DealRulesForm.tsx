@@ -14,15 +14,24 @@ const LABEL = "text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-
 
 // L'éditeur des règles, sans lecture ni enregistrement : partagé par l'onglet
 // Règles du manager et le setup HubSpot de l'admin (27/10/2026).
+export type RulesSection = "method" | "objectives" | "thresholds" | "stages";
+const ALL_SECTIONS: RulesSection[] = ["method", "objectives", "thresholds", "stages"];
+
+// `sections` : la méthode et les objectifs par rendez-vous se règlent dans
+// la page Méthode (05/11/2026, maquette G1 B), les seuils et les étapes dans
+// Suivi des deals › Règles ; le setup HubSpot de l'admin montre tout.
 export function RulesEditor({
   rules,
   onChange,
   stageLabels,
+  sections = ALL_SECTIONS,
 }: {
   rules: DealRules;
   onChange: (rules: DealRules) => void;
   stageLabels: Record<number, string>;
+  sections?: RulesSection[];
 }) {
+  const show = (section: RulesSection) => sections.includes(section);
   const fields = METHODS[rules.method].fields;
   const update = (patch: Partial<DealRules>) => onChange({ ...rules, ...patch });
   const toggle = (stage: number, key: (typeof fields)[number]) => {
@@ -38,6 +47,7 @@ export function RulesEditor({
 
   return (
     <div className="space-y-5">
+      {show("method") && (
       <section className={CARD}>
         <h2 className={`${LABEL} mb-3`}>Méthode de qualification</h2>
         <p className="mb-3 text-[13px] text-slate-500">Ce que Brief vérifie sur chaque deal : la checklist du brief, la qualification d&apos;un call, ce qui reste à obtenir.</p>
@@ -56,7 +66,9 @@ export function RulesEditor({
           ))}
         </div>
       </section>
+      )}
 
+      {show("objectives") && (
       <section className={CARD}>
         <h2 className={`${LABEL} mb-1`}>Objectifs de chaque rendez-vous</h2>
         <p className="mb-4 text-[13px] text-slate-500">
@@ -95,7 +107,9 @@ export function RulesEditor({
           </table>
         </div>
       </section>
+      )}
 
+      {show("thresholds") && (
       <section className={CARD}>
         <h2 className={`${LABEL} mb-3`}>Seuils</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -130,7 +144,9 @@ export function RulesEditor({
           </label>
         </div>
       </section>
+      )}
 
+      {show("stages") && (
       <section className={CARD}>
         <h2 className={`${LABEL} mb-1`}>Ce qui doit être connu à chaque étape</h2>
         <p className="mb-4 text-[13px] text-slate-500">
@@ -172,12 +188,13 @@ export function RulesEditor({
           </table>
         </div>
       </section>
+      )}
 
     </div>
   );
 }
 
-export default function DealRulesForm({ stageLabels }: { stageLabels: Record<number, string> }) {
+export default function DealRulesForm({ stageLabels, sections }: { stageLabels: Record<number, string>; sections?: RulesSection[] }) {
   const [rules, setRules] = useState<DealRules | null>(null);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
@@ -216,7 +233,7 @@ export default function DealRulesForm({ stageLabels }: { stageLabels: Record<num
 
   return (
     <div className="space-y-5">
-      <RulesEditor rules={rules} onChange={update} stageLabels={stageLabels} />
+      <RulesEditor rules={rules} onChange={update} stageLabels={stageLabels} sections={sections} />
       <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={save}
@@ -225,7 +242,24 @@ export default function DealRulesForm({ stageLabels }: { stageLabels: Record<num
         >
           {status === "saving" ? "Enregistrement…" : "Enregistrer les règles"}
         </button>
-        <button onClick={() => update(DEFAULT_RULES)} className="text-[13px] text-slate-500 hover:text-slate-900">
+        <button
+          // Ne remet à zéro que ce que cet écran montre : la méthode et les
+          // objectifs se règlent dans Méthode et n'ont pas à revenir ici.
+          onClick={() =>
+            update(
+              sections
+                ? {
+                    ...rules,
+                    ...(sections.includes("method") ? { method: DEFAULT_RULES.method } : {}),
+                    ...(sections.includes("objectives") ? { callObjectives: DEFAULT_RULES.callObjectives } : {}),
+                    ...(sections.includes("thresholds") ? { inactivityDays: DEFAULT_RULES.inactivityDays, slowStageFactor: DEFAULT_RULES.slowStageFactor } : {}),
+                    ...(sections.includes("stages") ? { stageRequirements: DEFAULT_RULES.stageRequirements } : {}),
+                  }
+                : DEFAULT_RULES
+            )
+          }
+          className="text-[13px] text-slate-500 hover:text-slate-900"
+        >
           Revenir aux règles par défaut
         </button>
         {status === "saved" && <span className="text-[13px] text-emerald-700">Enregistré. Les vues des deals en tiennent compte dès leur prochain affichage.</span>}

@@ -54,8 +54,10 @@ const nextConfig: NextConfig = {
       { source: "/dashboard", destination: "/brief", permanent: false },
       { source: "/dashboard/scores", destination: "/brief", permanent: false },
       { source: "/dashboard/analytics", destination: "/brief", permanent: false },
-      { source: "/dashboard/playbook", destination: "/playbook", permanent: false },
-      { source: "/team/playbook", destination: "/playbook", permanent: false },
+      // La grille de notation a disparu le 05/11/2026 (page Méthode, G1 B).
+      { source: "/playbook", destination: "/methode", permanent: false },
+      { source: "/dashboard/playbook", destination: "/methode", permanent: false },
+      { source: "/team/playbook", destination: "/methode", permanent: false },
       { source: "/dashboard/objections", destination: "/playbook/objections", permanent: false },
       { source: "/dashboard/objections/:categoryId", destination: "/playbook/objections/:categoryId", permanent: false },
       { source: "/settings/objections", destination: "/playbook/reponses", permanent: false },

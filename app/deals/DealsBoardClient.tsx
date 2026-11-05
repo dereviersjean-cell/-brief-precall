@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import type { TeamPerson } from "./team";
 import SuiviView from "./SuiviView";
@@ -42,7 +43,15 @@ export default function DealsBoardClient({
           </button>
         ))}
       </div>
-      {tab === "suivi" ? <SuiviView people={teamPeople} hasTeam={hasTeam} /> : tab === "hubspot" ? <HubspotView /> : <DealRulesForm stageLabels={stageLabels} />}
+      {tab === "suivi" ? <SuiviView people={teamPeople} hasTeam={hasTeam} /> : tab === "hubspot" ? <HubspotView /> : (
+        <>
+          <p className="mb-4 text-[13.5px] text-slate-500">
+            La méthode de qualification et les objectifs de chaque rendez-vous se règlent dans{" "}
+            <Link href="/methode" className="font-semibold text-[color:var(--violet)] hover:underline">Méthode</Link>.
+          </p>
+          <DealRulesForm stageLabels={stageLabels} sections={["thresholds", "stages"]} />
+        </>
+      )}
     </div>
   );
 }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useState } from "react";
-import { FileText, Video, Settings, HelpCircle, LogOut, Sparkles, Menu, X, Lock, BookOpen, Library, Target, Briefcase } from "lucide-react";
+import { FileText, Video, Settings, HelpCircle, LogOut, Sparkles, Menu, X, Lock, BookOpen, Target, Briefcase } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useChromeState } from "./ShellProvider";
 import { useModules } from "./ModulesProvider";
@@ -153,11 +153,20 @@ export default function AppSidebar({ dealSection }: { dealSection?: "deals" | "s
   // Paramètres), sous l'entrée Équipe. Chacune n'existe que si son module est
   // ouvert ; « Playbook & objections » mène à la grille, ou aux objections
   // quand seul ce module est ouvert.
-  const playbookHref = isEnabled("playbook") ? "/playbook" : isEnabled("objections") ? "/playbook/objections" : null;
-  const resourcesGroup: { href: string; label: string; icon: LucideIcon; active: boolean }[] = [
-    ...(playbookHref ? [{ href: playbookHref, label: "Playbook & objections", icon: BookOpen, active: pathname.startsWith("/playbook") }] : []),
-    ...(isEnabled("references") ? [{ href: "/references", label: "Références clients", icon: Library, active: pathname.startsWith("/references") }] : []),
-  ];
+  // Une seule entrée « Méthode » depuis le 05/11/2026 (maquette G1 B) :
+  // objectifs par rendez-vous, objections, références clients sur une page,
+  // dont les pages de détail gardent l'entrée allumée.
+  const methodeEnabled = isEnabled("objections") || isEnabled("references") || isEnabled("playbook") || dealsEnabled;
+  const resourcesGroup: { href: string; label: string; icon: LucideIcon; active: boolean }[] = methodeEnabled
+    ? [
+        {
+          href: "/methode",
+          label: "Méthode",
+          icon: BookOpen,
+          active: pathname.startsWith("/methode") || pathname.startsWith("/playbook") || pathname.startsWith("/references"),
+        },
+      ]
+    : [];
   const briefActive = pathname.startsWith("/brief");
   const feedbackActive = pathname.startsWith("/feedback");
   const settingsActive = pathname.startsWith("/settings");

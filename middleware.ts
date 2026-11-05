@@ -35,6 +35,7 @@ export const config = {
     // Sections propres depuis le 15/10/2026 (ex-onglets Performance et
     // Paramètres) : mêmes gardes que le reste de l'app.
     "/playbook/:path*",
+    "/methode/:path*",
     "/references/:path*",
     // Vues manager et commercial des deals (Deal Execution, phase de test,
     // 27/10/2026).
