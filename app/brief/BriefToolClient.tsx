@@ -220,12 +220,14 @@ function CalendarEventCard({
   event,
   onPrepare,
   onDelete,
+  onToggleAnalysis,
   existingBrief,
   nextLabel,
 }: {
   event: CalendarEvent;
   onPrepare: (event: CalendarEvent) => void;
   onDelete?: (eventId: string) => void;
+  onToggleAnalysis?: (event: CalendarEvent, force: boolean) => void;
   existingBrief?: StoredBrief;
   nextLabel: string | null;
 }) {
@@ -304,13 +306,41 @@ function CalendarEventCard({
               <span className="shrink-0 rounded-full bg-white/70 px-2 py-0.5 text-[11.5px] font-semibold text-slate-500 max-sm:hidden">Ajouté manuellement</span>
             )}
           </div>
+          {event.nonCommercial && (
+            // Rendez-vous repéré comme non commercial (mot du titre, réglable
+            // dans Paramètres › Général) : pas de robot, donc pas d'analyse,
+            // sauf si l'utilisateur la force.
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12.5px]">
+              {event.analysisForced ? (
+                <span className="rounded-full bg-white px-2.5 py-0.5 font-semibold text-[color:var(--violet)] ring-1 ring-[color:var(--lavender-strong)]">
+                  Analyse forcée : Brief enregistrera ce rendez-vous
+                </span>
+              ) : (
+                <span
+                  title={`Repéré au mot « ${event.nonCommercial} » du titre`}
+                  className="rounded-full bg-white/80 px-2.5 py-0.5 font-semibold text-slate-600 ring-1 ring-slate-200"
+                >
+                  Pas un rendez-vous commercial : il ne sera pas analysé
+                </span>
+              )}
+              {onToggleAnalysis && (
+                <button
+                  type="button"
+                  onClick={() => onToggleAnalysis(event, !event.analysisForced)}
+                  className="font-semibold text-[color:var(--violet)] underline-offset-2 hover:underline"
+                >
+                  {event.analysisForced ? "Ne pas l'analyser" : "Analyser quand même"}
+                </button>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex w-full shrink-0 items-center justify-end gap-3 whitespace-nowrap sm:w-auto">
           {existingBrief ? (
             <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-emerald-700">
               <Check className="h-4 w-4" /> Brief prêt
             </span>
-          ) : (
+          ) : event.nonCommercial && !event.analysisForced ? null : (
             <span className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-slate-400 max-[400px]:hidden">
               <CircleDashed className="h-4 w-4" /> À préparer
             </span>
@@ -720,6 +750,22 @@ export default function BriefToolClient({ initial = null }: { initial?: BriefPag
     setCalendarError(null);
   }
 
+  // « Analyser quand même » / « Ne pas analyser » sur un rendez-vous non
+  // commercial : optimiste, la carte change tout de suite ; en cas d'échec,
+  // l'agenda est relu pour revenir à l'état réel.
+  function handleToggleAnalysis(event: CalendarEvent, force: boolean) {
+    setCalendarEvents((prev) => (prev ? prev.map((e) => (e.id === event.id ? { ...e, analysisForced: force } : e)) : prev));
+    fetch(`/api/calendar/events/${encodeURIComponent(event.id)}/analysis`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ force }),
+    })
+      .then((r) => {
+        if (!r.ok) loadCalendarEvents();
+      })
+      .catch(() => loadCalendarEvents());
+  }
+
   function handleDeleteManualMeeting(eventId: string) {
     // Optimiste : la suppression est irréversible côté serveur mais sans
     // conséquence si elle échoue (un rechargement de page la ferait
@@ -747,9 +793,11 @@ export default function BriefToolClient({ initial = null }: { initial?: BriefPag
   const welcome = showCalendar && calendarGroups.length === 0;
   const upcomingCount = calendarEvents?.length ?? 0;
 
-  const preparedCount = calendarEvents
-    ? calendarEvents.filter((e) => recentBriefs.some((b) => b.calendar_event_id === e.id)).length
-    : 0;
+  // La préparation ne compte que les rendez-vous commerciaux : un entretien
+  // ou un point interne n'attend pas de brief (lib/meeting-kind.ts).
+  const commercialEvents = calendarEvents ? calendarEvents.filter((e) => !e.nonCommercial || e.analysisForced) : [];
+  const prepTotal = commercialEvents.length;
+  const preparedCount = commercialEvents.filter((e) => recentBriefs.some((b) => b.calendar_event_id === e.id)).length;
 
   // The single nearest upcoming meeting gets a live "Dans X min" badge —
   // only within the next 24h (see timeUntil), so it reads as a genuine
@@ -879,6 +927,7 @@ export default function BriefToolClient({ initial = null }: { initial?: BriefPag
                         event={e}
                         onPrepare={handlePrepare}
                         onDelete={handleDeleteManualMeeting}
+                        onToggleAnalysis={handleToggleAnalysis}
                         existingBrief={recentBriefs.find((b) => b.calendar_event_id === e.id)}
                         nextLabel={e.id === nextEvent?.id ? nextEventLabel : null}
                       />
@@ -941,12 +990,12 @@ export default function BriefToolClient({ initial = null }: { initial?: BriefPag
                   events={showCalendar ? calendarEvents : []}
                   briefs={recentBriefs}
                   ready={showCalendar ? preparedCount : 0}
-                  total={showCalendar ? upcomingCount : 0}
+                  total={showCalendar ? prepTotal : 0}
                 />
               </div>
               {/* Sur téléphone, le mois est masqué : la préparation seule. */}
               <div className={`${PANEL} px-4 py-3 lg:hidden`}>
-                <PrepBar ready={showCalendar ? preparedCount : 0} total={showCalendar ? upcomingCount : 0} />
+                <PrepBar ready={showCalendar ? preparedCount : 0} total={showCalendar ? prepTotal : 0} />
               </div>
             </>
           )}

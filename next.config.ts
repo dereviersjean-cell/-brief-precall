@@ -49,6 +49,11 @@ const nextConfig: NextConfig = {
   // continuent de fonctionner ; les paramètres (période, commercial) suivent.
   async redirects() {
     return [
+      // Performance (vue d'ensemble, scores, analytics) supprimée le
+      // 05/11/2026 avec la note sur 5 (réponses de Jean à E3 et H1).
+      { source: "/dashboard", destination: "/brief", permanent: false },
+      { source: "/dashboard/scores", destination: "/brief", permanent: false },
+      { source: "/dashboard/analytics", destination: "/brief", permanent: false },
       { source: "/dashboard/playbook", destination: "/playbook", permanent: false },
       { source: "/team/playbook", destination: "/playbook", permanent: false },
       { source: "/dashboard/objections", destination: "/playbook/objections", permanent: false },

@@ -11,7 +11,7 @@ export default async function TeamPage() {
 
   const role = userId ? await getUserRole(userId) : null;
   if (role !== "manager") {
-    redirect("/dashboard");
+    redirect("/brief");
   }
 
   const [overview, organization] = await Promise.all([

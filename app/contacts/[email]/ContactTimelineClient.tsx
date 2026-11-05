@@ -55,20 +55,6 @@ function EnvelopeIcon({ className }: { className?: string }) {
   );
 }
 
-function ScoreBadge({ score }: { score: number }) {
-  const cls =
-    score >= 4
-      ? "bg-[color:var(--success-soft)] text-emerald-700"
-      : score >= 2.5
-      ? "bg-[color:var(--warning-soft)] text-amber-700"
-      : "bg-[color:var(--danger-soft)] text-rose-700";
-  return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold tabular-nums ${cls}`}>
-      {score.toFixed(1)}/5
-    </span>
-  );
-}
-
 function SentimentBadge({ sentiment }: { sentiment: string | null }) {
   if (!sentiment) return null;
   const map: Record<string, string> = {
@@ -322,7 +308,6 @@ export default function ContactTimelineClient({ contactEmail, timeline }: Props)
 
             <div className="space-y-0">
               {timeline.map((item, idx) => {
-                const score = item.analysis?.global_score ?? null;
                 const isLast = idx === timeline.length - 1;
 
                 return (
@@ -364,7 +349,6 @@ export default function ContactTimelineClient({ contactEmail, timeline }: Props)
 
                         <div className="flex items-center gap-2 shrink-0">
                           <SentimentBadge sentiment={item.analysis?.sentiment ?? null} />
-                          {score !== null && <ScoreBadge score={score} />}
                         </div>
                       </div>
 

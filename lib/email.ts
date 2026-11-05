@@ -470,13 +470,6 @@ export async function sendBriefPreCallEmail(params: {
   }
 }
 
-const SCORE_COLORS = (score: number | null): { text: string; bg: string } => {
-  if (score === null) return { text: NOTIF.textSecondary, bg: NOTIF.card };
-  if (score >= 4) return { text: "#15803D", bg: "#DCFCE7" };
-  if (score >= 2.5) return { text: "#C2410C", bg: "#FFEDD5" };
-  return { text: "#B91C1C", bg: "#FEE2E2" };
-};
-
 const SENTIMENT_COLORS: Record<string, { text: string; bg: string }> = {
   positif: { text: "#15803D", bg: "#DCFCE7" },
   neutre: { text: NOTIF.textSecondary, bg: NOTIF.card },
@@ -489,23 +482,17 @@ export async function sendCallAnalysisEmail(params: {
   callTitle: string;
   contactName: string | null;
   keyPoints: string | null; // markdown — see lib/key-points.ts
-  globalScore: number | null;
   sentiment: string | null;
   analysisUrl: string;
 }): Promise<void> {
-  const { to, callTitle, contactName, keyPoints, globalScore, sentiment, analysisUrl } = params;
+  // Plus de note sur 5 dans l'email (décision de Jean, 05/11/2026) : le
+  // sentiment et les points clés suffisent à donner envie d'ouvrir l'analyse.
+  const { to, callTitle, contactName, keyPoints, sentiment, analysisUrl } = params;
 
-  const scoreColor = SCORE_COLORS(globalScore);
   const sentimentColor = sentiment ? SENTIMENT_COLORS[sentiment] ?? { text: NOTIF.textSecondary, bg: NOTIF.card } : null;
 
-  const scoreCell = `
-    <td style="padding:16px 20px;background:${NOTIF.card};border-radius:8px;" width="50%">
-      <p style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:${NOTIF.textSecondary};margin:0 0 8px;font-weight:600;">Score global</p>
-      <p style="font-size:28px;font-weight:700;margin:0;color:${scoreColor.text};">${globalScore !== null ? globalScore.toFixed(1) : "—"}<span style="font-size:14px;font-weight:500;color:${NOTIF.textSecondary};">/5</span></p>
-    </td>`;
-
   const sentimentCell = `
-    <td style="padding:16px 20px;" width="50%">
+    <td style="padding:16px 20px;background:${NOTIF.card};border-radius:8px;" width="100%">
       <p style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:${NOTIF.textSecondary};margin:0 0 8px;font-weight:600;">Sentiment</p>
       ${
         sentiment && sentimentColor
@@ -518,7 +505,7 @@ export async function sendCallAnalysisEmail(params: {
     <h1 style="font-size:20px;font-weight:700;color:${NOTIF.textPrimary};margin:0 0 4px;">📊 Analyse de votre rendez-vous</h1>
     <p style="font-size:14px;color:${NOTIF.textSecondary};margin:0 0 20px;">${callTitle}</p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
-      <tr>${scoreCell}${sentimentCell}</tr>
+      <tr>${sentimentCell}</tr>
     </table>
     <h2 style="font-size:16px;font-weight:600;color:${NOTIF.textPrimary};margin:0 0 8px;">💡 Points clés</h2>
     ${
@@ -545,21 +532,6 @@ export async function sendCallAnalysisEmail(params: {
 
 // ─── Digest hebdomadaire (module Distribution Flexible, sous-étape 3) ──────
 
-function formatScore(score: number | null): string {
-  return score !== null ? score.toFixed(1) : "—";
-}
-
-// ▲/▼/— against the previous period — same "week-over-week trend" idea as
-// getCommercialDetailForManager's `trend` field, just rendered inline here
-// instead of as a separate UI element.
-function scoreTrendHtml(score: number | null, prevScore: number | null): string {
-  if (score === null || prevScore === null) return "";
-  const delta = score - prevScore;
-  if (Math.abs(delta) < 0.05) return `<span style="font-size:12px;color:${NOTIF.textSecondary};">— stable</span>`;
-  const up = delta > 0;
-  return `<span style="font-size:12px;font-weight:600;color:${up ? "#15803D" : "#B91C1C"};">${up ? "▲" : "▼"} ${Math.abs(delta).toFixed(1)}</span>`;
-}
-
 function statCellHtml(label: string, value: string, width = "33%"): string {
   return `
     <td style="padding:14px 16px;background:${NOTIF.card};border-radius:8px;" width="${width}">
@@ -583,16 +555,13 @@ export async function sendCommercialWeeklyDigestEmail(params: {
     <p style="font-size:14px;color:${NOTIF.textSecondary};margin:0 0 24px;">${periodLabel}${userName ? ` — ${userName}` : ""}</p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
       <tr>
-        ${statCellHtml("Calls", String(stats.calls_count))}
+        ${statCellHtml("Calls", String(stats.calls_count), "50%")}
         <td width="8"></td>
-        ${statCellHtml("Briefs générés", String(stats.briefs_count))}
-        <td width="8"></td>
-        ${statCellHtml("Score moyen", formatScore(stats.avg_score))}
+        ${statCellHtml("Briefs générés", String(stats.briefs_count), "50%")}
       </tr>
     </table>
-    <p style="margin:0 0 24px;">${scoreTrendHtml(stats.avg_score, stats.prev_avg_score)}</p>
     ${narrative ? renderMarkdownForEmail(narrative) : ""}
-    ${ctaButtonHtml("Voir mon tableau de bord", dashboardUrl)}`;
+    ${ctaButtonHtml("Ouvrir Brief", dashboardUrl)}`;
 
   const resend = new Resend(process.env.RESEND_API_KEY);
   const { error } = await resend.emails.send({
@@ -634,7 +603,6 @@ export async function sendManagerWeeklyDigestEmail(params: {
           <td style="font-size:13px;color:${NOTIF.textPrimary};padding:8px;border-top:1px solid ${NOTIF.border};">${t.name ?? t.email}</td>
           <td style="font-size:13px;color:${NOTIF.textPrimary};padding:8px;border-top:1px solid ${NOTIF.border};text-align:center;">${t.calls_count}</td>
           <td style="font-size:13px;color:${NOTIF.textPrimary};padding:8px;border-top:1px solid ${NOTIF.border};text-align:center;">${t.briefs_count}</td>
-          <td style="font-size:13px;color:${NOTIF.textPrimary};padding:8px;border-top:1px solid ${NOTIF.border};text-align:center;">${formatScore(t.avg_score)} ${scoreTrendHtml(t.avg_score, t.prev_avg_score)}</td>
         </tr>`
     )
     .join("");
@@ -657,7 +625,6 @@ export async function sendManagerWeeklyDigestEmail(params: {
               <th style="text-align:left;font-size:11px;text-transform:uppercase;color:${NOTIF.textSecondary};padding:6px 8px;border-bottom:1px solid ${NOTIF.border};">Commercial</th>
               <th style="text-align:center;font-size:11px;text-transform:uppercase;color:${NOTIF.textSecondary};padding:6px 8px;border-bottom:1px solid ${NOTIF.border};">Calls</th>
               <th style="text-align:center;font-size:11px;text-transform:uppercase;color:${NOTIF.textSecondary};padding:6px 8px;border-bottom:1px solid ${NOTIF.border};">Briefs</th>
-              <th style="text-align:center;font-size:11px;text-transform:uppercase;color:${NOTIF.textSecondary};padding:6px 8px;border-bottom:1px solid ${NOTIF.border};">Score</th>
             </tr></thead>
             <tbody>${rows}</tbody>
           </table>`

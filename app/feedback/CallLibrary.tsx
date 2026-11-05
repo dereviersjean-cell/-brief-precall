@@ -19,7 +19,6 @@ import type { CallWithAnalysis } from "@/lib/db";
 type DealLink = { dealId: string; dealName: string; rank: number };
 type Period = "7" | "30" | "90" | "all";
 type RankFilter = "all" | "r1" | "suite";
-type Sort = "recent" | "best" | "worst";
 
 const PERIODS: { key: Period; label: string }[] = [
   { key: "7", label: "7 jours" },
@@ -37,15 +36,10 @@ type Row = {
   contact: string;
   company: string | null;
   dateIso: string;
-  score: number | null;
   deal: DealLink | null;
   pending: boolean;
   haystack: string;
 };
-
-function fr1(v: number): string {
-  return v.toFixed(1).replace(".", ",");
-}
 
 function formatDuration(seconds: number): string {
   const m = Math.round(seconds / 60);
@@ -56,10 +50,6 @@ function formatDuration(seconds: number): string {
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Paris" });
-}
-
-function scoreTone(v: number): string {
-  return v >= 3.5 ? "bg-emerald-50 text-emerald-700" : v >= 2.5 ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700";
 }
 
 function normalize(text: string): string {
@@ -115,7 +105,6 @@ function CallTile({ row }: { row: Row }) {
           </span>
         )}
         {row.deal && <span className="max-w-[160px] truncate rounded-md bg-slate-50 px-1.5 py-0.5 text-slate-600">{row.deal.dealName}</span>}
-        {row.score !== null && <span className={`rounded-md px-1.5 py-0.5 font-semibold tabular-nums ${scoreTone(row.score)}`}>{fr1(row.score)}/5</span>}
         {row.pending && (
           <span className="inline-flex items-center gap-1 rounded-md bg-[color:var(--lavender)] px-1.5 py-0.5 text-[color:var(--violet)]">
             <Loader2 className="h-3 w-3 animate-spin" /> Analyse en cours
@@ -152,7 +141,6 @@ export default function CallLibrary({
   const [period, setPeriod] = useState<Period>("all");
   const [dealId, setDealId] = useState<string>("all");
   const [rank, setRank] = useState<RankFilter>("all");
-  const [sort, setSort] = useState<Sort>("recent");
 
   const rows: Row[] = useMemo(() => {
     return calls.map((call) => {
@@ -168,7 +156,6 @@ export default function CallLibrary({
         contact,
         company,
         dateIso: call.started_at ?? call.created_at,
-        score: a?.scores?.global_score ?? null,
         deal,
         pending: !a && now - new Date(call.created_at).getTime() < PENDING_WINDOW_MS,
         // Ce qu'on peut chercher : qui, quoi, le deal, et ce que l'analyse
@@ -194,10 +181,8 @@ export default function CallLibrary({
   const stats = useMemo(() => {
     const durations = inPeriod.map((r) => r.call.duration_seconds ?? 0).filter((d) => d > 0);
     const total = durations.reduce((s, d) => s + d, 0);
-    const scored = inPeriod.filter((r) => r.score !== null);
-    const avg = scored.length ? scored.reduce((s, r) => s + (r.score as number), 0) / scored.length : null;
     const deals = new Set(inPeriod.map((r) => r.deal?.dealId).filter(Boolean));
-    return { count: inPeriod.length, total, avgDuration: durations.length ? total / durations.length : null, avg, scoredCount: scored.length, deals: deals.size };
+    return { count: inPeriod.length, total, avgDuration: durations.length ? total / durations.length : null, deals: deals.size };
   }, [inPeriod]);
 
   const dealOptions = useMemo(() => {
@@ -214,14 +199,8 @@ export default function CallLibrary({
         (dealId === "all" || r.deal?.dealId === dealId) &&
         (rank === "all" || (rank === "r1" ? r.deal?.rank === 1 : (r.deal?.rank ?? 0) > 1))
     );
-    return list.sort((a, b) =>
-      sort === "recent"
-        ? b.dateIso.localeCompare(a.dateIso)
-        : sort === "best"
-          ? (b.score ?? -1) - (a.score ?? -1)
-          : (a.score ?? 99) - (b.score ?? 99)
-    );
-  }, [inPeriod, query, dealId, rank, sort]);
+    return list.sort((a, b) => b.dateIso.localeCompare(a.dateIso));
+  }, [inPeriod, query, dealId, rank]);
 
   const select = "h-9 rounded-full border border-border bg-white px-3 text-[13px] text-slate-900 outline-none focus:border-[color:var(--violet)]";
 
@@ -274,15 +253,10 @@ export default function CallLibrary({
               ))}
             </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-5">
+            <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
               <Stat label="Calls" value={String(stats.count)} />
               <Stat label="Temps enregistré" value={stats.total > 0 ? formatDuration(stats.total) : "—"} />
               <Stat label="Durée moyenne" value={stats.avgDuration ? formatDuration(stats.avgDuration) : "—"} />
-              <Stat
-                label="Score moyen"
-                value={stats.avg !== null ? `${fr1(stats.avg)}/5` : "—"}
-                hint={`${stats.scoredCount} call${stats.scoredCount > 1 ? "s" : ""} noté${stats.scoredCount > 1 ? "s" : ""}`}
-              />
               <Stat label="Deals" value={String(stats.deals)} hint="avec au moins un call" />
             </div>
 
@@ -310,11 +284,6 @@ export default function CallLibrary({
                 <option value="all">R1, R2, R3…</option>
                 <option value="r1">Premiers calls (R1)</option>
                 <option value="suite">Suites (R2 et plus)</option>
-              </select>
-              <select aria-label="Tri" value={sort} onChange={(e) => setSort(e.target.value as Sort)} className={`${select} sm:ml-auto`}>
-                <option value="recent">Plus récents</option>
-                <option value="best">Meilleur score</option>
-                <option value="worst">Score le plus faible</option>
               </select>
             </div>
 

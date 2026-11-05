@@ -194,6 +194,54 @@ export function recallAgendaState(calendarId: string | null, status: string | nu
   return status === "disconnected" ? "disconnected" : "connected";
 }
 
+// ─── Rendez-vous non commerciaux (migration 041) ─────────────────────────
+// Réglage de l'organisation : null = détection allumée, mots par défaut
+// (lib/meeting-kind.ts). Sans la migration, la lecture rend null — la
+// détection marche quand même, avec la liste par défaut.
+export async function getNonCommercialConfigRaw(organizationId: string): Promise<unknown> {
+  const { data, error } = await supabaseAdmin
+    .from("organizations")
+    .select("non_commercial_config")
+    .eq("id", organizationId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as { non_commercial_config: unknown } | null)?.non_commercial_config ?? null;
+}
+
+export async function setNonCommercialConfig(
+  organizationId: string,
+  config: { enabled: boolean; keywords: string[] }
+): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("organizations")
+    .update({ non_commercial_config: config })
+    .eq("id", organizationId);
+  if (error) throw error;
+}
+
+// Identifiants (chez l'agenda) des rendez-vous dont l'utilisateur a forcé l'analyse.
+export async function listForcedAnalysisEventIds(userId: string): Promise<Set<string>> {
+  const { data, error } = await supabaseAdmin
+    .from("meeting_analysis_overrides")
+    .select("calendar_event_id")
+    .eq("user_id", userId);
+  if (error) throw error;
+  return new Set(((data ?? []) as { calendar_event_id: string }[]).map((r) => r.calendar_event_id));
+}
+
+export async function setForcedAnalysis(userId: string, calendarEventId: string, forced: boolean): Promise<void> {
+  const { error } = forced
+    ? await supabaseAdmin
+        .from("meeting_analysis_overrides")
+        .upsert({ user_id: userId, calendar_event_id: calendarEventId }, { onConflict: "user_id,calendar_event_id", ignoreDuplicates: true })
+    : await supabaseAdmin
+        .from("meeting_analysis_overrides")
+        .delete()
+        .eq("user_id", userId)
+        .eq("calendar_event_id", calendarEventId);
+  if (error) throw error;
+}
+
 export async function getRecallCalendarId(userId: string): Promise<string | null> {
   const { data, error } = await supabaseAdmin
     .from("users")

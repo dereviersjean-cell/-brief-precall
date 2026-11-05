@@ -19,7 +19,7 @@ export default function DemoBanner() {
           </span>
         </p>
         <Link
-          href="/dashboard"
+          href="/brief"
           className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border border-amber-200 bg-white px-3 text-[12px] font-semibold text-amber-800 transition-colors hover:border-amber-300 hover:text-amber-900"
         >
           Revenir à mes données <ArrowRight className="h-3 w-3" />

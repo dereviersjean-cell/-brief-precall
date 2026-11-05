@@ -8,7 +8,6 @@ import { Search, Pencil } from "lucide-react";
 import type { CallWithAnalysis, DealMemoryPanel } from "@/lib/db";
 import { MEETING_STAGE_LABELS } from "@/lib/meeting-stage";
 import type { ConversationAnalytics } from "@/lib/transcript-analytics";
-import { getEffectiveScoresForDisplay } from "@/lib/playbook-scores";
 import { formatContactDisplayName } from "@/lib/format";
 import { isValidEmail } from "@/lib/email-address";
 import { useModules } from "@/app/components/ModulesProvider";
@@ -379,44 +378,6 @@ function speakerInitials(name: string): string {
   return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
 }
 
-function ScoreBar({
-  score,
-  label,
-  description,
-  weight,
-}: {
-  score: number;
-  label: string;
-  description?: string;
-  weight?: number;
-}) {
-  const pct = Math.round((score / 5) * 100);
-  const color =
-    score >= 4 ? "bg-[color:var(--success)]" : score >= 2.5 ? "bg-[color:var(--warning)]" : "bg-[color:var(--danger)]";
-  const textColor =
-    score >= 4 ? "text-emerald-700" : score >= 2.5 ? "text-amber-700" : "text-rose-700";
-
-  return (
-    <div>
-      <div className="flex items-baseline justify-between gap-3 mb-1.5">
-        <span className="min-w-0 text-[13.5px] font-medium text-slate-900">
-          {label}
-          {weight != null && weight !== 1 && (
-            <span className="ml-1.5 whitespace-nowrap text-[12px] font-normal tabular-nums text-slate-400">
-              poids {weight}
-            </span>
-          )}
-        </span>
-        <span className={`shrink-0 text-[13.5px] font-semibold tabular-nums ${textColor}`}>{score}/5</span>
-      </div>
-      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-        <div className={`h-full rounded-full ${color} transition-all`} style={{ width: `${pct}%` }} />
-      </div>
-      {description && <p className="mt-2 text-[13px] text-slate-500 leading-relaxed">{description}</p>}
-    </div>
-  );
-}
-
 // Classes écrites en entier : Tailwind ne génère que celles qu'il lit.
 const DOT: Record<string, string> = {
   "text-[color:var(--success)]": "bg-[color:var(--success)]",
@@ -737,10 +698,6 @@ export default function FeedbackDetailClient({
 
 
   const a = call.analysis;
-  const globalScore = a?.scores?.global_score ?? null;
-  const effectiveScores = a
-    ? getEffectiveScoresForDisplay({ scores: a.scores, playbook_snapshot: a.playbook_snapshot })
-    : [];
   const displayName = formatContactDisplayName(call.company_name, call.contact_email);
 
   // Partagé entre la vue analysée et la vue « aucune parole » : sur un call
@@ -837,7 +794,6 @@ export default function FeedbackDetailClient({
   };
   // Mêmes seuils que les scores de la page (4 et 2,5), en teintes claires
   // pour le fond sombre.
-  const darkBar = (v: number) => (v >= 4 ? "bg-emerald-400" : v >= 2.5 ? "bg-amber-400" : "bg-rose-400");
 
   // Transcript vide : le webhook n'analyse plus un call sans parole
   // (countSpokenWords, lib/recall.ts). Le dire, plutôt que « Analyse non
@@ -961,31 +917,13 @@ export default function FeedbackDetailClient({
                 )}
                 {!meeting && (
                 <div className={`flex flex-col gap-6 px-6 py-6 sm:px-8 ${hasBandLeft ? "border-t border-white/10 lg:border-l lg:border-t-0" : ""}`}>
-                  {(globalScore !== null || a.sentiment) && (
+                  {a.sentiment && (
                     <div className="flex flex-wrap items-baseline gap-3">
-                      {globalScore !== null && (
-                        <span className="text-[48px] font-semibold leading-none tracking-[-0.045em] tabular-nums">
-                          {globalScore.toFixed(1)}<span className="text-[18px] font-medium text-white/45">/5</span>
-                        </span>
-                      )}
                       {a.sentiment && (
                         <span className={`rounded-full px-2.5 py-0.5 text-[12px] font-semibold ${sentimentDark[a.sentiment] ?? "bg-white/10 text-white/70"}`}>
                           {a.sentiment}
                         </span>
                       )}
-                    </div>
-                  )}
-                  {effectiveScores.length > 0 && (
-                    <div className="space-y-2.5">
-                      {effectiveScores.map((dim) => (
-                        <div key={dim.key} className="grid grid-cols-[minmax(0,1fr)_90px_32px] items-center gap-3 text-[13px]">
-                          <span className="truncate text-white/80">{dim.label}</span>
-                          <div className="h-1.5 rounded-full bg-white/10">
-                            <div className={`h-full rounded-full ${darkBar(dim.score)}`} style={{ width: `${(dim.score / 5) * 100}%` }} />
-                          </div>
-                          <span className="text-right font-semibold tabular-nums">{dim.score.toFixed(1)}</span>
-                        </div>
-                      ))}
                     </div>
                   )}
                   {(a.next_steps ?? []).length > 0 && (
@@ -1088,25 +1026,6 @@ export default function FeedbackDetailClient({
                     ) : (
                       <DealFocusMissing canGenerate={dealMemory.canManage} onOpen={() => setTab("deal")} />
                     ))}
-                  {/* Scores par dimension — dynamique via le playbook_snapshot de
-                      l'analyse (ou les 4 labels historiques si absent) */}
-                  {effectiveScores.length > 0 && (
-                    <section>
-                      <h2 className={`${LABEL} mb-4`}>Scores par dimension</h2>
-                      <div className="space-y-4">
-                        {effectiveScores.map((dim) => (
-                          <ScoreBar
-                            key={dim.key}
-                            score={dim.score}
-                            label={dim.label}
-                            description={dim.description}
-                            weight={dim.weight}
-                          />
-                        ))}
-                      </div>
-                    </section>
-                  )}
-
                   {followUpEnabled && (
                     <section className={`${CARD} p-5`}>
                       <h2 className={`${LABEL} mb-2.5`}>Email de suivi</h2>

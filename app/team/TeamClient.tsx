@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Search, ChevronUp, ChevronDown, Users, UserPlus, Settings2, ArrowUpRight, Send, X } from "lucide-react";
+import { Search, ChevronUp, ChevronDown, Users, UserPlus, Settings2, Send, X } from "lucide-react";
 import type { TeamOverviewItem } from "@/lib/db";
 import { isPendingInvitation } from "@/lib/team-invitation";
 import FadeIn from "@/app/dashboard/FadeIn";
@@ -317,15 +316,7 @@ export default function TeamClient({
                                   <X className="w-3 h-3" /> Annuler
                                 </button>
                               </div>
-                            ) : (
-                              <Link
-                                href={`/dashboard?commercial=${c.user_id}`}
-                                onClick={(e) => e.stopPropagation()}
-                                className="inline-flex items-center gap-1 text-[12px] font-medium text-[color:var(--violet)] hover:underline"
-                              >
-                                Voir la performance <ArrowUpRight className="w-3 h-3" />
-                              </Link>
-                            )}
+                            ) : null}
                           </td>
                         </tr>
                       ))}

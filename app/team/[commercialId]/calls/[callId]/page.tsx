@@ -15,7 +15,7 @@ export default async function TeamMemberCallDetailPage({
   if (!isUuid(commercialId) || !isUuid(callId)) notFound();
   const viewer = await getViewer();
   if (viewer?.role !== "manager") {
-    redirect("/dashboard");
+    redirect("/brief");
   }
 
   const call = await getCallWithAnalysisForManager(callId, viewer.userId);

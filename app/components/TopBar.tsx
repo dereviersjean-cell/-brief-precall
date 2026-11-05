@@ -11,7 +11,6 @@ import { useModules } from "./ModulesProvider";
 // recherche est resté désactivé jusqu'au 31/07/2026 — il est maintenant
 // fonctionnel (GlobalSearch.tsx).
 const LABELS: Record<string, string> = {
-  dashboard: "Performance",
   brief: "Brief",
   feedback: "Analyse rendez-vous",
   training: "Entraînement",

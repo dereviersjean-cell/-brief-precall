@@ -92,7 +92,7 @@ export const MODULES: ModuleDefinition[] = [
     label: "Vue manager",
     description: "Insights d'équipe et analytics : où l'équipe tient, où elle lâche.",
     week: 8,
-    paths: ["/team/insights", "/dashboard/analytics"],
+    paths: ["/team/insights"],
   },
   {
     key: "weekly_digest",

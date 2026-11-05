@@ -21,4 +21,8 @@ export interface CalendarEvent {
   // organisations en test ou sans repère sur le prospect.
   dealRank?: number;
   dealName?: string;
+  // Rendez-vous non commercial (lib/meeting-kind.ts) : le mot du titre qui
+  // l'a fait classer. Pas d'enregistrement ni d'analyse, sauf analyse forcée.
+  nonCommercial?: string;
+  analysisForced?: boolean;
 }

@@ -16,7 +16,7 @@ export default async function TeamMemberDetailPage({
 
   const role = userId ? await getUserRole(userId) : null;
   if (role !== "manager") {
-    redirect("/dashboard");
+    redirect("/brief");
   }
 
   const detail = await getCommercialDetailForManager(userId!, commercialId);

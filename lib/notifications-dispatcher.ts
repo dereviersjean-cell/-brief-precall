@@ -211,7 +211,6 @@ export type CallAnalysisDispatchContext = {
 
 export type CallAnalysisDispatchInput = {
   keyPoints: string | null;
-  globalScore: number | null;
   sentiment: string | null;
 };
 
@@ -245,7 +244,6 @@ export async function dispatchCallAnalysis(
         callTitle: callContext.callTitle,
         contactName: callContext.contactName,
         keyPoints: callAnalysis.keyPoints,
-        globalScore: callAnalysis.globalScore,
         sentiment: callAnalysis.sentiment,
         analysisUrl,
       });

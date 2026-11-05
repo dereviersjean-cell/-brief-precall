@@ -451,7 +451,6 @@ export async function POST(request: NextRequest) {
                   userId,
                   {
                     keyPoints,
-                    globalScore: savedAnalysis.scores.global_score,
                     sentiment: savedAnalysis.sentiment,
                   },
                   {

@@ -1,6 +1,8 @@
 import { formatContactDisplayName } from "./format";
 import { APP_URL } from "@/lib/app-url";
 import { readEventParticipants, emailDomain } from "./calendar-participants";
+import { nonCommercialMatch, resolveNonCommercialConfig } from "./meeting-kind";
+import { reportWarning } from "./monitoring";
 
 const RECALL_BASE_URL = "https://eu-central-1.recall.ai/api/v1";
 
@@ -145,6 +147,32 @@ async function fetchUpcomingCalendarEvents(calendarId: string): Promise<Calendar
   return eventsData.results ?? [];
 }
 
+// Identifiant de l'événement CHEZ L'AGENDA (Google ou Microsoft) — le même
+// que celui sous lequel les briefs sont enregistrés (briefs.calendar_event_id).
+// Lu jusqu'au 28/09/2026 dans `raw.raw.id`, qui n'existe pas : les calls
+// arrivaient tous avec un calendar_event_id vide (16 sur 16 en base).
+// platform_id == raw.id vérifié sur 200 vrais événements.
+function providerEventIdOf(event: CalendarEvent): string {
+  return event.platform_id ?? (typeof event.raw?.id === "string" ? event.raw.id : "");
+}
+
+// Retire le robot programmé sur un événement (rendez-vous devenu non
+// commercial, ou repéré comme tel après coup). Un échec laisse le robot en
+// place : le rendez-vous sera enregistré et analysé comme avant, rien de pire.
+async function unscheduleBot(calendarEventId: string, key: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${RECALL_API_V2}/calendar-events/${calendarEventId}/bot/`, {
+      method: "DELETE",
+      headers: { Authorization: `Token ${key}`, "Content-Type": "application/json" },
+    });
+    if (res.ok) return true;
+    reportWarning("recall.unschedule-bot", new Error(`HTTP ${res.status}: ${await res.text()}`), { calendarEventId });
+  } catch (err) {
+    reportWarning("recall.unschedule-bot", err, { calendarEventId });
+  }
+  return false;
+}
+
 function eventTitleOf(event: CalendarEvent): string {
   const raw = event.raw as Record<string, unknown> | undefined;
   return (raw?.summary as string | undefined) ?? (raw?.subject as string | undefined) ?? "Sans titre";
@@ -154,7 +182,14 @@ export async function syncAndScheduleForUser(
   userId: string,
   userEmail: string
 ): Promise<SyncResult> {
-  const { getRecallCalendarId, upsertScheduledMeetings, pruneScheduledMeetings } = await import("./db");
+  const {
+    getRecallCalendarId,
+    upsertScheduledMeetings,
+    pruneScheduledMeetings,
+    getUserOrganizationId,
+    getNonCommercialConfigRaw,
+    listForcedAnalysisEventIds,
+  } = await import("./db");
 
   const key = process.env.RECALL_API_KEY;
   if (!key) throw new Error("RECALL_API_KEY is not set");
@@ -170,6 +205,22 @@ export async function syncAndScheduleForUser(
   const events = await fetchUpcomingCalendarEvents(calendarId);
   console.log(`[sync] userId ${userId} — ${events.length} upcoming events`);
 
+  // Rendez-vous non commerciaux (migration 041) : pas de robot, sauf si
+  // l'utilisateur a forcé l'analyse. Sans la migration, détection par défaut
+  // et aucun forçage — jamais une synchronisation en échec pour autant.
+  const organizationId = await getUserOrganizationId(userId).catch(() => null);
+  const [nonCommercialRaw, forcedEventIds] = await Promise.all([
+    organizationId ? getNonCommercialConfigRaw(organizationId).catch(() => null) : Promise.resolve(null),
+    listForcedAnalysisEventIds(userId).catch(() => new Set<string>()),
+  ]);
+  const nonCommercialConfig = resolveNonCommercialConfig(nonCommercialRaw);
+  const nonCommercialReason = (event: CalendarEvent): string | null => {
+    if (forcedEventIds.has(providerEventIdOf(event))) return null;
+    const keyword = nonCommercialMatch(eventTitleOf(event), nonCommercialConfig);
+    return keyword ? `non commercial (« ${keyword} »)` : null;
+  };
+  const botRemoved = new Set<string>();
+
   let scheduled = 0;
   let skipped = 0;
 
@@ -179,16 +230,23 @@ export async function syncAndScheduleForUser(
     const ineligibleReason = getIneligibilityReason(event, userEmail, userDomain);
     if (ineligibleReason) { console.log(logPrefix, "skipped —", ineligibleReason); skipped++; continue; }
 
+    const nonCommercial = nonCommercialReason(event);
+    if (nonCommercial) {
+      if ((event.bots ?? []).length > 0 && (await unscheduleBot(event.id, key))) {
+        botRemoved.add(event.id);
+        console.log(logPrefix, "bot removed —", nonCommercial);
+      } else {
+        console.log(logPrefix, "skipped —", nonCommercial);
+      }
+      skipped++;
+      continue;
+    }
+
     if ((event.bots ?? []).length > 0) { console.log(logPrefix, "skipped — bot already scheduled"); skipped++; continue; }
 
     const { emails } = readEventParticipants(event.raw, userEmail, event.platform);
     const contactEmail = emails.find((email) => emailDomain(email) !== userDomain) ?? "";
-    // Identifiant de l'événement CHEZ L'AGENDA (Google ou Microsoft) — le même
-    // que celui sous lequel les briefs sont enregistrés (briefs.calendar_event_id).
-    // Lu jusqu'au 28/09/2026 dans `raw.raw.id`, qui n'existe pas : les calls
-    // arrivaient tous avec un calendar_event_id vide (16 sur 16 en base).
-    // platform_id == raw.id vérifié sur 200 vrais événements.
-    const providerEventId = event.platform_id ?? (typeof event.raw?.id === "string" ? event.raw.id : "");
+    const providerEventId = providerEventIdOf(event);
 
     console.log(logPrefix, "scheduling bot for", event.start_time, "| contactEmail:", contactEmail, "| providerEventId:", providerEventId);
     try {
@@ -245,8 +303,8 @@ export async function syncAndScheduleForUser(
       calendar_event_id: event.id,
       event_title: eventTitleOf(event),
       event_start_at: event.start_time,
-      bot_scheduled: (event.bots ?? []).length > 0,
-      ineligibility_reason: getIneligibilityReason(event, userEmail, userDomain),
+      bot_scheduled: (event.bots ?? []).length > 0 && !botRemoved.has(event.id),
+      ineligibility_reason: getIneligibilityReason(event, userEmail, userDomain) ?? nonCommercialReason(event),
     }));
     await upsertScheduledMeetings(userId, snapshot);
     await pruneScheduledMeetings(userId, events.map((event) => event.id));

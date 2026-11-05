@@ -5,12 +5,15 @@ import {
   getGoogleTokens,
   getOrganizationEmailDomains,
   getOrganizationForUser,
+  getNonCommercialConfigRaw,
   getUserEmail,
   isDealMemoryEnabledForOrganization,
+  listForcedAnalysisEventIds,
   listUpcomingManualMeetingsForUser,
   saveGoogleTokens,
 } from "@/lib/db";
 import { dealIdentityFor } from "@/lib/deal-grouping";
+import { nonCommercialMatch, resolveNonCommercialConfig } from "@/lib/meeting-kind";
 import { getImpersonationTarget } from "@/lib/impersonation";
 import { refreshGoogleAccessTokenOnce } from "@/lib/gmail";
 
@@ -55,7 +58,42 @@ export type UpcomingEvent = CalendarEvent & {
   // repère sur le prospect.
   dealRank?: number;
   dealName?: string;
+  // Rendez-vous repéré comme non commercial (lib/meeting-kind.ts) : le mot
+  // du titre qui l'a fait classer. Pas de robot, donc pas d'analyse, sauf si
+  // `analysisForced` (l'utilisateur a cliqué « Analyser quand même »).
+  nonCommercial?: string;
+  analysisForced?: true;
 };
+
+// Marque les rendez-vous non commerciaux, avec la même règle que la
+// synchronisation Recall (lib/recall.ts) — ce que la carte annonce est ce
+// que le robot fera. Les RDV ajoutés à la main n'ont jamais de robot : rien
+// à marquer.
+async function withMeetingKind(userId: string, events: UpcomingEvent[]): Promise<UpcomingEvent[]> {
+  const org = await getOrganizationForUser(userId).catch(() => null);
+  const [raw, forced] = await Promise.all([
+    org ? getNonCommercialConfigRaw(org.id).catch(() => null) : Promise.resolve(null),
+    listForcedAnalysisEventIds(userId).catch(() => new Set<string>()),
+  ]);
+  const config = resolveNonCommercialConfig(raw);
+  return events.map((event) => {
+    if (event.manual) return event;
+    const keyword = nonCommercialMatch(event.summary, config);
+    if (!keyword) return event;
+    return forced.has(event.id) ? { ...event, nonCommercial: keyword, analysisForced: true } : { ...event, nonCommercial: keyword };
+  });
+}
+
+async function annotate(userId: string, events: UpcomingEvent[]): Promise<UpcomingEvent[]> {
+  const [ranked, kinds] = await Promise.all([
+    withDealRanks(userId, events).catch(() => events),
+    withMeetingKind(userId, events).catch(() => events),
+  ]);
+  return ranked.map((event, i) => {
+    const kind = kinds[i];
+    return kind.nonCommercial ? { ...event, nonCommercial: kind.nonCommercial, ...(kind.analysisForced ? { analysisForced: true as const } : {}) } : event;
+  });
+}
 
 // Un deal dont le nom commence par le même mot distinctif (« peatch » pour
 // « peatch ai »), seulement s'il est le seul : même règle que le brief
@@ -144,14 +182,14 @@ export async function loadUpcomingEvents(session: Session, userId: string): Prom
   const calendar = await calendarPromise;
   if (calendar.ok) {
     const merged = [...calendar.events, ...manualEvents].sort((a, b) => eventStart(a) - eventStart(b));
-    return { ok: true, events: await withDealRanks(userId, merged).catch(() => merged) };
+    return { ok: true, events: await annotate(userId, merged) };
   }
   const err = calendar.err;
   // Le calendrier réel a échoué (token expiré, scope manquant...) : montrer
   // au moins les RDV manuels plutôt que de tout perdre derrière une erreur
   // qui ne les concerne pas.
   if (manualEvents.length > 0) {
-    return { ok: true, events: await withDealRanks(userId, manualEvents).catch(() => manualEvents) };
+    return { ok: true, events: await annotate(userId, manualEvents) };
   }
   const message = err instanceof Error ? err.message : "Erreur calendrier";
   // Accès expiré ou révoqué chez Google / Microsoft : le message brut de

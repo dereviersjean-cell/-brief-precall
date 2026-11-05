@@ -178,7 +178,7 @@ export async function sendWeeklyDigestForUser(user: DigestRecipient, timing: Dig
         periodLabel,
         narrative,
         stats,
-        dashboardUrl: `${APP_URL}/dashboard`,
+        dashboardUrl: `${APP_URL}/brief`,
       });
     }
     return { userId: user.id, role: user.role, outcome: "sent" };
