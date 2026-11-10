@@ -21,7 +21,8 @@
         "crm.objects.owners.read"
       ],
       "optionalScopes": [
-        "crm.schemas.deals.write"
+        "crm.schemas.deals.write",
+        "crm.objects.companies.write"
       ],
       "conditionallyRequiredScopes": []
     },
