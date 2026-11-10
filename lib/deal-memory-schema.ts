@@ -286,6 +286,9 @@ export type HubspotDealSnapshot = {
   stageId?: string | null;
   // Entrée dans l'étape actuelle, d'après l'historique HubSpot.
   stageEnteredAt?: string | null;
+  // Probabilité de signature de l'étape dans HubSpot, de 0 à 1 (prévision de
+  // chiffre d'affaires, 10/11/2026). Absente des photos antérieures.
+  probability?: number | null;
 };
 
 // Le deal tel que l'écran d'un call le montre.

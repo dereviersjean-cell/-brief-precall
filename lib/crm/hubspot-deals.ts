@@ -53,6 +53,11 @@ function isClosedStage(pipelines: Pipeline[], stageId: string | null | undefined
   return stageId === "closedwon" || stageId === "closedlost";
 }
 
+function stageProbability(raw: string | undefined): number | null {
+  const n = raw === undefined || raw === "" ? NaN : Number(raw);
+  return Number.isFinite(n) && n >= 0 && n <= 1 ? n : null;
+}
+
 async function associatedDealIds(accessToken: string, objectType: "contacts" | "companies", objectId: string): Promise<string[]> {
   const data = await getJson<{ results?: { toObjectId: string | number }[] }>(
     accessToken,
@@ -208,6 +213,7 @@ export async function getHubSpotDealSnapshot(userId: string, dealId: string): Pr
       pipelineId: p.pipeline ?? null,
       stageId: p.dealstage ?? null,
       stageEnteredAt: enteredCurrentStage(deal.propertiesWithHistory?.dealstage, p.dealstage),
+      probability: stageProbability(index >= 0 ? pipeline!.stages[index].metadata?.probability : undefined),
     };
   });
 }
@@ -451,13 +457,14 @@ export async function getHubSpotPipelineStats(userId: string, now: number): Prom
     } while (after && ids.length < STATS_MAX_DEALS);
 
     const histories = new Map<string, { id: string; changes: { stageId: string; at: string }[] }[]>();
-    for (let i = 0; i < Math.min(ids.length, STATS_MAX_DEALS); i += 100) {
+    // HubSpot refuse plus de 50 deals par lecture quand on demande l'historique.
+    for (let i = 0; i < Math.min(ids.length, STATS_MAX_DEALS); i += 50) {
       const batch = await getJson<{
         results?: { id: string; properties: { pipeline?: string | null }; propertiesWithHistory?: { dealstage?: StageHistoryEntry[] } }[];
       }>(accessToken, "/crm/v3/objects/deals/batch/read", {
         method: "POST",
         body: JSON.stringify({
-          inputs: ids.slice(i, i + 100).map((id) => ({ id })),
+          inputs: ids.slice(i, i + 50).map((id) => ({ id })),
           properties: ["pipeline"],
           propertiesWithHistory: ["dealstage"],
         }),

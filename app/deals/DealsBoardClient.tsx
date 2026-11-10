@@ -6,12 +6,15 @@ import type { TeamPerson } from "./team";
 import SuiviView from "./SuiviView";
 import DealRulesForm from "./DealRulesForm";
 import HubspotView from "./HubspotView";
+import ForecastView from "./ForecastView";
+import type { ForecastPeriod, ForecastPerson } from "@/lib/deal-forecast";
 
-// Les onglets de Suivi des deals : « Par commercial » (03/11/2026), Règles,
-// HubSpot. L'ancienne file « Où intervenir » et son bandeau d'étapes ont été
+// Les onglets de Suivi des deals : « Par commercial » (03/11/2026),
+// Prévision (10/11/2026), Règles, HubSpot. L'ancienne file « Où intervenir » et son bandeau d'étapes ont été
 // retirés le 03/11/2026 (historique git) : ils n'étaient plus affichés.
 const TABS = [
   ["suivi", "Par commercial"],
+  ["prevision", "Prévision"],
   ["regles", "Règles"],
   ["hubspot", "HubSpot"],
 ] as const;
@@ -22,8 +25,10 @@ export default function DealsBoardClient({
   teamPeople,
   hasTeam,
   stageLabels,
+  forecast,
   initialTab,
 }: {
+  forecast: { people: ForecastPerson[]; periods: ForecastPeriod[]; today: string };
   teamPeople: TeamPerson[];
   hasTeam: boolean;
   stageLabels: Record<number, string>;
@@ -43,7 +48,7 @@ export default function DealsBoardClient({
           </button>
         ))}
       </div>
-      {tab === "suivi" ? <SuiviView people={teamPeople} hasTeam={hasTeam} /> : tab === "hubspot" ? <HubspotView /> : (
+      {tab === "suivi" ? <SuiviView people={teamPeople} hasTeam={hasTeam} /> : tab === "prevision" ? <ForecastView {...forecast} hasTeam={hasTeam} /> : tab === "hubspot" ? <HubspotView /> : (
         <>
           <p className="mb-4 text-[13.5px] text-slate-500">
             La méthode de qualification et les objectifs de chaque rendez-vous se règlent dans{" "}

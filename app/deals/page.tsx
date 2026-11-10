@@ -12,6 +12,8 @@ import {
 import { buildStages } from "@/lib/deal-board";
 import { buildDealProgressNow } from "@/lib/deal-progress";
 import { suiviDeal } from "@/lib/deal-suivi";
+import { managerTitle } from "@/lib/deal-coaching";
+import { forecastDeal, forecastPeriods, isWon, type ForecastDeal, type ForecastPerson } from "@/lib/deal-forecast";
 import DealsBoardClient from "./DealsBoardClient";
 import type { TeamPerson } from "./team";
 
@@ -43,7 +45,23 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
     getCommercialAdvice(ids),
   ]);
 
-  const progress = people.map((_, i) => buildDealProgressNow(progressLists[i], rules).filter((d) => !d.hubspot?.closed));
+  const allProgress = people.map((_, i) => buildDealProgressNow(progressLists[i], rules));
+  const progress = allProgress.map((list) => list.filter((d) => !d.hubspot?.closed));
+  // Prévision de chiffre d'affaires (10/11/2026) : le jour à Paris.
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Paris" });
+  const forecastPeople: ForecastPerson[] = people.map((p, i) => {
+    const deals = progress[i].map((d) => forecastDeal(d, today, managerTitle(d, p.name))).filter((d): d is ForecastDeal => d !== null);
+    return {
+      id: p.id,
+      name: p.name,
+      avatarUrl: avatars[p.id] ?? null,
+      deals,
+      signed: allProgress[i]
+        .filter((d) => isWon(d) && d.hubspot?.amount && d.hubspot.closeDate)
+        .map((d) => ({ amount: d.hubspot!.amount!, closeDate: d.hubspot!.closeDate!.slice(0, 10) })),
+      uncounted: progress[i].length - deals.length,
+    };
+  });
   const teamPeople: TeamPerson[] = people.map((p, i) => {
     const advice = personAdvice[p.id];
     return {
@@ -65,10 +83,11 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
     <DealsBoardClient
       teamPeople={teamPeople}
       hasTeam={people.length > 0}
+      forecast={{ people: forecastPeople, periods: forecastPeriods(today), today }}
       stageLabels={stageLabels}
       // Les anciens liens (?tab=ensemble, ?tab=equipe, ?tab=file) mènent à la
       // vue « Par commercial ».
-      initialTab={params.tab === "regles" ? "regles" : params.tab === "hubspot" ? "hubspot" : "suivi"}
+      initialTab={params.tab === "regles" ? "regles" : params.tab === "hubspot" ? "hubspot" : params.tab === "prevision" ? "prevision" : "suivi"}
     />
   );
 }
