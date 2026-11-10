@@ -1,5 +1,6 @@
-import { getRecallCalendarId, getCrmTokens, getEnabledModulesForUser } from "@/lib/db";
-import { getEffectiveUserId } from "@/lib/session-user";
+import { getRecallCalendarId, getCrmTokens, getEnabledModulesForUser, getOrganizationHubspotAutofill, isDealMemoryEnabledForOrganization } from "@/lib/db";
+import { getEffectiveUserId, getViewer } from "@/lib/session-user";
+import { coerceAutofillConfig } from "@/lib/hubspot-autofill";
 import { hasCalendarWriteAccess } from "@/lib/google-calendar";
 import { hasSlackConnection } from "@/lib/slack";
 import { getRecallCalendarHealth } from "@/lib/recall";
@@ -29,6 +30,14 @@ export default async function ConnexionsSettingsPage() {
   // Cartes CRM et Slack : seulement si le module est ouvert (parcours client).
   const modules = userId ? await getEnabledModulesForUser(userId) : [];
 
+  // Mise à jour automatique des propriétés HubSpot : managers des
+  // organisations où la fiche deal est active.
+  const viewer = modules.includes("crm") && hubspotTokens !== null ? await getViewer() : null;
+  const autofillAvailable =
+    !!viewer && viewer.role === "manager" && !!viewer.organizationId && (await isDealMemoryEnabledForOrganization(viewer.organizationId));
+  const autofillActive =
+    autofillAvailable && (coerceAutofillConfig(await getOrganizationHubspotAutofill(viewer!.organizationId!))?.active ?? false);
+
   return (
     <>
       <ConnexionsSettingsClient
@@ -43,7 +52,7 @@ export default async function ConnexionsSettingsPage() {
       />
       {modules.includes("crm") && (
         <div className="mt-6">
-          <CrmSection pipedriveConnected={pipedriveTokens !== null} hubspotConnected={hubspotTokens !== null} />
+          <CrmSection pipedriveConnected={pipedriveTokens !== null} hubspotConnected={hubspotTokens !== null} autofillAvailable={autofillAvailable} autofillActive={autofillActive} />
         </div>
       )}
     </>

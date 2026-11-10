@@ -2253,25 +2253,67 @@ export type HubspotWriteRow = {
   newValue: string | null;
   status: "written" | "skipped";
   reason: string | null;
+  // Migration 042 : l'objet écrit (deal par défaut) et son identifiant HubSpot.
+  objectType?: "deal" | "contact" | "company";
+  objectId?: string | null;
 };
 
 export async function recordHubspotWrites(rows: HubspotWriteRow[]): Promise<void> {
   if (rows.length === 0) return;
-  const { error } = await supabaseAdmin.from("hubspot_writes").insert(
-    rows.map((r) => ({
-      organization_id: r.organizationId,
-      call_id: r.callId,
-      deal_id: r.dealId,
-      hubspot_deal_id: r.hubspotDealId,
-      field: r.field,
-      property: r.property,
-      old_value: r.oldValue,
-      new_value: r.newValue,
-      status: r.status,
-      reason: r.reason,
-    }))
-  );
-  if (error) console.error("[db] recordHubspotWrites failed (migration 038 ?):", error.message);
+  const base = (r: HubspotWriteRow) => ({
+    organization_id: r.organizationId,
+    call_id: r.callId,
+    deal_id: r.dealId,
+    hubspot_deal_id: r.hubspotDealId,
+    field: r.field,
+    property: r.property,
+    old_value: r.oldValue,
+    new_value: r.newValue,
+    status: r.status,
+    reason: r.reason,
+  });
+  const typed = rows.some((r) => r.objectType !== undefined);
+  if (!typed) {
+    const { error } = await supabaseAdmin.from("hubspot_writes").insert(rows.map(base));
+    if (error) console.error("[db] recordHubspotWrites failed (migration 038 ?):", error.message);
+    return;
+  }
+  const { error } = await supabaseAdmin
+    .from("hubspot_writes")
+    .insert(rows.map((r) => ({ ...base(r), object_type: r.objectType ?? "deal", object_id: r.objectId ?? null })));
+  if (!error) return;
+  // Sans la migration 042 : les lignes du deal sont journalisées à l'ancien
+  // format, celles du contact et de l'entreprise ne peuvent pas l'être (leur
+  // propriété passerait pour une propriété du deal).
+  console.error("[db] recordHubspotWrites failed (migration 042 ?):", error.message);
+  const dealRows = rows.filter((r) => (r.objectType ?? "deal") === "deal");
+  if (dealRows.length === 0) return;
+  const retry = await supabaseAdmin.from("hubspot_writes").insert(dealRows.map(base));
+  if (retry.error) console.error("[db] recordHubspotWrites failed (migration 038 ?):", retry.error.message);
+}
+
+// La dernière valeur que Brief a écrite pour ce deal, par objet et propriété
+// (« deal.amount », « contact.jobtitle »). Sans la migration 042, seules les
+// écritures du deal sont connues.
+export async function getLastAutofillWrites(hubspotDealId: string): Promise<Record<string, string>> {
+  const { data, error } = await supabaseAdmin
+    .from("hubspot_writes")
+    .select("object_type, property, new_value")
+    .eq("hubspot_deal_id", hubspotDealId)
+    .eq("status", "written")
+    .order("created_at", { ascending: false })
+    .limit(400);
+  if (error) {
+    console.error("[db] getLastAutofillWrites failed (migration 042 ?):", error.message);
+    const legacy = await getLastBriefWrites(hubspotDealId);
+    return Object.fromEntries(Object.entries(legacy).map(([property, value]) => [`deal.${property}`, value]));
+  }
+  const out: Record<string, string> = {};
+  for (const r of (data ?? []) as { object_type: string | null; property: string; new_value: string | null }[]) {
+    const id = `${r.object_type ?? "deal"}.${r.property}`;
+    if (!(id in out) && r.new_value !== null) out[id] = r.new_value;
+  }
+  return out;
 }
 
 // La dernière valeur que Brief a écrite dans ce deal, par propriété.
@@ -2360,6 +2402,24 @@ export async function setHubspotAutoPush(organizationId: string, enabled: boolea
 
 export async function setOrganizationHubspotMapping(organizationId: string, mapping: Record<string, unknown>): Promise<void> {
   const { error } = await supabaseAdmin.from("organizations").update({ hubspot_field_mapping: mapping }).eq("id", organizationId);
+  if (error) throw error;
+}
+
+// La liste validée par le manager de ce que Brief remplit dans HubSpot après
+// chaque call (migration 042, lib/hubspot-autofill.ts). Fail-soft : colonne
+// absente ou lecture en échec = pas de réglage, l'envoi garde l'ancien
+// (hubspot_field_mapping).
+export async function getOrganizationHubspotAutofill(organizationId: string): Promise<unknown | null> {
+  const { data, error } = await supabaseAdmin.from("organizations").select("hubspot_autofill").eq("id", organizationId).maybeSingle();
+  if (error) {
+    console.error("[db] getOrganizationHubspotAutofill failed (migration 042 ?):", error.message);
+    return null;
+  }
+  return (data as { hubspot_autofill?: unknown } | null)?.hubspot_autofill ?? null;
+}
+
+export async function setOrganizationHubspotAutofill(organizationId: string, config: unknown): Promise<void> {
+  const { error } = await supabaseAdmin.from("organizations").update({ hubspot_autofill: config }).eq("id", organizationId);
   if (error) throw error;
 }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import OnceConnected, { CRM_EFFECTS } from "./OnceConnected";
@@ -12,11 +13,16 @@ import OnceConnected, { CRM_EFFECTS } from "./OnceConnected";
 type Props = {
   pipedriveConnected: boolean;
   hubspotConnected: boolean;
+  // Mise à jour automatique des propriétés (managers, fiche deal active).
+  autofillAvailable?: boolean;
+  autofillActive?: boolean;
 };
 
 export default function CrmSection({
   pipedriveConnected: initialPipedriveConnected,
   hubspotConnected: initialHubspotConnected,
+  autofillAvailable = false,
+  autofillActive = false,
 }: Props) {
   const [pipedriveConnected, setPipedriveConnected] = useState(initialPipedriveConnected);
   const [pipedriveDisconnecting, setPipedriveDisconnecting] = useState(false);
@@ -226,6 +232,24 @@ export default function CrmSection({
                       {hubspotImportResult.count} référence{hubspotImportResult.count !== 1 ? "s" : ""} importée{hubspotImportResult.count !== 1 ? "s" : ""} depuis HubSpot.
                     </p>
                   )
+                )}
+                {autofillAvailable && (
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[#EEF2FD] px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="text-[13.5px] font-semibold text-foreground">Mise à jour automatique des propriétés</p>
+                      <p className="text-[13px] text-[color:var(--muted-foreground)]">
+                        {autofillActive
+                          ? "Active : Brief remplit vos propriétés HubSpot après chaque call."
+                          : "Brief lit votre HubSpot et remplit vos propriétés après chaque call."}
+                      </p>
+                    </div>
+                    <Link
+                      href="/settings/connexions/hubspot"
+                      className="inline-flex h-9 shrink-0 items-center rounded-lg bg-[color:var(--primary)] px-3.5 text-[13px] font-medium text-white transition-all hover:brightness-110"
+                    >
+                      {autofillActive ? "Modifier" : "Configurer"}
+                    </Link>
+                  </div>
                 )}
               </div>
             ) : (

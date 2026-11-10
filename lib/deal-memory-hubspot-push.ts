@@ -5,6 +5,7 @@ import {
   getDealOverview,
   getHubspotUserForOrganization,
   getLastBriefWrites,
+  getOrganizationHubspotAutofill,
   getOrganizationHubspotMapping,
   markDealMemoryPushed,
   recordHubspotWrites,
@@ -14,6 +15,11 @@ import {
 import { buildHubspotNote } from "./deal-memory-hubspot";
 import { briefCandidates, coerceMapping, mergeWritten, planWrites, type HubspotMapping, type PlannedWrite, type PropertyDefinition } from "./hubspot-mapping";
 import { getHubSpotDealSnapshot, getHubSpotDealValues, listHubSpotDealProperties, pushToHubSpotDeal } from "./crm/hubspot-deals";
+import { updateHubSpotObject } from "./crm/hubspot-objects";
+import { coerceAutofillConfig, linkId, type AutofillPlan } from "./hubspot-autofill";
+import { prepareAutofill, type PreparedAutofill } from "./hubspot-autofill-run";
+import { reportError } from "./monitoring";
+import type { HubspotDealSnapshot } from "./deal-memory-schema";
 
 // Écrit la fiche d'un call dans le deal HubSpot rattaché. Partagé par le bouton
 // de la fiche et l'envoi automatique après chaque call
@@ -26,9 +32,15 @@ import { getHubSpotDealSnapshot, getHubSpotDealValues, listHubSpotDealProperties
 // vide » par défaut — et journalise chaque décision (migration 038). La note
 // de synthèse, elle, est toujours posée (remplacée à chaque envoi du même
 // call).
+//
+// Depuis le 10/11/2026, une organisation dont le manager a validé la mise à
+// jour automatique (Paramètres › HubSpot, lib/hubspot-autofill.ts) passe par
+// elle à la place : deal, contact et entreprise, chaque valeur lue dans le
+// call avec le passage qui la prouve. L'ancien réglage (hubspot_field_mapping)
+// ne sert alors plus ; la note de synthèse ne change pas.
 
 export type HubspotPushResult =
-  | { status: "pushed"; pushedAt: string; properties: string[]; plans: PlannedWrite[] }
+  | { status: "pushed"; pushedAt: string; properties: string[]; plans: PlannedWrite[]; autofill?: AutofillPlan[] }
   | { status: "skipped"; reason: "no-fiche" | "no-hubspot-deal" | "no-hubspot-user" };
 
 export const HUBSPOT_SKIP_MESSAGES: Record<Extract<HubspotPushResult, { status: "skipped" }>["reason"], string> = {
@@ -46,6 +58,7 @@ type Prepared = {
   plans: PlannedWrite[];
   properties: Record<string, string>;
   noteHtml: string;
+  before: HubspotDealSnapshot | null;
 };
 
 // Tout ce qu'un envoi écrirait, sans rien écrire. `override` : un réglage à
@@ -99,7 +112,7 @@ async function prepareHubspotPush(
       .filter((o) => o.handlingQuality === "non_traitee" || o.handlingQuality === "partiellement")
       .map((o) => o.objection),
   });
-  return { hubspotUser, hubspotDealId, dealId: fiche.dealId, plans, properties, noteHtml };
+  return { hubspotUser, hubspotDealId, dealId: fiche.dealId, plans, properties, noteHtml, before };
 }
 
 // Le setup admin : ce qu'un envoi de ce call écrirait avec un réglage à
@@ -118,30 +131,84 @@ export async function pushDealMemoryToHubSpot(
   organizationId: string,
   preferredUserIds: string[]
 ): Promise<HubspotPushResult> {
-  const prepared = await prepareHubspotPush(call, organizationId, preferredUserIds);
+  const config = coerceAutofillConfig(await getOrganizationHubspotAutofill(organizationId));
+  const autofillOn = !!config?.active && config.links.some((l) => l.enabled);
+  // Mise à jour automatique active : l'ancien réglage ne s'applique pas.
+  const prepared = await prepareHubspotPush(call, organizationId, preferredUserIds, autofillOn ? { mapping: {}, planned: [] } : undefined);
   if ("status" in prepared) return prepared;
-  const { hubspotUser, hubspotDealId, dealId, plans, properties, noteHtml } = prepared;
+  const { hubspotUser, hubspotDealId, dealId, plans, noteHtml, before } = prepared;
+  const uid = `brief-deal-memory-${call.id}`;
 
-  await pushToHubSpotDeal(hubspotUser, hubspotDealId, { properties, noteHtml, uid: `brief-deal-memory-${call.id}` });
+  // Un échec de la lecture du call par le modèle ne prive pas le deal de sa
+  // note : elle part seule, et l'erreur est signalée.
+  let autofill: PreparedAutofill | null = null;
+  if (autofillOn) {
+    try {
+      autofill = await prepareAutofill({ call, config: config!, hubspotUser, hubspotDealId, snapshot: before });
+    } catch (err) {
+      reportError("hubspot-autofill.prepare", err, { callId: call.id });
+    }
+  }
+  const refuse = (object: AutofillPlan["object"]) => {
+    for (const p of autofill?.plans ?? []) if (p.object === object && p.action === "write") Object.assign(p, { action: "skip", reason: "Écriture refusée par HubSpot" });
+  };
+
+  const properties = autofill ? autofill.updates.deal : prepared.properties;
+  try {
+    await pushToHubSpotDeal(hubspotUser, hubspotDealId, { properties, noteHtml, uid });
+  } catch (err) {
+    if (!autofill || Object.keys(properties).length === 0) throw err;
+    // HubSpot a refusé une valeur : la note part quand même.
+    reportError("hubspot-autofill.deal", err, { callId: call.id });
+    refuse("deal");
+    await pushToHubSpotDeal(hubspotUser, hubspotDealId, { properties: {}, noteHtml, uid });
+  }
+  for (const object of ["contact", "company"] as const) {
+    const id = autofill?.ids[object];
+    if (!autofill || !id || Object.keys(autofill.updates[object]).length === 0) continue;
+    try {
+      await updateHubSpotObject(hubspotUser, object, id, autofill.updates[object]);
+    } catch (err) {
+      reportError(`hubspot-autofill.${object}`, err, { callId: call.id });
+      refuse(object);
+    }
+  }
+
   const pushedAt = await markDealMemoryPushed(call.id);
   await recordHubspotWrites(
-    plans.map((p) => ({
-      organizationId,
-      callId: call.id,
-      dealId,
-      hubspotDealId,
-      field: p.key,
-      property: p.property,
-      oldValue: p.current,
-      newValue: p.value,
-      status: p.action === "write" ? "written" : "skipped",
-      reason: p.reason,
-    }))
+    autofill
+      ? autofill.plans.map((p) => ({
+          organizationId,
+          callId: call.id,
+          dealId,
+          hubspotDealId,
+          field: linkId(p),
+          property: p.property,
+          oldValue: p.current,
+          newValue: p.value,
+          status: p.action === "write" ? ("written" as const) : ("skipped" as const),
+          reason: p.reason,
+          objectType: p.object,
+          objectId: autofill!.ids[p.object],
+        }))
+      : plans.map((p) => ({
+          organizationId,
+          callId: call.id,
+          dealId,
+          hubspotDealId,
+          field: p.key,
+          property: p.property,
+          oldValue: p.current,
+          newValue: p.value,
+          status: p.action === "write" ? ("written" as const) : ("skipped" as const),
+          reason: p.reason,
+        }))
   );
 
   // Le deal vient de changer côté HubSpot : sa photo est relue.
   const snapshot = await getHubSpotDealSnapshot(hubspotUser, hubspotDealId).catch(() => null);
   if (snapshot) await setDealHubspot(dealId, snapshot);
 
-  return { status: "pushed", pushedAt, properties: Object.keys(properties), plans };
+  const written = autofill ? autofill.plans.filter((p) => p.action === "write").map((p) => p.label) : Object.keys(properties);
+  return { status: "pushed", pushedAt, properties: written, plans, ...(autofill ? { autofill: autofill.plans } : {}) };
 }
