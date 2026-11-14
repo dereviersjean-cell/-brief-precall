@@ -45,6 +45,37 @@ export type ProgressFiche = {
 
 export type DealVerdict = "progres" | "arret" | "recul";
 
+// Les cinq états d'un deal (réponse d'Hubert à D3, 13/11/2026), ceux que les
+// écrans affichent. Le verdict ci-dessus reste le calcul interne dont ils
+// partent (et celui du Suivi des deals tant qu'il n'est pas refait).
+//  - en recul : un événement négatif au dernier call ;
+//  - à l'arrêt : plus aucun échange depuis longtemps ;
+//  - à relancer : une action est attendue (suite passée, suite non datée,
+//    échange qui tarde), sans signe de blocage ;
+//  - à qualifier : trop peu d'informations confirmées pour juger ;
+//  - en progrès : sinon.
+export type DealState = "progres" | "relancer" | "arret" | "recul" | "qualifier";
+
+// Au-delà, un deal sans échange n'est plus « à relancer » mais « à l'arrêt ».
+export const STALLED_DAYS = 30;
+const MIN_KNOWN_TO_JUDGE = 2;
+
+export function dealState(input: {
+  verdict: DealVerdict;
+  nextStepStatus: NextStepStatus;
+  idleDays: number | null;
+  known: number;
+  inactivityDays?: number;
+}): DealState {
+  const idle = input.idleDays ?? 0;
+  const threshold = input.inactivityDays ?? INACTIVITY_DAYS;
+  if (input.verdict === "recul") return "recul";
+  if (idle >= Math.max(STALLED_DAYS, threshold * 2)) return "arret";
+  if (input.nextStepStatus === "en_retard" || input.nextStepStatus === "sans_suite" || idle >= threshold) return "relancer";
+  if (input.known < MIN_KNOWN_TO_JUDGE) return "qualifier";
+  return "progres";
+}
+
 // « À jour » (accord de Jean du 27/10/2026) : une prochaine étape datée qui
 // n'est pas dépassée. en_retard = la date est passée sans nouveau call ;
 // sans_suite = aucune date convenue ; non_relevee = fiche antérieure au
@@ -70,6 +101,7 @@ export type DealProgress = {
   lastCall: { id: string; at: string | null; title: string | null };
   idleDays: number | null;
   verdict: DealVerdict;
+  state: DealState;
   reasons: string[];
   known: number;
   total: number;
@@ -173,6 +205,19 @@ export function dealFocus(input: {
   };
 }
 
+// La raison d'un état, en une phrase courte, pour la page du deal.
+export function stateReason(d: Pick<DealProgress, "state" | "reasons" | "idleDays" | "nextStep" | "known" | "total">): string {
+  if (d.state === "recul") return `${d.reasons.slice(0, 2).join(" · ")}.`;
+  if (d.state === "arret") return `Aucun échange depuis ${d.idleDays} jours.`;
+  if (d.state === "relancer") {
+    if (d.nextStep.status === "en_retard") return d.nextStep.date ? `Suite prévue le ${shortDay(d.nextStep.date)}, sans nouvel échange.` : "La suite convenue est passée, sans nouvel échange.";
+    if (d.nextStep.status === "sans_suite") return "Aucune suite datée au dernier rendez-vous.";
+    return `Aucun échange depuis ${d.idleDays} jours.`;
+  }
+  if (d.state === "qualifier") return `${d.known} information${d.known > 1 ? "s" : ""} confirmée${d.known > 1 ? "s" : ""} sur ${d.total} : trop peu pour juger.`;
+  return "La suite est datée et rien ne recule.";
+}
+
 function nextStepOf(latest: ProgressFiche, today: string, idle: boolean): DealProgress["nextStep"] {
   const items = latest.fields.prochaines_etapes ?? [];
   if (items.length > 0 && items.every((i) => i.date === undefined)) {
@@ -249,6 +294,7 @@ export function buildDealProgress(fiches: ProgressFiche[], now: number, rules: D
       reasons.push(`Appris au dernier call : ${lastStep.learned.map(lowerFirst).join(", ")}`);
     }
 
+    const nextStep = nextStepOf(latest, new Date(now).toISOString().slice(0, 10), idle);
     deals.push({
       id: dealId,
       name: latest.dealName,
@@ -257,6 +303,7 @@ export function buildDealProgress(fiches: ProgressFiche[], now: number, rules: D
       lastCall: { id: latest.callId, at: latest.callAt, title: latest.callTitle },
       idleDays,
       verdict,
+      state: dealState({ verdict, nextStepStatus: nextStep.status, idleDays, known: seen.size, inactivityDays: rules.inactivityDays }),
       reasons,
       known: seen.size,
       total: fields.length,
@@ -290,7 +337,7 @@ export function buildDealProgress(fiches: ProgressFiche[], now: number, rules: D
       aiAdvice: latest.nextQuestions?.advice ?? null,
       nextSteps: latest.fields.prochaines_etapes ?? [],
       alerts: latest.alerts.map((a) => RULE_LABELS.get(a.rule) ?? a.rule),
-      nextStep: nextStepOf(latest, new Date(now).toISOString().slice(0, 10), idle),
+      nextStep,
       // Un deal sans call depuis 14 jours se relance d'abord ; sinon l'alerte
       // la plus lourde du dernier call.
       topAction: idle ? REP_ACTIONS.inactivite : (() => {
@@ -299,7 +346,7 @@ export function buildDealProgress(fiches: ProgressFiche[], now: number, rules: D
       })(),
       focus: dealFocus({
         verdict,
-        nextStep: nextStepOf(latest, new Date(now).toISOString().slice(0, 10), idle),
+        nextStep,
         idleDays,
         alerts: latest.alerts,
         nextRank: sorted.length + 1,
@@ -321,4 +368,20 @@ export function buildDealProgress(fiches: ProgressFiche[], now: number, rules: D
 
 export function buildDealProgressNow(fiches: ProgressFiche[], rules: DealRules = DEFAULT_RULES): DealProgress[] {
   return buildDealProgress(fiches, Date.now(), rules);
+}
+
+// Les quatre chiffres en tête de « Mes deals » (décision D10, 13/11/2026).
+// `isMeeting` reconnaît un rendez-vous dans le texte d'un engagement
+// (lib/deal-chronology.ts). Les rendez-vous comptés sont ceux des sept jours
+// à venir : « cette semaine » au sens du calendrier donnerait zéro chaque
+// vendredi soir.
+export function dealsSummary(deals: DealProgress[], now: number, isMeeting: (text: string) => boolean) {
+  const from = new Date(now).toISOString().slice(0, 10);
+  const to = new Date(now + 7 * DAY_MS).toISOString().slice(0, 10);
+  return {
+    count: deals.length,
+    amount: deals.reduce((sum, d) => sum + (d.hubspot?.amount ?? 0), 0),
+    stalled: deals.filter((d) => d.state === "arret" || d.state === "recul").length,
+    upcomingMeetings: deals.filter((d) => d.nextSteps.some((s) => typeof s.date === "string" && s.date >= from && s.date <= to && isMeeting(s.text))).length,
+  };
 }

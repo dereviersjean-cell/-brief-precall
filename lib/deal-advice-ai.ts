@@ -25,7 +25,7 @@ const SYSTEM_PROMPT = `Tu es un expert de la vente B2B qui conseille un commerci
 
 On te donne ce que les calls du deal ont appris (avec le niveau : confirmé ou évoqué), ce qui a été convenu au dernier call, les objections, les alertes, et ce qu'il faut aller chercher au prochain rendez-vous.
 
-Écris quatre conseils et une synthèse, tous sur CE deal :
+Écris quatre conseils, deux synthèses et le classement des engagements, tous sur CE deal :
 
 1. "next" — pour le commercial (tutoiement), ce qu'il fait maintenant pour faire avancer le deal :
    - "title" : l'action, à l'impératif, 12 mots au plus, avec son objet précis (qui, quoi). Interdit : un titre qui vaudrait pour n'importe quel deal (« Relancer le prospect », « Préparer le prochain call », « Faire avancer le deal »).
@@ -52,13 +52,17 @@ On te donne ce que les calls du deal ont appris (avec le niveau : confirmé ou �
    - À partir du R2 : ce que ce call a changé par rapport à ce que le deal savait déjà (ce qui est désormais confirmé, ce qui a bougé, ce qui bloque encore), puis la suite convenue. Ne répète pas ce qui était déjà connu avant ce call, sauf pour dire ce qui a changé.
    - Que des faits donnés plus bas, aucun jugement sur le commercial (c'est le rôle de "coaching").
 
+6. "deal_synthesis" — où en est le deal TOUT ENTIER, pour quelqu'un qui ouvre sa page : 3 phrases au plus, 60 mots au plus, à la troisième personne. Qui est le prospect et ce qu'il cherche, ce qui est acquis, ce qui bloque ou reste à obtenir. Pas de numéro de rendez-vous, pas de liste d'engagements, aucun jugement sur le commercial.
+
+7. "commitment_sides" — pour chaque ligne de « Convenu au dernier call », dans le même ordre, qui doit agir : "nous" (le commercial ou son équipe, y compris un rendez-vous à organiser) ou "prospect" (le prospect ou quelqu'un de chez lui). Autant d'éléments que de lignes ; liste vide si rien n'a été convenu.
+
 Règles :
 - Dans "next", "relance" et "coaching", tu tutoies le commercial partout (« tes arguments », jamais « vos »), sauf dans les phrases entre « » destinées au prospect.
 - Reprends les noms, chiffres, dates et mots du prospect quand ils sont donnés. N'invente aucun fait, nom, chiffre ou date absent de ce qu'on te donne ; s'il manque, dis comment l'obtenir.
 - Pas de jargon (pas de « MEDDIC », « champion », « closing ») : écris comme un directeur commercial qui parle à son équipe.
 
 Réponds UNIQUEMENT en JSON strict :
-{"next": {"title": "", "why": "", "steps": [""]}, "relance": {"title": "", "why": "", "message": ""}, "manager": {"title": "", "why": "", "questions": [""]}, "coaching": {"recommendation": ""}, "synthesis": ""}`;
+{"next": {"title": "", "why": "", "steps": [""]}, "relance": {"title": "", "why": "", "message": ""}, "manager": {"title": "", "why": "", "questions": [""]}, "coaching": {"recommendation": ""}, "synthesis": "", "deal_synthesis": "", "commitment_sides": ["nous"]}`;
 
 export type DealAdviceInput = {
   dealName: string;
@@ -104,7 +108,7 @@ export function buildAdvicePrompt(input: DealAdviceInput): string {
     "\nCe que les calls du deal ont appris :",
     formatKnown(input.known) || "- rien encore",
     "\nConvenu au dernier call :",
-    input.commitments.length ? input.commitments.map((c) => `- ${c.text}${c.date ? ` (date : ${c.date})` : ""}`).join("\n") : "- rien de convenu",
+    input.commitments.length ? input.commitments.map((c, i) => `${i + 1}. ${c.text}${c.date ? ` (date : ${c.date})` : ""}`).join("\n") : "- rien de convenu",
     "\nObjections du dernier call :",
     input.objections.length
       ? input.objections.map((o) => `- ${o.objection}${o.handlingQuality ? ` — ${HANDLING[o.handlingQuality] ?? o.handlingQuality}` : ""}`).join("\n")
@@ -152,6 +156,9 @@ export function parseAdvice(raw: string, model: string, generatedAt: string): Ai
   const manager = parsed.manager ?? {};
   const coaching = text((parsed.coaching ?? {}).recommendation, 400);
   const synthesis = text(parsed.synthesis as unknown, 1200);
+  const dealSynthesis = text(parsed.deal_synthesis as unknown, 600);
+  const rawSides = parsed.commitment_sides as unknown;
+  const commitmentSides = Array.isArray(rawSides) && rawSides.every((s) => s === "nous" || s === "prospect") ? (rawSides as ("nous" | "prospect")[]) : null;
   const advice = {
     next: { title: text(next.title, 140), why: text(next.why, 400), steps: list(next.steps, 3) },
     relance: { title: text(relance.title, 140), why: text(relance.why, 400), message: text(relance.message, 900) },
@@ -168,6 +175,9 @@ export function parseAdvice(raw: string, model: string, generatedAt: string): Ai
     coaching: coaching ? { recommendation: coaching } : null,
     // Facultative elle aussi : sans elle, les écrans gardent le résumé de l'analyse.
     synthesis,
+    // Facultatives : la page du deal se passe de l'une et devine l'autre.
+    dealSynthesis,
+    commitmentSides,
     model,
     generatedAt,
   };

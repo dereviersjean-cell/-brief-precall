@@ -33,7 +33,8 @@ export const DEAL_MEMORY_FIELDS = [
   },
   {
     key: "champion",
-    label: "Champion",
+    // « Allié chez le client » depuis le 13/11/2026 (décision de Jean, D5).
+    label: "Allié chez le client",
     meddic: "Champion",
     definition: "la personne qui, côté prospect, pousse le projet en interne",
   },
@@ -257,6 +258,12 @@ export type AiDealAdvice = {
   // le bon numéro de rendez-vous et, à partir du R2, ce que ce call a changé
   // par rapport aux précédents. Absente des conseils rédigés avant.
   synthesis?: string | null;
+  // Où en est le deal tout entier, en trois phrases (page du deal, 14/11/2026).
+  dealSynthesis?: string | null;
+  // Qui doit agir sur chaque engagement du dernier call, dans leur ordre :
+  // deux listes sur la page du deal (décision D7). Absent des conseils
+  // rédigés avant, la page devine alors d'après le texte.
+  commitmentSides?: ("nous" | "prospect")[] | null;
   model: string;
   generatedAt: string;
 };

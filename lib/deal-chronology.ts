@@ -15,7 +15,7 @@ const HELD_TOLERANCE_DAYS = 3;
 // Seuls les engagements qui annoncent une rencontre peuvent être confrontés
 // aux calls : « envoyer le devis vendredi » n'est pas un call manqué.
 // Bornes de mot Unicode : `\b` ne voit pas le « é » d'« échange ».
-const MEETING = /(?<![\p{L}\d])(point|call|rendez-vous|rdv|réunion|reunion|démo|demo|visio|appel|rencontre|atelier|échange|echange|r\d)(?![\p{L}\d])/iu;
+export const MEETING = /(?<![\p{L}\d])(point|call|rendez-vous|rdv|réunion|reunion|démo|demo|visio|appel|rencontre|atelier|échange|echange|r\d)(?![\p{L}\d])/iu;
 
 export type ChronoCall = {
   kind: "call";

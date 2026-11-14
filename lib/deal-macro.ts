@@ -17,7 +17,7 @@ export const MACRO_ROWS: { key: string; label: string }[] = [
   { key: "impact", label: "Impact" },
   { key: "budget", label: "Budget" },
   { key: "decideur", label: "Décideur" },
-  { key: "champion", label: "Champion" },
+  { key: "champion", label: "Allié chez le client" },
   { key: "processus", label: "Process de décision" },
   { key: "criteres", label: "Critères de décision" },
   { key: "echeance", label: "Échéance" },
@@ -34,9 +34,32 @@ export type MacroCommitment = {
   // ou non) ; le reste se coche à la main.
   isMeeting: boolean;
   status: CommitmentStatus;
+  // Qui doit agir (décision D7, 13/11/2026) : deux listes sur la page.
+  side: CommitmentSide;
 };
 
-export type MacroStateRow = { key: string; label: string; status: "confirme" | "a_preciser" | "inconnu"; text: string | null };
+export type CommitmentSide = "nous" | "prospect";
+
+const fold = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+// À défaut du classement rédigé avec le conseil (fiches d'avant le
+// 14/11/2026) : l'engagement est le nôtre s'il commence par le prénom du
+// commercial, « nous », un verbe à l'infinitif, ou s'il s'agit d'un
+// rendez-vous ; celui du prospect s'il commence par « Prospect » ou par un
+// autre prénom.
+export function guessCommitmentSide(text: string, ownerFirstName: string | null, isMeeting: boolean): CommitmentSide {
+  const start = fold(text.trim());
+  const first = start.split(/[\s:,']/)[0] ?? "";
+  if (ownerFirstName && first === fold(ownerFirstName)) return "nous";
+  if (first === "nous" || first === "on") return "nous";
+  if (first === "prospect" || first === "client") return "prospect";
+  if (isMeeting) return "nous";
+  if (/(er|ir|re)$/.test(first)) return "nous";
+  return /^\p{Lu}/u.test(text.trim()) ? "prospect" : "nous";
+}
+
+// alert : le décideur n'est toujours pas confirmé à partir du R3 (décision D6).
+export type MacroStateRow = { key: string; label: string; status: "confirme" | "a_preciser" | "inconnu"; text: string | null; alert: boolean };
 
 export type MacroHistoryRow = {
   kind: "call" | "planned";
@@ -50,6 +73,11 @@ export type MacroHistoryRow = {
 export type DealMacro = {
   rank: number;
   amount: number | null;
+  // D'où vient le montant (décision D4) : HubSpot fait foi ; sinon un montant
+  // dit pendant un call, à confirmer.
+  amountSource: "hubspot" | "calls" | null;
+  // Où en est le deal tout entier (conseil Haiku du dernier call).
+  dealSynthesis: string | null;
   nextMeeting: { date: string; rank: number } | null;
   commitments: MacroCommitment[];
   state: MacroStateRow[];
@@ -86,6 +114,7 @@ export function buildDealMacro(input: {
   chrono: DealChronology;
   done: Set<string>;
   now: number;
+  ownerFirstName?: string | null;
 }): DealMacro {
   const { fiches, progress, timeline, chrono, done, now } = input;
   const today = now - (now % DAY);
@@ -104,13 +133,13 @@ export function buildDealMacro(input: {
 
   // Engagements : ceux du dernier call, la suite en cours du deal.
   const last = timeline.calls[timeline.calls.length - 1];
-  const commitments: MacroCommitment[] = (last?.commitments ?? []).map((c, index) => ({
-    callId: last.callId,
-    index,
-    text: c.text,
-    date: c.date,
-    ...statusOf(last.callId, index, c.text, c.date),
-  }));
+  const sides = fiches[fiches.length - 1]?.nextQuestions?.advice?.commitmentSides ?? null;
+  const commitments: MacroCommitment[] = (last?.commitments ?? []).map((c, index, all) => {
+    const seen = statusOf(last.callId, index, c.text, c.date);
+    // Le classement du conseil ne vaut que s'il couvre tous les engagements.
+    const side = sides && sides.length === all.length ? sides[index] : guessCommitmentSide(c.text, input.ownerFirstName ?? null, seen.isMeeting);
+    return { callId: last.callId, index, text: c.text, date: c.date, ...seen, side };
+  });
 
   // État du deal : le statut vient de la grille au dernier call, le texte de
   // la fiche la plus récente qui en parle, un élément confirmé de préférence.
@@ -123,7 +152,7 @@ export function buildDealMacro(input: {
       if (items?.length) text = (items.find((it) => itemLevel(it) === "confirme") ?? items[0]).text;
     }
     const status = cell === "confirme_ici" || cell === "acquis" ? "confirme" : cell === "evoque" ? "a_preciser" : "inconnu";
-    return { key: r.key, label: r.label, status, text };
+    return { key: r.key, label: r.label, status, text, alert: r.key === "decideur" && status !== "confirme" && timeline.calls.length >= 3 };
   });
 
   // Prochain rendez-vous : le premier rendez-vous convenu encore à venir.
@@ -177,6 +206,8 @@ export function buildDealMacro(input: {
   return {
     rank: progress.steps.length,
     amount: progress.hubspot?.amount ?? budget ?? null,
+    amountSource: typeof progress.hubspot?.amount === "number" ? "hubspot" : typeof budget === "number" ? "calls" : null,
+    dealSynthesis: lastFiche?.nextQuestions?.advice?.dealSynthesis ?? null,
     nextMeeting,
     commitments,
     state,

@@ -3,6 +3,7 @@ import { nowMs } from "@/lib/format";
 import { adviceFor } from "@/lib/deal-advice";
 import { coachingQuestions, firstName, managerTitle, managerWhy } from "@/lib/deal-coaching";
 import { buildDealMacro, lateCommitment } from "@/lib/deal-macro";
+import { stateReason } from "@/lib/deal-progress";
 import { getDoneCommitments } from "@/lib/db";
 import DealMacroView, { type MacroPriority } from "./DealMacroView";
 import { loadDealPage } from "./load";
@@ -19,6 +20,8 @@ export default async function DealPage({ params }: { params: Promise<{ dealId: s
   // case à cocher (et rien de coché).
   const [deal, done] = await Promise.all([loadDealPage(dealId), getDoneCommitments(dealId).catch(() => null)]);
   const now = nowMs();
+  const ownerId = deal.fiches[deal.fiches.length - 1].ownerId;
+  const owner = deal.owners[ownerId] ?? "Commercial";
   const macro = buildDealMacro({
     fiches: deal.fiches,
     progress: deal.progress,
@@ -26,13 +29,12 @@ export default async function DealPage({ params }: { params: Promise<{ dealId: s
     chrono: buildDealChronology(deal.timeline, now),
     done: done ?? new Set(),
     now,
+    ownerFirstName: firstName(owner),
   });
 
-  const ownerId = deal.fiches[deal.fiches.length - 1].ownerId;
-  const owner = deal.owners[ownerId] ?? "Commercial";
   const isOwner = ownerId === deal.viewer.userId;
-  const tags = deal.progress.alerts.slice(0, 3);
   const late = lateCommitment(macro);
+  const d = deal.progress;
 
   // Le commercial lit son conseil ; le manager, ce qu'il en dit au
   // commercial. Un engagement en retard passe devant les deux.
@@ -42,34 +44,38 @@ export default async function DealPage({ params }: { params: Promise<{ dealId: s
       title: "Rattraper un engagement en retard",
       why: `Promis au dernier call${late.date ? ` pour le ${dayLabel(late.date)}` : ""} : « ${late.text.replace(/\.$/, "")} ». Le prospect l'attend.`,
       action: "Fais-le aujourd'hui, ou écris au prospect pour lui donner une nouvelle date.",
-      tags,
     };
   } else if (late) {
     priority = {
       title: `Un engagement de ${firstName(owner)} est en retard`,
       why: `Promis au dernier call${late.date ? ` pour le ${dayLabel(late.date)}` : ""} : « ${late.text.replace(/\.$/, "")} ».`,
       action: `Demandez à ${firstName(owner)} où en est cet engagement et pour quand il sera fait.`,
-      tags,
     };
   } else if (isOwner) {
     const a = adviceFor(deal.progress);
-    priority = { title: a.title, why: a.why, action: a.how[0] ?? null, tags };
+    priority = { title: a.title, why: a.why, action: a.how[0] ?? null };
   } else {
     const q = coachingQuestions(deal.progress)[0];
     priority = {
       title: managerTitle(deal.progress, owner),
       why: managerWhy(deal.progress),
       action: q ? `À demander à ${firstName(owner)} : ${q}` : null,
-      tags,
     };
   }
 
   return (
     <DealMacroView
       dealId={dealId}
-      progress={deal.progress}
+      deal={{
+        name: d.name,
+        domain: d.domain,
+        // Un engagement en retard fait passer le deal « à relancer » (D3).
+        state: late && (d.state === "progres" || d.state === "qualifier") ? "relancer" : d.state,
+        stateReason: late && d.state !== "recul" && d.state !== "arret" ? "Un engagement du dernier rendez-vous est en retard." : stateReason(d),
+        stage: d.hubspot?.stage ?? null,
+        owner,
+      }}
       macro={macro}
-      owner={owner}
       priority={priority}
       canCheck={done !== null}
       backHref={deal.backHref}
