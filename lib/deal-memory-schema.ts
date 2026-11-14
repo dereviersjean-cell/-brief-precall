@@ -246,6 +246,8 @@ export type NextQuestions = { rank: number; questions: Partial<Record<string, st
 // point avec lui. Table commercial_advice (migration 039).
 export type AiPersonAdvice = { title: string; why: string; questions: string[]; model: string; generatedAt: string };
 
+export type CoachingPoint = { title: string; why: string; say: string };
+
 export type AiDealAdvice = {
   next: { title: string; why: string; steps: string[] };
   relance: { title: string; why: string; message: string };
@@ -253,7 +255,10 @@ export type AiDealAdvice = {
   // La recommandation de coaching de la page du meeting (03/11/2026) : une
   // phrase concrète au commercial, tirée de ce call. Absente des conseils
   // rédigés avant.
-  coaching?: { recommendation: string } | null;
+  // Depuis le 14/11/2026 (page meeting, réponse d'Hubert à E2) : deux points
+  // bien exécutés et deux points à travailler au plus, chacun avec la phrase
+  // à dire la prochaine fois.
+  coaching?: { recommendation: string; strengths?: string[]; points?: CoachingPoint[] } | null;
   // La synthèse du call pour la vue Deal et la page du meeting (04/11/2026) :
   // le bon numéro de rendez-vous et, à partir du R2, ce que ce call a changé
   // par rapport aux précédents. Absente des conseils rédigés avant.

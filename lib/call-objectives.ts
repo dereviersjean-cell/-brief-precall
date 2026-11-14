@@ -177,7 +177,7 @@ const IN_SENTENCE: Record<QualificationKey, string> = {
   douleur: "la douleur",
   impact: "l'impact chiffré",
   decideur: "le décideur",
-  champion: "le champion",
+  champion: "l'allié chez le client",
   criteres: "les critères de décision",
   processus: "le processus de décision",
   budget: "le budget",

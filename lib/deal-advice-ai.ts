@@ -44,10 +44,13 @@ On te donne ce que les calls du deal ont appris (avec le niveau : confirmé ou �
 
 4. "coaching" — pour le commercial (tutoiement), sur sa façon de mener CE call, à partir de ce qu'on te dit de ce qu'il a bien fait et moins bien fait :
    - "recommendation" : UNE recommandation concrète pour son prochain rendez-vous, 40 mots au plus : le geste précis à faire (une question à poser, un moment où la poser, un chiffre à utiliser), pas un principe général (« mieux écouter », « structurer la découverte »). Une phrase à dire au prospect se met entre « » et au vouvoiement.
+   - "strengths" : 2 choses au plus qu'il a bien faites pendant ce call, 25 mots au plus chacune, concrètes (« Tu as obtenu une date avant de raccrocher »).
+   - "points" : 2 points à travailler au plus, les plus utiles pour ce deal, sur un ton constructif — jamais un reproche (« absence totale de… »), jamais de jargon. Pour chacun : "title" (le geste, à l'infinitif, 8 mots au plus), "why" (ce qui s'est passé pendant ce call, une phrase factuelle, 20 mots au plus), "say" (la phrase exacte à dire au prospect la prochaine fois, au vouvoiement, 40 mots au plus, sans guillemets).
 
-5. "synthesis" — la synthèse du dernier call, telle qu'un manager la lirait sur la page du deal : 4 à 6 phrases, 110 mots au plus, à la troisième personne, sans tutoiement.
+5. "synthesis" — la synthèse du dernier call, telle qu'un manager la lirait sur la page du meeting : à la troisième personne, sans tutoiement.
    - Ne commence ni par le numéro du rendez-vous ni par sa date : ils sont affichés au-dessus. Entre directement dans le fond (qui, quoi).
    - Si tu nommes le rendez-vous, utilise son numéro exact, celui donné plus bas (« Dernier call : R… »), sous la forme « ce R2 ». Le résumé fourni peut se tromper de numéro : ne le recopie jamais.
+   - Des phrases courtes : cinq au plus, 80 mots au plus au total.
    - Pour un R1 : qui est le prospect, son besoin, ce qui a été obtenu, ce qui manque, la suite convenue.
    - À partir du R2 : ce que ce call a changé par rapport à ce que le deal savait déjà (ce qui est désormais confirmé, ce qui a bougé, ce qui bloque encore), puis la suite convenue. Ne répète pas ce qui était déjà connu avant ce call, sauf pour dire ce qui a changé.
    - Que des faits donnés plus bas, aucun jugement sur le commercial (c'est le rôle de "coaching").
@@ -62,7 +65,7 @@ Règles :
 - Pas de jargon (pas de « MEDDIC », « champion », « closing ») : écris comme un directeur commercial qui parle à son équipe.
 
 Réponds UNIQUEMENT en JSON strict :
-{"next": {"title": "", "why": "", "steps": [""]}, "relance": {"title": "", "why": "", "message": ""}, "manager": {"title": "", "why": "", "questions": [""]}, "coaching": {"recommendation": ""}, "synthesis": "", "deal_synthesis": "", "commitment_sides": ["nous"]}`;
+{"next": {"title": "", "why": "", "steps": [""]}, "relance": {"title": "", "why": "", "message": ""}, "manager": {"title": "", "why": "", "questions": [""]}, "coaching": {"recommendation": "", "strengths": [""], "points": [{"title": "", "why": "", "say": ""}]}, "synthesis": "", "deal_synthesis": "", "commitment_sides": ["nous"]}`;
 
 export type DealAdviceInput = {
   dealName: string;
@@ -155,6 +158,16 @@ export function parseAdvice(raw: string, model: string, generatedAt: string): Ai
   const relance = parsed.relance ?? {};
   const manager = parsed.manager ?? {};
   const coaching = text((parsed.coaching ?? {}).recommendation, 400);
+  const coachingStrengths = list((parsed.coaching ?? {}).strengths, 2);
+  const rawPoints = (parsed.coaching ?? {}).points;
+  const coachingPoints = (Array.isArray(rawPoints) ? rawPoints : [])
+    .map((p) => {
+      const point = (p ?? {}) as Record<string, unknown>;
+      return { title: text(point.title, 120), why: text(point.why, 300), say: text(point.say, 500) };
+    })
+    .filter((p): p is { title: string; why: string; say: string } => !!p.title && !!p.why && !!p.say)
+    .slice(0, 2)
+    .map((p) => ({ ...p, say: quoted(p.say) }));
   const synthesis = text(parsed.synthesis as unknown, 1200);
   const dealSynthesis = text(parsed.deal_synthesis as unknown, 600);
   const rawSides = parsed.commitment_sides as unknown;
@@ -172,7 +185,7 @@ export function parseAdvice(raw: string, model: string, generatedAt: string): Ai
     relance: { title: advice.relance.title, why: advice.relance.why, message: quoted(advice.relance.message) },
     manager: { title: advice.manager.title, why: advice.manager.why, questions: advice.manager.questions },
     // Facultatif : son absence ne fait pas perdre les trois autres conseils.
-    coaching: coaching ? { recommendation: coaching } : null,
+    coaching: coaching ? { recommendation: coaching, strengths: coachingStrengths, points: coachingPoints } : null,
     // Facultative elle aussi : sans elle, les écrans gardent le résumé de l'analyse.
     synthesis,
     // Facultatives : la page du deal se passe de l'une et devine l'autre.

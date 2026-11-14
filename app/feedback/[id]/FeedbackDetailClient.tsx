@@ -1,6 +1,6 @@
 "use client";
 
-import MeetingOverviewView from "./MeetingOverviewView";
+import MeetingOverviewView, { MeetingSummary } from "./MeetingOverviewView";
 import type { MeetingOverview } from "@/lib/meeting-overview";
 import Link from "next/link";
 import { useState, useEffect, useRef, type ReactNode } from "react";
@@ -805,7 +805,7 @@ export default function FeedbackDetailClient({
   // l'ouverture du module, chaque call a déjà le sien.
   const followUpEnabled = isModuleEnabled("follow_up");
   const TABS: { key: Tab; label: string }[] = [
-    { key: "overview", label: "Overview" },
+    { key: "overview", label: meeting ? "Analyse" : "Overview" },
     ...(followUpEnabled ? [{ key: "email" as const, label: "Email de suivi" }] : []),
     // Le transcript a son onglet (demande de Jean, 13/10/2026) : dans la
     // colonne de droite, il allongeait la page sans être lu à chaque fois.
@@ -896,6 +896,9 @@ export default function FeedbackDetailClient({
             {/* Avec la nouvelle Overview, le bandeau ne garde que
                 l'enregistrement : pas de note sur 5, et les prochaines étapes
                 sont dans « Engagements & suite ». */}
+            {/* Page meeting (maquette A, 14/11/2026) : l'enregistrement à
+                gauche, la synthèse à droite. */}
+            <div className={meeting ? `grid grid-cols-1 items-start gap-4 ${hasBandLeft ? "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]" : ""}` : ""}>
             {(!meeting || hasBandLeft) && (
             <section className="overflow-hidden rounded-[28px] bg-slate-900 text-white">
               <div className={`grid grid-cols-1 ${hasBandLeft && !meeting ? "lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]" : ""}`}>
@@ -944,6 +947,8 @@ export default function FeedbackDetailClient({
               </div>
             </section>
             )}
+            {meeting && <MeetingSummary m={meeting} />}
+            </div>
 
             {TABS.length > 1 && (
               <div className="mt-8 inline-flex items-center rounded-full bg-slate-100 p-1">

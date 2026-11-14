@@ -50,6 +50,16 @@ Maquettes choisies par Jean : page deal B (deux colonnes), Mes deals B (regroup�
 - **Mes deals** (`app/mes-deals/DealsByState.tsx`) : quatre chiffres (`dealsSummary` : deals en cours, montant HubSpot total, à l'arrêt ou en recul, rendez-vous dans les 7 jours) puis les deals par groupe d'état, une carte par deal avec l'action (`actionLabel`). `DealsList` supprimé.
 - **Pas encore fait** (décidé au questionnaire) : boutons Gagné / Perdu / Abandonné et proposition d'abandon après 60 jours (une migration à prévoir) ; heure du prochain rendez-vous lue dans l'agenda ; séparation d'un deal qui mélange plusieurs opportunités ; montant corrigé par Brief quand HubSpot paraît incohérent.
 
+## Page d'un meeting refaite — 14 novembre 2026 (lot 3)
+
+Maquette A choisie par Jean : les trois questions d'Hubert. **Cette section prime sur la description de la page d'un call dans la section suivante.** S'applique quand le call a sa fiche deal ; sinon l'ancienne vue reste.
+
+- **En haut** (`FeedbackDetailClient`) : l'enregistrement et « qui a parlé » à gauche, la **synthèse en cinq phrases au plus** à droite (`MeetingSummary`, phrases découpées dans `summaryLines`). L'onglet s'appelle « Analyse ».
+- **1. Qu'est-ce que ce rendez-vous a changé dans le deal ?** Impact sur le deal : chaque ligne porte une étiquette (Nouveau, Recul, Concurrent, Inchangé, Vigilance, d'après la règle de l'alerte) et, si l'état du deal a changé, « avant → après » (`stateChange` : `buildDealProgress` rejoué à la date du call, sans puis avec lui).
+- **2. Qu'est-ce qu'il faut faire maintenant ?** Les engagements de CE call en deux listes (classement du conseil Haiku, sinon `guessCommitmentSide`), puis « À obtenir au R{n} » (3 questions au plus).
+- **3. Qu'est-ce qui aurait pu être mieux exécuté ?** Playbook client (Validé / Partiel / Manquant / Déjà acquis), puis Coaching : deux points bien exécutés et **deux points à travailler au plus, chacun avec la phrase à dire la prochaine fois** (`advice.coaching.strengths` et `.points`, ton constructif exigé par le prompt). Un conseil d'avant le 14/11 garde les forces, faiblesses et la recommandation de l'analyse.
+- La synthèse Haiku est désormais bornée à cinq phrases et 80 mots. Conseils régénérés le 14/11 sur tous les calls d'Oliverlist (34 sur 35).
+
 ## Vue Deal, page d'un call, Suivi des deals — état au 3 novembre 2026
 
 Ce qui est en place aujourd'hui (synthèse produit validée par Jean le 03/11/2026). **Les sections plus bas sur la « chronologie » et le « détail » d'un deal (28/10/2026) sont historiques** : chronologie, `/deal/<id>/detail`, `DealPageView`, `DealTimeline`, `lib/deal-review.ts`, `MesDealsView` et `TeamCoachView` ont été supprimés le 03/11 (historique git).

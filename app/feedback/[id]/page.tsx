@@ -55,7 +55,7 @@ export default async function FeedbackDetailPage({
     ? computeConversationAnalytics(call.transcript_json, call.speaker_names_override, ownerName)
     : null;
 
-  const meeting = await loadMeetingOverview(call, dealMemory, viewer.organizationId).catch((err) => {
+  const meeting = await loadMeetingOverview(call, dealMemory, viewer.organizationId, ownerName).catch((err) => {
     console.error("[feedback] meeting overview failed:", err instanceof Error ? err.message : String(err));
     return null;
   });
@@ -72,7 +72,8 @@ export default async function FeedbackDetailPage({
 async function loadMeetingOverview(
   call: NonNullable<Awaited<ReturnType<typeof getCallWithAnalysis>>>,
   dealMemory: Awaited<ReturnType<typeof loadDealMemoryPanel>>,
-  organizationId: string | null
+  organizationId: string | null,
+  ownerName: string | null
 ): Promise<MeetingOverview | null> {
   const dealId = dealMemory?.deal?.id;
   if (!dealMemory?.initial || !dealId || !organizationId) return null;
@@ -96,5 +97,6 @@ async function loadMeetingOverview(
     summary: call.analysis?.summary ?? null,
     strengths: call.analysis?.strengths ?? null,
     weaknesses: call.analysis?.weaknesses ?? null,
+    ownerFirstName: ownerName?.split(" ")[0] ?? null,
   });
 }
