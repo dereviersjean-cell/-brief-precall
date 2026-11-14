@@ -4,7 +4,7 @@ import { adviceFor } from "@/lib/deal-advice";
 import { coachingQuestions, firstName, managerTitle, managerWhy } from "@/lib/deal-coaching";
 import { buildDealMacro, lateCommitment } from "@/lib/deal-macro";
 import { stateReason } from "@/lib/deal-progress";
-import { getDoneCommitments } from "@/lib/db";
+import { getDealClosures, getDoneCommitments } from "@/lib/db";
 import DealMacroView, { type MacroPriority } from "./DealMacroView";
 import { loadDealPage } from "./load";
 
@@ -19,6 +19,7 @@ export default async function DealPage({ params }: { params: Promise<{ dealId: s
   // après le contrôle d'accès de loadDealPage). Sans la migration 040, pas de
   // case à cocher (et rien de coché).
   const [deal, done] = await Promise.all([loadDealPage(dealId), getDoneCommitments(dealId).catch(() => null)]);
+  const closure = (await getDealClosures(deal.viewer.organizationId)).get(dealId) ?? null;
   const now = nowMs();
   const ownerId = deal.fiches[deal.fiches.length - 1].ownerId;
   const owner = deal.owners[ownerId] ?? "Commercial";
@@ -78,6 +79,9 @@ export default async function DealPage({ params }: { params: Promise<{ dealId: s
       macro={macro}
       priority={priority}
       canCheck={done !== null}
+      closure={closure}
+      // Au-delà de 60 jours sans échange, Brief propose d'abandonner (D8).
+      suggestAbandon={!closure && !d.hubspot?.closed && (d.idleDays ?? 0) >= 60}
       backHref={deal.backHref}
       backLabel={deal.backLabel}
     />

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getViewer } from "@/lib/session-user";
-import { getOrganizationDealRules, getProgressFichesForUser, isDealMemoryEnabledForOrganization } from "@/lib/db";
+import { getDealClosures, getOrganizationDealRules, getProgressFichesForUser, isDealMemoryEnabledForOrganization } from "@/lib/db";
 import { buildDealProgress, dealsSummary } from "@/lib/deal-progress";
 import { MEETING } from "@/lib/deal-chronology";
 import { nowMs } from "@/lib/format";
@@ -17,15 +17,16 @@ export default async function MesDealsPage() {
 
   // Le contrôle d'accès part avec les lectures (03/11/2026, fluidité) ; rien
   // n'est affiché avant lui.
-  const [enabled, fiches, rules] = await Promise.all([
+  const [enabled, fiches, rules, closures] = await Promise.all([
     isDealMemoryEnabledForOrganization(viewer.organizationId),
     getProgressFichesForUser(viewer.organizationId, viewer.userId),
     getOrganizationDealRules(viewer.organizationId),
+    getDealClosures(viewer.organizationId),
   ]);
   if (!enabled) redirect("/brief");
-  // Un deal clos dans HubSpot n'a plus de suite à préparer.
+  // Un deal clos, dans HubSpot ou depuis Brief, n'a plus de suite à préparer.
   const now = nowMs();
-  const deals = buildDealProgress(fiches, now, rules).filter((d) => !d.hubspot?.closed);
+  const deals = buildDealProgress(fiches, now, rules).filter((d) => !d.hubspot?.closed && !closures.has(d.id));
   return (
     <>
       <DealsByState deals={deals} summary={dealsSummary(deals, now, (text) => MEETING.test(text))} />

@@ -2848,6 +2848,31 @@ export async function getDealOwnerId(dealId: string): Promise<string | null> {
 // Engagements cochés « fait » sur la vue Deal (migration 040), en clés
 // commitmentKey (lib/deal-macro.ts). Throw si la table manque : la page en
 // déduit qu'elle n'affiche pas les cases.
+// Clôture d'un deal depuis Brief (migration 043, décision D8) : gagné, perdu
+// ou abandonné. Lu à part des fiches, et sans erreur si la migration n'est pas
+// passée : aucune page ne doit tomber pour ces colonnes (bug #14).
+export type DealClosure = { status: "gagne" | "perdu" | "abandonne"; closedAt: string | null };
+
+export async function getDealClosures(organizationId: string): Promise<Map<string, DealClosure>> {
+  try {
+    const { data, error } = await supabaseAdmin.from("deals").select("id, status, closed_at").eq("organization_id", organizationId).not("status", "is", null);
+    if (error) throw error;
+    return new Map(((data ?? []) as { id: string; status: DealClosure["status"]; closed_at: string | null }[]).map((d) => [d.id, { status: d.status, closedAt: d.closed_at }]));
+  } catch {
+    return new Map();
+  }
+}
+
+// null rouvre le deal. Lève une erreur si la migration 043 n'est pas passée.
+export async function setDealClosure(organizationId: string, dealId: string, status: DealClosure["status"] | null, userId: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("deals")
+    .update(status ? { status, closed_at: new Date().toISOString(), closed_by: userId } : { status: null, closed_at: null, closed_by: null })
+    .eq("id", dealId)
+    .eq("organization_id", organizationId);
+  if (error) throw error;
+}
+
 export async function getDoneCommitments(dealId: string): Promise<Set<string>> {
   const { data, error } = await supabaseAdmin.from("deal_commitment_done").select("call_id, item_index, item_text").eq("deal_id", dealId);
   if (error) throw error;

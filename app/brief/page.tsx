@@ -4,7 +4,7 @@ import { requireActiveUser } from "@/lib/api-auth";
 import { redirect } from "next/navigation";
 import {
   getOrganizationDealRules,
-  getProgressFichesForUser,
+  getDealClosures, getProgressFichesForUser,
   getRecentBriefsForUser,
   getUserOrganizationId,
   getUserProfile,
@@ -65,8 +65,12 @@ async function loadInitial(): Promise<BriefPageInitial | null> {
 async function loadDealActions(userId: string): Promise<BriefPageInitial["dealActions"]> {
   const organizationId = await getUserOrganizationId(userId);
   if (!organizationId || !(await isDealMemoryEnabledForOrganization(organizationId))) return null;
-  const [fiches, rules] = await Promise.all([getProgressFichesForUser(organizationId, userId), getOrganizationDealRules(organizationId)]);
+  const [fiches, rules, closures] = await Promise.all([
+    getProgressFichesForUser(organizationId, userId),
+    getOrganizationDealRules(organizationId),
+    getDealClosures(organizationId),
+  ]);
   return buildDealProgressNow(fiches, rules)
-    .filter((d) => !d.hubspot?.closed && d.focus.status !== "bonne_voie")
+    .filter((d) => !d.hubspot?.closed && !closures.has(d.id) && d.focus.status !== "bonne_voie")
     .map((d) => ({ id: d.id, name: d.name, status: d.focus.status, action: d.focus.action, detail: d.focus.detail }));
 }

@@ -11,7 +11,7 @@ import { seniorityLabel, type ApolloContact } from "./apollo";
 import { reportError, reportWarning } from "./monitoring";
 import { hasRealValue } from "./reference-quality";
 import type { ReferenceLevel } from "./types";
-import type { MeetingContext } from "./meeting-origin";
+import { MEETING_ORIGINS, type MeetingContext } from "./meeting-origin";
 
 const client = new Anthropic();
 
@@ -127,7 +127,10 @@ function buildUserPrompt(
   apolloContact: ApolloContact | null = null,
   // Suite d'un deal (R2 et plus) : le brief change de forme.
   dealBlock = "",
-  meetingContextBlock = ""
+  meetingContextBlock = "",
+  // Ce que HubSpot sait du contact (lib/crm/hubspot-context.ts) : le modèle
+  // en tire l'origine du rendez-vous quand le commercial ne l'a pas saisie.
+  hubspotContext = ""
 ): string {
   const toneDesc = TONE_INSTRUCTION[config.tone];
   const isFollowUp = dealBlock.length > 0;
@@ -168,6 +171,16 @@ function buildUserPrompt(
   const crmBlock = buildCrmBlock(crmData);
   const contactBlock = buildContactBlock(apolloContact);
 
+  const originBlock = hubspotContext
+    ? `\nCE QUE HUBSPOT SAIT DE CE CONTACT (source, notes, emails, appels)\n\n${hubspotContext}\n`
+    : "";
+  const originSchema = hubspotContext
+    ? `  "contexte_rdv": { "origine": "Une valeur de la liste, ou \"\"", "raison": "Pourquoi le prospect a accepté le rendez-vous, en une phrase, ou \"\"" },\n`
+    : "";
+  const originConstraint = hubspotContext
+    ? `\n- "contexte_rdv" : d'après HubSpot seulement. "origine" est l'une de ces valeurs, à l'identique : ${MEETING_ORIGINS.join(", ")}. Si HubSpot ne permet pas de le dire avec certitude (une source technique comme « OFFLINE » ne dit rien), écris "". "raison" reprend ce que le prospect ou le commercial a écrit (message de prospection, réponse, note) ; rien d'exploitable : ""`
+    : "";
+
   const companySchema = `  "overview": "L'activité de ${company} en UNE phrase simple : ce qu'elle fait, pour qui",
   "entreprise": {
     "clients": "Ses clients ou utilisateurs, en une phrase courte",
@@ -182,7 +195,7 @@ function buildUserPrompt(
 
   if (isFollowUp) {
     return `Prépare le brief d'un rendez-vous de SUIVI pour un commercial B2B : il a déjà échangé avec ${company} et doit faire avancer le deal.
-${legalContext}${newsContext}${crmBlock}${contactBlock}${contextBlock}${referencesBlock}${relationalHistoryBlock}${dealBlock}${meetingContextBlock}
+${legalContext}${newsContext}${crmBlock}${contactBlock}${contextBlock}${referencesBlock}${relationalHistoryBlock}${dealBlock}${meetingContextBlock}${originBlock}
 Retourne ce JSON (structure stricte, aucun texte autour). Même si tu as utilisé la recherche web, ta réponse finale doit être UNIQUEMENT le JSON ci-dessous :
 
 {
@@ -199,19 +212,19 @@ ${companySchema}
     ],
     "engagements": { "nous": ["Ce que le commercial s'est engagé à faire"], "prospect": ["Ce que le prospect s'est engagé à faire"] }
   },
-${referencesSchema}${relationalSchema}}
+${originSchema}${referencesSchema}${relationalSchema}}
 
 Contraintes :
 ${companyConstraints}
 - "priorites" : 2 ou 3, de la plus importante à la moins importante. Elles croisent ce que les rendez-vous précédents ont établi et ce qui manque encore pour faire avancer le deal. Ne repose jamais une question dont la réponse est déjà validée
 - "preuves" : 3 au plus, uniquement sur des objections ou des freins réellement exprimés lors des échanges précédents. Aucun frein exprimé : "preuves": []. Pas d'argument hypothétique
-- "engagements" : reprends les engagements pris la dernière fois, rangés selon qui doit agir, chacun en quelques mots avec sa date si elle est connue. Aucun : listes vides${referencesConstraint}`;
+- "engagements" : reprends les engagements pris la dernière fois, rangés selon qui doit agir, chacun en quelques mots avec sa date si elle est connue. Aucun : listes vides${referencesConstraint}${originConstraint}`;
   }
 
   const enjeuxCount = Math.min(Math.max(config.painPointsCount, 1), 3);
 
   return `Génère un brief pré-call pour un commercial B2B qui s'apprête à rencontrer ${company} pour la première fois.
-${legalContext}${newsContext}${crmBlock}${contactBlock}${contextBlock}${referencesBlock}${relationalHistoryBlock}${meetingContextBlock}
+${legalContext}${newsContext}${crmBlock}${contactBlock}${contextBlock}${referencesBlock}${relationalHistoryBlock}${meetingContextBlock}${originBlock}
 Retourne ce JSON (structure stricte, aucun texte autour). Même si tu as utilisé la recherche web, ta réponse finale doit être UNIQUEMENT le JSON ci-dessous, sans phrase d'introduction, citation, ni texte additionnel :
 
 {
@@ -220,7 +233,7 @@ ${companySchema}
   "pain_points": [
     { "title": "L'enjeu en quelques mots", "detail": "L'hypothèse en UNE phrase, appuyée sur un signal public", "question": "La question à poser pour la vérifier" }
   ],
-${referencesSchema}${relationalSchema}}
+${originSchema}${referencesSchema}${relationalSchema}}
 
 Contraintes :
 ${companyConstraints}
@@ -229,7 +242,7 @@ ${companyConstraints}
     userContext?.product_description
       ? `\n- Les enjeux retenus sont ceux auxquels « ${userContext.product_description} » peut répondre`
       : ""
-  }${referencesConstraint}${relationalHistoryBlock ? `\n- "historique_relationnel" : 1 ou 2 phrases` : ""}`;
+  }${referencesConstraint}${relationalHistoryBlock ? `\n- "historique_relationnel" : 1 ou 2 phrases` : ""}${originConstraint}`;
 }
 
 // Les références appartiennent à l'équipe (décision de Jean et d'Hubert,
@@ -253,7 +266,9 @@ export async function generateBrief(
   // précédents ont validé et ce qu'il reste à aller chercher.
   dealBlock: string = "",
   // Pourquoi le prospect a accepté le rendez-vous, saisi par le commercial.
-  meetingContext: MeetingContext | null = null
+  meetingContext: MeetingContext | null = null,
+  // Ce que HubSpot sait du contact, quand le commercial n'a rien saisi.
+  hubspotContext: string | null = null
 ): Promise<unknown> {
   const legalContext = pappersData
     ? `\nVoici les données légales officielles de l'entreprise (source : registre français officiel) :\n${JSON.stringify(pappersData, null, 2)}\n\nBase-toi sur ces faits réels pour le brief. Ne les contredis pas.\n`
@@ -334,7 +349,8 @@ export async function generateBrief(
     crmData,
     apolloContact ?? null,
     dealBlock,
-    meetingContextBlock
+    meetingContextBlock,
+    meetingContext ? "" : (hubspotContext ?? "")
   );
 
   // Deux essais au plus : le second seulement si la réponse ne contient pas de

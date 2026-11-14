@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { CheckCircle2, Circle } from "lucide-react";
 import DealAvatar from "@/app/components/DealAvatar";
 import { StateChip } from "@/app/mes-deals/deal-ui";
@@ -55,6 +56,10 @@ const STATUS = {
   attente: { label: "En attente", tone: "bg-slate-100 text-slate-600" },
 } as const;
 
+const CLOSURE = { gagne: "Gagné", perdu: "Perdu", abandonne: "Abandonné" } as const;
+const CLOSE_BUTTON =
+  "inline-flex h-9 items-center rounded-lg border border-border bg-white px-3.5 text-[13.5px] font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50";
+
 const DOT = { done: "bg-emerald-500", late: "bg-rose-500", next: "bg-slate-300" } as const;
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -104,6 +109,8 @@ export default function DealMacroView({
   macro,
   priority,
   canCheck,
+  closure,
+  suggestAbandon,
   backHref,
   backLabel,
 }: {
@@ -112,6 +119,9 @@ export default function DealMacroView({
   macro: DealMacro;
   priority: MacroPriority;
   canCheck: boolean;
+  // Clôture depuis Brief (migration 043) : null = deal en cours.
+  closure: { status: "gagne" | "perdu" | "abandonne"; closedAt: string | null } | null;
+  suggestAbandon: boolean;
   backHref: string;
   backLabel: string;
 }) {
@@ -121,6 +131,28 @@ export default function DealMacroView({
     () => new Set(macro.commitments.filter((c) => c.status === "fait" && !c.isMeeting).map((c) => commitmentKey(c.callId, c.index, c.text)))
   );
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const [closing, setClosing] = useState(false);
+  const [closeError, setCloseError] = useState<string | null>(null);
+
+  async function close(status: "gagne" | "perdu" | "abandonne" | null) {
+    const label = status ? CLOSURE[status].toLowerCase() : null;
+    if (status && !window.confirm(`Marquer ${deal.name} comme ${label} ? Le deal sortira de vos deals en cours. HubSpot n'est pas modifié.`)) return;
+    setClosing(true);
+    setCloseError(null);
+    const res = await fetch(`/api/deals/${dealId}/status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    }).catch(() => null);
+    const data = (await res?.json().catch(() => ({}))) as { error?: string };
+    setClosing(false);
+    if (!res?.ok) {
+      setCloseError(data?.error ?? "La clôture a échoué. Réessayez.");
+      return;
+    }
+    router.refresh();
+  }
 
   async function toggle(c: MacroCommitment) {
     const key = commitmentKey(c.callId, c.index, c.text);
@@ -167,15 +199,47 @@ export default function DealMacroView({
         <span className="text-slate-800">{deal.name}</span>
       </p>
 
-      <header className="mt-5 flex min-w-0 items-center gap-4">
-        <DealAvatar d={{ name: deal.name, domain: deal.domain }} size={46} />
-        <div className="min-w-0">
-          <h1 className="truncate text-[26px] font-semibold tracking-[-0.02em] text-slate-900 sm:text-[28px]">{deal.name}</h1>
-          <p className="mt-0.5 text-[13.5px] text-slate-500">
-            Suivi par {deal.owner.split(" ")[0]} · {macro.rank} rendez-vous
-          </p>
+      <header className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-4">
+          <DealAvatar d={{ name: deal.name, domain: deal.domain }} size={46} />
+          <div className="min-w-0">
+            <h1 className="truncate text-[26px] font-semibold tracking-[-0.02em] text-slate-900 sm:text-[28px]">{deal.name}</h1>
+            <p className="mt-0.5 text-[13.5px] text-slate-500">
+              Suivi par {deal.owner.split(" ")[0]} · {macro.rank} rendez-vous
+            </p>
+          </div>
         </div>
+        {!closure && (
+          <div className="flex shrink-0 flex-wrap gap-2">
+            {(["gagne", "perdu", "abandonne"] as const).map((s) => (
+              <button key={s} onClick={() => close(s)} disabled={closing} className={CLOSE_BUTTON}>
+                {CLOSURE[s]}
+              </button>
+            ))}
+          </div>
+        )}
       </header>
+      {closeError && <p className="mt-2 text-[13px] text-rose-700">{closeError}</p>}
+
+      {closure && (
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-white px-5 py-3.5">
+          <p className="text-[14px] text-slate-800">
+            <span className="font-semibold">Deal {CLOSURE[closure.status].toLowerCase()}</span>
+            {closure.closedAt && <span className="text-slate-500"> le {longDay(closure.closedAt, false)}</span>}
+          </p>
+          <button onClick={() => close(null)} disabled={closing} className="text-[13.5px] font-semibold text-[color:var(--violet)] hover:underline disabled:opacity-50">
+            Rouvrir
+          </button>
+        </div>
+      )}
+      {suggestAbandon && (
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-amber-50 px-5 py-3.5">
+          <p className="text-[14px] text-amber-900">Aucun échange depuis plus de 60 jours : relancer ce deal, ou l&apos;abandonner ?</p>
+          <button onClick={() => close("abandonne")} disabled={closing} className={CLOSE_BUTTON}>
+            Abandonner
+          </button>
+        </div>
+      )}
 
       <div className="mt-6 grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-4">

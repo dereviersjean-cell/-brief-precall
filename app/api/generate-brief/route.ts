@@ -16,6 +16,19 @@ import { formatContactDisplayName } from "@/lib/format";
 import { loadDealBriefContext } from "@/lib/deal-brief-load";
 import { formatDealBriefForPrompt } from "@/lib/deal-brief";
 import { cleanMeetingContext } from "@/lib/meeting-origin";
+import { getHubSpotMeetingContext } from "@/lib/crm/hubspot-context";
+import { getEnabledModulesForUser, getHubspotUserForOrganization, getUserOrganizationId } from "@/lib/db";
+import { reportWarning } from "@/lib/monitoring";
+
+// Le compte HubSpot de l'organisation (celui du commercial s'il en a un),
+// puis ce qu'il sait du contact. null sans HubSpot.
+async function loadHubspotContext(userId: string, contactEmail: string): Promise<string | null> {
+  // Seulement si le module CRM est ouvert pour l'organisation (lib/modules.ts).
+  const [organizationId, modules] = await Promise.all([getUserOrganizationId(userId), getEnabledModulesForUser(userId)]);
+  if (!organizationId || !modules.includes("crm")) return null;
+  const hubspotUser = await getHubspotUserForOrganization(organizationId, [userId]);
+  return hubspotUser ? getHubSpotMeetingContext(hubspotUser, contactEmail) : null;
+}
 
 // Un brief avec recherche web réelle (max_uses: 3, cf. lib/brief-generator.ts)
 // mesure ~54s en conditions réelles (Doctolib, 03/09/2026) — sans ce réglage
@@ -207,6 +220,16 @@ export async function POST(request: NextRequest) {
           )
         : null;
 
+    // Sans saisie du commercial, Brief lit le contexte dans HubSpot (notes,
+    // activités, source du contact). Un échec ne bloque jamais le brief.
+    const hubspotContext =
+      !meetingContext && contactEmail
+        ? await loadHubspotContext(userId, contactEmail).catch((err) => {
+            reportWarning("brief.hubspot-context", err, { userId });
+            return null;
+          })
+        : null;
+
     console.log('[generate-brief] contactEmail:', contactEmail, '| userId:', userId, '| deal:', dealContext ? `${dealContext.dealName} (call ${dealContext.callNumber})` : 'premier call');
     const brief = await generateBrief(
       trimmed,
@@ -218,7 +241,8 @@ export async function POST(request: NextRequest) {
       contactEmail,
       apolloContact,
       dealContext ? formatDealBriefForPrompt(dealContext) : "",
-      meetingContext
+      meetingContext,
+      hubspotContext
     );
 
     // Fiche contact affichée dans la barre latérale du brief (panneau
@@ -234,7 +258,14 @@ export async function POST(request: NextRequest) {
     const briefWithContact = {
       ...(brief as Record<string, unknown>),
       ...(contactCard ? { contact: contactCard } : {}),
-      ...(meetingContext ? { meeting_context: meetingContext } : {}),
+      // Saisi par le commercial, sinon lu dans HubSpot par le modèle.
+      ...(meetingContext
+        ? { meeting_context: meetingContext }
+        : (() => {
+            const read = (brief as { contexte_rdv?: { origine?: string; raison?: string } }).contexte_rdv;
+            const fromHubspot = cleanMeetingContext({ origin: read?.origine, note: read?.raison });
+            return fromHubspot ? { meeting_context: fromHubspot } : {};
+          })()),
     };
 
     if (userId) {

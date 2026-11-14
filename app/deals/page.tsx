@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getViewer } from "@/lib/session-user";
 import {
   getCommercialsForManager,
+  getDealClosures,
   getOrganizationDealRules,
   getProgressFichesForUser,
   getUserAvatars,
@@ -35,13 +36,14 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
   if (!enabled) redirect("/brief");
   const people = commercials.map((c) => ({ id: c.id, name: c.name ?? c.email ?? "Commercial" }));
   const ids = people.map((p) => p.id);
-  const [progressLists, avatars] = await Promise.all([
+  const [progressLists, avatars, closures] = await Promise.all([
     Promise.all(people.map((p) => getProgressFichesForUser(organizationId, p.id).catch(() => []))),
     getUserAvatars(ids),
+    getDealClosures(organizationId),
   ]);
 
   const allProgress = people.map((_, i) => buildDealProgressNow(progressLists[i], rules));
-  const progress = allProgress.map((list) => list.filter((d) => !d.hubspot?.closed));
+  const progress = allProgress.map((list) => list.filter((d) => !d.hubspot?.closed && !closures.has(d.id)));
   // Prévision de chiffre d'affaires (10/11/2026) : le jour à Paris.
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Paris" });
   const forecastPeople: ForecastPerson[] = people.map((p, i) => {
