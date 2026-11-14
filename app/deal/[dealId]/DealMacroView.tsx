@@ -109,6 +109,7 @@ export default function DealMacroView({
   macro,
   priority,
   canCheck,
+  nextMeetingTime,
   closure,
   suggestAbandon,
   backHref,
@@ -119,6 +120,8 @@ export default function DealMacroView({
   macro: DealMacro;
   priority: MacroPriority;
   canCheck: boolean;
+  // L'heure lue dans l'agenda (« 17 h »), quand le rendez-vous y est.
+  nextMeetingTime: string | null;
   // Clôture depuis Brief (migration 043) : null = deal en cours.
   closure: { status: "gagne" | "perdu" | "abandonne"; closedAt: string | null } | null;
   suggestAbandon: boolean;
@@ -321,7 +324,7 @@ export default function DealMacroView({
               {macro.amountSource === "calls" && <Source>Dit en rendez-vous, à confirmer</Source>}
             </Fact>
             <Fact label="Prochain rendez-vous">
-              {macro.nextMeeting ? capitalize(longDay(macro.nextMeeting.date)) : <span className="font-medium text-slate-500">Aucun de daté</span>}
+              {macro.nextMeeting ? `${capitalize(longDay(macro.nextMeeting.date))}${nextMeetingTime ? `, ${nextMeetingTime}` : ""}` : <span className="font-medium text-slate-500">Aucun de daté</span>}
             </Fact>
           </Card>
 

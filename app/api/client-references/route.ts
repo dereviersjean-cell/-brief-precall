@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
-import { getClientReferences, createClientReference } from "@/lib/db";
+import { getClientReferencesForUsers, getOrganizationUserIds, createClientReference } from "@/lib/db";
 
 // embedding is stripped before returning — it's a 1024-float vector with no
 // use on the client, and has_embedding (a plain boolean) is all the UI needs
@@ -12,7 +12,8 @@ export async function GET() {
   const auth = await requireActiveUser(session);
   if (!auth.ok) return auth.response;
 
-  const references = await getClientReferences(auth.userId);
+  // Les références de toute l'équipe (décision G4, 13/11/2026).
+  const references = await getClientReferencesForUsers(await getOrganizationUserIds(auth.userId));
   const sanitized = references.map(({ embedding, ...rest }) => ({
     ...rest,
     has_embedding: embedding != null,

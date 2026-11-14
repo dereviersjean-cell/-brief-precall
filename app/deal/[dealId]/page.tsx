@@ -4,7 +4,8 @@ import { adviceFor } from "@/lib/deal-advice";
 import { coachingQuestions, firstName, managerTitle, managerWhy } from "@/lib/deal-coaching";
 import { buildDealMacro, lateCommitment } from "@/lib/deal-macro";
 import { stateReason } from "@/lib/deal-progress";
-import { getDealClosures, getDoneCommitments } from "@/lib/db";
+import { getDealClosures, getDoneCommitments, getScheduledMeetingsOnDay } from "@/lib/db";
+import { frenchTime, pickDealMeeting } from "@/lib/next-meeting-time";
 import DealMacroView, { type MacroPriority } from "./DealMacroView";
 import { loadDealPage } from "./load";
 
@@ -32,6 +33,13 @@ export default async function DealPage({ params }: { params: Promise<{ dealId: s
     now,
     ownerFirstName: firstName(owner),
   });
+
+  // L'heure du prochain rendez-vous, lue dans l'agenda du commercial quand le
+  // rendez-vous y est (décision D9). Sans elle, le jour seul.
+  const nextDay = macro.nextMeeting?.date.slice(0, 10) ?? null;
+  const dayMeetings = nextDay ? await getScheduledMeetingsOnDay(ownerId, nextDay).catch(() => []) : [];
+  const picked = pickDealMeeting(dayMeetings, { name: deal.progress.name, lastTitle: deal.progress.lastCall.title, ownNames: Object.values(deal.owners) });
+  const nextMeetingTime = picked ? frenchTime(picked.startsAt) : null;
 
   const isOwner = ownerId === deal.viewer.userId;
   const late = lateCommitment(macro);
@@ -79,6 +87,7 @@ export default async function DealPage({ params }: { params: Promise<{ dealId: s
       macro={macro}
       priority={priority}
       canCheck={done !== null}
+      nextMeetingTime={nextMeetingTime}
       closure={closure}
       // Au-delà de 60 jours sans échange, Brief propose d'abandonner (D8).
       suggestAbandon={!closure && !d.hubspot?.closed && (d.idleDays ?? 0) >= 60}

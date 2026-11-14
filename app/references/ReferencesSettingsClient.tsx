@@ -7,7 +7,7 @@ import ClientReferencesSection from "./ClientReferencesSection";
 const PIPELINE_STEPS: PipelineStep[] = [
   {
     icon: Database,
-    title: "Vos références",
+    title: "Les références de l'équipe",
     description: "Cas clients passés : secteur, problématique, solution mise en place, résultat chiffré.",
   },
   {

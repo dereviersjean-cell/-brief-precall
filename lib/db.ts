@@ -681,6 +681,34 @@ export async function getClientReferencesForUsers(userIds: string[]): Promise<Cl
   return (data ?? []) as ClientReference[];
 }
 
+// À qui appartient une référence, si son propriétaire fait partie de l'équipe
+// de `userId` (lui compris). Les références sont celles de l'équipe : chacun
+// peut corriger ou retirer celle d'un collègue, jamais celle d'une autre
+// organisation.
+export async function getTeamReferenceOwner(userId: string, referenceId: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin.from("client_references").select("user_id").eq("id", referenceId).maybeSingle();
+  if (error) throw error;
+  const owner = (data as { user_id: string } | null)?.user_id;
+  if (!owner) return null;
+  return owner === userId || (await getOrganizationUserIds(userId)).includes(owner) ? owner : null;
+}
+
+// Les rendez-vous d'un utilisateur un jour donné (heure de Paris), d'après la
+// copie de son agenda tenue par la synchronisation Recall (7 jours à venir).
+export async function getScheduledMeetingsOnDay(userId: string, day: string): Promise<{ title: string | null; startsAt: string; commercial: boolean }[]> {
+  const from = new Date(`${day}T00:00:00+01:00`).getTime() - 2 * 3600 * 1000;
+  const { data, error } = await supabaseAdmin
+    .from("scheduled_meetings")
+    .select("event_title, event_start_at, ineligibility_reason")
+    .eq("user_id", userId)
+    .gte("event_start_at", new Date(from).toISOString())
+    .lte("event_start_at", new Date(from + 28 * 3600 * 1000).toISOString());
+  if (error) throw error;
+  return ((data ?? []) as { event_title: string | null; event_start_at: string | null; ineligibility_reason: string | null }[])
+    .filter((m) => m.event_start_at && new Date(m.event_start_at).toLocaleDateString("en-CA", { timeZone: "Europe/Paris" }) === day)
+    .map((m) => ({ title: m.event_title, startsAt: m.event_start_at as string, commercial: m.ineligibility_reason == null }));
+}
+
 export async function getClientReferencesCount(userId: string): Promise<number> {
   const { count, error } = await supabaseAdmin
     .from("client_references")
