@@ -527,6 +527,8 @@ export const generateDealMemoryAfterCall = inngest.createFunction(
     for (const [i, email] of emails.entries()) {
       const ok = await step.run(`send-deal-alert-${i}`, async () => {
         try {
+          // Coupé par le destinataire dans Paramètres › Réception.
+          if (email.noEmail) return false;
           await sendBuiltEmail(email.to, email, "sendDealAlertsForCall");
           return true;
         } catch (err) {

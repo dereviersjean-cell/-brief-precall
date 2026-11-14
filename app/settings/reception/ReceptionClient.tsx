@@ -10,11 +10,14 @@ export default function ReceptionClient({
   members,
   slack,
   partial,
+  inactive,
 }: {
   initial: Record<string, boolean>;
   members: number;
   slack: boolean;
   partial: boolean;
+  // Les informations pas encore envoyées sur ce compte : cases grisées.
+  inactive: string[];
 }) {
   const [enabled, setEnabled] = useState(initial);
   const [busy, setBusy] = useState<string | null>(null);
@@ -66,7 +69,7 @@ export default function ReceptionClient({
             <div key={e.key} className="grid items-center gap-3 border-b border-border py-3 last:border-0" style={cols}>
               <span className="min-w-0">
                 <span className="block text-[14.5px] font-semibold text-slate-900">{e.label}</span>
-                <span className="block text-[13px] text-slate-500">{e.detail}</span>
+                <span className="block text-[13px] text-slate-500">{inactive.includes(e.key) ? "Pas encore activées sur ce compte." : e.detail}</span>
               </span>
               <input type="checkbox" checked disabled aria-label={`${e.label} dans l'application`} className="h-[18px] w-[18px] justify-self-center" />
               {channels.map((c) => {
@@ -76,7 +79,7 @@ export default function ReceptionClient({
                     key={c.key}
                     type="checkbox"
                     checked={!!enabled[key]}
-                    disabled={busy === key}
+                    disabled={busy === key || inactive.includes(e.key)}
                     onChange={() => toggle(e.key, c.key)}
                     aria-label={`${e.label} par ${c.label}`}
                     className="h-[18px] w-[18px] justify-self-center"

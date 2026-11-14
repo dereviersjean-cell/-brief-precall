@@ -6065,28 +6065,20 @@ export async function setNotificationPreference(
 // Le stockage reste par personne : le réglage d'équipe écrit la même valeur
 // chez chaque membre actif, et la lecture dit pour chaque case si tout le
 // monde l'a.
-export async function getTeamNotificationPreferences(userIds: string[]): Promise<Record<string, number>> {
-  if (userIds.length === 0) return {};
-  const { data, error } = await supabaseAdmin
-    .from("notification_preferences")
-    .select("event_type, channel")
-    .in("user_id", userIds)
-    .eq("enabled", true);
+export async function getTeamNotificationPreferences(userIds: string[]): Promise<{ on: Record<string, number>; off: Record<string, number> }> {
+  const counts = { on: {} as Record<string, number>, off: {} as Record<string, number> };
+  if (userIds.length === 0) return counts;
+  const { data, error } = await supabaseAdmin.from("notification_preferences").select("event_type, channel, enabled").in("user_id", userIds);
   if (error) throw error;
-  const counts: Record<string, number> = {};
-  for (const row of (data ?? []) as { event_type: string; channel: string }[]) {
+  for (const row of (data ?? []) as { event_type: string; channel: string; enabled: boolean }[]) {
+    const bucket = row.enabled ? counts.on : counts.off;
     const key = `${row.event_type}:${row.channel}`;
-    counts[key] = (counts[key] ?? 0) + 1;
+    bucket[key] = (bucket[key] ?? 0) + 1;
   }
   return counts;
 }
 
-export async function setTeamNotificationPreference(
-  userIds: string[],
-  eventType: NotificationEventType,
-  channel: NotificationChannel,
-  enabled: boolean
-): Promise<void> {
+export async function setTeamNotificationPreference(userIds: string[], eventType: string, channel: NotificationChannel, enabled: boolean): Promise<void> {
   if (userIds.length === 0) return;
   const now = new Date().toISOString();
   const { error } = await supabaseAdmin
@@ -6096,6 +6088,23 @@ export async function setTeamNotificationPreference(
       { onConflict: "user_id,event_type,channel" }
     );
   if (error) throw error;
+}
+
+// Les canaux qu'une personne a explicitement coupés pour un événement actif
+// par défaut (les alertes sur un deal). En cas d'erreur, rien n'est coupé.
+export async function getDisabledChannels(userId: string, eventType: string): Promise<Set<string>> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("notification_preferences")
+      .select("channel")
+      .eq("user_id", userId)
+      .eq("event_type", eventType)
+      .eq("enabled", false);
+    if (error) throw error;
+    return new Set(((data ?? []) as { channel: string }[]).map((r) => r.channel));
+  } catch {
+    return new Set();
+  }
 }
 
 // Used by the sous-étapes B/C/D send points, not by this sous-étape's own

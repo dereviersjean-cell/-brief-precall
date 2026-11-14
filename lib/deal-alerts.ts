@@ -6,6 +6,7 @@ import {
   getDealBoardRows,
   getDealCard,
   getDealReviews,
+  getDisabledChannels,
   getManagersForCommercial,
   getOrganizationDealRules,
   getOrganizationPipelineStats,
@@ -14,6 +15,7 @@ import {
 import { alertLabel, buildBoardNow, INTERVENTIONS, isHighRisk, morningQueue, REP_ACTIONS, sortByWeight, toBoardAlerts } from "./deal-board";
 import { buildDealAlertEmail, buildDealMorningEmail, sendBuiltEmail, type DealEmailAlert } from "./email";
 import { hasSlackConnection, writeToSlackDM } from "./slack";
+import { DEAL_ALERT_EVENT } from "./reception";
 
 // Deal Execution, étape 5 (27/10/2026) : les emails. Décisions du 26/10/2026
 // (reco 11, validée par Hubert) : le commercial reçoit les alertes de son call
@@ -27,11 +29,14 @@ import { hasSlackConnection, writeToSlackDM } from "./slack";
 // (et que le module Slack est ouvert pour son organisation), en message
 // direct Slack en plus (reco 11, validée par Hubert : « Slack en plus si
 // connecté »). Même contenu, raccourci.
-export type BuiltDealEmail = { to: string; subject: string; html: string; userId: string; slackText: string };
+// noEmail / noSlack : le canal a été coupé pour ce destinataire dans
+// Paramètres › Réception (les alertes partent par défaut).
+export type BuiltDealEmail = { to: string; subject: string; html: string; userId: string; slackText: string; noEmail?: boolean; noSlack?: boolean };
 
 // Envoie le message Slack d'une alerte si son destinataire y a droit ; rend
 // "sent" ou la raison pour laquelle rien n'est parti.
 export async function sendDealSlack(email: BuiltDealEmail): Promise<"sent" | "no-slack" | "module-closed"> {
+  if (email.noSlack) return "no-slack";
   if (!(await isModuleEnabledForUser(email.userId, "slack"))) return "module-closed";
   if (!(await hasSlackConnection(email.userId))) return "no-slack";
   const result = await writeToSlackDM(email.userId, email.slackText);
@@ -95,9 +100,16 @@ export async function sendDealAlertsForCall(callId: string, userId: string, opti
     }
   }
 
+  // Ce que chaque destinataire a coupé dans Paramètres › Réception.
+  for (const email of emails) {
+    const off = await getDisabledChannels(email.userId, DEAL_ALERT_EVENT);
+    email.noEmail = off.has("email");
+    email.noSlack = off.has("slack");
+  }
+
   if (options.send) {
     for (const email of emails) {
-      await sendBuiltEmail(email.to, email, "sendDealAlertsForCall");
+      if (!email.noEmail) await sendBuiltEmail(email.to, email, "sendDealAlertsForCall");
       await sendDealSlack(email);
     }
   }

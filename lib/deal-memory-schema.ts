@@ -269,6 +269,9 @@ export type AiDealAdvice = {
   // deux listes sur la page du deal (décision D7). Absent des conseils
   // rédigés avant, la page devine alors d'après le texte.
   commitmentSides?: ("nous" | "prospect")[] | null;
+  // Les autres opportunités mêlées à ce deal (réponse d'Hubert à D1 : un deal
+  // = une opportunité). Brief les signale ; il ne sépare rien tout seul.
+  otherOpportunities?: { name: string; detail: string }[] | null;
   model: string;
   generatedAt: string;
 };

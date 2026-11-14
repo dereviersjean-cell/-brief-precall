@@ -335,6 +335,22 @@ export default function DealMacroView({
             </Card>
           )}
 
+          {macro.otherOpportunities.length > 0 && (
+            <Card className="bg-amber-50/60">
+              <h2 className="text-[16px] font-semibold text-slate-900">
+                Ce deal mêle {macro.otherOpportunities.length + 1} opportunités
+              </h2>
+              <ul className="mt-2 space-y-2">
+                {macro.otherOpportunities.map((o) => (
+                  <li key={o.name} className="text-[13.5px] leading-snug">
+                    <span className="font-semibold text-slate-900">{o.name}</span>
+                    <span className="block text-slate-600">{o.detail}</span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
           <Card>
             <h2 className="text-[16px] font-semibold text-slate-900">
               État du deal{" "}

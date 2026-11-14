@@ -196,7 +196,8 @@ export async function writeDealAdviceForCall(call: CallWithAnalysis, organizatio
       weaknesses: call.analysis?.weaknesses ?? [],
       nextPlan: progress.objectives ? { rank: progress.objectives.plan.rank, items: progress.objectives.plan.items.map((i) => ({ label: i.label, question: i.question })) } : null,
     });
-    await setCallDealAdvice(call.id, result.advice, fiches.length + 1);
+    // Un conseil raté n'efface pas celui que le call avait déjà (régénération).
+    if (result.advice) await setCallDealAdvice(call.id, result.advice, fiches.length + 1);
     return result.advice;
   } catch (err) {
     reportWarning("deal-memory.advice", err, { callId: call.id });

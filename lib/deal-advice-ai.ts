@@ -59,13 +59,15 @@ On te donne ce que les calls du deal ont appris (avec le niveau : confirmé ou �
 
 7. "commitment_sides" — pour chaque ligne de « Convenu au dernier call », dans le même ordre, qui doit agir : "nous" (le commercial ou son équipe, y compris un rendez-vous à organiser) ou "prospect" (le prospect ou quelqu'un de chez lui). Autant d'éléments que de lignes ; liste vide si rien n'a été convenu.
 
+8. "other_opportunities" — un deal est UNE opportunité de vente. Si les calls en mêlent plusieurs (le prospect parle de plusieurs projets, de plusieurs clients à lui, de plusieurs entités avec chacune son budget ou son décideur), liste les AUTRES que la principale, 3 au plus : "name" (quelques mots, tels que le prospect les nomme) et "detail" (ce qui la distingue : besoin, budget, décideur, 20 mots au plus). Une seule opportunité, ou un doute : liste vide. Plusieurs interlocuteurs ou plusieurs offres pour un même projet ne font pas plusieurs opportunités.
+
 Règles :
 - Dans "next", "relance" et "coaching", tu tutoies le commercial partout (« tes arguments », jamais « vos »), sauf dans les phrases entre « » destinées au prospect.
 - Reprends les noms, chiffres, dates et mots du prospect quand ils sont donnés. N'invente aucun fait, nom, chiffre ou date absent de ce qu'on te donne ; s'il manque, dis comment l'obtenir.
 - Pas de jargon (pas de « MEDDIC », « champion », « closing ») : écris comme un directeur commercial qui parle à son équipe.
 
 Réponds UNIQUEMENT en JSON strict :
-{"next": {"title": "", "why": "", "steps": [""]}, "relance": {"title": "", "why": "", "message": ""}, "manager": {"title": "", "why": "", "questions": [""]}, "coaching": {"recommendation": "", "strengths": [""], "points": [{"title": "", "why": "", "say": ""}]}, "synthesis": "", "deal_synthesis": "", "commitment_sides": ["nous"]}`;
+{"next": {"title": "", "why": "", "steps": [""]}, "relance": {"title": "", "why": "", "message": ""}, "manager": {"title": "", "why": "", "questions": [""]}, "coaching": {"recommendation": "", "strengths": [""], "points": [{"title": "", "why": "", "say": ""}]}, "synthesis": "", "deal_synthesis": "", "commitment_sides": ["nous"], "other_opportunities": [{"name": "", "detail": ""}]}`;
 
 export type DealAdviceInput = {
   dealName: string;
@@ -191,6 +193,13 @@ export function parseAdvice(raw: string, model: string, generatedAt: string): Ai
     // Facultatives : la page du deal se passe de l'une et devine l'autre.
     dealSynthesis,
     commitmentSides,
+    otherOpportunities: (Array.isArray(parsed.other_opportunities) ? (parsed.other_opportunities as unknown[]) : [])
+      .map((o) => {
+        const item = (o ?? {}) as Record<string, unknown>;
+        return { name: text(item.name, 120), detail: text(item.detail, 240) };
+      })
+      .filter((o): o is { name: string; detail: string } => !!o.name && !!o.detail)
+      .slice(0, 3),
     model,
     generatedAt,
   };
@@ -203,7 +212,7 @@ export async function writeDealAdvice(
   const message = await client.messages.create({
     model: input.model ?? MODEL,
     // La réflexion compte dans max_tokens.
-    max_tokens: 6000,
+    max_tokens: 10000,
     system: SYSTEM_PROMPT,
     output_config: { effort: "low" as const },
     messages: [{ role: "user", content: buildAdvicePrompt(input) }],

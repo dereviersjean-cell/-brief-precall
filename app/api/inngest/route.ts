@@ -8,7 +8,6 @@ import {
   reportBillingUsage,
   checkBillingGracePeriods,
   generateDealMemoryAfterCall,
-  sendDealMorningEmails,
   refreshDealPipelines,
 } from "@/lib/inngest-functions";
 
@@ -26,6 +25,10 @@ export const maxDuration = 300;
 //  - syncDealOutcomes : une seule issue de deal remontée en trois mois ; le
 //    deal HubSpot rattaché à la fiche (Deal Execution) dit désormais où en
 //    est un deal.
+//  - sendDealMorningEmails (retiré le 14/11/2026, réponse d'Hubert à F3) :
+//    pas d'email chaque matin au manager, qui finirait par ne plus le lire.
+//    Il reste prévenu tout de suite quand un call met un deal à risque
+//    (sendDealAlertsForCall), là où les alertes sont allumées.
 export const { GET, POST, PUT } = serve({
   client: inngest,
   functions: [
@@ -36,7 +39,6 @@ export const { GET, POST, PUT } = serve({
     reportBillingUsage,
     checkBillingGracePeriods,
     generateDealMemoryAfterCall,
-    sendDealMorningEmails,
     refreshDealPipelines,
   ],
 });

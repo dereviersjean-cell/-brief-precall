@@ -78,6 +78,8 @@ export type DealMacro = {
   amountSource: "hubspot" | "calls" | null;
   // Où en est le deal tout entier (conseil Haiku du dernier call).
   dealSynthesis: string | null;
+  // Les autres opportunités mêlées à ce deal, repérées au dernier call.
+  otherOpportunities: { name: string; detail: string }[];
   nextMeeting: { date: string; rank: number } | null;
   commitments: MacroCommitment[];
   state: MacroStateRow[];
@@ -208,6 +210,7 @@ export function buildDealMacro(input: {
     amount: progress.hubspot?.amount ?? budget ?? null,
     amountSource: typeof progress.hubspot?.amount === "number" ? "hubspot" : typeof budget === "number" ? "calls" : null,
     dealSynthesis: lastFiche?.nextQuestions?.advice?.dealSynthesis ?? null,
+    otherOpportunities: lastFiche?.nextQuestions?.advice?.otherOpportunities ?? [],
     nextMeeting,
     commitments,
     state,
