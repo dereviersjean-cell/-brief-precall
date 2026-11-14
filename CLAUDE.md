@@ -60,6 +60,15 @@ Maquette A choisie par Jean : les trois questions d'Hubert. **Cette section prim
 - **3. Qu'est-ce qui aurait pu être mieux exécuté ?** Playbook client (Validé / Partiel / Manquant / Déjà acquis), puis Coaching : deux points bien exécutés et **deux points à travailler au plus, chacun avec la phrase à dire la prochaine fois** (`advice.coaching.strengths` et `.points`, ton constructif exigé par le prompt). Un conseil d'avant le 14/11 garde les forces, faiblesses et la recommandation de l'analyse.
 - La synthèse Haiku est désormais bornée à cinq phrases et 80 mots. Conseils régénérés le 14/11 sur tous les calls d'Oliverlist (34 sur 35).
 
+## Suivi des deals par priorité — 14 novembre 2026 (lot 4)
+
+Maquette A choisie par Jean, règles d'Hubert (réponses B5, F1, F2). **Cette section prime sur la vue « Par commercial » décrite plus bas** (`PersonBlock` et le conseil sur la personne ne sont plus affichés).
+
+- **Ce qui remonte** (`suiviKind`, `lib/deal-suivi.ts`, testé), dans cet ordre : dégradation (verdict recul), engagement non tenu (suite convenue passée), blocage (information requise à l'étape manquante après deux rendez-vous). Sinon **endormi** : 14 jours sans échange, 7 si le deal est en proposition (`isProposalStage` : nom de l'étape HubSpot ou place dans le pipeline). **Au-delà de 60 jours sans échange, un deal est toujours endormi**, même s'il reculait : son alerte n'est plus d'actualité. Seuils en constantes (`SLEEP_DAYS`, `STALE_ALERT_DAYS`), pas encore réglables par organisation.
+- **Écran** (`SuiviView`) : onglets « À reprendre » et « Tous les deals » (tableau : commercial, état, étape, dernier échange), trois chiffres, une carte par alerte (le problème, l'action recommandée, une ou deux questions à poser au commercial), puis le bloc « Deals endormis ». L'onglet Prévision reste.
+- **État au 14/11 sur Oliverlist** : les six deals des commerciaux liés à Hubert datent de plus de 100 jours, donc aucune alerte et six endormis.
+- **Pas encore fait** : « absence de réponse aux relances » (Brief ne lit pas les emails), deals mis en pause, boutons « Demander une relance » et « Proposer la clôture » de la maquette, seuils réglables, email au manager sur événement (F3).
+
 ## Vue Deal, page d'un call, Suivi des deals — état au 3 novembre 2026
 
 Ce qui est en place aujourd'hui (synthèse produit validée par Jean le 03/11/2026). **Les sections plus bas sur la « chronologie » et le « détail » d'un deal (28/10/2026) sont historiques** : chronologie, `/deal/<id>/detail`, `DealPageView`, `DealTimeline`, `lib/deal-review.ts`, `MesDealsView` et `TeamCoachView` ont été supprimés le 03/11 (historique git).

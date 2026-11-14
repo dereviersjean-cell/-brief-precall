@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { TeamPerson } from "./team";
+import type { SuiviDeal } from "@/lib/deal-suivi";
 import SuiviView from "./SuiviView";
 import ForecastView from "./ForecastView";
 import type { ForecastPeriod, ForecastPerson } from "@/lib/deal-forecast";
@@ -11,7 +12,7 @@ import type { ForecastPeriod, ForecastPerson } from "@/lib/deal-forecast";
 // 10/11/2026 à la demande de Jean (historique git) ; les champs HubSpot se
 // règlent toujours depuis la fiche d'un call.
 const TABS = [
-  ["suivi", "Par commercial"],
+  ["suivi", "Suivi"],
   ["prevision", "Prévision"],
 ] as const;
 
@@ -19,12 +20,14 @@ type Tab = (typeof TABS)[number][0];
 
 export default function DealsBoardClient({
   teamPeople,
+  suiviDeals,
   hasTeam,
   forecast,
   initialTab,
 }: {
   forecast: { people: ForecastPerson[]; periods: ForecastPeriod[]; today: string };
   teamPeople: TeamPerson[];
+  suiviDeals: SuiviDeal[];
   hasTeam: boolean;
   initialTab: Tab;
 }) {
@@ -42,7 +45,7 @@ export default function DealsBoardClient({
           </button>
         ))}
       </div>
-      {tab === "suivi" ? <SuiviView people={teamPeople} hasTeam={hasTeam} /> : <ForecastView {...forecast} hasTeam={hasTeam} />}
+      {tab === "suivi" ? <SuiviView deals={suiviDeals} people={teamPeople} hasTeam={hasTeam} /> : <ForecastView {...forecast} hasTeam={hasTeam} />}
     </div>
   );
 }
