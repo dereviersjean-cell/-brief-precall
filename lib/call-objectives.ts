@@ -1,11 +1,13 @@
 import { DEAL_MEMORY_FIELDS, type AiDealAdvice, type DealMemoryFieldKey, type DealMemoryItem } from "./deal-memory-schema";
-import { OBJECTIVE_RANKS, qualificationFields, type DealRules, type QualificationKey } from "./deal-rules";
+import { MAX_STAGES, qualificationFields, type DealRules, type QualificationKey } from "./deal-rules";
 
-// Les objectifs de chaque rendez-vous (demande de Jean du 27/10/2026) : le
-// manager fixe ce que le commercial doit aller chercher au R1, au R2, au R3
-// (lib/deal-rules.ts, `callObjectives`). Après le call, Brief dit ce qui a été
-// obtenu ; avant le suivant, il dit au commercial « au dernier call tu es allé
-// chercher ça, c'est bon ; maintenant va chercher ça, ça et ça ».
+// Les objectifs d'un rendez-vous. Depuis le 14/11/2026 ils suivent l'ÉTAPE
+// COMMERCIALE du deal et non plus le numéro du rendez-vous (réponse d'Hubert à
+// E1, validée par Jean) : le manager fixe ce qu'il faut obtenir pendant chaque
+// étape (lib/deal-rules.ts, `stageRequirements`). `level` = l'étape où en est
+// le deal (`stageLevel`) ; `rank` ne sert plus qu'aux libellés « R2 ». Après
+// le call, Brief dit ce qui a été obtenu ; avant le suivant, ce qu'il reste à
+// aller chercher.
 //
 // Une information n'est obtenue que si le prospect l'a dite clairement
 // (`level: "confirme"`, lib/deal-memory.ts) : « on a un budget, mais pas
@@ -92,39 +94,39 @@ function bestItem(items: DealMemoryItem[] | undefined): DealMemoryItem | null {
   return items.find((i) => itemLevel(i) === "confirme") ?? items[0];
 }
 
-export function objectiveRank(rank: number): number {
-  return Math.max(1, Math.min(OBJECTIVE_RANKS, rank));
+export function objectiveLevel(level: number): number {
+  return Math.max(1, Math.min(MAX_STAGES, level));
 }
 
-// Les objectifs d'un rang, limités aux champs de la méthode de l'organisation.
-export function objectivesForRank(rules: DealRules, rank: number): QualificationKey[] {
+// Les objectifs d'une étape, limités aux champs de la méthode de l'organisation.
+export function objectivesForLevel(rules: DealRules, level: number): QualificationKey[] {
   const fields = new Set(qualificationFields(rules));
-  return (rules.callObjectives[objectiveRank(rank)] ?? []).filter((k) => fields.has(k));
+  return (rules.stageRequirements[objectiveLevel(level)] ?? []).filter((k) => fields.has(k));
 }
 
-function objectivesUpTo(rules: DealRules, rank: number): { key: QualificationKey; rank: number }[] {
+function objectivesUpTo(rules: DealRules, level: number): { key: QualificationKey; level: number }[] {
   const seen = new Set<QualificationKey>();
-  const result: { key: QualificationKey; rank: number }[] = [];
-  for (let r = 1; r <= objectiveRank(rank); r++) {
-    for (const key of objectivesForRank(rules, r)) {
+  const result: { key: QualificationKey; level: number }[] = [];
+  for (let l = 1; l <= objectiveLevel(level); l++) {
+    for (const key of objectivesForLevel(rules, l)) {
       if (seen.has(key)) continue;
       seen.add(key);
-      result.push({ key, rank: r });
+      result.push({ key, level: l });
     }
   }
   return result;
 }
 
-// Le bilan d'un call de rang `rank` (1 = R1) : ses objectifs, plus ceux des
-// rendez-vous précédents qui n'avaient pas été obtenus.
-export function reviewCallObjectives(input: { rank: number; current: ItemsByField; prior: ItemsByField; rules: DealRules }): ObjectiveRow[] {
-  const own = objectiveRank(input.rank);
+// Le bilan d'un call tenu à l'étape `level` : les objectifs de cette étape,
+// plus ceux des étapes précédentes qui n'avaient pas été obtenus. Sans
+// `level`, le rang en tient lieu (deal hors HubSpot).
+export function reviewCallObjectives(input: { rank: number; level?: number; current: ItemsByField; prior: ItemsByField; rules: DealRules }): ObjectiveRow[] {
+  const own = objectiveLevel(input.level ?? input.rank);
   const rows: ObjectiveRow[] = [];
-  for (const { key, rank } of objectivesUpTo(input.rules, own)) {
+  for (const { key, level } of objectivesUpTo(input.rules, own)) {
     const before = bestLevel(input.prior[key]);
-    const carried = rank < own;
-    // Un objectif d'un rendez-vous précédent déjà obtenu n'est plus un
-    // objectif.
+    const carried = level < own;
+    // Un objectif d'une étape précédente déjà obtenu n'est plus un objectif.
     if (carried && before === "confirme") continue;
     const now = bestLevel(input.current[key]);
     const status: ObjectiveStatus =
@@ -137,24 +139,31 @@ export function reviewCallObjectives(input: { rank: number; current: ItemsByFiel
   return rows;
 }
 
-// Ce qu'il faut aller chercher au prochain call, après le call de rang
-// `lastRank` : tout objectif des rendez-vous 1 à lastRank + 1 qui n'est pas
-// encore confirmé, à préciser d'abord, puis reporté, puis nouveau.
-export function nextCallPlan(input: { lastRank: number; known: ItemsByField; rules: DealRules }): { rank: number; items: NextItem[] } {
+// Ce qu'il faut aller chercher au prochain call, le deal étant à l'étape
+// `level` : tout objectif des étapes 1 à `level` qui n'est pas encore
+// confirmé — à préciser d'abord, puis reporté des étapes précédentes, puis
+// ceux de l'étape. Quand tout est obtenu, les objectifs de l'étape suivante :
+// c'est ce qui fait avancer le deal.
+export function nextCallPlan(input: { lastRank: number; level?: number; known: ItemsByField; rules: DealRules }): { rank: number; items: NextItem[] } {
   const rank = input.lastRank + 1;
-  const items: NextItem[] = [];
-  for (const { key, rank: from } of objectivesUpTo(input.rules, rank)) {
-    const level = bestLevel(input.known[key]);
-    if (level === "confirme") continue;
-    const reason: NextItem["reason"] = level === "evoque" ? "a_preciser" : from <= input.lastRank ? "reporte" : "nouveau";
-    items.push({
-      key,
-      label: label(key),
-      reason,
-      known: level === "evoque" ? bestItem(input.known[key]) : null,
-      question: `« ${reason === "a_preciser" ? PRECISE_QUESTIONS[key] : OPEN_QUESTIONS[key]} »`,
+  const level = objectiveLevel(input.level ?? input.lastRank);
+  const build = (list: { key: QualificationKey; level: number }[]): NextItem[] =>
+    list.flatMap(({ key, level: from }) => {
+      const known = bestLevel(input.known[key]);
+      if (known === "confirme") return [];
+      const reason: NextItem["reason"] = known === "evoque" ? "a_preciser" : from < level ? "reporte" : "nouveau";
+      return [
+        {
+          key,
+          label: label(key),
+          reason,
+          known: known === "evoque" ? bestItem(input.known[key]) : null,
+          question: `« ${reason === "a_preciser" ? PRECISE_QUESTIONS[key] : OPEN_QUESTIONS[key]} »`,
+        },
+      ];
     });
-  }
+  let items = build(objectivesUpTo(input.rules, level));
+  if (items.length === 0) items = build(objectivesForLevel(input.rules, level + 1).map((key) => ({ key, level: level + 1 })));
   const order = { a_preciser: 0, reporte: 1, nouveau: 2 };
   items.sort((a, b) => order[a.reason] - order[b.reason]);
   return { rank, items };
@@ -223,16 +232,16 @@ export type DealObjectives = { lastRank: number; review: ObjectiveRow[]; plan: {
 // Les objectifs d'un deal après son call de rang `fiches.length` : `fiches`
 // = les champs de chaque call, du plus ancien au plus récent. Sert la page
 // du call, le brief du suivant et Mes deals.
-export function dealObjectives(fiches: ItemsByField[], rules: DealRules, stored?: StoredQuestions | null): DealObjectives | null {
+export function dealObjectives(fiches: ItemsByField[], rules: DealRules, stored?: StoredQuestions | null, level?: number): DealObjectives | null {
   if (fiches.length === 0) return null;
-  return objectivesAt(fiches.length, fiches[fiches.length - 1], mergeKnown(fiches.slice(0, -1)), rules, stored);
+  return objectivesAt(fiches.length, fiches[fiches.length - 1], mergeKnown(fiches.slice(0, -1)), rules, stored, level);
 }
 
 // La même chose pour un call de rang `rank` dont on a déjà fusionné ce que les
 // calls précédents savaient (la page d'un call).
-export function objectivesAt(rank: number, current: ItemsByField, prior: ItemsByField, rules: DealRules, stored?: StoredQuestions | null): DealObjectives {
-  const review = reviewCallObjectives({ rank, current, prior, rules });
-  const plan = applyQuestions(nextCallPlan({ lastRank: rank, known: mergeKnown([prior, current]), rules }), stored);
+export function objectivesAt(rank: number, current: ItemsByField, prior: ItemsByField, rules: DealRules, stored?: StoredQuestions | null, level?: number): DealObjectives {
+  const review = reviewCallObjectives({ rank, level, current, prior, rules });
+  const plan = applyQuestions(nextCallPlan({ lastRank: rank, level, known: mergeKnown([prior, current]), rules }), stored);
   return { lastRank: rank, review, plan, message: objectivesMessage(review, plan, rank) };
 }
 

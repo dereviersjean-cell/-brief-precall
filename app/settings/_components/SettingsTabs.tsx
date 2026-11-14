@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Settings, Link as LinkIcon, CreditCard, Users } from "lucide-react";
+import { Settings, Link as LinkIcon, CreditCard, Users, Bell } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ModuleKey } from "@/lib/modules";
 import { useModules } from "@/app/components/ModulesProvider";
@@ -29,6 +29,8 @@ const NAV_ITEMS: { href: string; label: string; icon: LucideIcon; managerOnly?: 
   // après un call. La page reste joignable par URL (/settings/email-templates).
   // Équipe revient ici le 05/11/2026 (maquette H1 B), managers seulement.
   { href: "/settings/equipe", label: "Équipe", icon: Users, managerOnly: true },
+  // Réception (14/11/2026) : où l'équipe reçoit le brief et l'analyse.
+  { href: "/settings/reception", label: "Réception", icon: Bell, managerOnly: true },
   { href: "/settings/billing", label: "Facturation", icon: CreditCard, managerOnly: true },
 ];
 

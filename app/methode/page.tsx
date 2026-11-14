@@ -2,7 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getViewer } from "@/lib/session-user";
 import {
-  getClientReferences,
+  getClientReferencesForUsers,
+  getOrganizationPipelineStats,
+  getOrganizationUserIds,
   getEnabledModulesForUser,
   getObjectionCategoryStats,
   getOrganizationDealRules,
@@ -14,7 +16,7 @@ import {
 } from "@/lib/db";
 import { resolvePeriod } from "@/lib/period";
 import type { ModuleKey } from "@/lib/modules";
-import { isCitableReference } from "@/lib/reference-quality";
+import { hasRealValue } from "@/lib/reference-quality";
 import { PageHeader } from "@/app/components/ui/PageHeader";
 import ObjectivesSection from "./ObjectivesSection";
 
@@ -51,15 +53,25 @@ export default async function MethodePage() {
   if (!organizationId) redirect("/brief");
   const isManager = role === "manager";
 
-  const [modules, dealMemory, rules, stats, categories, references] = await Promise.all([
+  const [modules, dealMemory, rules, stats, categories, references, pipelines] = await Promise.all([
     getEnabledModulesForUser(userId).catch((): ModuleKey[] => []),
     isDealMemoryEnabledForOrganization(organizationId),
     getOrganizationDealRules(organizationId).catch(() => null),
     // Le manager voit l'équipe, le commercial ses propres calls.
     getObjectionCategoryStats(organizationId, resolvePeriod({ period: "90d" }), isManager ? null : userId).catch(() => [] as ObjectionCategoryStat[]),
     listObjectionCategories(organizationId).catch(() => [] as ObjectionCategory[]),
-    getClientReferences(userId).catch(() => [] as ClientReference[]),
+    // Les références de toute l'équipe (décision G4), pas seulement les siennes.
+    getOrganizationUserIds(userId)
+      .then(getClientReferencesForUsers)
+      .catch(() => [] as ClientReference[]),
+    getOrganizationPipelineStats(organizationId),
   ]);
+
+  // Les étapes du pipeline HubSpot le plus utilisé, 1 = la première.
+  const pipeline = [...(pipelines ?? [])].sort((a, b) => b.dealCount - a.dealCount)[0];
+  const stageLabels: Record<number, string> = Object.fromEntries(
+    [...(pipeline?.stages ?? [])].sort((a, b) => a.order - b.order).map((s, i) => [i + 1, s.label])
+  );
 
   const showObjectives = dealMemory && rules !== null;
   const showObjections = modules.includes("objections");
@@ -79,7 +91,11 @@ export default async function MethodePage() {
     .slice(0, 4);
   const unclassified = stats.find((s) => s.categoryId === null)?.occurrences ?? 0;
 
-  const citable = references.filter(isCitableReference);
+  // Trois niveaux (réponse d'Hubert à G5) : preuve de ROI, cas d'usage,
+  // référence simple.
+  const citable = references.filter((r) => hasRealValue(r.result));
+  const useCases = references.filter((r) => !hasRealValue(r.result) && hasRealValue(r.problem) && hasRealValue(r.solution));
+  const simple = references.length - citable.length - useCases.length;
   // Trois exemples de clients différents, au résultat rédigé (« 45 000 € »
   // seul compte comme citable mais ne dit rien à l'oral).
   const seen = new Set<string>();
@@ -95,11 +111,11 @@ export default async function MethodePage() {
       <PageHeader
         eyebrow="Méthode de vente de l'équipe"
         title="Méthode"
-        subtitle="Ce que l'équipe doit obtenir à chaque rendez-vous, comment répondre aux objections, quels clients citer."
+        subtitle="Ce que l'équipe doit obtenir à chaque étape, comment répondre aux objections, quels clients citer."
       />
 
       <div className="mt-8 space-y-5">
-        {showObjectives && rules && <ObjectivesSection number={numbers.objectives} initialRules={rules} canEdit={isManager} />}
+        {showObjectives && rules && <ObjectivesSection number={numbers.objectives} initialRules={rules} canEdit={isManager} stageLabels={stageLabels} />}
 
         {showObjections && (
           <section className={CARD} aria-labelledby="methode-objections">
@@ -171,13 +187,14 @@ export default async function MethodePage() {
                     <strong>{references.length}</strong> référence{references.length > 1 ? "s" : ""}
                   </span>
                   <span className="rounded-lg bg-[color:var(--success-soft)] px-3 py-1.5 text-emerald-800">
-                    <strong>{citable.length}</strong> citable{citable.length > 1 ? "s" : ""} (résultat chiffré)
+                    <strong>{citable.length}</strong> preuve{citable.length > 1 ? "s" : ""} de ROI (résultat chiffré)
                   </span>
-                  {references.length - citable.length > 0 && (
-                    <span className="rounded-lg bg-[color:var(--warning-soft)] px-3 py-1.5 text-amber-800">
-                      <strong>{references.length - citable.length}</strong> à compléter
-                    </span>
-                  )}
+                  <span className="rounded-lg bg-[color:var(--lavender)] px-3 py-1.5 text-[color:var(--violet)]">
+                    <strong>{useCases.length}</strong> cas d&apos;usage (problème et solution)
+                  </span>
+                  <span className="rounded-lg bg-slate-100 px-3 py-1.5 text-slate-800">
+                    <strong>{simple}</strong> référence{simple > 1 ? "s" : ""} simple{simple > 1 ? "s" : ""} (nom et activité)
+                  </span>
                 </div>
                 {examples.length > 0 && (
                   <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">

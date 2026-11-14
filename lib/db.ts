@@ -672,6 +672,15 @@ export async function getClientReferences(userId: string): Promise<ClientReferen
   return (data ?? []) as ClientReference[];
 }
 
+// Les références de toute une équipe (décision G4, 13/11/2026) : celles de
+// chaque membre, pour les compter sur la page Méthode.
+export async function getClientReferencesForUsers(userIds: string[]): Promise<ClientReference[]> {
+  if (userIds.length === 0) return [];
+  const { data, error } = await supabaseAdmin.from("client_references").select("*").in("user_id", userIds).order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as ClientReference[];
+}
+
 export async function getClientReferencesCount(userId: string): Promise<number> {
   const { count, error } = await supabaseAdmin
     .from("client_references")
@@ -5996,6 +6005,44 @@ export async function setNotificationPreference(
     .single();
   if (error) throw error;
   return data as NotificationPreference;
+}
+
+// Réception réglée pour toute l'équipe (décision A5 du 13/11/2026, validée
+// par Hubert : « l'administrateur choisit au setup pour toute l'équipe »).
+// Le stockage reste par personne : le réglage d'équipe écrit la même valeur
+// chez chaque membre actif, et la lecture dit pour chaque case si tout le
+// monde l'a.
+export async function getTeamNotificationPreferences(userIds: string[]): Promise<Record<string, number>> {
+  if (userIds.length === 0) return {};
+  const { data, error } = await supabaseAdmin
+    .from("notification_preferences")
+    .select("event_type, channel")
+    .in("user_id", userIds)
+    .eq("enabled", true);
+  if (error) throw error;
+  const counts: Record<string, number> = {};
+  for (const row of (data ?? []) as { event_type: string; channel: string }[]) {
+    const key = `${row.event_type}:${row.channel}`;
+    counts[key] = (counts[key] ?? 0) + 1;
+  }
+  return counts;
+}
+
+export async function setTeamNotificationPreference(
+  userIds: string[],
+  eventType: NotificationEventType,
+  channel: NotificationChannel,
+  enabled: boolean
+): Promise<void> {
+  if (userIds.length === 0) return;
+  const now = new Date().toISOString();
+  const { error } = await supabaseAdmin
+    .from("notification_preferences")
+    .upsert(
+      userIds.map((id) => ({ user_id: id, event_type: eventType, channel, enabled, updated_at: now })),
+      { onConflict: "user_id,event_type,channel" }
+    );
+  if (error) throw error;
 }
 
 // Used by the sous-étapes B/C/D send points, not by this sous-étape's own

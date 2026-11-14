@@ -28,6 +28,7 @@ import type { AiDealAdvice, AiPersonAdvice, DealHistoryEntry, DealMemoryContent,
 import { dealObjectives, mergeKnown, type ItemsByField } from "./call-objectives";
 import { tailorObjectiveQuestions } from "./objective-questions";
 import { writeDealAdvice } from "./deal-advice-ai";
+import { stageLevel } from "./deal-rules";
 import { writePersonAdvice } from "./person-advice-ai";
 import { buildDealProgressNow } from "./deal-progress";
 import { findHubSpotDealForProspect, getHubSpotDealDomains, getHubSpotDealSnapshot } from "./crm/hubspot-deals";
@@ -146,7 +147,7 @@ export async function runDealMemoryForCall(call: CallWithAnalysis, organizationI
     callAt,
     prospectCompany: result.prospectCompany,
   });
-  const nextQuestions = await writeNextQuestions(call.id, organizationId, result.prospectCompany ?? call.company_name ?? "le prospect", history, result);
+  const nextQuestions = await writeNextQuestions(call.id, organizationId, result.prospectCompany ?? call.company_name ?? "le prospect", history, result, stageLevel(hubspot, history.length + 1));
   // Après les questions : le conseil les reprend.
   const advice = await writeDealAdviceForCall(call, organizationId);
   // Puis le conseil sur le commercial, qui reprend ceux de ses deals.
@@ -212,11 +213,12 @@ async function writeNextQuestions(
   organizationId: string,
   dealName: string,
   history: DealHistoryEntry[],
-  current: DealMemoryContent
+  current: DealMemoryContent,
+  level: number
 ): Promise<NextQuestions | null> {
   try {
     const fiches: ItemsByField[] = [...history.map((h) => h.content.fields), current.fields];
-    const objectives = dealObjectives(fiches, await getOrganizationDealRules(organizationId));
+    const objectives = dealObjectives(fiches, await getOrganizationDealRules(organizationId), null, level);
     if (!objectives || objectives.plan.items.length === 0) {
       await setCallNextQuestions(callId, null);
       return null;

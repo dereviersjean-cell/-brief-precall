@@ -3,7 +3,7 @@ import { buildDealProgress, type DealState, type ProgressFiche } from "./deal-pr
 import { guessCommitmentSide, type CommitmentSide } from "./deal-macro";
 import { MEETING } from "./deal-chronology";
 import type { CoachingPoint } from "./deal-memory-schema";
-import type { DealRules } from "./deal-rules";
+import { stageLevel, type DealRules } from "./deal-rules";
 import type { DealTimeline } from "./deal-timeline";
 
 // La page d'un meeting (maquette A choisie par Jean le 14/11/2026) répond aux
@@ -61,7 +61,7 @@ export function buildMeetingOverview(input: {
   const rank = index + 1;
   const fiche = fiches[index];
   const call = timeline.calls[index];
-  const objectives = objectivesAt(rank, fiche.fields, mergeKnown(fiches.slice(0, index).map((f) => f.fields)), input.rules, fiche.nextQuestions);
+  const objectives = objectivesAt(rank, fiche.fields, mergeKnown(fiches.slice(0, index).map((f) => f.fields)), input.rules, fiche.nextQuestions, stageLevel(fiche.hubspot, rank));
 
   const keyOf = new Map(timeline.grid.map((g) => [g.label, g.key]));
   const shown = new Set(objectives.review.map((r) => r.key));

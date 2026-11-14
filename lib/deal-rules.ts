@@ -48,38 +48,38 @@ export type DealRules = {
   // « Étape plus longue que d'habitude » : au-delà de ce multiple de la durée
   // habituelle d'une étape.
   slowStageFactor: number;
-  // Ce qui doit être connu quand le deal atteint l'étape n (1 = première
-  // étape du pipeline HubSpot, ou R1 hors HubSpot). Cumulatif : à l'étape 3,
-  // ce que demandent les étapes 1, 2 et 3.
+  // Les objectifs par étape commerciale (réponse d'Hubert à E1, validée par
+  // Jean le 14/11/2026) : ce que le commercial doit obtenir PENDANT l'étape n
+  // (1 = première étape du pipeline HubSpot ; hors HubSpot, les trois étapes
+  // par défaut). Ce qui est confirmé reste acquis ; ce qui manque d'une étape
+  // passée est reporté, et lève l'alerte « critère de passage manquant ».
+  // Avant le 14/11/2026 les objectifs suivaient le numéro du rendez-vous
+  // (`callObjectives`, abandonné : une valeur enregistrée est ignorée).
   stageRequirements: Partial<Record<number, QualificationKey[]>>;
-  // Ce que le commercial doit aller chercher à chaque rendez-vous (27/10/2026,
-  // demande de Jean : « dans un R1, l'objectif fixé par le manager c'est le
-  // budget, le signataire… »). 1 = R1, 2 = R2, 3 = R3 et suivants. Ce qui
-  // n'a pas été obtenu au rendez-vous prévu est reporté au suivant
-  // (lib/call-objectives.ts).
-  callObjectives: Partial<Record<number, QualificationKey[]>>;
 };
 
-export const OBJECTIVE_RANKS = 3;
+// Hors HubSpot : trois étapes, le R1 dans la première, le R2 dans la
+// deuxième, la suite dans la troisième.
+export const DEFAULT_STAGE_LABELS = ["Qualification", "Évaluation", "Proposition"] as const;
 
-// Les exigences par étape de l'article envoyé par Hubert : Découverte → la
-// douleur ; Qualification → le décideur et les chiffres ; Proposition → les
-// critères et le processus ; Négociation → le champion et tout le reste.
+// L'étape où en est un deal pour ses objectifs : celle du pipeline HubSpot
+// quand il y est ouvert, sinon son rang ramené aux trois étapes par défaut.
+export function stageLevel(hubspot: { closed: boolean; stageIndex: number | null } | null | undefined, rank: number): number {
+  if (hubspot && !hubspot.closed && hubspot.stageIndex) return Math.min(hubspot.stageIndex, MAX_STAGES);
+  return Math.max(1, Math.min(rank, DEFAULT_STAGE_LABELS.length));
+}
+
+// L'exemple d'Hubert (13/11/2026) : Qualification → besoin, impact, décideur,
+// calendrier ; Évaluation → critères, budget, processus de validation ;
+// Proposition → les parties prenantes (l'allié chez le client).
 export const DEFAULT_RULES: DealRules = {
   method: "socle",
   inactivityDays: INACTIVITY_DAYS,
   slowStageFactor: 1.5,
   stageRequirements: {
-    1: ["douleur"],
-    2: ["decideur", "impact"],
-    3: ["criteres", "processus"],
-    4: ["champion", "budget", "echeance"],
-  },
-  // R1 : le problème, qui signe, l'enveloppe et l'échéance ; R2 : de quoi
-  // construire la proposition ; R3 : finir ce qui manque.
-  callObjectives: {
-    1: ["douleur", "decideur", "budget", "echeance"],
-    2: ["impact", "criteres", "processus", "champion"],
+    1: ["douleur", "impact", "decideur", "echeance"],
+    2: ["criteres", "budget", "processus"],
+    3: ["champion"],
   },
 };
 
@@ -104,13 +104,11 @@ export function coerceDealRules(raw: unknown): DealRules {
   const source = (raw && typeof raw === "object" ? raw : {}) as Partial<Record<keyof DealRules, unknown>>;
   const method = typeof source.method === "string" && source.method in METHODS ? (source.method as QualificationMethod) : DEFAULT_RULES.method;
   const rawStages = source.stageRequirements && typeof source.stageRequirements === "object" ? (source.stageRequirements as Record<string, unknown>) : null;
-  const rawObjectives = source.callObjectives && typeof source.callObjectives === "object" ? (source.callObjectives as Record<string, unknown>) : null;
   return {
     method,
     inactivityDays: Math.round(clamp(source.inactivityDays, 3, 90, DEFAULT_RULES.inactivityDays)),
     slowStageFactor: Math.round(clamp(source.slowStageFactor, 1, 5, DEFAULT_RULES.slowStageFactor) * 10) / 10,
     stageRequirements: rawStages ? keysByNumber(rawStages, MAX_STAGES) : DEFAULT_RULES.stageRequirements,
-    callObjectives: rawObjectives ? keysByNumber(rawObjectives, OBJECTIVE_RANKS) : DEFAULT_RULES.callObjectives,
   };
 }
 
@@ -127,12 +125,12 @@ function keysByNumber(raw: Record<string, unknown>, max: number): Partial<Record
   return result;
 }
 
-// Ce qui devrait être connu à l'étape `stage` et ne l'est pas : les
-// exigences des étapes 1 à `stage`, limitées aux champs de la méthode.
+// Ce qui devrait être connu en arrivant à l'étape `stage` et ne l'est pas :
+// les objectifs des étapes PRÉCÉDENTES, limités aux champs de la méthode.
 export function missingForStage(rules: DealRules, stage: number | null, known: Set<string>): QualificationKey[] {
   if (!stage || stage < 1) return [];
   const fields = new Set(qualificationFields(rules));
   const required = new Set<QualificationKey>();
-  for (let s = 1; s <= Math.min(stage, MAX_STAGES); s++) for (const k of rules.stageRequirements[s] ?? []) if (fields.has(k)) required.add(k);
+  for (let s = 1; s < Math.min(stage, MAX_STAGES + 1); s++) for (const k of rules.stageRequirements[s] ?? []) if (fields.has(k)) required.add(k);
   return [...required].filter((k) => !known.has(k));
 }

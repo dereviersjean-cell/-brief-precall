@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DEFAULT_RULES, MAX_STAGES, METHODS, OBJECTIVE_RANKS, qualificationLabel, type DealRules, type QualificationMethod } from "@/lib/deal-rules";
+import { DEFAULT_RULES, DEFAULT_STAGE_LABELS, MAX_STAGES, METHODS, qualificationLabel, type DealRules, type QualificationMethod } from "@/lib/deal-rules";
 
 // Onglet « Règles » de Deals de l'équipe (27/10/2026) : le manager règle
 // lui-même la méthode de qualification, les objectifs de chaque rendez-vous
@@ -14,8 +14,8 @@ const LABEL = "text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-
 
 // L'éditeur des règles, sans lecture ni enregistrement : partagé par l'onglet
 // Règles du manager et le setup HubSpot de l'admin (27/10/2026).
-export type RulesSection = "method" | "objectives" | "thresholds" | "stages";
-const ALL_SECTIONS: RulesSection[] = ["method", "objectives", "thresholds", "stages"];
+export type RulesSection = "method" | "thresholds" | "stages";
+const ALL_SECTIONS: RulesSection[] = ["method", "thresholds", "stages"];
 
 // `sections` : la méthode et les objectifs par rendez-vous se règlent dans
 // la page Méthode (05/11/2026, maquette G1 B), les seuils et les étapes dans
@@ -39,11 +39,11 @@ export function RulesEditor({
     const next = current.includes(key) ? current.filter((k) => k !== key) : [...current, key];
     update({ stageRequirements: { ...rules.stageRequirements, [stage]: next } });
   };
-  const toggleObjective = (rank: number, key: (typeof fields)[number]) => {
-    const current = rules.callObjectives[rank] ?? [];
-    const next = current.includes(key) ? current.filter((k) => k !== key) : [...current, key];
-    update({ callObjectives: { ...rules.callObjectives, [rank]: next } });
-  };
+  // Les étapes à régler : celles du pipeline HubSpot quand on les connaît,
+  // sinon les trois étapes par défaut.
+  const known = Object.keys(stageLabels).map(Number).filter((n) => n >= 1 && n <= MAX_STAGES);
+  const stages = known.length > 0 ? known.sort((a, b) => a - b) : DEFAULT_STAGE_LABELS.map((_, i) => i + 1);
+  const stageName = (stage: number) => stageLabels[stage] ?? DEFAULT_STAGE_LABELS[stage - 1] ?? `Étape ${stage}`;
 
   return (
     <div className="space-y-5">
@@ -64,47 +64,6 @@ export function RulesEditor({
               </span>
             </label>
           ))}
-        </div>
-      </section>
-      )}
-
-      {show("objectives") && (
-      <section className={CARD}>
-        <h2 className={`${LABEL} mb-1`}>Objectifs de chaque rendez-vous</h2>
-        <p className="mb-4 text-[13px] text-slate-500">
-          Ce que vos commerciaux doivent aller chercher à chaque rendez-vous. Après le call, Brief dit ce qui a été obtenu clairement ; ce qui ne l&apos;est
-          pas est reporté au rendez-vous suivant, avec la question à poser.
-        </p>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-left text-[13px]">
-            <thead>
-              <tr className="text-[12px] text-slate-500">
-                <th className="py-2 pr-3 font-medium">Rendez-vous</th>
-                {fields.map((k) => (
-                  <th key={k} className="px-2 py-2 text-center font-medium">
-                    {qualificationLabel(k)}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {Array.from({ length: OBJECTIVE_RANKS }, (_, i) => i + 1).map((rank) => (
-                <tr key={rank} className="border-t border-border">
-                  <td className="py-2 pr-3 font-medium text-slate-900">{rank === OBJECTIVE_RANKS ? `R${rank} et suivants` : `R${rank}`}</td>
-                  {fields.map((k) => (
-                    <td key={k} className="px-2 py-2 text-center">
-                      <input
-                        type="checkbox"
-                        aria-label={`${qualificationLabel(k)} au R${rank}`}
-                        checked={(rules.callObjectives[rank] ?? []).includes(k)}
-                        onChange={() => toggleObjective(rank, k)}
-                      />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </section>
       )}
@@ -148,10 +107,9 @@ export function RulesEditor({
 
       {show("stages") && (
       <section className={CARD}>
-        <h2 className={`${LABEL} mb-1`}>Ce qui doit être connu à chaque étape</h2>
+        <h2 className={`${LABEL} mb-1`}>Objectifs par étape commerciale</h2>
         <p className="mb-4 text-[13px] text-slate-500">
-          Cumulatif : à l&apos;étape 3, Brief vérifie ce que demandent les étapes 1, 2 et 3. Étapes du pipeline HubSpot, ou R1, R2… pour un deal hors
-          HubSpot. Indicatif : un manque lève l&apos;alerte « Critère de passage manquant », rien n&apos;est bloqué.
+          Ce que vos commerciaux doivent obtenir pendant chaque étape. Ce qui est confirmé reste acquis ; ce qui manque est reporté à l&apos;étape suivante.
         </p>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-left text-[13px]">
@@ -166,17 +124,14 @@ export function RulesEditor({
               </tr>
             </thead>
             <tbody>
-              {Array.from({ length: MAX_STAGES }, (_, i) => i + 1).map((stage) => (
+              {stages.map((stage) => (
                 <tr key={stage} className="border-t border-border">
-                  <td className="py-2 pr-3 text-slate-900">
-                    <span className="font-medium">Étape {stage}</span>
-                    {stageLabels[stage] ? <span className="text-slate-500"> · {stageLabels[stage]}</span> : <span className="text-slate-400"> · R{stage}</span>}
-                  </td>
+                  <td className="py-2 pr-3 font-medium text-slate-900">{stageName(stage)}</td>
                   {fields.map((k) => (
                     <td key={k} className="px-2 py-2 text-center">
                       <input
                         type="checkbox"
-                        aria-label={`${qualificationLabel(k)} à l'étape ${stage}`}
+                        aria-label={`${qualificationLabel(k)} à l'étape ${stageName(stage)}`}
                         checked={(rules.stageRequirements[stage] ?? []).includes(k)}
                         onChange={() => toggle(stage, k)}
                       />
@@ -251,7 +206,6 @@ export default function DealRulesForm({ stageLabels, sections }: { stageLabels: 
                 ? {
                     ...rules,
                     ...(sections.includes("method") ? { method: DEFAULT_RULES.method } : {}),
-                    ...(sections.includes("objectives") ? { callObjectives: DEFAULT_RULES.callObjectives } : {}),
                     ...(sections.includes("thresholds") ? { inactivityDays: DEFAULT_RULES.inactivityDays, slowStageFactor: DEFAULT_RULES.slowStageFactor } : {}),
                     ...(sections.includes("stages") ? { stageRequirements: DEFAULT_RULES.stageRequirements } : {}),
                   }

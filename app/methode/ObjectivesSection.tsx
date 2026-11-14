@@ -2,16 +2,28 @@
 
 import { useState } from "react";
 import { RulesEditor } from "@/app/deals/DealRulesForm";
-import { METHODS, OBJECTIVE_RANKS, qualificationLabel, type DealRules } from "@/lib/deal-rules";
+import { DEFAULT_STAGE_LABELS, METHODS, qualificationLabel, type DealRules } from "@/lib/deal-rules";
 
 const CARD = "rounded-2xl border border-border bg-white p-5 sm:p-6";
 
-// Bloc « Objectifs par rendez-vous » de la page Méthode (maquette G1 B,
-// 05/11/2026) : en lecture, une ligne de pastilles par rendez-vous ; le
-// manager l'ouvre pour régler la méthode de qualification et les objectifs
-// (les seuils et les étapes restent dans Suivi des deals › Règles). Les
-// règles sont enregistrées entières : ce bloc ne touche qu'à ses champs.
-export default function ObjectivesSection({ number, initialRules, canEdit }: { number: number; initialRules: DealRules; canEdit: boolean }) {
+// Bloc « Objectifs par étape commerciale » de la page Méthode (maquette G1 B ;
+// par étape et non plus par rendez-vous depuis le 14/11/2026, réponse d'Hubert
+// à E1) : en lecture, une ligne de pastilles par étape ; le manager l'ouvre
+// pour régler la méthode de qualification et les objectifs. `stageLabels` =
+// les étapes du pipeline HubSpot (1 = la première) ; vide, les trois étapes
+// par défaut. Les règles sont enregistrées entières : ce bloc ne touche qu'à
+// ses champs.
+export default function ObjectivesSection({
+  number,
+  initialRules,
+  canEdit,
+  stageLabels,
+}: {
+  number: number;
+  initialRules: DealRules;
+  canEdit: boolean;
+  stageLabels: Record<number, string>;
+}) {
   const [rules, setRules] = useState(initialRules);
   const [draft, setDraft] = useState<DealRules | null>(null);
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
@@ -35,12 +47,19 @@ export default function ObjectivesSection({ number, initialRules, canEdit }: { n
   }
 
   const fields = new Set<string>(METHODS[rules.method].fields);
+  const fromHubspot = Object.keys(stageLabels).length > 0;
+  const stages = fromHubspot
+    ? Object.entries(stageLabels)
+        .map(([n, label]) => ({ n: Number(n), label }))
+        .sort((a, b) => a.n - b.n)
+    : DEFAULT_STAGE_LABELS.map((label, i) => ({ n: i + 1, label }));
 
   return (
     <section className={CARD} aria-labelledby="methode-objectifs">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <h2 id="methode-objectifs" className="text-[17px] font-semibold text-slate-900">
-          {number}. Objectifs par rendez-vous
+          {number}. Objectifs par étape commerciale
+          <span className="ml-2 text-[14px] font-normal text-slate-500">{fromHubspot ? "étapes du pipeline HubSpot" : "étapes par défaut"}</span>
         </h2>
         {canEdit && !draft && (
           <button onClick={() => setDraft(rules)} className="text-[13.5px] font-semibold text-[color:var(--violet)] hover:underline">
@@ -48,14 +67,11 @@ export default function ObjectivesSection({ number, initialRules, canEdit }: { n
           </button>
         )}
       </div>
-      <p className="mt-1 text-[13.5px] text-slate-500">
-        Méthode {METHODS[rules.method].label}. Ce que vos commerciaux doivent obtenir à chaque rendez-vous : le brief le leur rappelle, la page du
-        meeting dit ce qui a été obtenu, et ce qui manque passe au rendez-vous suivant.
-      </p>
+      <p className="mt-1 text-[13.5px] text-slate-500">Méthode {METHODS[rules.method].label}. Ce qui est confirmé reste acquis d&apos;une étape à l&apos;autre.</p>
 
       {draft ? (
         <div className="mt-5 space-y-4">
-          <RulesEditor rules={draft} onChange={setDraft} stageLabels={{}} sections={["method", "objectives"]} />
+          <RulesEditor rules={draft} onChange={setDraft} stageLabels={stageLabels} sections={["method", "stages"]} />
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={save}
@@ -77,18 +93,12 @@ export default function ObjectivesSection({ number, initialRules, canEdit }: { n
           </div>
         </div>
       ) : (
-        <div className="mt-4 grid grid-cols-[56px_minmax(0,1fr)] items-start gap-x-4 gap-y-3 text-[14px]">
-          {Array.from({ length: OBJECTIVE_RANKS }, (_, i) => i + 1).map((rank) => {
-            const keys = (rules.callObjectives[rank] ?? []).filter((k) => fields.has(k));
+        <div className="mt-4 grid grid-cols-1 items-start gap-x-4 gap-y-3 text-[14px] sm:grid-cols-[190px_minmax(0,1fr)]">
+          {stages.map(({ n, label }) => {
+            const keys = (rules.stageRequirements[n] ?? []).filter((k) => fields.has(k));
             return (
-              <div key={rank} className="contents">
-                <span
-                  className={`justify-self-start rounded-md px-1.5 py-0.5 text-[12.5px] font-bold tabular-nums ${
-                    rank > 1 ? "bg-[color:var(--violet)] text-white" : "bg-white text-slate-600 ring-1 ring-slate-300"
-                  }`}
-                >
-                  {rank === OBJECTIVE_RANKS ? `R${rank}+` : `R${rank}`}
-                </span>
+              <div key={n} className="contents">
+                <span className="pt-0.5 text-[14px] font-semibold text-slate-900">{label}</span>
                 {keys.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5">
                     {keys.map((k) => (

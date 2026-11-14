@@ -1,6 +1,6 @@
 import { DEAL_ALERT_RULES, type DealMemoryAlert, type DealMemoryItem } from "./deal-memory-schema";
 import { itemLevel, mergeKnown, reviewCallObjectives, type ItemsByField, type ObjectiveRow } from "./call-objectives";
-import { qualificationFields, qualificationLabel, type DealRules, type QualificationKey } from "./deal-rules";
+import { stageLevel, qualificationFields, qualificationLabel, type DealRules, type QualificationKey } from "./deal-rules";
 
 // Le fil d'un deal (demande de Jean du 28/10/2026) : sur la page d'un deal,
 // la continuité de tous ses calls — ce que chacun devait aller chercher, ce
@@ -16,6 +16,8 @@ export type TimelineFiche = {
   ownerId: string;
   fields: ItemsByField;
   alerts: DealMemoryAlert[];
+  // L'état du deal HubSpot relevé à ce call : son étape fixe les objectifs.
+  hubspot?: { closed: boolean; stageIndex: number | null } | null;
 };
 
 // Ce que la base sait du call lui-même, à côté de la fiche deal.
@@ -119,6 +121,7 @@ export function buildDealTimeline(
       summary: detail?.summary?.trim() || null,
       objectives: reviewCallObjectives({
         rank: i + 1,
+        level: stageLevel(fiche.hubspot, i + 1),
         current: fiche.fields,
         prior,
         rules,

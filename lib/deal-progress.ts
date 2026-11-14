@@ -9,7 +9,7 @@ import {
   type HubspotDealSnapshot,
 } from "./deal-memory-schema";
 import type { QualificationKey } from "./deal-actions";
-import { DEFAULT_RULES, missingForStage, qualificationFields, qualificationLabel, type DealRules } from "./deal-rules";
+import { DEFAULT_RULES, missingForStage, qualificationFields, qualificationLabel, stageLevel, type DealRules } from "./deal-rules";
 import { REP_ACTIONS, sortByWeight } from "./deal-board";
 import { dealObjectives, isVague, itemLevel, type DealObjectives, type ItemsByField, type StoredQuestions } from "./call-objectives";
 
@@ -273,8 +273,10 @@ export function buildDealProgress(fiches: ProgressFiche[], now: number, rules: D
     const comparison = latest.alerts.filter((a) => COMPARISON_RULES.has(a.rule));
     const undated = latest.alerts.some((a) => a.rule === "prochaine_etape_non_datee");
     const idle = idleDays !== null && idleDays >= rules.inactivityDays;
-    // L'étape du deal : celle du pipeline HubSpot, sinon son rang (R1 = 1).
-    const stage = latest.hubspot && !latest.hubspot.closed ? latest.hubspot.stageIndex : latest.hubspot ? null : sorted.length;
+    // L'étape du deal : celle du pipeline HubSpot, sinon son rang ramené aux
+    // trois étapes par défaut. Un deal clos n'a plus de critère de passage.
+    const level = stageLevel(latest.hubspot, sorted.length);
+    const stage = latest.hubspot?.closed ? null : level;
     const missing = missingForStage(rules, stage, seen);
 
     let verdict: DealVerdict;
@@ -332,7 +334,8 @@ export function buildDealProgress(fiches: ProgressFiche[], now: number, rules: D
       objectives: dealObjectives(
         sorted.map((f) => f.fields as ItemsByField),
         rules,
-        latest.nextQuestions
+        latest.nextQuestions,
+        level
       ),
       aiAdvice: latest.nextQuestions?.advice ?? null,
       nextSteps: latest.fields.prochaines_etapes ?? [],

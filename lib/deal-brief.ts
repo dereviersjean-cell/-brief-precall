@@ -3,7 +3,7 @@ import { buildQualification, QUALIFICATION_FIELDS, type QualificationKey, type Q
 import { REP_ACTIONS, sortByWeight } from "./deal-board";
 import type { ProgressFiche } from "./deal-progress";
 import { dealObjectives, type DealObjectives, type ItemsByField } from "./call-objectives";
-import { DEFAULT_RULES, type DealRules } from "./deal-rules";
+import { DEFAULT_RULES, stageLevel, type DealRules } from "./deal-rules";
 
 // Brief avant un call qui fait suite à d'autres (structure cible de Jean du
 // 27/10/2026) : Brief reconnaît que le rendez-vous appartient à un deal déjà
@@ -68,7 +68,7 @@ export function buildDealBriefContext(
       .filter((o) => o.handlingQuality === "non_traitee" || o.handlingQuality === "partiellement")
       .map((o) => o.objection),
     toFind: rows.filter((r) => r.status === "manquant").map((r) => r.label),
-    objectives: dealObjectives(sorted.map((f) => f.fields as ItemsByField), rules, latest.nextQuestions),
+    objectives: dealObjectives(sorted.map((f) => f.fields as ItemsByField), rules, latest.nextQuestions, stageLevel(latest.hubspot, sorted.length)),
   };
 }
 

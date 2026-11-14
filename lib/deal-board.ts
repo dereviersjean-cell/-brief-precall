@@ -5,7 +5,7 @@ import {
   type HubspotDealSnapshot,
 } from "./deal-memory-schema";
 import { slowStage, type PipelineStats } from "./deal-pipeline-stats";
-import { DEFAULT_RULES, missingForStage, qualificationLabel, type DealRules } from "./deal-rules";
+import { DEFAULT_RULES, missingForStage, qualificationLabel, stageLevel, type DealRules } from "./deal-rules";
 
 // Deal Execution, étape 4 (27/10/2026) : la vue manager. Sans dépendance
 // (réseau, base) pour être testée ; lib/db.ts lui fournit les lignes.
@@ -177,7 +177,7 @@ export function buildBoard(
     // deal (pipeline HubSpot, sinon son rang), ce qui devrait être connu.
     if (list.every((r) => r.knownKeys)) {
       const known = new Set(list.flatMap((r) => r.knownKeys ?? []));
-      const stage = latest.hubspot && !latest.hubspot.closed ? latest.hubspot.stageIndex : latest.hubspot ? null : list.length;
+      const stage = latest.hubspot?.closed ? null : stageLevel(latest.hubspot, list.length);
       const missing = missingForStage(rules, stage, known);
       if (missing.length > 0) {
         alerts.push({

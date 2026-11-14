@@ -33,7 +33,8 @@ describe("adviceFor", () => {
 
   test("critère de passage : pourquoi et questions portent sur l'information manquante, pas sur une autre alerte", () => {
     const a = advice([
-      fiche({ callId: "a", callAt: daysAgo(9), fields: { douleur: [item("d")] } }),
+      // Deuxième étape : il manque le décideur et l'échéance de la première.
+      fiche({ callId: "a", callAt: daysAgo(9), fields: { douleur: [item("d")], impact: [item("+20 %")] } }),
       fiche({
         callId: "b",
         fields: { prochaines_etapes: [item("Démo", "2026-11-03")] },

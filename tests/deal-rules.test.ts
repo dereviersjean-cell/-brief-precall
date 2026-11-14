@@ -28,8 +28,9 @@ describe("coerceDealRules", () => {
 });
 
 describe("missingForStage", () => {
-  test("cumulatif : à l'étape 2, ce que demandent les étapes 1 et 2", () => {
-    assert.deepEqual(missingForStage(DEFAULT_RULES, 2, new Set(["douleur"])).sort(), ["decideur", "impact"]);
+  test("en arrivant à l'étape 2, ce que demandait l'étape 1 ; rien à la première", () => {
+    assert.deepEqual(missingForStage(DEFAULT_RULES, 2, new Set(["douleur"])).sort(), ["decideur", "echeance", "impact"]);
+    assert.deepEqual(missingForStage(DEFAULT_RULES, 3, new Set(["douleur", "impact", "decideur", "echeance", "budget"])).sort(), ["criteres", "processus"]);
     assert.deepEqual(missingForStage(DEFAULT_RULES, 1, new Set(["douleur"])), []);
     assert.deepEqual(missingForStage(DEFAULT_RULES, null, new Set()), []);
   });
@@ -37,7 +38,7 @@ describe("missingForStage", () => {
   test("limité aux champs de la méthode : BANT ne demande ni impact ni critères", () => {
     const bant = coerceDealRules({ ...DEFAULT_RULES, method: "bant" });
     assert.deepEqual(qualificationFields(bant), METHODS.bant.fields);
-    assert.deepEqual(missingForStage(bant, 3, new Set(["douleur", "decideur"])), []);
+    assert.deepEqual(missingForStage(bant, 3, new Set(["douleur", "decideur"])).sort(), ["budget", "echeance"]);
   });
 });
 
@@ -64,7 +65,7 @@ describe("règles appliquées", () => {
     const [d] = buildDealProgress([fiche({ callId: "a", callAt: daysAgo(9) }), fiche({ callId: "b", fields: { douleur: [item("d")], prochaines_etapes: [{ ...item("Démo"), date: "2026-11-03" }] } })], NOW);
     assert.equal(d.focus.status, "traiter");
     assert.match(d.focus.action, /^Obtenir : /);
-    assert.deepEqual(d.missingForStage.sort(), ["Décideur économique", "Impact chiffré / ROI attendu"]);
+    assert.deepEqual(d.missingForStage.sort(), ["Décideur économique", "Impact chiffré / ROI attendu", "Échéance"]);
   });
 
   test("vue manager : l'alerte « critère de passage manquant »", () => {
@@ -80,10 +81,14 @@ describe("règles appliquées", () => {
       alerts: [],
       knownKeys: [],
     };
-    const [deal] = buildBoard([row], [], NOW);
+    // Un premier rendez-vous n'a encore rien à avoir obtenu ; au deuxième,
+    // les objectifs de la première étape manquent.
+    assert.equal(buildBoard([row], [], NOW)[0].alerts.length, 0);
+    const second = { ...row, callId: "c2", callAt: daysAgo(1), generatedAt: daysAgo(1) };
+    const [deal] = buildBoard([row, second], [], NOW);
     assert.equal(deal.alerts[0].rule, "critere_passage");
     assert.match(deal.alerts[0].text, /douleur identifiée/);
     // Sans les champs connus, aucun critère n'est évalué.
-    assert.equal(buildBoard([{ ...row, knownKeys: undefined }], [], NOW)[0].alerts.length, 0);
+    assert.equal(buildBoard([{ ...row, knownKeys: undefined }, second], [], NOW)[0].alerts.length, 0);
   });
 });

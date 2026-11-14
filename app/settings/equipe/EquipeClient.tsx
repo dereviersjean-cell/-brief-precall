@@ -7,8 +7,6 @@ import { isPendingInvitation } from "@/lib/team-invitation";
 import PersonPhoto from "@/app/components/PersonPhoto";
 import InviteCommercialModal from "@/app/team/InviteCommercialModal";
 
-const CARD = "rounded-2xl border border-border bg-white p-5 sm:p-6";
-
 function label(m: OrgTeamMember): string {
   return m.name ?? m.email;
 }
@@ -28,22 +26,29 @@ function Status({ m }: { m: OrgTeamMember }) {
   );
 }
 
-// Paramètres › Équipe, une carte par manager (maquette H1 B, 05/11/2026).
-// Le manager connecté agit sur sa propre équipe ; les autres équipes sont en
-// lecture (les routes /api/team/* n'acceptent que ses propres liens).
+// Paramètres › Équipe en tableau (maquette H1 A, choisie par Jean le
+// 14/11/2026 ; la version « une carte par manager » du 05/11 est dans
+// l'historique git). Une ligne par personne : rôle, managers, agenda, et les
+// actions du manager connecté sur sa propre équipe (les routes /api/team/*
+// n'acceptent que ses propres liens — décision F4 : le manager gère son
+// équipe).
 export default function EquipeClient({ team, viewerId }: { team: OrgTeam; viewerId: string }) {
   const router = useRouter();
   const [inviting, setInviting] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
-  const [picking, setPicking] = useState("");
 
-  const managers = [...team.managers].sort((a, b) => (a.id === viewerId ? -1 : b.id === viewerId ? 1 : 0));
   const mine = team.managers.find((m) => m.id === viewerId);
   const myIds = new Set(mine?.commercialIds ?? []);
-  const linkable = Object.values(team.members)
-    .filter((m) => m.role === "commercial" && !myIds.has(m.id))
-    .sort((a, b) => label(a).localeCompare(label(b), "fr"));
+  const managersOf = (id: string) => team.managers.filter((m) => m.commercialIds.includes(id)).map((m) => label(team.members[m.id]).split(" ")[0]);
+  // Les managers d'abord (soi en premier), puis les commerciaux par nom.
+  const people = Object.values(team.members).sort(
+    (a, b) =>
+      Number(b.id === viewerId) - Number(a.id === viewerId) ||
+      Number(b.role === "manager") - Number(a.role === "manager") ||
+      label(a).localeCompare(label(b), "fr")
+  );
+  const managerCount = people.filter((m) => m.role === "manager").length;
 
   async function act(id: string, url: string, init: RequestInit, ok: string, fallback: string) {
     setBusyId(id);
@@ -77,10 +82,18 @@ export default function EquipeClient({ team, viewerId }: { team: OrgTeam; viewer
 
   const action = "text-[13px] font-medium text-[color:var(--violet)] hover:underline disabled:opacity-50";
 
+  const COLS = "sm:grid-cols-[minmax(0,2fr)_110px_minmax(0,1.2fr)_150px_minmax(0,1.6fr)]";
+  const muted = "text-[13px] font-medium text-slate-500 hover:text-rose-700 disabled:opacity-50";
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-[14px] text-slate-600">Chaque manager suit les deals des commerciaux de son équipe dans « Suivi des deals ».</p>
+        <p className="text-[14px] text-slate-600">
+          <strong className="text-slate-900">
+            {people.length} personne{people.length > 1 ? "s" : ""}
+          </strong>{" "}
+          · {managerCount} manager{managerCount > 1 ? "s" : ""}, {people.length - managerCount} commercia{people.length - managerCount > 1 ? "ux" : "l"}
+        </p>
         <button
           onClick={() => setInviting(true)}
           className="inline-flex h-10 shrink-0 items-center justify-center rounded-full bg-[color:var(--primary)] px-5 text-[13.5px] font-semibold text-white hover:brightness-110"
@@ -95,118 +108,61 @@ export default function EquipeClient({ team, viewerId }: { team: OrgTeam; viewer
         </p>
       )}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {managers.map((mgr) => {
-          const manager = team.members[mgr.id];
-          const own = mgr.id === viewerId;
-          return (
-            <section key={mgr.id} className={CARD} aria-label={`Équipe de ${label(manager)}`}>
-              <div className="flex items-center gap-3">
-                <PersonPhoto name={label(manager)} url={manager.avatarUrl} size={44} />
-                <div className="min-w-0">
-                  <h2 className="truncate text-[15.5px] font-semibold text-slate-900">{own ? "Votre équipe" : `Équipe de ${label(manager)}`}</h2>
-                  <p className="text-[13px] text-slate-500">
-                    {own ? label(manager) : "Manager"} · {mgr.commercialIds.length} commercia{mgr.commercialIds.length > 1 ? "ux" : "l"}
-                  </p>
-                </div>
-              </div>
-
-              {mgr.commercialIds.length === 0 ? (
-                <p className="mt-4 text-[13.5px] text-slate-500">Aucun commercial rattaché.</p>
-              ) : (
-                <ul className="mt-3">
-                  {mgr.commercialIds.map((id) => {
-                    const m = team.members[id];
-                    const pending = isPendingInvitation(m);
-                    return (
-                      <li key={id} className="border-t border-border py-2.5 first:border-t-0">
-                        <div className="flex items-center gap-3">
-                          <span className="min-w-0 flex-1 truncate text-[14px] text-slate-900" title={m.email}>
-                            {label(m)}
-                          </span>
-                          <Status m={m} />
-                        </div>
-                        {own && (
-                          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
-                            {pending && (
-                              <button onClick={() => resend(m)} disabled={busyId === id} className={action}>
-                                Renvoyer l&apos;invitation
-                              </button>
-                            )}
-                            {pending && !m.hasActivity && (
-                              <button onClick={() => cancel(m)} disabled={busyId === id} className="text-[13px] font-medium text-slate-500 hover:text-rose-700 disabled:opacity-50">
-                                Annuler l&apos;invitation
-                              </button>
-                            )}
-                            <button onClick={() => unlink(m)} disabled={busyId === id} className="text-[13px] font-medium text-slate-500 hover:text-rose-700 disabled:opacity-50">
-                              Retirer de mon équipe
-                            </button>
-                          </div>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-
-              {own && linkable.length > 0 && (
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                  <label htmlFor="rattacher" className="sr-only">
-                    Commercial à rattacher
-                  </label>
-                  <select
-                    id="rattacher"
-                    value={picking}
-                    onChange={(e) => setPicking(e.target.value)}
-                    className="h-10 min-w-0 flex-1 rounded-xl border border-border bg-white px-3 text-[13.5px] text-slate-900"
-                  >
-                    <option value="">Rattacher un commercial…</option>
-                    {linkable.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {label(m)}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={() => {
-                      const m = team.members[picking];
-                      if (m) link(m).then(() => setPicking(""));
-                    }}
-                    disabled={!picking || busyId !== null}
-                    className="inline-flex h-10 items-center rounded-xl border border-[color:var(--lavender-strong)] bg-white px-4 text-[13.5px] font-semibold text-[color:var(--violet)] hover:bg-[color:var(--lavender)] disabled:opacity-50"
-                  >
-                    Rattacher
-                  </button>
-                </div>
-              )}
-            </section>
-          );
-        })}
-      </div>
-
-      <section className={CARD} aria-labelledby="sans-manager">
-        <h2 id="sans-manager" className="text-[15px] font-semibold text-slate-900">
-          Sans manager
-        </h2>
-        {team.unassignedIds.length === 0 ? (
-          <p className="mt-1 text-[13.5px] text-slate-500">Tout le monde est rattaché.</p>
-        ) : (
-          <ul className="mt-2">
-            {team.unassignedIds.map((id) => {
-              const m = team.members[id];
-              return (
-                <li key={id} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border py-2.5 first:border-t-0">
-                  <span className="min-w-0 flex-1 truncate text-[14px] text-slate-900">{label(m)}</span>
+      <div className="overflow-hidden rounded-2xl border border-border bg-white">
+        <div className={`hidden gap-4 border-b border-border px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 sm:grid ${COLS}`}>
+          <span>Personne</span>
+          <span>Rôle</span>
+          <span>Manager</span>
+          <span>Agenda</span>
+          <span />
+        </div>
+        <ul>
+          {people.map((m) => {
+            const pending = isPendingInvitation(m);
+            const isCommercial = m.role !== "manager";
+            const inMyTeam = myIds.has(m.id);
+            const managers = managersOf(m.id);
+            return (
+              <li key={m.id} className={`grid grid-cols-1 items-center gap-x-4 gap-y-1.5 border-b border-border px-5 py-3 last:border-0 ${COLS}`}>
+                <span className="flex min-w-0 items-center gap-3">
+                  <PersonPhoto name={label(m)} url={m.avatarUrl} size={28} />
+                  <span className="min-w-0">
+                    <span className="block truncate text-[14px] font-semibold text-slate-900">{label(m)}</span>
+                    {m.name && <span className="block truncate text-[12.5px] text-slate-500">{m.email}</span>}
+                  </span>
+                </span>
+                <span className="text-[13.5px] text-slate-800">{isCommercial ? "Commercial" : "Manager"}</span>
+                <span className="text-[13.5px] text-slate-800">{isCommercial ? (managers.length > 0 ? managers.join(", ") : <span className="text-amber-700">Sans manager</span>) : "—"}</span>
+                <span>
                   <Status m={m} />
-                  <button onClick={() => link(m)} disabled={busyId === id} className={action}>
-                    Prendre dans mon équipe
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
+                </span>
+                <span className="flex flex-wrap gap-x-4 gap-y-1 sm:justify-end">
+                  {isCommercial && inMyTeam && pending && (
+                    <button onClick={() => resend(m)} disabled={busyId === m.id} className={action}>
+                      Renvoyer l&apos;invitation
+                    </button>
+                  )}
+                  {isCommercial && inMyTeam && pending && !m.hasActivity && (
+                    <button onClick={() => cancel(m)} disabled={busyId === m.id} className={muted}>
+                      Annuler l&apos;invitation
+                    </button>
+                  )}
+                  {isCommercial && inMyTeam && (
+                    <button onClick={() => unlink(m)} disabled={busyId === m.id} className={muted}>
+                      Retirer de mon équipe
+                    </button>
+                  )}
+                  {isCommercial && !inMyTeam && (
+                    <button onClick={() => link(m)} disabled={busyId === m.id} className={action}>
+                      Prendre dans mon équipe
+                    </button>
+                  )}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
 
       {inviting && (
         <InviteCommercialModal

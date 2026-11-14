@@ -59,10 +59,11 @@ describe("deal-timeline", () => {
     assert.deepEqual(row("decideur"), [null, null]);
   });
 
-  test("au R2, le budget reporté du R1 est noté obtenu", () => {
+  test("au R2, le budget (objectif de la deuxième étape) est noté obtenu, le décideur reporté de la première", () => {
     const { calls } = buildDealTimeline(fiches, DEFAULT_RULES);
     const budget = calls[1].objectives.find((o) => o.key === "budget");
     assert.equal(budget?.status, "obtenu");
-    assert.equal(budget?.carried, true);
+    assert.equal(budget?.carried, false);
+    assert.equal(calls[1].objectives.find((o) => o.key === "decideur")?.carried, true);
   });
 });
