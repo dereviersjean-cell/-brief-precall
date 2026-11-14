@@ -92,3 +92,38 @@ export async function findSimilarReferences(
   if (error) throw error;
   return (data ?? []) as SimilarReference[];
 }
+
+// Les mêmes candidates, cherchées chez plusieurs utilisateurs (toute une
+// organisation) : un seul calcul d'embedding, une recherche par personne, puis
+// les plus proches tous comptes confondus. La fonction SQL filtre par
+// utilisateur ; passer par elle évite une migration.
+export async function findSimilarReferencesForUsers(
+  userIds: string[],
+  prospectContext: string,
+  limit = 5
+): Promise<SimilarReference[]> {
+  if (userIds.length === 0) return [];
+  const embedding = await generateEmbedding(prospectContext, "query");
+  const lists = await Promise.all(
+    userIds.map(async (id) => {
+      const { data, error } = await supabaseAdmin.rpc("match_client_references", {
+        query_embedding: embedding,
+        match_user_id: id,
+        match_count: limit,
+      });
+      if (error) throw error;
+      return (data ?? []) as SimilarReference[];
+    })
+  );
+  const seen = new Set<string>();
+  return lists
+    .flat()
+    .sort((a, b) => b.similarity - a.similarity)
+    .filter((r) => {
+      const key = (r.client_name ?? r.id).trim().toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, limit);
+}

@@ -1,14 +1,17 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { AdminConfig } from "./admin-config";
 import type { NewsArticle } from "./news";
-import { findSimilarReferences } from "./embeddings";
+import { findSimilarReferencesForUsers } from "./embeddings";
 import type { SimilarReference } from "./embeddings";
-import { getContact, getEnabledModulesForUser } from "./db";
+import { getContact, getEnabledModulesForUser, getOrganizationUserIds } from "./db";
 import { enrichFromCRM } from "./crm/enrichment";
 import type { CrmEnrichment } from "./crm/enrichment";
 import { extractJsonObject } from "./ai-json";
 import { seniorityLabel, type ApolloContact } from "./apollo";
 import { reportError, reportWarning } from "./monitoring";
+import { hasRealValue } from "./reference-quality";
+import type { ReferenceLevel } from "./types";
+import type { MeetingContext } from "./meeting-origin";
 
 const client = new Anthropic();
 
@@ -27,12 +30,6 @@ const EFFORT_MODELS = new Set(["claude-sonnet-5-5", "claude-opus-5-5"]);
 // (stop_reason « pause_turn ») : on renvoie la réponse telle quelle pour
 // que le modèle reprenne, dans cette limite.
 const MAX_PAUSE_RESUMES = 3;
-
-const OVERVIEW_LENGTH: Record<AdminConfig["overviewLength"], string> = {
-  court: "2 phrases",
-  moyen: "2-3 phrases",
-  long: "4-5 phrases",
-};
 
 const TONE_INSTRUCTION: Record<AdminConfig["tone"], string> = {
   formel: "Utilise un registre formel et soutenu.",
@@ -79,6 +76,45 @@ function buildContactBlock(contact: ApolloContact | null): string {
   return `\nCONTACT QUI SERA EN FACE DU COMMERCIAL\n\n${lines.join("\n")}\n\nPersonnalise l'accroche et les arguments en fonction du rôle de cette personne (ses préoccupations probables selon son poste), sans jamais inventer de détail sur elle qui ne figure pas ci-dessus.\n`;
 }
 
+// Une référence candidate telle qu'on la donne au modèle : les « Unknown » et
+// « Non spécifié » de la base sont retirés, sinon il les recopie à l'oral.
+function referenceLine(r: SimilarReference): string {
+  const parts = [
+    hasRealValue(r.problem) ? `Problème : ${r.problem}` : null,
+    hasRealValue(r.solution) ? `Ce qui a été fait : ${r.solution}` : null,
+    hasRealValue(r.result) ? `Résultat : ${r.result}` : null,
+  ].filter(Boolean);
+  const who = [r.sector, hasRealValue(r.company_size) ? r.company_size : null].filter(Boolean).join(", ");
+  return `- ${r.client_name ?? "Client"}${who ? ` (${who})` : ""}${parts.length > 0 ? ` — ${parts.join(" — ")}` : " — aucun détail en base"}`;
+}
+
+// Niveau d'une référence d'après sa fiche (retours d'Hubert, 13/11/2026).
+export function referenceLevel(r: Pick<SimilarReference, "problem" | "solution" | "result">): ReferenceLevel {
+  if (hasRealValue(r.result)) return "roi";
+  if (hasRealValue(r.problem) && hasRealValue(r.solution)) return "cas_usage";
+  return "simple";
+}
+
+const sameName = (a: string | null | undefined, b: string | null | undefined) =>
+  !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
+
+// Deux références au plus, chacune avec le niveau de sa fiche. Une référence
+// que le modèle aurait inventée (nom absent des candidates) est écartée.
+function attachReferenceLevels(brief: unknown, candidates: SimilarReference[]): unknown {
+  if (!brief || typeof brief !== "object") return brief;
+  const raw = (brief as { references?: unknown }).references;
+  if (!Array.isArray(raw)) return brief;
+  const references = raw
+    .map((r) => {
+      const ref = r as { client_name?: string; relevance?: string; pitch?: string };
+      const source = candidates.find((c) => sameName(c.client_name, ref.client_name));
+      return source && ref.pitch ? { client_name: source.client_name as string, relevance: ref.relevance ?? "", pitch: ref.pitch, level: referenceLevel(source) } : null;
+    })
+    .filter(Boolean)
+    .slice(0, 2);
+  return { ...(brief as Record<string, unknown>), references };
+}
+
 function buildUserPrompt(
   company: string,
   legalContext: string,
@@ -88,10 +124,13 @@ function buildUserPrompt(
   similarRefs: SimilarReference[] = [],
   relationalHistoryBlock = "",
   crmData: CrmEnrichment | null = null,
-  apolloContact: ApolloContact | null = null
+  apolloContact: ApolloContact | null = null,
+  // Suite d'un deal (R2 et plus) : le brief change de forme.
+  dealBlock = "",
+  meetingContextBlock = ""
 ): string {
-  const overviewDesc = OVERVIEW_LENGTH[config.overviewLength];
   const toneDesc = TONE_INSTRUCTION[config.tone];
+  const isFollowUp = dealBlock.length > 0;
 
   const contextBlock =
     userContext &&
@@ -107,73 +146,98 @@ function buildUserPrompt(
 
   const referencesBlock =
     similarRefs.length > 0
-      ? `\nRéférences clients similaires dans votre portfolio :\n${similarRefs
-          .map(
-            (r) =>
-              `- ${r.client_name ?? "Client"} (${[r.sector, r.company_size].filter(Boolean).join(", ")}) — Problème : ${r.problem ?? "–"} — Solution : ${r.solution ?? "–"} — Résultat : ${r.result ?? "–"}`
-          )
-          .join(
-            "\n"
-          )}\n\nCes références sont des CANDIDATES, présélectionnées par proximité sémantique : certaines peuvent n'avoir aucun rapport avec ce prospect. Ne retiens que celles réellement proches de ${company} (même secteur, même cible de clientèle ou même problématique commerciale) et ignore les autres. Pour chaque référence retenue, génère un bloc avec : pourquoi cette référence est pertinente pour ce prospect spécifiquement, et une formulation exacte prête à dire à l'oral avec contexte et chiffres.`
+      ? `\nRéférences clients du commercial (candidates, présélectionnées par proximité : certaines n'ont aucun rapport avec ce prospect) :\n${similarRefs
+          .map(referenceLine)
+          .join("\n")}\n`
       : "";
 
   const referencesSchema =
     similarRefs.length > 0
-      ? `  "references": [\n    { "client_name": "...", "relevance": "Pourquoi pertinent pour ce prospect", "pitch": "Formulation prête à l'oral avec chiffres" }\n  ],\n`
+      ? `  "references": [\n    { "client_name": "Nom exact de la candidate", "relevance": "Pourquoi ce client est comparable à ${company}, en une phrase courte", "pitch": "La phrase à dire à l'oral" }\n  ],\n`
       : "";
 
   const referencesConstraint =
     similarRefs.length > 0
-      ? `\n- "references" contient au maximum 3 références, uniquement celles réellement proches de ${company}. Si aucune candidate ne l'est, renvoie "references": [] — une référence hors sujet citée à l'oral dessert le commercial, mieux vaut n'en proposer aucune\n- Pour chaque référence dans "references" : explique en 1 phrase pourquoi c'est pertinent pour ${company}, puis rédige une formulation exacte prête à l'oral avec le nom du client, le contexte et les chiffres clés`
+      ? `\n- "references" : au plus 2, les plus comparables à ${company} (secteur, taille, cible de clientèle ou problème), et complémentaires entre elles. Aucune candidate comparable : "references": []. "client_name" reprend le nom exact de la candidate. "pitch" s'adapte à ce que la fiche contient : un résultat chiffré → cite-le tel quel ; un problème et ce qui a été fait, sans résultat → raconte ce cas en une phrase ; rien d'autre que le nom → dis seulement que ce client comparable fait confiance au commercial. N'invente JAMAIS un chiffre, un résultat ou un détail absent de la fiche`
       : "";
 
-  const actualitesSchema = newsContext
-    ? `  "actualites": [\n    { "titre": "...", "description": "...", "url": "...", "source": "...", "date": "..." }\n  ],\n`
-    : "";
-
-  const actualitesConstraint = newsContext
-    ? `\n- Sélectionne les 3 actualités les plus pertinentes parmi celles fournies et retourne-les dans "actualites" en copiant exactement les valeurs titre, description, url, source et date`
-    : "";
-
   const relationalSchema = relationalHistoryBlock
-    ? `  "historique_relationnel": "Synthèse courte de ce qu'il faut retenir de l'historique pour ce nouveau call",\n`
-    : "";
-
-  const relationalConstraint = relationalHistoryBlock
-    ? `\n- Remplis "historique_relationnel" avec une synthèse de 1-2 phrases de ce qu'il faut retenir de l'historique pour aborder ce nouveau call`
+    ? `  "historique_relationnel": "Ce qu'il faut retenir de l'historique pour ce rendez-vous, en 1 ou 2 phrases",\n`
     : "";
 
   const crmBlock = buildCrmBlock(crmData);
   const contactBlock = buildContactBlock(apolloContact);
 
-  return `Génère un brief pré-call complet pour un commercial B2B qui s'apprête à appeler ${company}.
-${legalContext}${newsContext}${crmBlock}${contactBlock}${contextBlock}${referencesBlock}${relationalHistoryBlock}
-${toneDesc}
+  const companySchema = `  "overview": "L'activité de ${company} en UNE phrase simple : ce qu'elle fait, pour qui",
+  "entreprise": {
+    "clients": "Ses clients ou utilisateurs, en une phrase courte",
+    "chiffres_cles": ["3 au plus, chacun avec un nombre et quelques mots (effectif, année de création, volume, levée…)"],
+    "actualite": "L'actualité en cours en une phrase (levée de fonds, lancement, recrutement…), ou \"\" si rien de récent"
+  },`;
+
+  const companyConstraints = `- Tout en français. ${toneDesc}
+- Concis partout : chaque phrase fait 25 mots au plus, aucune formule de remplissage, aucun doublon entre les rubriques
+- "overview" et "entreprise" doivent se lire en dix secondes. Uniquement des faits vérifiés (données légales, recherche web) : un chiffre incertain n'est pas écrit, et la source n'est jamais citée
+- Utilise la recherche web pour ancrer le brief dans des faits récents et vérifiables sur ${company}. Si un résultat correspond clairement à ${company} (à l'orthographe, l'espacement ou la casse près), utilise-le avec confiance même si son secteur surprend — ne présuppose jamais le secteur du prospect à partir du profil du commercial. Réserve « peu d'information disponible » au cas où la recherche ne remonte VRAIMENT rien`;
+
+  if (isFollowUp) {
+    return `Prépare le brief d'un rendez-vous de SUIVI pour un commercial B2B : il a déjà échangé avec ${company} et doit faire avancer le deal.
+${legalContext}${newsContext}${crmBlock}${contactBlock}${contextBlock}${referencesBlock}${relationalHistoryBlock}${dealBlock}${meetingContextBlock}
+Retourne ce JSON (structure stricte, aucun texte autour). Même si tu as utilisé la recherche web, ta réponse finale doit être UNIQUEMENT le JSON ci-dessous :
+
+{
+${companySchema}
+  "suite": {
+    "pour_ouvrir": "Ce qu'il faut rappeler pour ouvrir le rendez-vous, en une phrase (un engagement tenu, le point où l'on s'était arrêté)",
+    "rappel": "Où en sommes-nous avec ce prospect ? 2 phrases au plus",
+    "priorites": [
+      { "title": "Ce qu'il faut clarifier ou obtenir, en quelques mots", "manque": "Ce qui manque précisément, en une phrase", "pourquoi": "Pourquoi c'est important pour faire avancer ce deal, en une phrase", "question": "La question à poser, prête à dire" }
+    ],
+    "prochaine_etape": "La prochaine étape concrète à obtenir avant de raccrocher, en une phrase",
+    "preuves": [
+      { "frein": "Une objection ou un frein DÉJÀ exprimé par le prospect", "reponse": "Ce qui y répond concrètement, en une phrase" }
+    ],
+    "engagements": { "nous": ["Ce que le commercial s'est engagé à faire"], "prospect": ["Ce que le prospect s'est engagé à faire"] }
+  },
+${referencesSchema}${relationalSchema}}
+
+Contraintes :
+${companyConstraints}
+- "priorites" : 2 ou 3, de la plus importante à la moins importante. Elles croisent ce que les rendez-vous précédents ont établi et ce qui manque encore pour faire avancer le deal. Ne repose jamais une question dont la réponse est déjà validée
+- "preuves" : 3 au plus, uniquement sur des objections ou des freins réellement exprimés lors des échanges précédents. Aucun frein exprimé : "preuves": []. Pas d'argument hypothétique
+- "engagements" : reprends les engagements pris la dernière fois, rangés selon qui doit agir, chacun en quelques mots avec sa date si elle est connue. Aucun : listes vides${referencesConstraint}`;
+  }
+
+  const enjeuxCount = Math.min(Math.max(config.painPointsCount, 1), 3);
+
+  return `Génère un brief pré-call pour un commercial B2B qui s'apprête à rencontrer ${company} pour la première fois.
+${legalContext}${newsContext}${crmBlock}${contactBlock}${contextBlock}${referencesBlock}${relationalHistoryBlock}${meetingContextBlock}
 Retourne ce JSON (structure stricte, aucun texte autour). Même si tu as utilisé la recherche web, ta réponse finale doit être UNIQUEMENT le JSON ci-dessous, sans phrase d'introduction, citation, ni texte additionnel :
 
 {
-  "overview": "Vue d'ensemble en ${overviewDesc} : secteur, modèle économique, taille et positionnement marché",
-  "accroche": "Une seule phrase d'accroche percutante et personnalisée pour ouvrir le call — spécifique à l'actualité ou au contexte de l'entreprise",
+${companySchema}
+  "accroche": "Une question ouverte, courte, pour ouvrir le rendez-vous",
   "pain_points": [
-    { "title": "Nom court de la difficulté supposée", "detail": "L'indice concret qui te le fait supposer, puis la question à poser en rendez-vous pour le vérifier" }
+    { "title": "L'enjeu en quelques mots", "detail": "L'hypothèse en UNE phrase, appuyée sur un signal public", "question": "La question à poser pour la vérifier" }
   ],
-  "arguments": [
-    { "title": "Titre de l'argument commercial", "detail": "Bénéfice concret chiffré si possible" }
-  ],
-  "vocabulaire": ["terme du secteur du prospect", "..."],
-${referencesSchema}${actualitesSchema}${relationalSchema}}
+${referencesSchema}${relationalSchema}}
 
 Contraintes :
-- Exactement ${config.painPointsCount} pain_points. Ce sont des HYPOTHÈSES : tu ne sais pas ce qui pose problème chez ${company}, tu le supposes. Chaque "detail" part d'un indice concret (un fait trouvé, sa taille, son marché, son actualité) et se termine par une question ouverte que le commercial peut poser pour le vérifier. N'écris jamais « ils souffrent de… » ni « leur problème est… » : un commercial qui affirme à tort connaître les difficultés de son prospect perd sa crédibilité dès la première minute
-- Exactement ${config.argumentsCount} arguments
-- Exactement ${config.keywordsCount} termes dans "vocabulaire". Ce sont les mots du MÉTIER DU PROSPECT, ceux que ses pairs emploient entre eux : procédés, normes et réglementations de son secteur, indicateurs qu'il pilote, acteurs et fournisseurs de sa filière, contraintes propres à son activité. Objectif : que le commercial ait l'air de connaître le métier de son interlocuteur dès les premières minutes. N'y mets JAMAIS de vocabulaire de la VENTE (pipeline, taux de conversion, prospection, ROI commercial, cycle de vente...) : le commercial le maîtrise déjà, ça ne lui apprend rien et ça ne l'aide pas à paraître expert du secteur d'en face
-- Tout en français
-- Utilise la recherche web pour ancrer "overview" et "accroche" dans un fait vérifiable et récent sur ${company} (produit, actualité, levée de fonds, clients...). Si un résultat de recherche correspond clairement à ${company} (à l'orthographe/l'espacement/la casse près), utilise-le avec confiance même si son secteur surprend — ne présuppose jamais le secteur du prospect à partir du profil du commercial. Réserve "peu d'information disponible" au cas où la recherche ne remonte VRAIMENT rien de pertinent, jamais quand elle trouve un résultat clair mais inattendu
-- Accroche basée sur un fait récent ou une réalité spécifique de ${company}${
+${companyConstraints}
+- "accroche" : UNE question ouverte, d'une seule phrase, liée au contexte du prospect (son activité, son actualité, ou la raison du rendez-vous si elle est donnée). Pas d'affirmation, pas de présentation de l'offre
+- "pain_points" : ${enjeuxCount} au plus. Ce sont des enjeux À EXPLORER, des hypothèses : tu ne sais pas ce qui pose problème chez ${company}. Chacun part d'un signal public vérifiable (site, communiqué, offre d'emploi, données légales, actualité) et pas d'une généralité du secteur. Écris au conditionnel (« pourrait », « serait »), jamais « ils souffrent de… » ni « leur problème est… », et jamais à la première personne. Écris-en au moins 2 : faute de signal public propre à l'entreprise, pars de son activité, de sa taille ou de la raison du rendez-vous, sans jamais écrire qu'une information manque. "question" est ouverte et prête à dire${
     userContext?.product_description
-      ? `\n- Les arguments doivent montrer comment "${userContext.product_description}" répond aux besoins de ${company}`
+      ? `\n- Les enjeux retenus sont ceux auxquels « ${userContext.product_description} » peut répondre`
       : ""
-  }${referencesConstraint}${actualitesConstraint}${relationalConstraint}`;
+  }${referencesConstraint}${relationalHistoryBlock ? `\n- "historique_relationnel" : 1 ou 2 phrases` : ""}`;
+}
+
+// Les références appartiennent à l'équipe (décision de Jean et d'Hubert,
+// 13/11/2026) : celles de tous les membres de l'organisation sont candidates,
+// pas seulement celles du commercial. Sans organisation, les siennes.
+async function findSimilarReferencesForOrganization(userId: string, prospectContext: string, limit: number): Promise<SimilarReference[]> {
+  const userIds = await getOrganizationUserIds(userId).catch(() => [userId]);
+  return findSimilarReferencesForUsers(userIds.length > 0 ? userIds : [userId], prospectContext, limit);
 }
 
 export async function generateBrief(
@@ -187,7 +251,9 @@ export async function generateBrief(
   apolloContact?: ApolloContact | null,
   // Suite d'un deal en cours (lib/deal-brief.ts) : ce que les calls
   // précédents ont validé et ce qu'il reste à aller chercher.
-  dealBlock: string = ""
+  dealBlock: string = "",
+  // Pourquoi le prospect a accepté le rendez-vous, saisi par le commercial.
+  meetingContext: MeetingContext | null = null
 ): Promise<unknown> {
   const legalContext = pappersData
     ? `\nVoici les données légales officielles de l'entreprise (source : registre français officiel) :\n${JSON.stringify(pappersData, null, 2)}\n\nBase-toi sur ces faits réels pour le brief. Ne les contredis pas.\n`
@@ -223,7 +289,7 @@ export async function generateBrief(
 
   const [similarRefs, crmData, contactResult] = await Promise.all([
     userId && modules.includes("references")
-      ? findSimilarReferences(userId, prospectContext, 8).catch((err) => {
+      ? findSimilarReferencesForOrganization(userId, prospectContext, 8).catch((err) => {
           console.warn("[brief-generator] findSimilarReferences failed:", err);
           return [] as SimilarReference[];
         })
@@ -244,8 +310,18 @@ export async function generateBrief(
 
   let relationalHistoryBlock = "";
   if (contactResult && contactResult.total_calls > 0 && contactResult.last_call_summary) {
-    relationalHistoryBlock = `\n# HISTORIQUE RELATIONNEL AVEC CE CONTACT\n\nVous avez déjà eu ${contactResult.total_calls} échange(s) avec ce contact. Voici un résumé de votre dernier call :\n\n${contactResult.last_call_summary}\n\nUtilise cet historique pour enrichir le brief — mentionne les engagements pris précédemment, le contexte déjà établi, et adapte l'approche en conséquence. Ajoute un champ "historique_relationnel" dans le JSON de sortie avec une synthèse courte de ce qu'il faut retenir de cet historique pour ce nouveau call.\n`;
+    relationalHistoryBlock = `\n# HISTORIQUE RELATIONNEL AVEC CE CONTACT\n\nVous avez déjà eu ${contactResult.total_calls} échange(s) avec ce contact. Voici un résumé de votre dernier call :\n\n${contactResult.last_call_summary}\n\nAppuie-toi sur cet historique : engagements pris, contexte déjà établi.\n`;
   }
+
+  const meetingContextBlock =
+    meetingContext && (meetingContext.origin || meetingContext.note)
+      ? `\nCONTEXTE DU RENDEZ-VOUS (saisi par le commercial)\n\n${[
+          meetingContext.origin ? `- Origine : ${meetingContext.origin}` : null,
+          meetingContext.note ? `- Pourquoi le prospect a accepté : ${meetingContext.note}` : null,
+        ]
+          .filter(Boolean)
+          .join("\n")}\n\nL'ouverture du rendez-vous s'en inspire.\n`
+      : "";
 
   const userPrompt = buildUserPrompt(
     company,
@@ -254,9 +330,11 @@ export async function generateBrief(
     config,
     userContext,
     similarRefs,
-    relationalHistoryBlock + dealBlock,
+    relationalHistoryBlock,
     crmData,
-    apolloContact ?? null
+    apolloContact ?? null,
+    dealBlock,
+    meetingContextBlock
   );
 
   // Deux essais au plus : le second seulement si la réponse ne contient pas de
@@ -278,7 +356,7 @@ export async function generateBrief(
     }
 
     const parsed = parseBriefResponse(message);
-    if (parsed.ok) return parsed.value;
+    if (parsed.ok) return attachReferenceLevels(parsed.value, similarRefs);
     lastRaw = parsed.raw;
     lastStop = message.stop_reason;
     console.warn(`[brief-generator] JSON introuvable (essai ${attempt + 1}, stop=${message.stop_reason})`);
@@ -359,11 +437,17 @@ async function runBriefRequest(model: string, config: AdminConfig, userPrompt: s
 export type GeneratedBriefJson = {
   overview?: string;
   accroche?: string;
-  pain_points?: Array<{ title: string; detail: string }>;
+  pain_points?: Array<{ title: string; detail: string; question?: string }>;
   arguments?: Array<{ title: string; detail: string }>;
   vocabulaire?: string[];
   references?: Array<{ client_name: string; relevance: string; pitch: string }>;
   historique_relationnel?: string;
+  suite?: {
+    pour_ouvrir?: string;
+    rappel?: string;
+    priorites?: Array<{ title?: string; manque?: string; pourquoi?: string; question?: string }>;
+    prochaine_etape?: string;
+  };
 };
 
 // Shared by the pre-call email (rendered to HTML) and the calendar
@@ -371,34 +455,38 @@ export type GeneratedBriefJson = {
 export function formatBriefAsMarkdown(brief: GeneratedBriefJson): string {
   const sections: string[] = [];
 
+  if (brief.suite?.priorites?.length) {
+    if (brief.suite.rappel) sections.push(`## Où en sommes-nous\n${brief.suite.rappel}`);
+    sections.push(
+      `## Priorités du rendez-vous\n${[
+        brief.suite.pour_ouvrir ? `- **Pour ouvrir** — ${brief.suite.pour_ouvrir}` : null,
+        ...brief.suite.priorites.map((p) => `- **${p.title ?? ""}** — ${p.question ?? p.manque ?? ""}`),
+      ]
+        .filter(Boolean)
+        .join("\n")}`
+    );
+    if (brief.suite.prochaine_etape) sections.push(`## Prochaine étape à obtenir\n${brief.suite.prochaine_etape}`);
+  }
   if (brief.accroche) {
-    sections.push(`## Accroche suggérée\n${brief.accroche}`);
+    sections.push(`## Accroche\n${brief.accroche}`);
   }
   if (brief.overview) {
-    sections.push(`## Contexte entreprise\n${brief.overview}`);
+    sections.push(`## Entreprise\n${brief.overview}`);
   }
   if (brief.pain_points?.length) {
     sections.push(
-      `## Points de douleur\n${brief.pain_points.map((p) => `- **${p.title}** — ${p.detail}`).join("\n")}`
-    );
-  }
-  if (brief.arguments?.length) {
-    sections.push(
-      `## Arguments à mettre en avant\n${brief.arguments.map((a) => `- **${a.title}** — ${a.detail}`).join("\n")}`
+      `## Enjeux à explorer\n${brief.pain_points.map((p) => `- **${p.title}** — ${p.question ?? p.detail}`).join("\n")}`
     );
   }
   if (brief.references?.length) {
     sections.push(
-      `## Références clients pertinentes\n${brief.references
+      `## Références et preuves commerciales\n${brief.references
         .map((r) => `- **${r.client_name}** — ${r.pitch}`)
         .join("\n")}`
     );
   }
   if (brief.historique_relationnel) {
     sections.push(`## Historique relationnel\n${brief.historique_relationnel}`);
-  }
-  if (brief.vocabulaire?.length) {
-    sections.push(`## Vocabulaire clé\n${brief.vocabulaire.join(", ")}`);
   }
 
   return sections.join("\n\n");

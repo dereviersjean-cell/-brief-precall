@@ -3,15 +3,16 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Meeting, Brief, Contact, NewsItem } from "@/lib/types";
+import { Meeting, Brief, Contact } from "@/lib/types";
 import type { CallHistoryItem } from "@/lib/db";
-import { Target, MapPin, Clock, History, Building2, Mail, ExternalLink, Lightbulb, Trophy } from "lucide-react";
-import { StatusChip } from "@/app/components/ui/ui-bits";
+import { MapPin, Clock, History, Building2, Mail, ExternalLink } from "lucide-react";
 import CompanyLogo from "@/app/components/CompanyLogo";
 import TalkToSales from "@/app/components/TalkToSales";
 import { companyDomainFromEmail } from "@/lib/company-domain";
 import type { DealBriefContext } from "@/lib/deal-brief";
 import DealFollowUp from "./DealFollowUp";
+import { adaptCachedContent } from "@/lib/brief-content";
+import { CompanyCard, MeetingContextBox, OpeningCard, PrioritiesCard, ProofsCard, RecapCard, ReferencesCard, StakesCard } from "./BriefBlocks";
 
 function formatDateTime(iso: string) {
   const d = new Date(iso);
@@ -43,15 +44,6 @@ function Tile({ label, icon, className = "", children }: { label: string; icon?:
       <div className="mt-3">{children}</div>
     </section>
   );
-}
-
-// « Contexte… Question : … » → [contexte, question]. Sans « Question : », tout
-// le texte reste en contexte.
-function splitPainQuestion(detail: string): [string, string | null] {
-  const m = detail.match(/^([\s\S]*?)\s*Question\s*:\s*([\s\S]+)$/i);
-  if (!m) return [detail, null];
-  const q = m[2].trim();
-  return [m[1].trim(), q.charAt(0).toUpperCase() + q.slice(1)];
 }
 
 function Spinner() {
@@ -131,7 +123,7 @@ function ContactCard({ contact, notFound }: { contact: Contact; notFound: boolea
 
   // Les fiches enregistrées AVANT la décomposition ne portent que `notes` :
   // on les affiche telles quelles plutôt que d'exiger une reprise de données.
-  const hasStructuredFacts = !!(contact.badge || contact.city || contact.tenure || contact.previousRole);
+  const hasStructuredFacts = !!(contact.city || contact.tenure || contact.previousRole);
 
   return (
     <div>
@@ -142,15 +134,6 @@ function ContactCard({ contact, notFound }: { contact: Contact; notFound: boolea
           {contact.title && <p className="text-[12.5px] leading-snug text-slate-500">{contact.title}</p>}
         </div>
       </div>
-
-      {contact.badge && (
-        <div className="mt-2.5">
-          <StatusChip tone={contact.badge.tone}>
-            <Target className="w-3 h-3" />
-            {contact.badge.label}
-          </StatusChip>
-        </div>
-      )}
 
       {hasStructuredFacts ? (
         <div className="mt-3 space-y-1.5">
@@ -265,14 +248,14 @@ const GEN_STEPS = [
   { label: "Entreprise", detail: "Données légales et actualités" },
   // La phase la plus longue de loin (recherche web réelle).
   { label: "Recherche web", detail: "Lecture du site et de la presse" },
-  { label: "Rédaction", detail: "Angles d'attaque et accroche" },
+  { label: "Rédaction", detail: "Accroche, enjeux et références" },
 ];
 
 // Les trois parties du brief, dans l'ordre où elles s'affichent une fois prêt.
 const GEN_PARTS = [
   { n: "01", title: "Le prospect", lines: [72, 90, 56], step: 0 },
-  { n: "02", title: "Les angles d'attaque", lines: [84, 64, 78], step: 1 },
-  { n: "03", title: "Pendant l'appel", lines: [60, 88, 70], step: 2 },
+  { n: "02", title: "Les enjeux à explorer", lines: [84, 64, 78], step: 1 },
+  { n: "03", title: "Les références", lines: [60, 88, 70], step: 2 },
 ];
 
 function formatElapsed(s: number): string {
@@ -473,49 +456,6 @@ function GeneratingProgress({
   );
 }
 
-
-interface ApiResponse {
-  overview: string;
-  accroche: string;
-  pain_points: Array<{ title: string; detail: string }>;
-  arguments: Array<{ title: string; detail: string }>;
-  vocabulaire: string[];
-  actualites?: NewsItem[];
-  references?: Array<{ client_name: string; relevance: string; pitch: string }>;
-  historique_relationnel?: string;
-  contact?: Contact;
-}
-
-function adaptApiBrief(api: ApiResponse): Brief {
-  return {
-    companyOverview: api.overview,
-    suggestedOpeningLine: api.accroche,
-    painPoints: api.pain_points,
-    talkingPoints: api.arguments,
-    recentNews: [],
-    objectives: [],
-    keywords: api.vocabulaire,
-    actualites: api.actualites,
-    contact: api.contact,
-    references: api.references,
-    historiqueRelationnel: api.historique_relationnel,
-  };
-}
-
-function formatNewsDate(iso: string | null): string | null {
-  if (!iso) return null;
-  try {
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return null;
-    return d.toLocaleDateString("fr-FR", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  } catch {
-    return null;
-  }
-}
 
 const sentimentCls: Record<string, string> = {
   positif: "bg-[color:var(--success-soft)] text-emerald-700",
@@ -782,7 +722,7 @@ export default function BriefClient({
         setError(data.error ?? "Une erreur est survenue.");
         return;
       }
-      setBrief(adaptApiBrief(data as ApiResponse));
+      setBrief(adaptCachedContent(data));
       setIsAiGenerated(true);
     } catch {
       setError("Impossible de contacter le serveur. Vérifiez votre connexion.");
@@ -998,7 +938,7 @@ export default function BriefClient({
 
         {/* Suite d'un deal en cours : la checklist et la dernière fois, avant
             même que le brief soit rédigé — ces informations sont déjà là. */}
-        {dealContext && <DealFollowUp ctx={dealContext} />}
+        {dealContext && !(brief?.followUp && !isGenerating) && <DealFollowUp ctx={dealContext} />}
 
         {/* Génération ou régénération en cours : même animation dans les
             deux cas — remplace le brief existant plutôt que de le griser en
@@ -1014,39 +954,14 @@ export default function BriefClient({
         )}
 
         {brief && !isGenerating && (
-          // Mise en page T1 « Cockpit » (choisie par Jean le 14/10/2026) : une
-          // grille de tuiles serrées, l'essentiel en haut — l'accroche en
-          // grand sur un dégradé, les objectifs à côté — puis le prospect et
-          // les angles. Une rubrique vide disparaît et sa voisine prend la
-          // place : un brief pauvre reste dense au lieu d'étaler du blanc.
-          <div className="mt-7 grid grid-cols-1 gap-4 lg:grid-cols-3">
-            {/* Ligne 1 : accroche + objectifs */}
-            {brief.suggestedOpeningLine && (
-              <section
-                className={`relative overflow-hidden rounded-[22px] p-6 text-white sm:p-7 ${brief.objectives.length > 0 ? "lg:col-span-2" : "lg:col-span-3"}`}
-                style={{ background: "linear-gradient(135deg,#2A5CE0 0%,#4B3FD6 60%,#7B5CFF 100%)" }}
-              >
-                <div className="pointer-events-none absolute -right-16 -top-20 h-60 w-60 rounded-full bg-white/15 blur-3xl" />
-                <p className={`${LABEL} relative text-white/70`}>Accroche suggérée</p>
-                <p className="relative mt-3 text-[19px] font-medium leading-snug tracking-[-0.015em] sm:text-[21px]">
-                  «&nbsp;{brief.suggestedOpeningLine}&nbsp;»
-                </p>
-              </section>
-            )}
-            {brief.objectives.length > 0 && (
-              <Tile label="Objectifs du call" icon={<Target className="h-3.5 w-3.5 text-[color:var(--violet)]" />} className={brief.suggestedOpeningLine ? "" : "lg:col-span-3"}>
-                <div className="space-y-2.5">
-                  {brief.objectives.map((obj, i) => (
-                    <div key={i} className="flex items-start gap-2.5">
-                      <div className="mt-0.5 h-[18px] w-[18px] shrink-0 rounded-md ring-1 ring-slate-300" />
-                      <p className="text-[14px] leading-snug text-slate-800">{obj}</p>
-                    </div>
-                  ))}
-                </div>
-              </Tile>
-            )}
-
-            {/* Ligne 2 : le prospect */}
+          // Mise en page du 14/11/2026 (maquettes choisies par Jean, d'après
+          // les retours d'Hubert) : ce qu'il faut dire à gauche, ce qu'il faut
+          // savoir à droite. Un R2 et plus s'ouvre sur ses priorités ; un
+          // brief d'avant cette date, sans elles, garde la forme d'un R1.
+          (() => {
+            const followUp = dealContext && brief.followUp ? brief.followUp : null;
+            const references = brief.references ?? [];
+            const contactTile = (
             <Tile label="Contact">
                 {brief.contact ? (
                   <ContactCard contact={brief.contact} notFound={contactEnriched === false} />
@@ -1160,234 +1075,61 @@ export default function BriefClient({
                 )}
               
             </Tile>
-            <Tile
-              label="L'entreprise"
-              className={(brief.historiqueRelationnel || callHistory.length > 0 || (brief.actualites && brief.actualites.length > 0) || brief.recentNews.length > 0) ? "" : "lg:col-span-2"}
-            >
-                <p className="text-[13.5px] leading-relaxed text-slate-700">{brief.companyOverview}</p>
-                {(brief.revenue || brief.employees || meeting.website) && (
-                  <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 border-t border-border pt-3">
-                    {brief.revenue && (
-                      <div>
-                        <p className="text-[12px] text-slate-500">Revenus</p>
-                        <p className="text-[15px] font-semibold tabular-nums text-slate-900">{brief.revenue}</p>
-                      </div>
-                    )}
-                    {brief.employees && (
-                      <div>
-                        <p className="text-[12px] text-slate-500">Effectif</p>
-                        <p className="text-[15px] font-semibold tabular-nums text-slate-900">{brief.employees}</p>
-                      </div>
-                    )}
-                    {meeting.website && (
-                      <div className="min-w-0">
-                        <p className="text-[12px] text-slate-500">Site web</p>
-                        <p className="break-all text-[15px] font-semibold text-[color:var(--violet)]">{meeting.website}</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              
-              </Tile>
-            {(brief.historiqueRelationnel || callHistory.length > 0 || (brief.actualites && brief.actualites.length > 0) || brief.recentNews.length > 0) && (
-              <Tile label={brief.historiqueRelationnel || callHistory.length > 0 ? "Historique" : "Actualités récentes"}>
-                {(brief.historiqueRelationnel || callHistory.length > 0) && (
-                  <div>
-                  {brief.historiqueRelationnel && (
-                    <p className="text-[14.5px] leading-relaxed text-slate-700">{brief.historiqueRelationnel}</p>
+            );
+            const hasHistory = !!brief.historiqueRelationnel || callHistory.length > 0;
+            return (
+              <div className="mt-7 grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
+                <div className="min-w-0 space-y-4 lg:col-span-2">
+                  {followUp ? (
+                    <>
+                      <PrioritiesCard followUp={followUp} />
+                      <ProofsCard followUp={followUp} references={references} />
+                    </>
+                  ) : (
+                    <>
+                      <MeetingContextBox
+                        briefId={meeting.id}
+                        value={brief.meetingContext}
+                        rank={dealContext ? `R${dealContext.callNumber}` : "R1"}
+                        onSaved={(next) => setBrief((prev) => (prev ? { ...prev, meetingContext: next } : prev))}
+                      />
+                      {brief.suggestedOpeningLine && <OpeningCard line={brief.suggestedOpeningLine} />}
+                      {brief.painPoints.length > 0 && <StakesCard points={brief.painPoints} />}
+                      {references.length > 0 && <ReferencesCard references={references} />}
+                    </>
                   )}
-                  {callHistory.length > 0 && (
-                    <div className="mt-4 first:mt-0">
-                      <p className="mb-2 text-[12.5px] font-medium text-slate-500">Calls précédents</p>
-  <div className="mt-2.5 divide-y divide-border overflow-hidden rounded-2xl border border-border">
-                        {callHistory.map((c) => (
-                          <Link
-                            key={c.id}
-                            href={`/feedback/${c.id}`}
-                            className="flex items-center justify-between gap-2 px-3 py-2.5 hover:bg-slate-50 transition-colors group"
-                          >
-                            <span className="whitespace-nowrap text-[13px] text-slate-700 group-hover:text-slate-900 transition-colors">
-                              {formatCallDate(c.date)}
-                            </span>
-                            <div className="flex items-center gap-2 shrink-0">
-                              {c.follow_up_sent_at && (
-                                // Icône seule : la tuile est étroite, le libellé
-                                // passe au survol.
-                                <span title="Email de suivi envoyé" className="inline-flex items-center text-emerald-700">
-                                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M1.5 8.67v8.58a3 3 0 003 3h15a3 3 0 003-3V8.67l-8.928 5.493a3 3 0 01-3.144 0L1.5 8.67z" />
-                                    <path d="M22.5 6.908V6.75a3 3 0 00-3-3h-15a3 3 0 00-3 3v.158l9.714 5.978a1.5 1.5 0 001.572 0L22.5 6.908z" />
-                                  </svg>
-                                </span>
-                              )}
+                </div>
+                <aside className="min-w-0 space-y-4">
+                  {followUp && dealContext && <RecapCard ctx={dealContext} followUp={followUp} />}
+                  {contactTile}
+                  <CompanyCard brief={brief} name={brief.contact?.company?.name ?? meeting.company} website={meeting.website} />
+                  {!followUp && hasHistory && (
+                    <Tile label="Historique">
+                      {brief.historiqueRelationnel && <p className="text-[13.5px] leading-relaxed text-slate-700">{brief.historiqueRelationnel}</p>}
+                      {callHistory.length > 0 && (
+                        <div className="mt-3 divide-y divide-border overflow-hidden rounded-2xl border border-border first:mt-0">
+                          {callHistory.map((c) => (
+                            <Link
+                              key={c.id}
+                              href={`/feedback/${c.id}`}
+                              className="flex items-center justify-between gap-2 px-3 py-2.5 text-[13px] text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+                            >
+                              <span className="whitespace-nowrap">{formatCallDate(c.date)}</span>
                               {c.sentiment && (
                                 <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${sentimentCls[c.sentiment] ?? "bg-slate-100 text-slate-600"}`}>
                                   {c.sentiment}
                                 </span>
                               )}
-                              <svg className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                              </svg>
-                            </div>
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                )}
-                {(brief.historiqueRelationnel || callHistory.length > 0) && ((brief.actualites && brief.actualites.length > 0) || brief.recentNews.length > 0) && (
-                  <p className={`${LABEL} mt-5 mb-2.5 text-slate-500`}>Actualités récentes</p>
-                )}
-                {((brief.actualites && brief.actualites.length > 0) || brief.recentNews.length > 0) && (
-                  <div>
-                  {brief.actualites && brief.actualites.length > 0 && (
-                      <div className="-mx-2.5 space-y-0.5">
-                        {brief.actualites.map((article, i) => (
-                          <a
-                            key={i}
-                            href={article.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-start gap-3 group rounded-xl px-2.5 py-2 hover:bg-slate-50 transition-colors"
-                          >
-                            <div className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-slate-100 text-[11px] font-bold tabular-nums text-slate-500">
-                              {i + 1}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-[13.5px] font-medium leading-snug text-slate-900 group-hover:text-[color:var(--violet)] transition-colors">
-                                {article.titre}
-                              </p>
-                              {article.description && (
-                                <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-relaxed text-slate-600">
-                                  {article.description}
-                                </p>
-                              )}
-                              <p className="mt-0.5 text-[12px] text-slate-500">
-                                {article.source}
-                                {(() => { const d = formatNewsDate(article.date); return d ? ` · ${d}` : ""; })()}
-                              </p>
-                            </div>
-                            <svg className="w-3.5 h-3.5 text-slate-400 group-hover:text-[color:var(--violet)] shrink-0 mt-1 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                            </svg>
-                          </a>
-                        ))}
-                      </div>
-                    
-                  )}
-                  {brief.recentNews.length > 0 && (
-                    <div className="mt-3 first:mt-0">
-                        <div className="space-y-2.5">
-                          {brief.recentNews.map((news, i) => (
-                            <div key={i} className="flex items-start gap-3">
-                              <div className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-slate-100 text-[11px] font-bold tabular-nums text-slate-500">
-                                {i + 1}
-                              </div>
-                              <p className="text-[13.5px] leading-relaxed text-slate-900">{news}</p>
-                            </div>
+                            </Link>
                           ))}
                         </div>
-                    
-                    </div>
+                      )}
+                    </Tile>
                   )}
-                </div>
-                )}
-              </Tile>
-            )}
-
-            {/* Ligne 3 : les angles d'attaque */}
-            {brief.painPoints.length > 0 && (
-              <Tile
-                label="Pain points à creuser"
-                icon={<Lightbulb className="h-3.5 w-3.5 text-amber-500" />}
-                className={
-                  brief.talkingPoints.length > 0 || (brief.references && brief.references.length > 0) || (brief.competitorsUsed && brief.competitorsUsed.length > 0)
-                    ? "lg:col-span-2"
-                    : "lg:col-span-3"
-                }
-              >
-                <ol className="grid gap-3 sm:grid-cols-2">
-                  {brief.painPoints.map((p, i) => {
-                    // Le générateur écrit « contexte… Question : … » : on met
-                    // la question à poser en avant, le contexte en dessous.
-                    const [context, question] = splitPainQuestion(p.detail);
-                    return (
-                      <li key={i} className="rounded-2xl bg-[color:var(--warning-soft)]/60 p-4">
-                        <p className="text-[12px] font-semibold tabular-nums text-amber-700">0{i + 1}</p>
-                        <p className="mt-0.5 text-[14px] font-semibold leading-snug text-slate-900">{p.title}</p>
-                        {question && <p className="mt-1.5 text-[13.5px] font-medium leading-snug text-slate-800">→ {question}</p>}
-                        {context && <p className="mt-1.5 text-[12.5px] leading-relaxed text-slate-600">{context}</p>}
-                      </li>
-                    );
-                  })}
-                </ol>
-              </Tile>
-            )}
-            {(brief.talkingPoints.length > 0 || (brief.references && brief.references.length > 0) || (brief.competitorsUsed && brief.competitorsUsed.length > 0)) && (
-              <Tile
-                label="Pour convaincre"
-                icon={<Trophy className="h-3.5 w-3.5 text-emerald-600" />}
-                className={brief.painPoints.length > 0 ? "" : "lg:col-span-3"}
-              >
-                {brief.talkingPoints.length > 0 && (
-                  <div className="space-y-2.5">
-                    {brief.talkingPoints.map((p, i) => (
-                      <p key={i} className="text-[13.5px] leading-snug">
-                        <span className="font-semibold text-slate-900">{p.title}</span>
-                        <span className="text-slate-600"> — {p.detail}</span>
-                      </p>
-                    ))}
-                  </div>
-                )}
-                {brief.references && brief.references.length > 0 && (
-                  <div className={brief.talkingPoints.length > 0 ? "mt-4" : ""}>
-                      <div className="space-y-3">
-                        {brief.references.map((ref, i) => (
-                          <div key={i} className="rounded-2xl border border-border p-4">
-                            <p className="text-[15px] font-semibold text-slate-900">{ref.client_name}</p>
-                            <p className="mt-1 text-[12.5px] leading-relaxed text-slate-600">{ref.relevance}</p>
-                            <div className="mt-3 rounded-xl bg-[color:var(--lavender)] px-4 py-3">
-                              <p className={`${LABEL} text-[color:var(--violet)]`}>
-                                À dire en call
-                              </p>
-                              <p className="mt-1 text-[13.5px] leading-relaxed text-slate-900">{ref.pitch}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    
-                  </div>
-                )}
-                {brief.competitorsUsed && brief.competitorsUsed.length > 0 && (
-                  <div className="mt-4">
-                    <p className={`${LABEL} mb-2 text-slate-500`}>Outils utilisés actuellement</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {brief.competitorsUsed.map((c) => (
-                        <span key={c} className="rounded-full bg-slate-100 px-2.5 py-1 text-[12px] font-medium text-slate-600">
-                          {c}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </Tile>
-            )}
-
-            {/* Vocabulaire sur une ligne */}
-            {brief.keywords && brief.keywords.length > 0 && (
-              <section className={`${TILE} flex flex-wrap items-center gap-3 p-4 lg:col-span-3`}>
-                <span className={`${LABEL} text-slate-500`}>Vocabulaire métier</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {brief.keywords.map((kw) => (
-                    <span key={kw} className="rounded-full bg-[color:var(--lavender)] px-2.5 py-1 text-[12.5px] font-medium text-[color:var(--violet)]">
-                      {kw}
-                    </span>
-                  ))}
-                </div>
-              </section>
-            )}
-          </div>
+                </aside>
+              </div>
+            );
+          })()
         )}
 
         {brief && !isGenerating && (

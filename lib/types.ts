@@ -33,6 +33,27 @@ export type Contact = {
 export type TalkingPoint = {
   title: string;
   detail: string;
+  // La question à poser (briefs du 14/11/2026 et après). Avant, elle était
+  // écrite à la fin de `detail` (« … Question : … »).
+  question?: string;
+};
+
+// Niveau d'une référence client (retours d'Hubert, 13/11/2026) : le nom d'un
+// client comparable, un cas d'usage (problème et solution), ou une preuve
+// chiffrée. Calculé par le serveur d'après la fiche, jamais par le modèle.
+export type ReferenceLevel = "simple" | "cas_usage" | "roi";
+
+export type BriefReference = { client_name: string; relevance: string; pitch: string; level?: ReferenceLevel };
+
+// Brief d'un R2 ou plus (retours d'Hubert, 12/11/2026) : où on en est, ce
+// qu'il faut obtenir au prochain rendez-vous, de quoi convaincre.
+export type BriefFollowUp = {
+  opening?: string;
+  recap?: string;
+  priorities: Array<{ title: string; missing: string; why: string; question: string }>;
+  nextStep?: string;
+  proofs: Array<{ blocker: string; answer: string }>;
+  commitments?: { ours: string[]; theirs: string[] };
 };
 
 export type Meeting = {
@@ -73,8 +94,15 @@ export type Brief = {
   suggestedOpeningLine?: string;
   keywords?: string[];
   actualites?: NewsItem[];
-  references?: Array<{ client_name: string; relevance: string; pitch: string }>;
+  references?: BriefReference[];
   historiqueRelationnel?: string;
+  // L'entreprise en puces (activité = companyOverview). Absent des briefs
+  // d'avant le 14/11/2026, qui n'ont que le paragraphe.
+  company?: { clients?: string; keyFigures?: string[]; news?: string };
+  // Pourquoi le prospect a accepté le rendez-vous : saisi par le commercial
+  // tant que Brief ne le lit pas dans HubSpot.
+  meetingContext?: { origin?: string; note?: string };
+  followUp?: BriefFollowUp;
   // Contact enrichi via Apollo (lib/apollo.ts) — absent si pas de contactEmail,
   // pas de clé APOLLO_API_KEY configurée, ou contact introuvable dans leur
   // base. `notes` porte l'évaluation "décisionnaire probable" (déterministe,

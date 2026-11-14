@@ -147,7 +147,7 @@ function Section({ label, children }: { label: string; children: React.ReactNode
   );
 }
 
-function Points({ points }: { points: { title: string; detail: string }[] }) {
+function Points({ points }: { points: { title: string; detail: string; question?: string }[] }) {
   return (
     <>
       {points.map((p, i) => (
@@ -156,6 +156,7 @@ function Points({ points }: { points: { title: string; detail: string }[] }) {
           <View style={styles.pointBody}>
             <Text style={styles.pointTitle}>{p.title}</Text>
             {p.detail ? <Text style={styles.pointDetail}>{p.detail}</Text> : null}
+            {p.question ? <Text style={styles.pointDetail}>Question : {p.question}</Text> : null}
           </View>
         </View>
       ))}
@@ -185,6 +186,12 @@ export function BriefDocument({
   subtitle: string;
   brief: Brief;
 }) {
+  const followUp = brief.followUp;
+  const companyLines = [
+    brief.company?.clients ? `Clients : ${brief.company.clients}` : null,
+    brief.company?.keyFigures?.length ? `Chiffres clés : ${brief.company.keyFigures.join(", ")}` : null,
+    brief.company?.news ? `Actualité : ${brief.company.news}` : null,
+  ].filter((l): l is string => !!l);
   return (
     <Document title={title} author="Brief" creator="Brief">
       <Page size="A4" style={styles.page}>
@@ -198,62 +205,58 @@ export function BriefDocument({
           </View>
           <View style={styles.headerRule} />
 
-          {brief.suggestedOpeningLine ? (
+          {/* Même ordre que l'écran (14/11/2026). Un brief de suivi (R2 et
+              plus) s'ouvre sur ses priorités ; un brief d'avant cette date
+              garde ses anciennes rubriques. */}
+          {followUp?.recap ? (
+            <Section label="Où en sommes-nous">
+              <Text style={styles.paragraph}>{followUp.recap}</Text>
+            </Section>
+          ) : null}
+
+          {followUp ? (
+            <Section label="Priorités du prochain rendez-vous">
+              {followUp.opening ? <Text style={styles.paragraph}>Pour ouvrir : {followUp.opening}</Text> : null}
+              <Points points={followUp.priorities.map((p) => ({ title: p.title, detail: [p.missing, p.why].filter(Boolean).join(" "), question: p.question }))} />
+              {followUp.nextStep ? <Text style={styles.paragraph}>Prochaine étape à obtenir : {followUp.nextStep}</Text> : null}
+            </Section>
+          ) : null}
+
+          {followUp?.proofs.length ? (
+            <Section label="Pour convaincre">
+              <Points points={followUp.proofs.map((p) => ({ title: p.blocker, detail: p.answer }))} />
+            </Section>
+          ) : null}
+
+          {!followUp && brief.suggestedOpeningLine ? (
             <View style={styles.quote} wrap={false}>
-              <Text style={styles.quoteLabel}>ACCROCHE SUGGÉRÉE</Text>
+              <Text style={styles.quoteLabel}>ACCROCHE</Text>
               <Text style={styles.quoteText}>« {brief.suggestedOpeningLine} »</Text>
             </View>
           ) : null}
 
-          {brief.companyOverview ? (
-            <Section label="Vue d'ensemble">
-              <Text style={styles.paragraph}>{brief.companyOverview}</Text>
-            </Section>
-          ) : null}
-
-          {brief.painPoints?.length ? (
-            <Section label="Points de douleur">
+          {!followUp && brief.painPoints?.length ? (
+            <Section label="Enjeux à explorer">
               <Points points={brief.painPoints} />
             </Section>
           ) : null}
 
-          {brief.talkingPoints?.length ? (
-            <Section label="Arguments commerciaux">
-              <Points points={brief.talkingPoints} />
-            </Section>
-          ) : null}
-
-          {brief.objectives?.length ? (
-            <Section label="Objectifs du rendez-vous">
-              <Bullets items={brief.objectives} />
-            </Section>
-          ) : null}
-
-          {brief.recentNews?.length ? (
-            <Section label="Actualités">
-              <Bullets items={brief.recentNews} />
-            </Section>
-          ) : null}
-
           {brief.references?.length ? (
-            <Section label="Références clients">
+            <Section label="Références et preuves commerciales">
               <Points points={brief.references.map((r) => ({ title: r.client_name, detail: r.pitch }))} />
+            </Section>
+          ) : null}
+
+          {brief.companyOverview ? (
+            <Section label="Entreprise">
+              <Text style={styles.paragraph}>{brief.companyOverview}</Text>
+              {companyLines.length ? <Bullets items={companyLines} /> : null}
             </Section>
           ) : null}
 
           {brief.historiqueRelationnel ? (
             <Section label="Historique relationnel">
               <Text style={styles.paragraph}>{brief.historiqueRelationnel}</Text>
-            </Section>
-          ) : null}
-
-          {brief.keywords?.length ? (
-            <Section label="Vocabulaire métier">
-              <View style={styles.chips}>
-                {brief.keywords.map((k, i) => (
-                  <Text key={i} style={styles.chip}>{k}</Text>
-                ))}
-              </View>
             </Section>
           ) : null}
         </View>

@@ -3183,6 +3183,34 @@ export async function getUsersInOrganization(orgId: string): Promise<Organizatio
   }));
 }
 
+// Les membres actifs de l'organisation d'un utilisateur (lui compris). Sans
+// organisation : lui seul.
+export async function getOrganizationUserIds(userId: string): Promise<string[]> {
+  const organizationId = await getUserOrganizationId(userId);
+  if (!organizationId) return [userId];
+  const { data, error } = await supabaseAdmin.from("users").select("id").eq("organization_id", organizationId).is("disabled_at", null);
+  if (error) throw error;
+  const ids = ((data ?? []) as { id: string }[]).map((u) => u.id);
+  return ids.includes(userId) ? ids : [userId, ...ids];
+}
+
+// Le contexte du rendez-vous (origine, raison), rangé dans `content` comme la
+// fiche contact : pas de colonne pour une donnée qui n'a de sens qu'avec le
+// brief.
+export async function updateBriefMeetingContext(userId: string, briefId: string, meetingContext: unknown): Promise<void> {
+  const { data, error: readError } = await supabaseAdmin.from("briefs").select("content").eq("id", briefId).eq("user_id", userId).maybeSingle();
+  if (readError) throw readError;
+  if (!data) throw new Error("Brief introuvable");
+  const content = (data as { content: unknown }).content;
+  const base = content && typeof content === "object" ? (content as Record<string, unknown>) : {};
+  const { error } = await supabaseAdmin
+    .from("briefs")
+    .update({ content: { ...base, meeting_context: meetingContext } })
+    .eq("id", briefId)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
 export async function getUserOrganizationId(userId: string): Promise<string | null> {
   const { data, error } = await supabaseAdmin
     .from("users")

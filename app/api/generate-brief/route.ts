@@ -15,6 +15,7 @@ import { dispatchBriefPreCall } from "@/lib/notifications-dispatcher";
 import { formatContactDisplayName } from "@/lib/format";
 import { loadDealBriefContext } from "@/lib/deal-brief-load";
 import { formatDealBriefForPrompt } from "@/lib/deal-brief";
+import { cleanMeetingContext } from "@/lib/meeting-origin";
 
 // Un brief avec recherche web réelle (max_uses: 3, cf. lib/brief-generator.ts)
 // mesure ~54s en conditions réelles (Doctolib, 03/09/2026) — sans ce réglage
@@ -196,6 +197,16 @@ export async function POST(request: NextRequest) {
     // arrêté et vise ce qui manque (lib/deal-brief.ts).
     const dealContext = userId ? await loadDealBriefContext(userId, contactEmail, trimmed).catch(() => null) : null;
 
+    // Le contexte du rendez-vous saisi par le commercial survit à une
+    // régénération : il nourrit la nouvelle version et reste dans le brief.
+    const meetingContext =
+      userId && calendarEventId
+        ? cleanMeetingContext(
+            ((await getBriefByEventId(userId, calendarEventId).catch(() => null)) as { content?: { meeting_context?: unknown } } | null)?.content
+              ?.meeting_context
+          )
+        : null;
+
     console.log('[generate-brief] contactEmail:', contactEmail, '| userId:', userId, '| deal:', dealContext ? `${dealContext.dealName} (call ${dealContext.callNumber})` : 'premier call');
     const brief = await generateBrief(
       trimmed,
@@ -206,7 +217,8 @@ export async function POST(request: NextRequest) {
       userId ?? undefined,
       contactEmail,
       apolloContact,
-      dealContext ? formatDealBriefForPrompt(dealContext) : ""
+      dealContext ? formatDealBriefForPrompt(dealContext) : "",
+      meetingContext
     );
 
     // Fiche contact affichée dans la barre latérale du brief (panneau
@@ -219,9 +231,11 @@ export async function POST(request: NextRequest) {
       contactEmail || contactName
         ? buildContactCard(apolloContact, { email: contactEmail, name: contactName })
         : null;
-    const briefWithContact = contactCard
-      ? { ...(brief as Record<string, unknown>), contact: contactCard }
-      : brief;
+    const briefWithContact = {
+      ...(brief as Record<string, unknown>),
+      ...(contactCard ? { contact: contactCard } : {}),
+      ...(meetingContext ? { meeting_context: meetingContext } : {}),
+    };
 
     if (userId) {
       // Wrapped in after() instead of plain fire-and-forget: Vercel can
