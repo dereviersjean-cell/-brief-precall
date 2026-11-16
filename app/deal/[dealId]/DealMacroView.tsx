@@ -140,7 +140,8 @@ export default function DealMacroView({
 
   async function close(status: "gagne" | "perdu" | "abandonne" | null) {
     const label = status ? CLOSURE[status].toLowerCase() : null;
-    if (status && !window.confirm(`Marquer ${deal.name} comme ${label} ? Le deal sortira de vos deals en cours. HubSpot n'est pas modifié.`)) return;
+    const crm = !deal.stage ? "" : status === "abandonne" ? " HubSpot n'est pas modifié." : " Son étape changera aussi dans HubSpot.";
+    if (status && !window.confirm(`Marquer ${deal.name} comme ${label} ? Le deal sortira de vos deals en cours.${crm}`)) return;
     setClosing(true);
     setCloseError(null);
     const res = await fetch(`/api/deals/${dealId}/status`, {
@@ -148,12 +149,13 @@ export default function DealMacroView({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     }).catch(() => null);
-    const data = (await res?.json().catch(() => ({}))) as { error?: string };
+    const data = (await res?.json().catch(() => ({}))) as { error?: string; hubspot?: string };
     setClosing(false);
     if (!res?.ok) {
       setCloseError(data?.error ?? "La clôture a échoué. Réessayez.");
       return;
     }
+    if (data?.hubspot === "failed") setCloseError("Deal clos dans Brief, mais HubSpot n'a pas pu être mis à jour : changez l'étape dans HubSpot.");
     router.refresh();
   }
 

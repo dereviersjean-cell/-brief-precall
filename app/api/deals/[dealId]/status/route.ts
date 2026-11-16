@@ -8,18 +8,23 @@ import {
   getClientReferencesForUsers,
   getCommercialsForManager,
   getDealPageFiches,
+  getHubspotUserForOrganization,
+  setDealHubspot,
   getOrganizationUserIds,
   isDealMemoryEnabledForOrganization,
   setDealClosure,
 } from "@/lib/db";
 import { itemLevel } from "@/lib/call-objectives";
 import { reportWarning } from "@/lib/monitoring";
+import { closeHubSpotDeal } from "@/lib/crm/hubspot-deals";
 
 const STATUSES = ["gagne", "perdu", "abandonne"] as const;
 
 // Clôt ou rouvre un deal depuis sa page (migration 043, décision D8) : le
-// commercial du deal ou son manager. HubSpot n'est pas modifié. Un deal gagné
-// entre dans les références de l'équipe (décision G8) s'il n'y est pas déjà.
+// commercial du deal ou son manager. Gagné et Perdu passent aussi le deal à
+// l'étape fermée de son pipeline HubSpot (décision de Jean du 16/11/2026) ;
+// Abandonné et Rouvrir ne touchent pas à HubSpot. Un deal gagné entre dans
+// les références de l'équipe (décision G8) s'il n'y est pas déjà.
 export async function POST(request: Request, { params }: { params: Promise<{ dealId: string }> }) {
   const session = await getServerSession(authOptions);
   const auth = await requireActiveUserContext(session);
@@ -48,6 +53,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ dea
     return NextResponse.json({ error: "La clôture n'est pas encore disponible sur ce compte." }, { status: 503 });
   }
 
+  // HubSpot : "updated", "failed" (l'écran le dit, le deal reste clos dans
+  // Brief) ou "none" (deal pas relié, ou rien à y écrire).
+  let hubspot: "updated" | "failed" | "none" = "none";
+  const hubspotDealId = latest.hubspot?.id;
+  if (hubspotDealId && (status === "gagne" || status === "perdu")) {
+    try {
+      const hubspotUser = await getHubspotUserForOrganization(organizationId, [latest.ownerId, auth.userId]);
+      const snapshot = hubspotUser ? await closeHubSpotDeal(hubspotUser, hubspotDealId, status) : null;
+      if (snapshot) await setDealHubspot(dealId, snapshot);
+      hubspot = snapshot ? "updated" : "failed";
+    } catch (err) {
+      reportWarning("deal.closure.hubspot", err, { dealId });
+      hubspot = "failed";
+    }
+  }
+
   if (status === "gagne") {
     after(async () => {
       try {
@@ -74,5 +95,5 @@ export async function POST(request: Request, { params }: { params: Promise<{ dea
     });
   }
 
-  return NextResponse.json({ ok: true, status });
+  return NextResponse.json({ ok: true, status, hubspot });
 }

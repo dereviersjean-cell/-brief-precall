@@ -218,6 +218,31 @@ export async function getHubSpotDealSnapshot(userId: string, dealId: string): Pr
   });
 }
 
+// Clôt un deal dans HubSpot quand il est marqué Gagné ou Perdu dans Brief
+// (décision de Jean du 16/11/2026) : il passe à l'étape fermée de SON
+// pipeline, gagnée (probabilité 1) ou perdue (probabilité 0). Rend la photo
+// du deal relue après l'écriture, ou null si le pipeline n'a pas cette étape
+// ou si HubSpot refuse.
+export async function closeHubSpotDeal(userId: string, dealId: string, outcome: "gagne" | "perdu"): Promise<HubspotDealSnapshot | null> {
+  const written = await withHubspotAuth(userId, async (accessToken) => {
+    const [deal, pipelines] = await Promise.all([
+      getJson<{ properties: Record<string, string | null> }>(accessToken, `/crm/v3/objects/deals/${dealId}?properties=pipeline,dealstage`),
+      getPipelines(accessToken),
+    ]);
+    const pipeline = pipelines.find((p) => p.id === deal?.properties.pipeline);
+    const wanted = outcome === "gagne" ? 1 : 0;
+    const stage = pipeline?.stages.find((s) => s.metadata?.isClosed === "true" && stageProbability(s.metadata?.probability) === wanted);
+    if (!stage) return false;
+    if (deal?.properties.dealstage === stage.id) return true;
+    const res = await getJson<{ id: string }>(accessToken, `/crm/v3/objects/deals/${dealId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ properties: { dealstage: stage.id } }),
+    });
+    return res !== null;
+  });
+  return written ? getHubSpotDealSnapshot(userId, dealId) : null;
+}
+
 // Le numéro du portail HubSpot connecté (onglet HubSpot de Deals de l'équipe).
 export async function getHubspotPortalId(userId: string): Promise<number | null> {
   return withHubspotAuth(userId, async (accessToken) => {
