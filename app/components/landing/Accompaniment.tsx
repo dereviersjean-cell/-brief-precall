@@ -28,6 +28,11 @@ import { NB } from "./team-data";
 // L'outil (briefs, analyse et suivi des calls) est la porte d'entrée ; le
 // reste se déploie avec un expert, un point par semaine — c'est le parcours
 // réel de lib/parcours.ts (huit semaines, une brique ouverte par semaine).
+// Repris le 18/11/2026 : plus de note sur 5 ni de grille de notation dans
+// l'app. La semaine 3 s'appelle « Méthode » (la page qui a remplacé le
+// Playbook) et la semaine 8 « Suivi des deals et bilan » (la vue du manager
+// depuis la fin des pages Performance) ; lib/parcours.ts garde ses intitulés
+// internes.
 // Les tâches n'y figurent pas : le module est masqué sur la landing.
 // Aucun chiffre de résultat : Brief n'en a pas de mesuré à montrer.
 
@@ -35,18 +40,18 @@ export const PARCOURS = [
   { week: 0, title: "Mise en route" },
   { week: 1, title: "Briefs" },
   { week: 2, title: "Analyse des calls" },
-  { week: 3, title: "Playbook" },
+  { week: 3, title: "Méthode" },
   { week: 4, title: "Emails de suivi" },
   { week: 5, title: "Objections" },
   { week: 6, title: "CRM" },
   { week: 7, title: "Entraînement" },
-  { week: 8, title: "Vue manager et bilan" },
+  { week: 8, title: "Suivi des deals et bilan" },
 ];
 export const TOOL_WEEKS = 3; // semaines 0 à 2 : l'outil seul
 
 const CONFIG_ROWS: { label: string; value: string; logos?: string[] }[] = [
-  { label: "Grille de notation", value: "Votre méthode, vos poids, vos questions" },
-  { label: "Étapes du cycle", value: "R1 · R2 · R3, reconnues à vos titres de rendez-vous" },
+  { label: "Méthode de qualification", value: "MEDDIC, BANT, MEDDPICC ou le socle Brief" },
+  { label: "Objectifs par étape", value: "Sur les étapes de votre pipeline HubSpot" },
   { label: "Objections", value: "Vos catégories, vos réponses de référence" },
   { label: "Emails de suivi", value: "Dans le ton de l'équipe" },
   { label: "Où tout arrive", value: "CRM, Slack, email, agenda", logos: ["hubspot", "slack", "gmail"] },
@@ -144,7 +149,7 @@ export function Accompaniment() {
             tone="bg-land-accent-soft"
             tag="Leviers 1 et 2 · dès la semaine 1"
             title="Équipez vos commerciaux"
-            body="Un brief prêt la veille de chaque rendez-vous, chaque visio enregistrée et notée sur votre grille, l'historique de chaque prospect. Gratuit pour commencer, sans carte bancaire."
+            body="Un brief prêt la veille de chaque rendez-vous, chaque visio enregistrée et débriefée, chaque deal suivi d'un rendez-vous à l'autre. Gratuit pour commencer, sans carte bancaire."
             href="/produit#methode"
           >
             <Chip
@@ -160,8 +165,8 @@ export function Accompaniment() {
                   <Mic className="h-4 w-4" aria-hidden />
                 </span>
               }
-              title={`Call noté 3,4${NB}/${NB}5`}
-              sub="R2 Présentation · votre grille"
+              title="Call débriefé · R2"
+              sub="3 engagements, 1 point à travailler"
             />
             <Chip
               className="bottom-[12%] left-[14%]"
@@ -180,7 +185,7 @@ export function Accompaniment() {
             tone="bg-land-sun-soft"
             tag="Levier 3 · avec votre expert"
             title="Coachez vos équipes"
-            body="Chaque semaine, votre expert prépare le point à partir des vrais calls de l'équipe : le call exemplaire à réécouter, les objections qui résistent, puis l'entraînement de vos commerciaux sur ces objections-là."
+            body="Chaque semaine, votre expert prépare le point à partir des vrais calls et des vrais deals de l'équipe : le call exemplaire à réécouter, les deals à reprendre, les objections qui résistent, puis l'entraînement de vos commerciaux sur ces objections-là."
             href={SALES_CONTACT.bookingUrl}
             external
           >
@@ -205,15 +210,15 @@ export function Accompaniment() {
             tone="bg-land-lilac-soft"
             tag="Levier 4 · avec votre expert"
             title="Structurez votre méthode"
-            body="Votre expert construit avec vous la grille de l'équipe et les consignes de chaque étape R1, R2, R3, puis installe les rituels : le point hebdomadaire, le bilan de la semaine, les réponses de référence aux objections."
+            body="Votre expert fixe avec vous la méthode de qualification et ce qu'il faut obtenir à chaque étape commerciale, puis installe les rituels : le point hebdomadaire, le bilan de la semaine, les réponses de référence aux objections."
             href="/produit#structurer"
           >
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
               <div className="relative flex flex-col items-center gap-3">
                 <span className="absolute inset-y-4 left-1/2 w-px -translate-x-1/2 bg-land-ink/15" aria-hidden />
                 {[
-                  { icon: ListChecks, label: "Grille de l'équipe" },
-                  { icon: Layers, label: "Étapes R1 · R2 · R3" },
+                  { icon: ListChecks, label: "Méthode de qualification" },
+                  { icon: Layers, label: "Objectifs par étape" },
                   { icon: CalendarCheck, label: "Point hebdomadaire" },
                   { icon: Mail, label: "Bilan de la semaine" },
                 ].map((st) => (
@@ -232,14 +237,15 @@ export function Accompaniment() {
 
           {/* 4. La configuration : Brief adapté à l'équipe. « Configuré pour votre
               équipe », jamais « développé pour vous » (règle du parcours). Tout ce
-              qui est listé est réellement réglable par client : grille et étapes
-              (Playbook), catégories d'objections, style des emails de suivi,
+              qui est listé est réellement réglable par client : méthode et
+              objectifs par étape (page Méthode), catégories d'objections, style
+              des emails de suivi,
               canaux d'envoi (préférences de notification), modules ouverts. */}
           <Lever
             tone="bg-land-sunken"
             tag="Avec votre expert"
             title="Configurez Brief pour votre équipe"
-            body="Votre expert règle Brief avec vous, à partir de vos besoins : votre grille et vos étapes, vos catégories d'objections, le ton de vos emails de suivi, les outils où tout doit arriver. Au bout de huit semaines, on fait le bilan et on décide ensemble du rythme de suivi."
+            body="Votre expert règle Brief avec vous, à partir de vos besoins : votre méthode et vos objectifs par étape, vos catégories d'objections, le ton de vos emails de suivi, les outils où tout doit arriver. Au bout de huit semaines, on fait le bilan et on décide ensemble du rythme de suivi."
             href={SALES_CONTACT.bookingUrl}
             external
           >

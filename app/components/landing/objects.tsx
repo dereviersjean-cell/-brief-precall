@@ -1,25 +1,29 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
 import { ValdorLogo, CartonnerieLogo } from "@/app/components/landing/brands";
-import { Check, Clock, History, MapPin, Target, Mic, FileUp, Plus } from "lucide-react";
+import { StateChip } from "@/app/mes-deals/deal-ui";
+import { Check, Clock, History, MapPin, Plus } from "lucide-react";
 
 // Les aperçus produit de la landing. Chacun reprend la STRUCTURE RÉELLE d'un
-// écran de Brief — mêmes sections, même ordre, même densité, même ton que les
-// briefs et analyses produits en vrai (relevés en base le 12/10/2026) — mais
-// sur un rendez-vous fictif : les vrais briefs et analyses portent sur de vrais
-// prospects et de vraies conversations, qu'on ne publie pas.
+// écran de Brief — mêmes sections, même ordre, mêmes libellés — mais sur un
+// deal fictif : les vrais briefs et analyses portent sur de vrais prospects
+// et de vraies conversations, qu'on ne publie pas.
+// Repris le 18/11/2026 sur les écrans du 14/11/2026 : plus de note sur 5, plus
+// de grille de notation ni de pages Performance ; le fil est celui d'un deal.
 //
-//   BriefSheet        ↔ app/brief/[id]/BriefClient.tsx
-//   SourcesObject     ↔ le même brief replié, chaque bloc avec la source que
-//                       lib/brief-generator.ts interroge (registre, presse,
-//                       annuaire, CRM, références clients)
-//   AnalysisObject    ↔ app/feedback/[id]/FeedbackDetailClient.tsx (client)
-//   ProgressObject    ↔ /dashboard/scores (Mes scores) + /training
-//   StructureObject   ↔ le Playbook, les étapes et les catégories d'objections
+//   SourcesObject     ↔ le brief d'un R1 (app/brief/[id]/BriefBlocks.tsx),
+//                       chaque bloc avec la source que lib/brief-generator.ts
+//                       interroge (CRM, presse, annuaire, registre, références)
+//   AnalysisObject    ↔ la page d'un meeting en trois questions
+//                       (app/feedback/[id]/MeetingOverviewView.tsx)
+//   DealObject        ↔ la page d'un deal (app/deal/[dealId]/DealMacroView.tsx)
+//   MethodObject      ↔ la page Méthode (app/methode/page.tsx)
 //   DigestObject      ↔ le bilan hebdomadaire manager (lib/admin-config.ts)
 //
-// Le fil : Thomas Lefèvre (commercial) présente sa solution à Claire Mercier,
-// directrice des opérations de Valdor Emballages, le jeudi 2 octobre à 14:30.
+// Le fil : Thomas Lefèvre (commercial) suit le deal Valdor Emballages avec
+// Claire Mercier, directrice des opérations. R1 de découverte le jeudi
+// 18 septembre, R2 de présentation le jeudi 2 octobre à 14:30, R3 prévu le
+// jeudi 9 octobre à 10:00 avec Hugo Ravel, directeur financier.
 
 const NB = " ";
 
@@ -38,9 +42,11 @@ export function Label({ children, tone = "faint" }: { children: ReactNode; tone?
 const SHEET = "rounded-[20px] border border-land-line bg-land-surface shadow-[var(--land-shadow-lg)]";
 const d = (i: number) => ({ "--i": i }) as React.CSSProperties;
 
-// ─── Le brief (haut de page) ─────────────────────────────────────────────────
+
+// ─── Pièces communes ─────────────────────────────────────────────────────────
 
 function ContactCard({ compact = false }: { compact?: boolean }) {
+  // Plus de badge « Décisionnaire » : retiré du brief le 14/11/2026.
   return (
     <div>
       <div className="flex items-start gap-3">
@@ -58,40 +64,27 @@ function ContactCard({ compact = false }: { compact?: boolean }) {
           <div className="text-[12.5px] leading-snug text-land-muted">Directrice des opérations</div>
         </div>
       </div>
-      <span className="mt-2.5 inline-flex items-center gap-1 rounded-full bg-land-accent-soft px-2 py-0.5 text-[11.5px] font-semibold text-land-accent">
-        <Target className="h-3 w-3" aria-hidden />
-        Décisionnaire
-      </span>
-      {!compact && (
-        <>
-          <ul className="mt-3 space-y-1.5 text-[12.5px] text-land-muted">
-            <li className="flex items-center gap-2">
-              <MapPin className="h-3.5 w-3.5 shrink-0 text-land-faint" aria-hidden /> Angers
-            </li>
-            <li className="flex items-center gap-2">
-              <Clock className="h-3.5 w-3.5 shrink-0 text-land-faint" aria-hidden /> En poste depuis 4{NB}ans
-            </li>
-            <li className="flex items-start gap-2">
-              <History className="mt-0.5 h-3.5 w-3.5 shrink-0 text-land-faint" aria-hidden />
-              <span className="leading-snug">Auparavant responsable de production chez Cartonnages Rivière</span>
-            </li>
-          </ul>
-          <div className="mt-3 flex items-center gap-2.5 border-t border-land-line pt-3">
-            <ValdorLogo size={32} />
-            <div className="min-w-0">
-              <div className="text-[12.5px] font-semibold text-land-ink">VALDOR EMBALLAGES</div>
-              <div className="text-[12px] text-land-faint">Emballage · 140{NB}personnes</div>
-            </div>
-          </div>
-        </>
-      )}
+      <ul className="mt-3 space-y-1.5 text-[12.5px] text-land-muted">
+        <li className="flex items-center gap-2">
+          <MapPin className="h-3.5 w-3.5 shrink-0 text-land-faint" aria-hidden /> Angers
+        </li>
+        <li className="flex items-center gap-2">
+          <Clock className="h-3.5 w-3.5 shrink-0 text-land-faint" aria-hidden /> En poste depuis 4{NB}ans
+        </li>
+        {!compact && (
+          <li className="flex items-start gap-2">
+            <History className="mt-0.5 h-3.5 w-3.5 shrink-0 text-land-faint" aria-hidden />
+            <span className="leading-snug">Auparavant responsable de production chez Cartonnages Rivière</span>
+          </li>
+        )}
+      </ul>
     </div>
   );
 }
 
-/** En-tête commun du brief : la même ligne relie le haut de page, l'étape
- * « Préparer » et l'analyse, comme dans l'app. */
-export function MeetingHeader({ status }: { status: ReactNode }) {
+/** En-tête commun d'un rendez-vous : le même bandeau relie le brief et
+ * l'analyse, comme dans l'app. */
+export function MeetingHeader({ status, when }: { status: ReactNode; when: string }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-land-line px-5 py-3.5 sm:px-7">
       <div className="flex items-center gap-2.5">
@@ -100,181 +93,10 @@ export function MeetingHeader({ status }: { status: ReactNode }) {
         </span>
         {status}
       </div>
-      <span className="whitespace-nowrap text-[13px] tabular-nums text-land-muted">Jeu. 2{NB}oct. · 14:30 · 45{NB}min</span>
+      <span className="whitespace-nowrap text-[13px] tabular-nums text-land-muted">{when}</span>
     </div>
   );
 }
-
-export function BriefSheet() {
-  // Le brief qui s'écrit : statut « Préparation » puis « Prêt », sections qui
-  // apparaissent comme de l'encre. Tout le texte est dans le DOM dès le rendu
-  // serveur ; l'animation ne masque que visuellement. Les blocs
-  // `land-hero-collapse` se referment quand le brief se replie au défilement
-  // (HeroStage) : ne reste que ce qu'on relit deux minutes avant l'appel.
-  return (
-    <figure className="mx-auto w-full max-w-[1040px]">
-      <div data-hero-card className={`land-card-rise overflow-hidden text-left ${SHEET}`}>
-        <MeetingHeader
-          status={
-            <span className="grid text-[13px] font-medium">
-              <span className="land-status-busy inline-flex items-center gap-1.5 text-land-muted [grid-area:1/1]">
-                <span className="land-dot h-1.5 w-1.5 rounded-full bg-land-accent" aria-hidden />
-                Préparation du brief…
-              </span>
-              <span className="land-status-ready inline-flex items-center gap-1.5 text-land-ink [grid-area:1/1]">
-                <Check className="h-3.5 w-3.5 text-land-accent" aria-hidden />
-                Brief prêt
-              </span>
-            </span>
-          }
-        />
-
-        <div className="px-5 pt-6 sm:px-7">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <ValdorLogo size={44} className="land-pop" />
-            <div className="land-write text-[24px] font-semibold tracking-[-0.02em] text-land-ink sm:text-[28px]" style={d(0)}>
-              Présentation Valdor Emballages
-            </div>
-          </div>
-          <div className="land-write mt-4 rounded-2xl bg-land-accent-soft px-5 py-4" style={d(1)}>
-            <Label tone="accent">Accroche suggérée</Label>
-            <p className="mt-1.5 text-[16.5px] font-medium leading-snug text-land-ink sm:text-[18px]">
-              «{NB}Claire, vous ouvrez une deuxième ligne à Angers. Quand le volume double, comment gardez-vous la
-              main sur les approvisionnements et les délais clients{NB}?{NB}»
-              <span className="land-caret-end">
-                <span className="land-caret ml-0.5 inline-block h-[1.05em] w-[2px] translate-y-[3px] bg-land-accent" aria-hidden />
-              </span>
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-6 px-5 pb-7 pt-6 sm:px-7 md:grid-cols-[minmax(0,1fr)_260px]">
-          <div>
-            <section className="land-write" style={d(2)}>
-              <Label>Vue d&apos;ensemble</Label>
-              <p className="mt-2 text-[14px] leading-relaxed text-land-ink">
-                Valdor Emballages conçoit et fabrique des emballages en carton ondulé pour l&apos;agroalimentaire et la
-                cosmétique, depuis son site historique d&apos;Angers. Entreprise familiale fondée en 1998, elle met en
-                avant une offre mono-matériau recyclable depuis l&apos;entrée en vigueur du règlement européen PPWR.
-              </p>
-              <dl className="mt-3 flex gap-6 border-t border-land-line pt-3">
-                {[
-                  ["Revenus", `21${NB}M€`],
-                  ["Effectif", "140"],
-                ].map(([k, v]) => (
-                  <div key={k}>
-                    <dt className="text-[12px] text-land-faint">{k}</dt>
-                    <dd className="text-[15px] font-semibold tabular-nums text-land-ink">{v}</dd>
-                  </div>
-                ))}
-              </dl>
-            </section>
-
-            {/* Ce qui se referme quand le brief se replie au défilement. */}
-            <div className="land-hero-collapse">
-              <div className="space-y-6 pt-6">
-                <section className="land-write" style={d(3)}>
-                  <Label>Pain points identifiés</Label>
-                  <ul className="mt-2.5 space-y-3.5">
-                    <li className="flex gap-3">
-                      <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-land-warn" aria-hidden />
-                      <div>
-                        <div className="text-[14px] font-semibold text-land-ink">Montée en charge de la nouvelle ligne</div>
-                        <p className="mt-0.5 text-[13.5px] leading-relaxed text-land-muted">
-                          Doubler la capacité sans doubler l&apos;équipe planning crée souvent des ruptures les premiers mois.
-                          Le recrutement en cours d&apos;un responsable supply chain va dans ce sens.{" "}
-                          <span className="text-land-ink">Question{NB}: qui pilote la montée en charge, et avec quels outils{NB}?</span>
-                        </p>
-                      </div>
-                    </li>
-                    <li className="flex gap-3">
-                      <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-land-warn" aria-hidden />
-                      <div>
-                        <div className="text-[14px] font-semibold text-land-ink">Preuves de recyclabilité demandées</div>
-                        <p className="mt-0.5 text-[13.5px] leading-relaxed text-land-muted">
-                          Les marques de cosmétique réclament des justificatifs pour leurs propres déclarations PPWR.{" "}
-                          <span className="text-land-ink">Question{NB}: comment y répondez-vous aujourd&apos;hui, et en combien de temps{NB}?</span>
-                        </p>
-                      </div>
-                    </li>
-                  </ul>
-                </section>
-
-                <section className="land-write" style={d(4)}>
-                  <Label>Actualités récentes</Label>
-                  <ul className="mt-2.5 space-y-2.5">
-                    {[
-                      ["Valdor investit 6 M€ dans une deuxième ligne de production à Angers", `Presse régionale · 2${NB}sept.`],
-                      ["Recrutement d'un responsable supply chain en CDI", `Offre d'emploi · 18${NB}sept.`],
-                    ].map(([t, s], i) => (
-                      <li key={t} className="flex gap-3">
-                        <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-land-sunken text-[11px] font-bold text-land-muted">
-                          {i + 1}
-                        </span>
-                        <div>
-                          <div className="text-[13.5px] font-medium leading-snug text-land-ink">{t}</div>
-                          <div className="mt-0.5 text-[12px] text-land-faint">{s}</div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              </div>
-            </div>
-          </div>
-
-          <aside className="md:border-l md:border-land-line md:pl-6">
-            <section className="land-write" style={d(2)}>
-              <Label>Contact</Label>
-              <div className="mt-3">
-                <ContactCard />
-              </div>
-            </section>
-            <div className="land-hero-collapse">
-              <div className="space-y-6 pt-6">
-                <section className="land-write" style={d(3)}>
-                  <Label>Objectifs du call</Label>
-                  <ul className="mt-2.5 space-y-2 text-[13px] leading-snug text-land-ink">
-                    {["Valider qui décide et qui signe", "Obtenir un R3 avec la direction financière", "Caler le calendrier de la nouvelle ligne"].map(
-                      (o) => (
-                        <li key={o} className="flex gap-2.5">
-                          <span className="mt-0.5 h-4 w-4 shrink-0 rounded border-2 border-land-line" aria-hidden />
-                          {o}
-                        </li>
-                      ),
-                    )}
-                  </ul>
-                </section>
-                <section>
-                  <div className="land-write" style={d(4)}>
-                    <Label>Vocabulaire métier</Label>
-                  </div>
-                  <ul className="mt-2.5 flex flex-wrap gap-1.5">
-                    {["carton ondulé", "taux de rebut", "PPWR", "mono-matériau", "TRS"].map((w, i) => (
-                      <li
-                        key={w}
-                        className="land-pop rounded-full bg-land-accent-soft px-2.5 py-1 text-[12px] font-medium text-land-accent"
-                        style={d(i)}
-                      >
-                        {w}
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              </div>
-            </div>
-          </aside>
-        </div>
-      </div>
-      {/* Posée sur l'aurore : texte clair. */}
-      <figcaption className="mt-4 text-center text-[13px] text-land-faint">
-        Exemple au format réel. Entreprise et contact fictifs.
-      </figcaption>
-    </figure>
-  );
-}
-
-// ─── Préparer : le même brief, chaque bloc avec sa source ─────────────────────
 
 function Source({ children, i }: { children: ReactNode; i: number }) {
   // La source apparaît après le bloc qu'elle justifie, une à une, quand
@@ -299,13 +121,39 @@ function BlockHead({ label, source, i }: { label: string; source: string; i: num
   );
 }
 
+// ─── Préparer : le brief d'un premier rendez-vous, chaque bloc avec sa source ─
+// Structure du brief R1 du 14/11/2026 : contexte du rendez-vous (origine lue
+// dans le CRM ou saisie), accroche, enjeux à explorer (hypothèse + question),
+// références et preuves commerciales avec leur niveau ; à droite le contact
+// et l'entreprise en quatre lignes.
+
+const STAKES: { title: string; context: string; question: string }[] = [
+  {
+    title: "Montée en charge de la nouvelle ligne",
+    context: "Doubler la capacité sans doubler l'équipe planning crée souvent des ruptures les premiers mois.",
+    question: "Qui pilote la montée en charge, et avec quels outils ?",
+  },
+  {
+    title: "Preuves de recyclabilité demandées",
+    context: "Les marques de cosmétique réclament des justificatifs pour leurs propres déclarations.",
+    question: "Comment y répondez-vous aujourd'hui, et en combien de temps ?",
+  },
+];
+
+const COMPANY_ROWS: [string, string][] = [
+  ["Activité", "Emballages en carton ondulé, site historique d'Angers."],
+  ["Clients", "Agroalimentaire et cosmétique."],
+  ["Chiffres clés", `21${NB}M€ de revenus · 140${NB}personnes`],
+  ["Actualité", `6${NB}M€ investis dans une deuxième ligne à Angers.`],
+];
+
+const q = (s: string) => s.replace(/ \?/g, `${NB}?`);
+
 export function SourcesObject() {
-  // Reprise du brief replié du haut de page — même en-tête, même titre, même
-  // accroche, même vue d'ensemble, même contact — avec, en plus, la source de
-  // chaque bloc et la référence client que Brief en a déduite.
   return (
     <div className={`overflow-hidden ${SHEET}`}>
       <MeetingHeader
+        when={`Jeu. 18${NB}sept. · 11:00 · 30${NB}min`}
         status={
           <span className="inline-flex items-center gap-1.5 text-[13px] font-medium text-land-ink">
             <Check className="h-3.5 w-3.5 text-land-accent" aria-hidden />
@@ -313,87 +161,99 @@ export function SourcesObject() {
           </span>
         }
       />
-      <div className="space-y-5 px-6 py-5 sm:px-7">
+      <div className="space-y-4 px-6 py-5 sm:px-7">
         <div className="flex items-center gap-3">
           <ValdorLogo size={36} />
-          <div className="text-[19px] font-semibold tracking-[-0.02em] text-land-ink">Présentation Valdor Emballages</div>
+          <div className="text-[19px] font-semibold tracking-[-0.02em] text-land-ink">Découverte Valdor Emballages</div>
         </div>
 
-        <div className="rounded-2xl bg-land-accent-soft px-4 py-3.5">
-          <div className="flex items-center justify-between gap-3">
-            <Label tone="accent">Accroche suggérée</Label>
-            <Source i={0}>Presse régionale, 2{NB}sept.</Source>
+        <div className="rounded-2xl bg-land-sunken px-4 py-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Label>Contexte du rendez-vous</Label>
+            <span className="rounded-md bg-land-accent px-1.5 py-0.5 text-[11.5px] font-bold text-white">R1</span>
+            <span className="rounded-full bg-land-surface px-2.5 py-0.5 text-[12px] text-land-ink">Origine{NB}: salon ou événement</span>
+            <span className="ml-auto">
+              <Source i={0}>Votre CRM</Source>
+            </span>
           </div>
-          <p className="mt-1.5 text-[14.5px] font-medium leading-snug text-land-ink">
-            «{NB}Claire, vous ouvrez une deuxième ligne à Angers. Quand le volume double, comment gardez-vous la main
-            sur les approvisionnements et les délais clients{NB}?{NB}»
+          <p className="mt-1.5 text-[13px] leading-snug text-land-ink">
+            Claire a demandé une démonstration après un échange sur votre stand, début septembre.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)]">
-          <section>
-            <BlockHead label="Vue d'ensemble" source="Registre officiel" i={1} />
-            <p className="mt-2 text-[13px] leading-relaxed text-land-ink">
-              Emballages en carton ondulé pour l&apos;agroalimentaire et la cosmétique, site historique d&apos;Angers,
-              offre mono-matériau recyclable.
-            </p>
-            <dl className="mt-2.5 flex gap-5">
-              {[
-                ["Revenus", `21${NB}M€`],
-                ["Effectif", "140"],
-              ].map(([k, v]) => (
-                <div key={k}>
-                  <dt className="text-[11.5px] text-land-faint">{k}</dt>
-                  <dd className="text-[14px] font-semibold tabular-nums text-land-ink">{v}</dd>
-                </div>
-              ))}
-            </dl>
-          </section>
-          <section>
-            <BlockHead label="Contact" source="Annuaire pro" i={2} />
-            <div className="mt-2.5">
-              <ContactCard compact />
-            </div>
-          </section>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]">
+          <div className="space-y-4">
+            <section className="rounded-2xl bg-land-accent-soft px-4 py-3.5">
+              <div className="flex items-center justify-between gap-3">
+                <Label tone="accent">Accroche</Label>
+                <Source i={1}>Presse régionale, 2{NB}sept.</Source>
+              </div>
+              <p className="mt-1.5 text-[14px] font-medium leading-snug text-land-ink">
+                «{NB}Claire, vous ouvrez une deuxième ligne à Angers. Quand le volume double, comment gardez-vous la main
+                sur les approvisionnements et les délais clients{NB}?{NB}»
+              </p>
+            </section>
+            <section>
+              <BlockHead label="Enjeux à explorer" source="Offre d'emploi, 12 sept." i={2} />
+              <ol className="mt-1 divide-y divide-land-line">
+                {STAKES.map((s, i) => (
+                  <li key={s.title} className="grid grid-cols-[24px_minmax(0,1fr)] gap-x-2 py-2.5 last:pb-0">
+                    <span className="pt-0.5 text-[12px] font-bold tabular-nums text-land-accent">0{i + 1}</span>
+                    <div className="min-w-0">
+                      <div className="text-[13.5px] font-semibold leading-snug text-land-ink">{s.title}</div>
+                      <p className="mt-0.5 text-[12.5px] leading-snug text-land-muted">{s.context}</p>
+                      <p className="mt-1 text-[12.5px] font-medium leading-snug text-land-ink">«{NB}{q(s.question)}{NB}»</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          </div>
+
+          <div className="space-y-4">
+            <section>
+              <BlockHead label="Contact" source="Annuaire pro" i={3} />
+              <div className="mt-2.5">
+                <ContactCard compact />
+              </div>
+            </section>
+            <section className="border-t border-land-line pt-4">
+              <BlockHead label="Entreprise" source="Registre officiel" i={4} />
+              <dl className="mt-2 space-y-2">
+                {COMPANY_ROWS.map(([k, v]) => (
+                  <div key={k}>
+                    <dt className="text-[11.5px] text-land-faint">{k}</dt>
+                    <dd className="text-[12.5px] leading-snug text-land-ink">{v}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          </div>
         </div>
 
-        <section className="border-t border-land-line pt-4">
-          <BlockHead label="Historique" source="Votre CRM" i={3} />
-          <p className="mt-1.5 text-[13px] text-land-ink">Contact entrant en septembre, aucune affaire en cours.</p>
-        </section>
-
-        {/* La référence client la plus proche (lib/brief-generator.ts) : Voyage
-            présélectionne les cas clients les plus proches du prospect, Claude
-            en garde trois au plus — même secteur, même type de client ou même
-            problème — chacun avec la raison et la phrase « À dire en call ». */}
-        <section className="land-step-row border-t border-land-line pt-4" style={d(4)}>
-          <BlockHead label="Références clients" source="Vos cas clients" i={4} />
+        {/* Références de toute l'équipe (lib/brief-generator.ts) : deux au
+            plus, chacune avec son niveau — preuve de ROI, cas d'usage ou
+            référence simple — et la phrase « À dire ». */}
+        <section className="land-step-row border-t border-land-line pt-4" style={d(5)}>
+          <BlockHead label="Références et preuves commerciales" source="Vos cas clients" i={5} />
           <div className="mt-3 rounded-2xl border border-land-line bg-land-bg p-3.5">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
                 <CartonnerieLogo size={28} />
                 <div className="text-[15px] font-semibold text-land-ink">Cartonnerie du Val</div>
               </div>
-              <span className="shrink-0 rounded-full bg-land-accent px-2 py-0.5 text-[11px] font-semibold text-white">La plus proche</span>
+              <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[11.5px] font-semibold text-emerald-700">Preuve de ROI</span>
             </div>
             <p className="mt-2 text-[12.5px] leading-relaxed text-land-muted">
-              <span className="font-medium text-land-ink">Pourquoi elle compte{NB}:</span> même métier, même clientèle
-              agroalimentaire, même montée en charge d&apos;un deuxième site.
+              Même métier, même clientèle agroalimentaire, même montée en charge d&apos;un deuxième site.
             </p>
-            <div className="mt-2.5 rounded-xl bg-land-accent-soft px-3.5 py-2.5">
-              <Label tone="accent">À dire en call</Label>
-              <p className="mt-1 text-[13.5px] leading-relaxed text-land-ink">
+            <div className="mt-2.5 rounded-xl bg-emerald-50 px-3.5 py-2.5">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-emerald-700">À dire</div>
+              <p className="mt-1 text-[13.5px] font-medium leading-relaxed text-land-ink">
                 «{NB}La Cartonnerie du Val a ouvert son deuxième site l&apos;an dernier. Ils ont tenu leurs délais clients
                 dès le premier mois, sans recruter au planning.{NB}»
               </p>
             </div>
-          </div>
-          <div className="mt-2 flex items-center justify-between gap-3 rounded-xl border border-land-line px-3.5 py-2.5">
-            <div className="min-w-0">
-              <div className="text-[13px] font-semibold text-land-ink">Emballages Morin</div>
-              <div className="truncate text-[12px] text-land-muted">Même clientèle cosmétique, mêmes exigences de recyclabilité</div>
-            </div>
-            <span className="shrink-0 text-[11.5px] font-medium text-land-faint">2e référence</span>
           </div>
         </section>
       </div>
@@ -404,173 +264,236 @@ export function SourcesObject() {
   );
 }
 
-// ─── Progresser : la progression d'un commercial ─────────────────────────────
-// Reprend Mes scores (app/dashboard/scores : score global semaine par semaine
-// sur six semaines, moyenne par dimension, la plus faible marquée « à
-// travailler ») et l'entraînement (app/training : un prospect joué par l'IA
-// reprend une objection restée sans réponse, puis note et donne la meilleure
-// réponse à réutiliser).
+// ─── Progresser : la page d'un deal ──────────────────────────────────────────
+// Reprend DealMacroView (14/11/2026) : en-tête et boutons de clôture, une
+// seule Priorité Brief, les engagements en deux listes, puis à droite l'état
+// du deal et sa raison, l'étape et le montant avec leur source, le prochain
+// rendez-vous et l'état du deal en huit lignes.
 
-const WEEKS = [2.6, 2.8, 2.9, 3.1, 3.2, 3.4];
-const PROGRESS_DIMS: { label: string; score: number; weak?: boolean }[] = [
-  { label: "Découverte du pain business", score: 3.8 },
-  { label: "Qualification décision et achat", score: 3.5 },
-  { label: "Traitement des objections", score: 2.7, weak: true },
+const COMMITMENT_TONES = {
+  Fait: "bg-emerald-50 text-emerald-700",
+  "À faire": "bg-amber-50 text-amber-700",
+  "En attente": "bg-slate-100 text-slate-600",
+} as const;
+
+const OURS: { text: string; when: string; status: keyof typeof COMMITMENT_TONES }[] = [
+  { text: "Envoyer le récapitulatif du R2", when: "2 oct.", status: "Fait" },
+  { text: "Envoyer l'exemple de déploiement de la Cartonnerie du Val", when: "avant le 7 oct.", status: "À faire" },
 ];
-const fr = (n: number) => n.toFixed(1).replace(".", ",");
+const THEIRS: { text: string; when: string; status: keyof typeof COMMITMENT_TONES }[] = [
+  { text: "Inviter Hugo Ravel, directeur financier, au R3", when: "9 oct.", status: "En attente" },
+];
 
-export function ProgressObject() {
-  const px = (i: number) => 8 + i * 44.8;
-  const py = (v: number) => 52 - ((v - 2.4) / 1.2) * 44;
-  const line = WEEKS.map((v, i) => `${px(i)},${py(v)}`).join(" ");
+const CRITERION_TONES = {
+  Confirmé: "bg-emerald-50 text-emerald-700",
+  "À préciser": "bg-amber-50 text-amber-700",
+  Inconnu: "bg-slate-100 text-slate-500",
+} as const;
+
+// Les huit lignes de l'état d'un deal (MACRO_ROWS de lib/deal-macro.ts).
+const DEAL_STATE: [string, keyof typeof CRITERION_TONES][] = [
+  ["Douleur", "Confirmé"],
+  ["Impact", "Confirmé"],
+  ["Budget", "À préciser"],
+  ["Décideur", "À préciser"],
+  ["Allié chez le client", "Confirmé"],
+  ["Process de décision", "Inconnu"],
+  ["Critères de décision", "Confirmé"],
+  ["Échéance", "À préciser"],
+];
+
+function CommitmentList({ title, items }: { title: string; items: typeof OURS }) {
+  return (
+    <div className="mt-3">
+      <div className="text-[13px] font-semibold text-land-ink">{title}</div>
+      <ul className="mt-1 divide-y divide-land-line">
+        {items.map((c) => (
+          <li key={c.text} className="flex items-start gap-2.5 py-2">
+            <span
+              className={`mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded border-2 ${
+                c.status === "Fait" ? "border-land-accent bg-land-accent text-white" : "border-land-line"
+              }`}
+              aria-hidden
+            >
+              {c.status === "Fait" && <Check className="h-3 w-3" />}
+            </span>
+            <span className={`min-w-0 flex-1 text-[13px] leading-snug ${c.status === "Fait" ? "text-land-faint line-through" : "text-land-ink"}`}>
+              {c.text} <span className="inline-block whitespace-nowrap text-land-faint">· {c.when}</span>
+            </span>
+            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${COMMITMENT_TONES[c.status]}`}>{c.status}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function Fact({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div>
+      <Label>{label}</Label>
+      <div className="mt-1 text-[13.5px] font-semibold leading-snug text-land-ink">{children}</div>
+    </div>
+  );
+}
+
+function From({ children }: { children: ReactNode }) {
+  return <span className="ml-1.5 rounded-md bg-land-sunken px-1.5 py-0.5 text-[11px] font-medium text-land-muted">{children}</span>;
+}
+
+export function DealObject() {
+  const confirmed = DEAL_STATE.filter(([, s]) => s === "Confirmé").length;
   return (
     <div className={`overflow-hidden ${SHEET}`}>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-land-line px-6 py-3.5 sm:px-7">
-        <span className="inline-flex items-center gap-2.5 text-[13.5px] font-medium text-land-ink">
-          {/* Commercial fictif, portrait généré par IA. */}
-          <Image src="/landing/people/avatar-thomas.jpg" alt="" width={24} height={24} className="h-6 w-6 rounded-full object-cover" />
-          Thomas Lefèvre · Mes scores
-        </span>
-        <span className="text-[12.5px] text-land-muted">6 dernières semaines</span>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 px-6 py-5 sm:grid-cols-2 sm:px-7">
-        <section>
-          <Label>Score global</Label>
-          <div className="mt-1.5 flex items-baseline gap-2">
-            <span className="text-[30px] font-semibold leading-none tabular-nums tracking-tight text-land-ink">{fr(WEEKS[5])}</span>
-            <span className="text-[13px] text-land-faint">/5</span>
-            <span className="ml-1 rounded-full bg-land-accent-soft px-2 py-0.5 text-[12px] font-semibold tabular-nums text-land-accent">
-              +{fr(WEEKS[5] - WEEKS[0])}
-            </span>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-land-line px-6 py-4 sm:px-7">
+        <div className="flex min-w-0 items-center gap-3">
+          <ValdorLogo size={38} />
+          <div className="min-w-0">
+            <div className="truncate text-[18px] font-semibold tracking-[-0.02em] text-land-ink">Valdor Emballages</div>
+            <div className="text-[12.5px] text-land-muted">Suivi par Thomas · 2 rendez-vous</div>
           </div>
-          <svg viewBox="0 0 240 60" className="mt-3 h-14 w-full overflow-visible" aria-hidden>
-            <polygon points={`${px(0)},60 ${line} ${px(5)},60`} className="fill-land-accent-soft" />
-            <polyline points={line} fill="none" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" className="stroke-land-accent" />
-            <circle cx={px(5)} cy={py(WEEKS[5])} r="4.5" className="fill-land-accent stroke-land-surface" strokeWidth="2" />
-          </svg>
-        </section>
-        <section>
-          <Label>Par dimension du playbook</Label>
-          <ul className="mt-2.5 space-y-2.5">
-            {PROGRESS_DIMS.map((dim, i) => (
-              <li key={dim.label} className="land-step-row" style={d(i)}>
-                <div className="flex items-center justify-between gap-2 text-[12.5px]">
-                  <span className="truncate text-land-ink">{dim.label}</span>
-                  <span className="shrink-0 font-semibold tabular-nums text-land-ink">{fr(dim.score)}</span>
-                </div>
-                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-land-sunken">
-                  <div className={`h-full rounded-full ${dim.weak ? "bg-land-warn" : "bg-land-accent"}`} style={{ width: `${(dim.score / 5) * 100}%` }} />
-                </div>
-                {dim.weak && <div className="mt-1 text-[11.5px] font-semibold text-land-warn">À travailler</div>}
-              </li>
-            ))}
-          </ul>
-        </section>
+        </div>
+        <div className="flex shrink-0 gap-1.5" aria-hidden>
+          {["Gagné", "Perdu", "Abandonné"].map((b) => (
+            <span key={b} className="inline-flex h-8 items-center rounded-lg border border-land-line bg-land-surface px-2.5 text-[12.5px] font-medium text-land-ink">
+              {b}
+            </span>
+          ))}
+        </div>
       </div>
 
-      <div className="land-step-row mx-4 mb-4 rounded-2xl border border-land-line bg-land-bg px-4 py-4 sm:mx-5 sm:px-5" style={d(3)}>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="inline-flex items-center gap-2 text-[13px] font-semibold text-land-ink">
-            <span className="grid h-6 w-6 place-items-center rounded-md bg-land-accent-soft text-land-accent">
-              <Mic className="h-3.5 w-3.5" aria-hidden />
-            </span>
-            Entraînement · Charge de déploiement
-          </span>
-          <span className="rounded-full bg-land-accent-soft px-2 py-0.5 text-[11.5px] font-semibold tabular-nums text-land-accent">4,2/5</span>
+      <div className="grid grid-cols-1 gap-4 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.72fr)] sm:px-5">
+        <div className="min-w-0 space-y-4">
+          <section className="rounded-2xl bg-land-surface px-4 py-3.5 ring-2 ring-land-accent">
+            <Label tone="accent">Priorité Brief</Label>
+            <div className="mt-1 text-[16px] font-semibold leading-snug tracking-[-0.01em] text-land-ink">
+              Faire valider le budget par le directeur financier avant le R3
+            </div>
+            <dl className="mt-2.5 space-y-2 text-[13px] leading-snug">
+              <div>
+                <dt className="text-[11px] font-semibold uppercase tracking-[0.08em] text-land-faint">Pourquoi maintenant</dt>
+                <dd className="mt-0.5 text-land-muted">Hugo Ravel entre dans la décision jeudi, et le budget n&apos;a été évoqué qu&apos;à l&apos;oral.</dd>
+              </div>
+              <div>
+                <dt className="text-[11px] font-semibold uppercase tracking-[0.08em] text-land-faint">Comment</dt>
+                <dd className="mt-0.5 text-land-ink">Lui envoyer le chiffrage avec l&apos;exemple de la Cartonnerie du Val avant mardi.</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section className="land-step-row rounded-2xl border border-land-line px-4 py-3.5" style={d(0)}>
+            <Label tone="accent">Actions et engagements</Label>
+            <div className="mt-0.5 text-[14px] font-semibold text-land-ink">Qui doit faire quoi, pour quand</div>
+            <CommitmentList title="À faire de notre côté" items={OURS} />
+            <CommitmentList title="Attendu du prospect" items={THEIRS} />
+          </section>
         </div>
-        <p className="mt-2 text-[12.5px] text-land-muted">
-          Objection restée sans réponse chez Valdor le 2{NB}oct., rejouée par un prospect IA, à la voix.
-        </p>
-        <blockquote className="mt-2.5 border-l-2 border-land-line pl-3 text-[13px] italic leading-relaxed text-land-muted">
-          «{NB}Honnêtement, l&apos;équipe est déjà sous l&apos;eau avec la nouvelle ligne. Une intégration de plus, ça me
-          fait peur.{NB}»
-        </blockquote>
-        <div className="mt-3 rounded-xl bg-land-accent-soft px-3.5 py-3">
-          <Label tone="accent">Meilleure réponse à réutiliser</Label>
-          <p className="mt-1 text-[13.5px] leading-relaxed text-land-ink">
-            Chiffrer l&apos;effort{NB}: deux heures de paramétrage, puis rien. Citer la Cartonnerie du Val, déployée en
-            10{NB}jours sans ressource interne.
-          </p>
-        </div>
+
+        <aside className="min-w-0 space-y-4">
+          <section className="space-y-3 rounded-2xl border border-land-line px-4 py-3.5">
+            <div>
+              <Label>État</Label>
+              <div className="mt-1.5">
+                <StateChip state="progres" />
+              </div>
+              <p className="mt-1.5 text-[12.5px] leading-snug text-land-muted">Deux rendez-vous en trois semaines, un R3 daté.</p>
+            </div>
+            <Fact label="Étape">
+              R2 · Présentation<From>HubSpot</From>
+            </Fact>
+            <Fact label="Montant">
+              40{NB}000{NB}€<From>Dit en rendez-vous, à confirmer</From>
+            </Fact>
+            <Fact label="Prochain rendez-vous">Jeudi 9 octobre, 10:00</Fact>
+          </section>
+
+          <section className="land-step-row rounded-2xl border border-land-line px-4 py-3.5" style={d(1)}>
+            <div className="text-[14px] font-semibold text-land-ink">
+              État du deal <span className="text-[12.5px] font-medium text-land-muted">· {confirmed} sur {DEAL_STATE.length}</span>
+            </div>
+            <ul className="mt-1.5 divide-y divide-land-line">
+              {DEAL_STATE.map(([label, status]) => (
+                <li key={label} className="flex items-center justify-between gap-2 py-1.5 text-[12.5px]">
+                  <span className="truncate text-land-ink">{label}</span>
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${CRITERION_TONES[status]}`}>{status}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </aside>
       </div>
       <div className="border-t border-land-line px-6 py-3 text-[12px] text-land-faint sm:px-7">
-        Exemple. Commercial, scores et objection fictifs.
+        Exemple au format réel de la page d&apos;un deal. Deal, montant et personnes fictifs.
       </div>
     </div>
   );
 }
 
 // ─── Structurer : la méthode de toute l'équipe ───────────────────────────────
-// Ce que le manager règle une fois pour toute l'équipe : la grille du playbook
-// (dimensions et poids, importée depuis Notion, Word ou PDF), les étapes
-// R1 / R2 / R3 et leur consigne (lib/meeting-stage.ts), les catégories
-// d'objections avec les catégories suggérées à partir des calls, et l'équipe
-// notée sur cette même grille.
+// Ce que le manager règle une fois pour toute l'équipe, sur la page Méthode :
+// la méthode de qualification et ce qu'il faut obtenir à chaque étape
+// commerciale (celles du pipeline HubSpot, sinon Qualification, Évaluation,
+// Proposition), les objections de référence et leur consigne, les références
+// clients en trois niveaux.
 
-const STRUCT_DIMS: [string, number][] = [
-  ["Ouverture et cadrage", 1],
-  ["Découverte du pain business", 3],
-  ["Qualification décision et achat", 2],
-  ["Closing de l'étape suivante", 2],
+const STAGE_GOALS: [string, string[]][] = [
+  ["Qualification", ["Douleur", "Impact", "Décideur", "Échéance"]],
+  ["Évaluation", ["Critères de décision", "Budget", "Process de décision"]],
+  ["Proposition", ["Allié chez le client"]],
 ];
-const STRUCT_CATS: [string, number][] = [
+const OBJECTION_CATS: [string, number][] = [
   ["Prix et budget", 14],
   ["Charge de déploiement pour l'équipe", 9],
   ["Solution déjà en place", 6],
 ];
+const REFERENCE_LEVELS: [string, string, string][] = [
+  ["9", "preuves de ROI", "bg-emerald-50 text-emerald-800"],
+  ["11", "cas d'usage", "bg-land-accent-soft text-land-accent"],
+  ["4", "références simples", "bg-land-sunken text-land-ink"],
+];
 
-export function StructureObject() {
+export function MethodObject() {
   return (
     <div className={`overflow-hidden ${SHEET}`}>
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-land-line px-6 py-3.5 sm:px-7">
-        <span className="text-[14px] font-semibold text-land-ink">La méthode de l&apos;équipe</span>
+        <span className="text-[14px] font-semibold text-land-ink">Méthode de vente de l&apos;équipe</span>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-land-sunken px-2.5 py-0.5 text-[11.5px] font-medium text-land-muted">
-          <FileUp className="h-3 w-3" aria-hidden /> Importée depuis Notion
+          Méthode MEDDIC
         </span>
       </div>
 
       <div className="space-y-5 px-6 py-5 sm:px-7">
         <section>
-          <Label>Grille du playbook</Label>
-          <ul className="mt-2.5 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-            {STRUCT_DIMS.map(([label, w], i) => (
-              <li key={label} className="land-step-row flex items-center justify-between gap-2 rounded-xl border border-land-line px-3 py-2" style={d(i)}>
-                <span className="truncate text-[12.5px] text-land-ink">{label}</span>
-                <span className="shrink-0 rounded-md bg-land-sunken px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-land-muted">
-                  ×{w}
+          <div className="flex items-center justify-between gap-3">
+            <Label>Objectifs par étape commerciale</Label>
+            <span className="text-[11.5px] text-land-faint">étapes du pipeline HubSpot</span>
+          </div>
+          <div className="mt-2.5 space-y-2">
+            {STAGE_GOALS.map(([stage, goals], i) => (
+              <div key={stage} className="land-step-row grid grid-cols-[104px_minmax(0,1fr)] items-start gap-3" style={d(i)}>
+                <span className="pt-1 text-[13px] font-semibold text-land-ink">{stage}</span>
+                <span className="flex flex-wrap gap-1.5">
+                  {goals.map((g) => (
+                    <span key={g} className="rounded-full bg-land-sunken px-2.5 py-1 text-[12px] text-land-ink">
+                      {g}
+                    </span>
+                  ))}
                 </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="border-t border-land-line pt-4">
-          <Label>Étapes et consignes</Label>
-          <div className="mt-2.5 grid grid-cols-1 gap-1.5 sm:grid-cols-3">
-            {[
-              ["R1", "Découverte"],
-              ["R2", "Présentation"],
-              ["R3", "Closing"],
-            ].map(([k, v]) => (
-              <div key={k} className="flex items-center gap-2 rounded-xl border border-land-line px-2.5 py-2">
-                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-land-accent text-[10.5px] font-semibold text-white">{k}</span>
-                <span className="truncate text-[12.5px] font-medium text-land-ink">{v}</span>
               </div>
             ))}
           </div>
         </section>
 
         <section className="border-t border-land-line pt-4">
-          <Label>Catégories d&apos;objections</Label>
+          <Label>Objections et réponses</Label>
           <ul className="mt-2.5 flex flex-wrap gap-1.5">
-            {STRUCT_CATS.map(([label, n]) => (
+            {OBJECTION_CATS.map(([label, n]) => (
               <li key={label} className="inline-flex items-center gap-1.5 rounded-full border border-land-line px-2.5 py-1 text-[12px] text-land-ink">
                 {label} <span className="tabular-nums text-land-faint">{n}</span>
               </li>
             ))}
           </ul>
-          <div className="land-step-row mt-2 flex items-center justify-between gap-3 rounded-xl border border-dashed border-land-line px-3 py-2" style={d(4)}>
+          <div className="land-step-row mt-2 flex items-center justify-between gap-3 rounded-xl border border-dashed border-land-line px-3 py-2" style={d(3)}>
             <span className="text-[12.5px] text-land-muted">
               <span className="font-medium text-land-ink">Suggérée{NB}:</span> Délais de validation juridique · 4{NB}calls
             </span>
@@ -580,17 +503,28 @@ export function StructureObject() {
           </div>
         </section>
 
+        <section className="border-t border-land-line pt-4">
+          <Label>Références clients</Label>
+          <div className="mt-2.5 flex flex-wrap gap-1.5 text-[12.5px]">
+            {REFERENCE_LEVELS.map(([n, label, tone]) => (
+              <span key={label} className={`rounded-lg px-2.5 py-1 ${tone}`}>
+                <strong className="tabular-nums">{n}</strong> {label}
+              </span>
+            ))}
+          </div>
+        </section>
+
         <section className="flex items-center justify-between gap-3 border-t border-land-line pt-4">
           <div className="flex -space-x-2">
             {["thomas", "julie", "karim", "lea"].map((n) => (
               <Image key={n} src={`/landing/people/avatar-${n}.jpg`} alt="" width={30} height={30} className="h-[30px] w-[30px] rounded-full object-cover ring-2 ring-land-surface" />
             ))}
           </div>
-          <span className="text-right text-[12.5px] text-land-muted">4 commerciaux, notés sur la même grille</span>
+          <span className="text-right text-[12.5px] text-land-muted">4 commerciaux, une seule méthode</span>
         </section>
       </div>
       <div className="border-t border-land-line px-6 py-3 text-[12px] text-land-faint sm:px-7">
-        Exemple. Grille, catégories et équipe fictives.
+        Exemple. Objectifs, objections et références fictifs.
       </div>
     </div>
   );
@@ -642,5 +576,3 @@ export function DigestObject() {
     </figure>
   );
 }
-
-export { ContactCard };

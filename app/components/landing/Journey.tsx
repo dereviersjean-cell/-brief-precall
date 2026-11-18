@@ -18,8 +18,8 @@ export type JourneyStep = {
 // La séquence « quatre leviers » de la landing (trois moments d'un deal, puis
 // la structuration de l'équipe). Sur grand écran, le
 // texte des étapes défile à gauche pendant que l'objet produit reste
-// collé à droite et change d'état : le brief se compile, le call est noté,
-// l'objection rejoint la bibliothèque. Sous `lg`, pas d'épinglage (collant +
+// collé à droite et change d'état : le brief se compile, le call est
+// débriefé, le deal avance, la méthode se règle. Sous `lg`, pas d'épinglage (collant +
 // tactile = saccades) : chaque étape porte son objet juste sous son texte.
 //
 // L'étape active est celle dont le texte traverse la bande centrale de

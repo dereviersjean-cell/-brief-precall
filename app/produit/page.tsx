@@ -4,7 +4,7 @@ import { PageHero, MethodSection, WeekSection, ManagerSection, FinalCTA } from "
 
 export const metadata: Metadata = {
   title: "Produit · Brief",
-  description: "Brief prépare chaque rendez-vous, débriefe chaque call selon votre méthode et fait progresser toute l'équipe commerciale : briefs, analyse des calls, playbook et bilan hebdomadaire.",
+  description: "Brief prépare chaque rendez-vous, débriefe chaque call selon votre méthode et fait avancer chaque deal : briefs, analyse des calls, suivi des deals, méthode de vente et bilan hebdomadaire.",
 };
 
 export default function Page() {
@@ -16,7 +16,7 @@ export default function Page() {
         label="Produit"
         title="Préparer, débriefer, progresser :"
         accent="tout le cycle de vente au même endroit."
-        lead="Un brief prêt la veille de chaque rendez-vous, chaque call noté sur la grille de votre équipe, et ce qui fait gagner un deal qui circule dans toute l'équipe."
+        lead="Un brief prêt la veille de chaque rendez-vous, chaque call débriefé en trois questions, chaque deal suivi avec sa priorité, et une seule méthode pour toute l'équipe."
       />
       <MethodSection />
       <WeekSection />

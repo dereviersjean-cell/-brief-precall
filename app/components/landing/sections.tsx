@@ -9,15 +9,15 @@ import { SALES_CONTACT, BRIEFS_ACCESS_DAILY_LIMIT } from "@/lib/sales-contact";
 import { Journey, type JourneyStep } from "@/app/components/landing/Journey";
 import { AnalysisObject } from "@/app/components/landing/AnalysisObject";
 import { ClientLogos, HERO_INK } from "@/app/components/landing/ClientLogos";
-import { PlaybookPreview } from "@/app/components/landing/PlaybookPreview";
-import { PerformanceDashboard } from "@/app/components/landing/PerformanceDashboard";
+import { MethodPreview } from "@/app/components/landing/MethodPreview";
+import { DealsBoard } from "@/app/components/landing/DealsBoard";
 import { UpcomingMeetings } from "@/app/components/landing/UpcomingMeetings";
-import { SourcesObject, ProgressObject, StructureObject, DigestObject } from "@/app/components/landing/objects";
+import { SourcesObject, DealObject, MethodObject, DigestObject } from "@/app/components/landing/objects";
 import { PARCOURS, TOOL_WEEKS } from "@/app/components/landing/Accompaniment";
 import { NB } from "@/app/components/landing/team-data";
 import { TestimonialCarousel, CompanyMark } from "@/app/components/landing/TestimonialCarousel";
 import { FEATURED, CARDS, visibleTestimonials } from "@/app/components/landing/testimonials-data";
-import { ArrowRight, ArrowUpRight, Check, ShieldCheck, Globe2, Mic, Plus, Mail, UserRound, ListChecks, Compass, CalendarClock, Bot, Lock, Server, EyeOff, Trash2 } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Check, ShieldCheck, Globe2, Mic, Plus, Mail, ListChecks, Hourglass, TrendingUp, CalendarClock, Bot, Lock, Server, EyeOff, Trash2 } from "lucide-react";
 
 // Titres de section en deux tons : l'affirmation en encre, la suite en gris.
 // C'est la seule hiérarchie dont ils ont besoin — pas de surtitre.
@@ -73,8 +73,7 @@ export function Hero() {
               <div className="land-hero-text lg:pb-2" style={{ "--i": 1 } as React.CSSProperties}>
                 <p className="max-w-[34rem] text-[18px] leading-relaxed text-white/90 sm:text-[19px]">
                   La plateforme qui structure votre équipe commerciale autour de votre méthode : chaque rendez-vous
-                  préparé, chaque call noté, chaque commercial suivi sur ce qu&apos;il fait bien et ce qu&apos;il doit
-                  travailler.
+                  préparé, chaque call débriefé, chaque deal suivi jusqu&apos;à la signature.
                 </p>
                 <div className="mt-7 flex flex-wrap items-center gap-3">
                   <Link
@@ -101,9 +100,8 @@ export function Hero() {
 
 
 // ─── La semaine de l'équipe ──────────────────────────────────────────────────
-// Ce qui arrive (rendez-vous à venir, brief prêt, bot programmé) et ce qui
-// s'est passé (calls analysés et notés) : les deux listes que le manager et
-// ses commerciaux ouvrent chaque jour (demande de Jean, 12/10/2026).
+// Ce qui arrive (rendez-vous à venir, brief prêt, bot programmé) : la liste
+// que le commercial ouvre chaque jour (demande de Jean, 12/10/2026).
 
 export function WeekSection() {
   return (
@@ -115,7 +113,8 @@ export function WeekSection() {
         </h2>
         <p className="mt-6 max-w-[58ch] text-[18px] leading-relaxed text-land-muted md:text-[20px]">
           Brief lit votre agenda Google ou Outlook. Chaque rendez-vous avec un prospect a son brief prêt la veille à 18:00,
-          aussi déposé dans l&apos;événement d&apos;agenda ; un rendez-vous ajouté à la main se prépare en un clic.
+          aussi déposé dans l&apos;événement d&apos;agenda ; un rendez-vous ajouté à la main se prépare en un clic. Les
+          réunions internes sont reconnues à leur titre : ni brief, ni enregistrement.
         </p>
         <div className="mt-14 lg:mt-16">
           <UpcomingMeetings />
@@ -126,25 +125,26 @@ export function WeekSection() {
 }
 
 // ─── Votre équipe ────────────────────────────────────────────────────────────
-// Remplace « Votre meilleur commercial close 2 à 3 fois plus » (demande de
-// Jean, 12/10/2026) : la section montre la vue par commercial — ce que le
-// directeur commercial achète vraiment, structurer son équipe sur des faits.
+// La section du directeur commercial. Depuis le 18/11/2026 elle montre
+// « Suivi des deals » (les deals de ses commerciaux qui demandent son
+// intervention) à la place du tableau de bord Performance et de la fiche par
+// commercial notée sur 5, retirés de l'app le 05/11/2026.
 
 const TEAM_POINTS = [
   {
-    icon: UserRound,
-    title: "Une fiche par commercial",
-    body: "Note moyenne, progression, points forts et point faible, temps de parole, objections qui lui résistent.",
-  },
-  {
     icon: ListChecks,
-    title: "Les mêmes critères pour tous",
-    body: "Toute l'équipe est notée sur votre playbook, avec les consignes de chaque étape R1, R2, R3. Plus de jugement à l'impression.",
+    title: "Ce qui remonte, dans l'ordre",
+    body: "Un deal qui se dégrade, un engagement non tenu, un blocage : une carte par deal, le plus urgent en premier.",
   },
   {
-    icon: Compass,
-    title: "Le coaching qui s'impose",
-    body: "Vous voyez qui accompagner et sur quoi, et quelle réponse d'un collègue montrer à toute l'équipe.",
+    icon: Hourglass,
+    title: "Les deals endormis, à part",
+    body: "14 jours sans échange, 7 quand le deal est en proposition : à relancer ou à clôturer, sans encombrer le reste.",
+  },
+  {
+    icon: TrendingUp,
+    title: "Une prévision fondée sur les calls",
+    body: "Ce que HubSpot compte d'après l'étape, ce que les calls confirment, et l'écart, commercial par commercial.",
   },
 ];
 
@@ -154,18 +154,18 @@ export function TeamSection() {
     <section id="equipe" className="scroll-mt-20 border-t border-land-line bg-land-surface">
       <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-32">
         <h2 className={`${H2} max-w-[19ch]`}>
-          <span className="text-land-ink">Voyez ce que fait chacun de vos commerciaux.</span>{" "}
-          <span className="text-land-faint">Ce qu&apos;il fait bien, ce qu&apos;il doit travailler.</span>
+          <span className="text-land-ink">Voyez quels deals demandent votre intervention.</span>{" "}
+          <span className="text-land-faint">Le problème, l&apos;action, la question à poser.</span>
         </h2>
         <p className="mt-6 max-w-[58ch] text-[18px] leading-relaxed text-land-muted md:text-[20px]">
-          Chaque call est noté sur la même grille, la vôtre. Brief en tire une fiche par commercial : ses points forts,
-          ce qui le freine, sa progression semaine après semaine. Vous savez qui accompagner, sur quoi, et qui peut
-          montrer l&apos;exemple.
+          Brief suit les deals de vos commerciaux à partir de leurs calls. Il fait remonter ceux qui se dégradent, ceux
+          où un engagement n&apos;a pas été tenu et ceux qui restent bloqués, avec l&apos;action recommandée et la question
+          à poser au commercial. Vous savez où intervenir, et sur quoi.
         </p>
 
-        {/* Le tableau de bord Performance, interactif, avec sa démonstration
-            automatique (curseur qui clique tant qu'on n'a pas pris la main).
-            Placé juste après les trois moments (choix de Jean, 12/10/2026). */}
+        {/* « Suivi des deals », interactif, avec sa démonstration automatique
+            (curseur qui clique tant qu'on n'a pas pris la main). Placé juste
+            après les quatre leviers (choix de Jean, 12/10/2026). */}
         <div className="relative mt-16 lg:mt-20">
           <div aria-hidden className="land-aurora absolute -inset-x-2 -bottom-6 top-24 rounded-[36px] sm:-inset-x-6 lg:-inset-x-10">
             <i />
@@ -173,7 +173,7 @@ export function TeamSection() {
             <i />
           </div>
           <div className="relative">
-            <PerformanceDashboard demo />
+            <DealsBoard demo />
           </div>
         </div>
 
@@ -184,7 +184,7 @@ export function TeamSection() {
                 <p.icon className="h-5 w-5" aria-hidden />
               </span>
               <div className="mt-4 text-[18px] font-semibold tracking-tight text-land-ink">{p.title}</div>
-              <p className="mt-2 text-[15px] leading-relaxed text-land-muted">{p.body}</p>
+              <p className="mt-2 text-[15px] leading-relaxed text-land-muted">{p.body.replace(/ :/g, `${NB}:`)}</p>
             </li>
           ))}
         </ul>
@@ -201,17 +201,17 @@ const STEPS: JourneyStep[] = [
     when: "Mercredi 18:00",
     moment: "La veille du rendez-vous",
     title: "Arrivez en connaissant votre prospect.",
-    body: "La veille, Brief compile un dossier prêt à lire en 3 minutes. Finies les 20 minutes éparpillées entre LinkedIn, Pappers et le site du prospect.",
+    body: "La veille, Brief compile un dossier prêt à lire en 3 minutes. Finies les 20 minutes éparpillées entre LinkedIn, Pappers et le site du prospect.",
     points: [
-      { title: "Fiche entreprise sourcée", body: "Effectifs, CA, dirigeants, financement : depuis les registres officiels, les annuaires professionnels et le web." },
-      { title: "Signaux récents", body: "Levées de fonds, recrutements clés, mentions presse des 90 derniers jours." },
+      { title: "Entreprise, contact et contexte sourcés", body: "Activité, clients, chiffres clés, actualité : depuis les registres officiels, les annuaires professionnels et le web. L'origine du rendez-vous est lue dans HubSpot." },
+      { title: "Une accroche et les enjeux à explorer", body: "Une question d'ouverture prête à dire, et trois enjeux au plus, chacun avec son hypothèse et la question à poser." },
       {
-        title: "La référence client la plus proche",
-        body: "Brief compare le prospect à vos cas clients, importés d'un fichier, saisis à la main ou repris de vos deals gagnés dans HubSpot ou Pipedrive. Il en retient jusqu'à trois, proches par le secteur, le type de client ou le problème à résoudre.",
+        title: "Les références de toute l'équipe",
+        body: "Brief compare le prospect aux cas clients de l'équipe, importés d'un fichier, saisis à la main ou repris de vos deals gagnés. Il en retient deux, classées preuve de ROI, cas d'usage ou référence simple, avec la phrase à dire.",
       },
       {
-        title: "La phrase à dire en call",
-        body: "Pour chaque référence : pourquoi elle compte pour ce prospect, et une phrase prête à dire, avec le nom du client et son résultat.",
+        title: "À partir du R2, le brief repart du deal",
+        body: "Les priorités du rendez-vous, les freins déjà exprimés et ce qui y répond, les engagements pris de chaque côté.",
       },
     ],
     object: <SourcesObject />,
@@ -220,42 +220,43 @@ const STEPS: JourneyStep[] = [
     verb: "Débriefer",
     when: "Jeudi 15:20",
     moment: "Juste après le call",
-    title: "Chaque call noté selon votre méthode et son étape.",
-    body: "Le bot rejoint la visio, transcrit en français, puis l'IA note le call sur le playbook de votre équipe. Brief reconnaît l'étape depuis le titre du rendez-vous : essayez de noter ce même call comme un R1 ou un R3.",
+    title: "Chaque call débriefé en trois questions.",
+    body: "Le bot rejoint la visio et transcrit en français. Brief répond ensuite aux trois questions d'un commercial qui raccroche : ce que ce rendez-vous a changé dans le deal, ce qu'il faut faire maintenant, ce qui aurait pu être mieux exécuté. Essayez les trois onglets.",
     points: [
-      { title: "Scoring sur votre playbook", body: "Vos dimensions, vos critères, votre pondération, importés depuis Notion ou un document." },
-      { title: "Analyse par étape R1, R2, R3", body: "Découverte, présentation, closing : des consignes dédiées à chaque étape du cycle." },
-      { title: "Objections et signaux", body: "Objections, concurrents cités, temps de parole : détectés automatiquement." },
+      { title: "L'impact sur le deal", body: "Ce qui est nouveau, ce qui recule, un concurrent cité, un point de vigilance, et l'état du deal avant et après le rendez-vous." },
+      { title: "Les engagements des deux côtés", body: "Ce que vous devez faire, ce que le prospect a promis, pour quand, et ce qu'il faut obtenir au rendez-vous suivant." },
+      { title: "Un coaching, pas une note", body: "Deux points bien exécutés, deux à travailler au plus, chacun avec la phrase à dire la prochaine fois." },
+      { title: "L'email de suivi et le CRM", body: "L'email de suivi est rédigé, prêt à relire. Le compte rendu part dans HubSpot ou Pipedrive, et les propriétés du deal HubSpot se mettent à jour." },
     ],
     object: <AnalysisObject />,
   },
   {
     verb: "Progresser",
     when: "Lundi 08:00",
-    moment: "Chaque semaine, pour chaque commercial",
-    title: "Chaque commercial voit où il progresse, et s'entraîne là où il bute.",
-    body: "Ses scores sur la grille de l'équipe, semaine après semaine, la dimension à travailler en priorité, et un entraînement sur ses propres objections. Le commercial junior répond bientôt comme s'il avait dix ans de maison.",
+    moment: "Entre deux rendez-vous, sur chaque deal",
+    title: "Chaque deal a sa priorité, chaque commercial sait quoi faire.",
+    body: "Chaque rendez-vous enregistré crée ou complète le deal de son prospect. Le commercial ouvre ses deals et voit lesquels avancent, lesquels sont à relancer, et l'action à mener sur chacun. Ce que le deal sait déjà tient en huit lignes.",
     points: [
-      { title: "Sa progression, semaine après semaine", body: "Score global sur les six dernières semaines, moyenne par dimension du playbook, et la dimension à travailler en priorité." },
-      { title: "Entraînement sur ses vraies objections", body: "Un prospect joué par l'IA, à la voix, reprend les objections restées sans réponse dans ses calls. À la fin : une note, ses points forts, et la meilleure réponse à réutiliser." },
-      { title: "Bibliothèque d'objections vivante", body: "Face à une objection, Brief retrouve comment l'équipe y a déjà répondu, et ce qui a marché." },
-      { title: "Le bilan de la semaine", body: "Chaque vendredi soir ou lundi matin, au choix : ce qui a bien fonctionné, ce qui peut être amélioré, ce qu'il ne faut pas oublier." },
+      { title: "Cinq états, calculés depuis les calls", body: "En progrès, à qualifier, à relancer, à l'arrêt, en recul : personne ne les saisit à la main." },
+      { title: "Une priorité par deal", body: "Ce qu'il faut faire, pourquoi maintenant, comment. Un engagement en retard passe devant tout le reste." },
+      { title: "Gagné, perdu, abandonné", body: "Vous clôturez le deal dans Brief, l'étape change dans HubSpot, et un deal gagné rejoint les références de l'équipe." },
+      { title: "Entraînement sur ses vraies objections", body: "Un prospect joué par l'IA, à la voix, reprend les objections restées sans réponse dans ses calls. À la fin : ses points forts, et la meilleure réponse à réutiliser." },
     ],
-    object: <ProgressObject />,
+    object: <DealObject />,
   },
   {
     verb: "Structurer",
     when: "Dès le départ",
     moment: "Une méthode pour toute l'équipe",
     title: "Toute l'équipe vend avec la même méthode, la vôtre.",
-    body: "Votre playbook devient la grille de l'équipe, vos étapes de vente ont chacune leur consigne, vos objections leurs réponses de référence. Chaque nouveau commercial arrive dans une équipe qui a déjà sa méthode.",
+    body: "Votre méthode de qualification, ce qu'il faut obtenir à chaque étape, vos réponses aux objections, vos références : réglés une fois, sur une seule page. Chaque nouveau commercial arrive dans une équipe qui a déjà sa méthode.",
     points: [
-      { title: "Votre playbook, votre grille", body: "Dimensions, poids et questions clés, importés depuis Notion, Word ou PDF. Tout le monde est noté sur les mêmes critères." },
-      { title: "Une consigne par étape", body: "R1, R2, R3 reconnus depuis le titre du rendez-vous, chacun analysé avec sa propre consigne." },
+      { title: "Des objectifs par étape commerciale", body: "Sur les étapes de votre pipeline HubSpot : ce qu'il faut avoir obtenu avant de passer à la suivante. MEDDIC, BANT, MEDDPICC ou le socle Brief." },
       { title: "Vos objections, vos réponses", body: "Vous fixez les catégories et la façon de traiter chacune. Brief y range chaque objection entendue en call, et vous suggère les nouvelles catégories qui reviennent." },
+      { title: "Des références classées", body: "Preuve de ROI, cas d'usage ou référence simple : Brief dit lesquelles citer telles quelles, et lesquelles sont à compléter." },
       { title: "Mis en place avec votre expert", body: "Un expert de l'équipe Brief installe tout avec vous, une brique par semaine pendant huit semaines." },
     ],
-    object: <StructureObject />,
+    object: <MethodObject />,
   },
 ];
 
@@ -266,7 +267,7 @@ const STEPS: JourneyStep[] = [
 export const MOMENTS = [
   { verb: "Préparer", when: "la veille", anchor: "preparer", soft: "bg-land-accent-soft", solid: "bg-land-accent" },
   { verb: "Débriefer", when: "après le call", anchor: "debriefer", soft: "bg-land-coral-soft", solid: "bg-land-coral" },
-  { verb: "Progresser", when: "chaque semaine", anchor: "progresser", soft: "bg-land-sun-soft", solid: "bg-land-sun-ink" },
+  { verb: "Progresser", when: "entre deux rendez-vous", anchor: "progresser", soft: "bg-land-sun-soft", solid: "bg-land-sun-ink" },
   { verb: "Structurer", when: "dès le départ", anchor: "structurer", soft: "bg-land-lilac-soft", solid: "bg-land-lilac-ink" },
 ];
 
@@ -281,7 +282,7 @@ export function MethodIntro() {
         <span className="text-land-faint">Un seul objectif : le ROI.</span>
       </h2>
       <p className="mt-6 max-w-[54ch] text-[18px] leading-relaxed text-land-muted md:text-[20px]">
-        Préparer chaque rendez-vous, débriefer chaque call, faire progresser chaque commercial, structurer toute
+        Préparer chaque rendez-vous, débriefer chaque call, faire progresser chaque deal, structurer toute
         l&apos;équipe autour de votre méthode. Brief actionne les quatre, pour que chaque rendez-vous rapporte
         davantage.
       </p>
@@ -327,10 +328,10 @@ export function MethodSection() {
 
 // ─── Managers ────────────────────────────────────────────────────────────────
 
-// Section manager (refaite le 12/10/2026). Le graphique des scores par
-// dimension est retiré : le tableau de bord Performance, plus haut, le montre
-// déjà. Ici, ce qui distingue Brief — la méthode du manager, appliquée à
-// chaque call — montrée sur la vraie page Playbook, puis le bilan du vendredi.
+// Section manager (refaite le 12/10/2026, reprise le 18/11/2026). Ce qui
+// distingue Brief — la méthode du manager, appliquée à chaque call et à
+// chaque deal — montrée sur la vraie page Méthode (qui a remplacé la page
+// Playbook et sa grille de notation le 05/11/2026), puis le bilan du vendredi.
 export function ManagerSection() {
   return (
     <section id="manager" className="scroll-mt-20 border-t border-land-line bg-land-surface">
@@ -340,13 +341,13 @@ export function ManagerSection() {
           <span className="text-land-faint">Brief l&apos;applique à chaque call.</span>
         </h2>
         <p className="mt-6 max-w-[58ch] text-[18px] leading-relaxed text-land-muted md:text-[20px]">
-          Vos dimensions, leur poids, les questions qui comptent, une consigne par étape du cycle. Importée depuis
-          Notion ou un document, modifiable à tout moment : c&apos;est sur cette grille, la vôtre, que chaque call est
-          noté.
+          Votre méthode de qualification, ce qu&apos;il faut obtenir à chaque étape du pipeline, vos réponses aux
+          objections, les clients à citer. Réglée une fois, modifiable à tout moment : c&apos;est d&apos;après elle que
+          Brief lit chaque call et dit ce qui manque sur chaque deal.
         </p>
 
         <div className="mt-14 grid grid-cols-1 gap-8 lg:mt-16 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-start lg:gap-10">
-          <PlaybookPreview />
+          <MethodPreview />
           {/* Le lecteur visé, en image : le directeur commercial. Photo
               générée par IA (Higgsfield, 12/10/2026), sans mention à l'écran
               (choix de Jean, 12/10/2026). */}
@@ -373,7 +374,7 @@ export function ManagerSection() {
             </div>
             <ul className="mt-6 space-y-3 text-[15px] text-land-ink">
               {[
-                "Une grille par équipe, des consignes par étape R1, R2, R3.",
+                "Des objectifs par étape commerciale, calés sur votre pipeline HubSpot.",
                 "Les objections rangées dans vos catégories, avec votre réponse de référence.",
                 "Un bilan chaque vendredi : ce qui a marché, points d'attention, à ne pas oublier.",
               ].map((t) => (
@@ -467,23 +468,26 @@ const STACK_LOGOS: Record<string, string> = {
   pipedrive: "Pipedrive",
   gmail: "Gmail",
   slack: "Slack",
-  notion: "Notion",
-  "microsoft-word": "Word",
 };
 
-// Ce que Brief fait de chaque outil — vérifié dans le code le 12/10/2026 :
+// Ce que Brief fait de chaque outil — vérifié dans le code le 18/11/2026 :
 // lecture d'agenda et dépôt du brief dans l'événement Google
 // (lib/google-calendar.ts), bot « Brief Notetaker » et son message d'annonce
-// (lib/recall.ts), brief et analyse vers HubSpot, Pipedrive, Slack et email
-// (lib/notifications-dispatcher.ts), envoi seul sur Gmail et Outlook
-// (scopes gmail.send et Mail.Send), import du playbook Notion / Word / PDF.
+// (lib/recall.ts), réunions internes écartées (lib/meeting-kind.ts), brief et
+// analyse vers HubSpot, Pipedrive, Slack et email
+// (lib/notifications-dispatcher.ts), propriétés HubSpot mises à jour après
+// chaque call (lib/hubspot-autofill-run.ts), étape gagnée ou perdue
+// (lib/crm/hubspot-deals.ts), envoi seul sur Gmail et Outlook (scopes
+// gmail.send et Mail.Send), alertes sur un deal (lib/reception.ts).
+// L'import du playbook depuis Notion, Word ou PDF n'a plus d'écran depuis le
+// 05/11/2026 : la carte et les deux logos sont retirés.
 const STACK_CARDS: { title: string; logos: string[]; points: string[] }[] = [
   { title: "Agenda", logos: ["google-calendar", "microsoft-outlook"], points: [`Brief lit vos rendez-vous à venir et repère ceux avec des prospects.`, `Sur Google Agenda, le brief est déposé dans l'événement.`] },
-  { title: "Visio", logos: ["google-meet", "microsoft-teams", "zoom"], points: [`Le bot « Brief Notetaker » rejoint la visio, enregistre et transcrit.`, `Il annonce l'enregistrement dans le chat, dès son arrivée.`] },
-  { title: "CRM", logos: ["hubspot", "pipedrive"], points: [`Le brief et le compte rendu du call arrivent dans la fiche.`, `L'historique du CRM nourrit le brief du rendez-vous suivant.`] },
+  { title: "Visio", logos: ["google-meet", "microsoft-teams", "zoom"], points: [`Le bot « Brief Notetaker » rejoint la visio, enregistre et transcrit.`, `Il annonce l'enregistrement dans le chat, et ne rejoint pas vos réunions internes.`] },
+  { title: "CRM", logos: ["hubspot", "pipedrive"], points: [`Le brief et le compte rendu du call arrivent dans la fiche.`, `L'historique, l'étape et le montant du deal nourrissent le brief suivant.`] },
+  { title: "Deals HubSpot", logos: ["hubspot"], points: [`Après chaque call, les propriétés que vous avez choisies se mettent à jour.`, `Gagné ou perdu dans Brief : l'étape change dans HubSpot.`] },
   { title: "Email", logos: ["gmail", "microsoft-outlook"], points: [`L'email de suivi part de votre adresse, après relecture.`, `Brief n'a aucun accès en lecture à votre messagerie.`] },
-  { title: "Slack", logos: ["slack"], points: [`Brief et analyse du call en message privé.`, `Pour lire l'essentiel sans ouvrir Brief.`] },
-  { title: "Playbook", logos: ["notion", "microsoft-word"], points: [`Importez votre méthode depuis Notion, Word ou PDF.`, `Dimensions, poids et questions, prêts à noter les calls.`] },
+  { title: "Slack", logos: ["slack"], points: [`Brief et analyse du call en message privé.`, `Une alerte au manager quand un call met un deal à risque.`] },
 ];
 
 function StackLogo({ file, size = 24 }: { file: string; size?: number }) {
@@ -504,8 +508,8 @@ function StackLogo({ file, size = 24 }: { file: string; size?: number }) {
 // tournent lentement (les logos restent droits). Décoratif ; immobile en
 // mouvement réduit.
 function StackOrbit() {
-  const inner = ["google-calendar", "microsoft-outlook", "gmail", "slack", "notion"];
-  const outer = ["google-meet", "microsoft-teams", "zoom", "hubspot", "pipedrive", "microsoft-word"];
+  const inner = ["google-calendar", "microsoft-outlook", "gmail", "slack"];
+  const outer = ["google-meet", "microsoft-teams", "zoom", "hubspot", "pipedrive"];
   const ring = (files: string[], r: number, reverse = false) => (
     <div className={`land-orbit absolute inset-0 ${reverse ? "land-orbit-reverse" : ""}`} aria-hidden>
       {files.map((f, i) => {
@@ -565,7 +569,7 @@ export function Integrations({ showTitle = true }: { showTitle?: boolean }) {
               <div className="rounded-2xl bg-land-bg p-5">
                 <div className="text-[12px] font-semibold uppercase tracking-[0.07em] text-land-accent">Ce que Brief lit</div>
                 <ul className="mt-3 space-y-2 text-[14.5px] text-land-ink">
-                  {["Vos rendez-vous à venir", "Les visios, enregistrées et transcrites", "L'historique de votre CRM", "Votre playbook"].map((t) => (
+                  {["Vos rendez-vous à venir", "Les visios, enregistrées et transcrites", "L'historique de votre CRM", "L'étape et le montant de vos deals"].map((t) => (
                     <li key={t} className="flex gap-2.5">
                       <Check className="mt-0.5 h-4 w-4 shrink-0 text-land-accent" aria-hidden />
                       {t}
@@ -576,7 +580,7 @@ export function Integrations({ showTitle = true }: { showTitle?: boolean }) {
               <div className="rounded-2xl bg-land-bg p-5">
                 <div className="text-[12px] font-semibold uppercase tracking-[0.07em] text-land-coral-ink">Ce que Brief dépose</div>
                 <ul className="mt-3 space-y-2 text-[14.5px] text-land-ink">
-                  {["Le brief, la veille au soir", "Le compte rendu noté du call", "L'email de suivi, prêt à partir", "Le bilan du vendredi"].map((t) => (
+                  {["Le brief, la veille au soir", "Le compte rendu du call", "Les propriétés du deal, à jour", "L'email de suivi, prêt à partir"].map((t) => (
                     <li key={t} className="flex gap-2.5">
                       <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-land-coral" aria-hidden />
                       {t}
@@ -633,21 +637,27 @@ export function Integrations({ showTitle = true }: { showTitle?: boolean }) {
 }
 
 // ─── FAQ ─────────────────────────────────────────────────────────────────────
-// Développée le 12/10/2026 (13 questions en trois thèmes). Chaque réponse est
-// vérifiable dans le code : bot « Brief Notetaker » et son message d'annonce
-// (lib/recall.ts), canaux de diffusion du brief (lib/notifications-dispatcher.ts),
-// scope Gmail limité à l'envoi (lib/auth.ts), régions Paris / Francfort,
-// grille par défaut à quatre dimensions, vue commerciale limitée à sa ligne.
+// Développée le 12/10/2026, reprise le 18/11/2026 (14 questions en trois
+// thèmes) après la fin de la note sur 5 et l'arrivée des deals. Chaque réponse
+// est vérifiable dans le code : bot « Brief Notetaker » et son message
+// d'annonce (lib/recall.ts), réunions internes écartées (lib/meeting-kind.ts),
+// mémoire d'un deal (lib/deal-progress.ts, lib/deal-macro.ts), méthode et
+// objectifs par étape (lib/deal-rules.ts), coaching sans note
+// (lib/deal-advice-ai.ts), canaux de diffusion (lib/notifications-dispatcher.ts,
+// lib/reception.ts), écritures HubSpot (lib/hubspot-autofill-run.ts,
+// lib/crm/hubspot-deals.ts), scope Gmail limité à l'envoi (lib/auth.ts),
+// régions Paris / Francfort.
 const FAQ_GROUPS = [
     {
       title: "Le produit",
       items: [
-        { q: `Comment Brief augmente concrètement le taux de closing ?`, a: `En travaillant quatre leviers : arriver préparé, savoir ce qui a marché ou pas (un débrief noté, adapté à l'étape R1, R2 ou R3), faire progresser chaque commercial (ses scores, un entraînement sur ses propres objections), et structurer toute l'équipe autour d'une même méthode.` },
-        { q: `Comment Brief rejoint mes rendez-vous ?`, a: `Vous connectez votre agenda Google ou Outlook. Brief détecte les visios (Meet, Teams, Zoom) et y envoie son bot, « Brief Notetaker », qui enregistre et transcrit. Vous pouvez exclure des rendez-vous manuellement.` },
-        { q: `Comment fonctionne l'analyse par étape R1, R2, R3 ?`, a: `Le manager configure une fois les motifs de titre de rendez-vous (« Rencontre X » pour la découverte, « Présentation X » pour la démo…) et les consignes propres à chaque étape. Brief évalue ensuite chaque call selon les critères de son étape, entièrement modifiables : un R1 n'est pas jugé comme un R3.` },
-        { q: `Mon playbook est dans Notion ou dans un document : comment l'importer ?`, a: `Connectez Notion, ou importez un PDF ou un fichier Word, ou collez simplement le texte. Brief en extrait les dimensions, leur poids et les questions ; vous relisez et ajustez avant d'enregistrer. Sans playbook, une grille par défaut en quatre dimensions s'applique.` },
-        { q: `Où mes commerciaux reçoivent-ils leurs briefs ?`, a: `Dans Brief, et là où ils travaillent déjà, selon les canaux activés : par email la veille, dans la description de l'événement Google Agenda, dans les notes HubSpot ou Pipedrive, ou en message Slack.` },
-        { q: `Mes commerciaux voient-ils leurs notes ?`, a: `Oui : chacun voit ses calls, sa progression et la grille sur laquelle il est noté. Le classement nominatif de l'équipe reste une vue manager ; un commercial ne voit que sa propre ligne et la moyenne d'équipe.` },
+        { q: `Comment Brief augmente concrètement le taux de closing ?`, a: `En travaillant quatre leviers : arriver préparé à chaque rendez-vous, savoir après chaque call ce qu'il a changé dans le deal et ce qu'il faut faire, faire avancer chaque deal avec une priorité claire, et structurer toute l'équipe autour d'une même méthode.` },
+        { q: `Comment Brief rejoint mes rendez-vous ?`, a: `Vous connectez votre agenda Google ou Outlook. Brief détecte les visios (Meet, Teams, Zoom) et y envoie son bot, « Brief Notetaker », qui enregistre et transcrit. Les réunions internes (point hebdomadaire, entretien, déjeuner…) sont reconnues à leur titre et ne sont pas enregistrées ; vous pouvez toujours forcer l'analyse d'un rendez-vous, ou en exclure un.` },
+        { q: `Comment Brief suit-il un deal d'un rendez-vous à l'autre ?`, a: `Chaque rendez-vous enregistré crée ou complète le deal de son prospect. Brief retient ce que le deal sait déjà (douleur, budget, décideur, échéance…), les engagements pris de chaque côté et le prochain rendez-vous. La page du deal affiche son état, une priorité et ce qu'il reste à obtenir ; le brief du rendez-vous suivant repart de là.` },
+        { q: `Comment Brief apprend-il notre méthode de vente ?`, a: `Le manager choisit la méthode de qualification (MEDDIC, BANT, MEDDPICC ou le socle Brief) et ce qu'il faut obtenir à chaque étape commerciale, sur les étapes de votre pipeline HubSpot quand il est connecté. Il fixe aussi les objections de référence et la façon d'y répondre. Tout se règle sur une seule page, Méthode, modifiable à tout moment.` },
+        { q: `Brief note-t-il mes commerciaux ?`, a: `Non. Brief ne met de note ni sur un call ni sur un commercial. Après chaque rendez-vous, le commercial lit ce qu'il a bien exécuté et, au plus, deux points à travailler, chacun avec la phrase à dire la prochaine fois. Le manager, lui, voit les deals de ses commerciaux qui demandent son intervention, et la question à leur poser.` },
+        { q: `Où mes commerciaux reçoivent-ils leurs briefs ?`, a: `Dans Brief, et là où ils travaillent déjà, selon les canaux activés : par email la veille, dans la description de l'événement Google Agenda, dans les notes HubSpot ou Pipedrive, ou en message Slack. Le manager peut régler ces canaux pour toute l'équipe en une fois.` },
+        { q: `Que fait Brief dans mon CRM ?`, a: `Il y lit l'historique, l'étape et le montant de chaque deal, et y dépose le brief et le compte rendu de chaque call. Sur HubSpot, il met aussi à jour après chaque call les propriétés que vous avez choisies, et passe le deal à l'étape gagnée ou perdue quand vous le clôturez dans Brief.` },
       ],
     },
     {
@@ -662,8 +672,8 @@ const FAQ_GROUPS = [
     {
       title: "Essai et mise en place",
       items: [
-        { q: `Puis-je tester Brief ?`, a: `Oui. Créez votre compte avec Google ou Microsoft et préparez jusqu'à ${BRIEFS_ACCESS_DAILY_LIMIT} briefs par jour, sans carte bancaire. L'analyse des calls et le suivi d'équipe se mettent en place avec nous : prenez rendez-vous, on configure Brief pour votre équipe.` },
-        { q: `Combien de temps pour démarrer ?`, a: `Deux minutes pour connecter l'agenda ; le premier brief arrive la veille du prochain rendez-vous. Pour l'analyse des calls et le suivi d'équipe, on accompagne la mise en place sur huit semaines, avec un point chaque semaine.` },
+        { q: `Puis-je tester Brief ?`, a: `Oui. Créez votre compte avec Google ou Microsoft et préparez jusqu'à ${BRIEFS_ACCESS_DAILY_LIMIT} briefs par jour, sans carte bancaire. L'analyse des calls et le suivi des deals se mettent en place avec nous : prenez rendez-vous, on configure Brief pour votre équipe.` },
+        { q: `Combien de temps pour démarrer ?`, a: `Deux minutes pour connecter l'agenda ; le premier brief arrive la veille du prochain rendez-vous. Pour l'analyse des calls et le suivi des deals, on accompagne la mise en place sur huit semaines, avec un point chaque semaine.` },
         { q: `Comment est facturé Brief ?`, a: `Les briefs sont offerts jusqu'à ${BRIEFS_ACCESS_DAILY_LIMIT} par jour et par utilisateur. Pour l'équipe, l'abonnement se fait par commercial : on vous fait une proposition après un premier échange.` },
       ],
     },
@@ -788,7 +798,7 @@ export function FinalCTA() {
             </a>
           </div>
           <p className="mt-4 text-[13px] text-white/55">
-            Pour l&apos;analyse des calls et le suivi d&apos;équipe, on met Brief en place avec vous.
+            Pour l&apos;analyse des calls et le suivi des deals, on met Brief en place avec vous.
           </p>
         </div>
         <div className="relative order-1 aspect-[16/10] lg:order-2 lg:-ml-0.5 lg:aspect-auto">
@@ -940,7 +950,7 @@ const SECURITY_POINTS = [
   {
     icon: Bot,
     title: "Des participants informés",
-    body: "En arrivant dans la visio, le bot « Brief Notetaker » annonce dans le chat qu'il enregistre, et propose de quitter la réunion si quelqu'un le préfère.",
+    body: "En arrivant dans la visio, le bot « Brief Notetaker » annonce dans le chat qu'il enregistre, et propose de quitter la réunion si quelqu'un le préfère. Il ne rejoint pas vos réunions internes, reconnues à leur titre.",
   },
   {
     icon: Mail,
@@ -950,7 +960,7 @@ const SECURITY_POINTS = [
   {
     icon: Lock,
     title: "Chacun voit ce qu'il doit voir",
-    body: "Un commercial voit ses propres calls ; un manager, ceux de son équipe. Les sessions d'entraînement restent privées : le manager n'en voit que des compteurs.",
+    body: "Un commercial voit ses calls et ses deals ; un manager, ceux des commerciaux qui lui sont rattachés. Les sessions d'entraînement restent privées : le manager n'en voit que des compteurs.",
   },
   {
     icon: Trash2,
