@@ -10,6 +10,12 @@
 // section l'indique sous les témoignages. À remplacer par leurs vrais
 // portraits s'ils les fournissent.
 //
+// Retirés du site le 19/11/2026 (historique git) : quatre témoignages réels qui
+// décrivent des fonctions que l'app n'a plus — Isabelle Roche (scores par
+// dimension), Sophie Garnier (notation par étape), Julien Perrin (playbook
+// importé depuis Notion, grille de critères), Nadia Chevalier (« mes scores »).
+// Une citation ne se réécrit pas : à leur redemander si on veut les republier.
+//
 // Garde-fou conservé : `fictional: true` retire un témoignage du build de
 // PRODUCTION (VERCEL_ENV === "production", cf. `visibleTestimonials`). Publier
 // un avis inventé comme s'il était vrai est une pratique commerciale
@@ -54,34 +60,10 @@ export const FEATURED: Testimonial[] = [
     ],
     fictional: false,
   },
-  {
-    name: "Isabelle Roche",
-    role: "Head of Sales",
-    company: "cabinet de conseil en transformation",
-    color: "#9A3FB0",
-    photo: "/landing/people/temoignage-isabelle.jpg",
-    quote: [
-      "J'ai arrêté de coacher à l'intuition.",
-      `Je vois en un coup d'œil qui décroche sur la découverte et qui maîtrise le closing, et je sais exactement sur quoi accompagner chacun.`,
-    ],
-    fictional: false,
-  },
 ];
 
 /** Cartes sous le carrousel. */
 export const CARDS: Testimonial[] = [
-  {
-    name: "Sophie Garnier",
-    role: "Sales Manager",
-    company: "éditeur SaaS RH",
-    color: "#1E6FA8",
-    photo: "/landing/people/temoignage-sophie.jpg",
-    quote: [
-      "Ce qui a tout changé, c'est la notation par étape.",
-      `Un R1 n'est plus jugé comme un closing, et mes commerciaux comprennent enfin ce qu'on attend d'eux à chaque rendez-vous.`,
-    ],
-    fictional: false,
-  },
   {
     name: "Mehdi Bouaziz",
     role: "Account Executive",
@@ -91,30 +73,6 @@ export const CARDS: Testimonial[] = [
     quote: [
       "La bibliothèque d'objections, c'est mon meilleur collègue.",
       `Quand un prospect me sort une objection que je n'ai jamais traitée, je retrouve comment l'équipe y a répondu et ce qui a marché.`,
-    ],
-    fictional: false,
-  },
-  {
-    name: "Julien Perrin",
-    role: "CEO",
-    company: "startup fintech (série A)",
-    color: "#B7791F",
-    photo: "/landing/people/temoignage-julien.jpg",
-    quote: [
-      "On a importé notre playbook depuis Notion en une après-midi.",
-      `Depuis, chaque call est évalué sur nos propres critères, pas sur une grille générique qui ne nous ressemble pas.`,
-    ],
-    fictional: false,
-  },
-  {
-    name: "Nadia Chevalier",
-    role: "Business Developer junior",
-    company: "éditeur de logiciels industriels",
-    color: "#0F7A8A",
-    photo: "/landing/people/temoignage-nadia.jpg",
-    quote: [
-      "Six mois après mon arrivée, je réponds aux objections comme quelqu'un qui a dix ans de maison.",
-      `Je vois mes scores progresser semaine après semaine, c'est hyper motivant.`,
     ],
     fictional: false,
   },

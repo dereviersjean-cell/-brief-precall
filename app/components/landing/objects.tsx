@@ -23,8 +23,14 @@ import { Check, Clock, History, MapPin } from "lucide-react";
 //
 // Le fil : Thomas Lefèvre (commercial) suit le deal Valdor Emballages avec
 // Claire Mercier, directrice des opérations. R1 de découverte le jeudi
-// 18 septembre, R2 de présentation le jeudi 2 octobre à 14:30, R3 prévu le
-// jeudi 9 octobre à 10:00 avec Hugo Ravel, directeur financier.
+// 18 septembre ; R2 de présentation le jeudi 2 octobre à 14:30, que rejoint
+// Hugo Ravel, directeur financier ; R3 prévu le jeudi 9 octobre à 10:00.
+// Vérifié le 19/11/2026, à tenir d'un aperçu à l'autre : le deal est à
+// l'étape « Évaluation » du pipeline (Qualification, Évaluation, Proposition,
+// Négociation — celui de la page Méthode), le montant de 40 000 € n'est que
+// « dit en rendez-vous », le récapitulatif part le 2 octobre, l'exemple de
+// déploiement avant le mardi 7, et Hugo doit transmettre le circuit de
+// validation du budget avant le R3.
 
 const NB = " ";
 
@@ -282,7 +288,7 @@ const OURS: { text: string; when: string; status: keyof typeof COMMITMENT_TONES 
   { text: "Envoyer l'exemple de déploiement de la Cartonnerie du Val", when: "avant le 7 oct.", status: "À faire" },
 ];
 const THEIRS: { text: string; when: string; status: keyof typeof COMMITMENT_TONES }[] = [
-  { text: "Inviter Hugo Ravel, directeur financier, au R3", when: "9 oct.", status: "En attente" },
+  { text: "Hugo Ravel transmet le circuit de validation du budget", when: "avant le 9 oct.", status: "En attente" },
 ];
 
 const CRITERION_TONES = {
@@ -303,13 +309,13 @@ const DEAL_STATE: [string, keyof typeof CRITERION_TONES][] = [
   ["Échéance", "À préciser"],
 ];
 
-function CommitmentList({ title, items }: { title: string; items: typeof OURS }) {
+function CommitmentList({ title, items, from = 0 }: { title: string; items: typeof OURS; from?: number }) {
   return (
     <div className="mt-3">
       <div className="text-[13px] font-semibold text-land-ink">{title}</div>
       <ul className="mt-1 divide-y divide-land-line">
-        {items.map((c) => (
-          <li key={c.text} className="flex items-start gap-2.5 py-2">
+        {items.map((c, i) => (
+          <li key={c.text} className="land-step-row flex items-start gap-2.5 py-2" style={d(from + i)}>
             <span
               className={`mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded border-2 ${
                 c.status === "Fait" ? "border-land-accent bg-land-accent text-white" : "border-land-line"
@@ -365,7 +371,10 @@ export function DealObject() {
 
       <div className="grid grid-cols-1 gap-4 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.72fr)] sm:px-5">
         <div className="min-w-0 space-y-4">
-          <section className="rounded-2xl bg-land-surface px-4 py-3.5 ring-2 ring-land-accent">
+          <section className="relative rounded-2xl bg-land-surface px-4 py-3.5 ring-2 ring-land-accent">
+            {/* Faisceau qui fait le tour de la carte tant qu'elle est à
+                l'écran (globals.css, d'après le Border Beam de Magic UI). */}
+            <span aria-hidden className="land-beam" />
             <Label tone="accent">Priorité Brief</Label>
             <div className="mt-1 text-[16px] font-semibold leading-snug tracking-[-0.01em] text-land-ink">
               Faire valider le budget par le directeur financier avant le R3
@@ -373,7 +382,7 @@ export function DealObject() {
             <dl className="mt-2.5 space-y-2 text-[13px] leading-snug">
               <div>
                 <dt className="text-[11px] font-semibold uppercase tracking-[0.08em] text-land-faint">Pourquoi maintenant</dt>
-                <dd className="mt-0.5 text-land-muted">Hugo Ravel entre dans la décision jeudi, et le budget n&apos;a été évoqué qu&apos;à l&apos;oral.</dd>
+                <dd className="mt-0.5 text-land-muted">Hugo Ravel sera au R3 jeudi, et le budget n&apos;a été évoqué qu&apos;à l&apos;oral.</dd>
               </div>
               <div>
                 <dt className="text-[11px] font-semibold uppercase tracking-[0.08em] text-land-faint">Comment</dt>
@@ -382,11 +391,11 @@ export function DealObject() {
             </dl>
           </section>
 
-          <section className="land-step-row rounded-2xl border border-land-line px-4 py-3.5" style={d(0)}>
+          <section className="rounded-2xl border border-land-line px-4 py-3.5">
             <Label tone="accent">Actions et engagements</Label>
             <div className="mt-0.5 text-[14px] font-semibold text-land-ink">Qui doit faire quoi, pour quand</div>
             <CommitmentList title="À faire de notre côté" items={OURS} />
-            <CommitmentList title="Attendu du prospect" items={THEIRS} />
+            <CommitmentList title="Attendu du prospect" items={THEIRS} from={OURS.length} />
           </section>
         </div>
 
@@ -397,10 +406,10 @@ export function DealObject() {
               <div className="mt-1.5">
                 <StateChip state="progres" />
               </div>
-              <p className="mt-1.5 text-[12.5px] leading-snug text-land-muted">Deux rendez-vous en trois semaines, un R3 daté.</p>
+              <p className="mt-1.5 text-[12.5px] leading-snug text-land-muted">Deux rendez-vous en deux semaines, un R3 daté.</p>
             </div>
             <Fact label="Étape">
-              R2 · Présentation<From>HubSpot</From>
+              R2 · Évaluation<From>HubSpot</From>
             </Fact>
             <Fact label="Montant">
               40{NB}000{NB}€<From>Dit en rendez-vous, à confirmer</From>
@@ -408,13 +417,13 @@ export function DealObject() {
             <Fact label="Prochain rendez-vous">Jeudi 9 octobre, 10:00</Fact>
           </section>
 
-          <section className="land-step-row rounded-2xl border border-land-line px-4 py-3.5" style={d(1)}>
+          <section className="rounded-2xl border border-land-line px-4 py-3.5">
             <div className="text-[14px] font-semibold text-land-ink">
               État du deal <span className="text-[12.5px] font-medium text-land-muted">· {confirmed} sur {DEAL_STATE.length}</span>
             </div>
             <ul className="mt-1.5 divide-y divide-land-line">
-              {DEAL_STATE.map(([label, status]) => (
-                <li key={label} className="flex items-center justify-between gap-2 py-1.5 text-[12.5px]">
+              {DEAL_STATE.map(([label, status], i) => (
+                <li key={label} className="land-step-row flex items-center justify-between gap-2 py-1.5 text-[12.5px]" style={d(i * 0.5)}>
                   <span className="truncate text-land-ink">{label}</span>
                   <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${CRITERION_TONES[status]}`}>{status}</span>
                 </li>
@@ -439,19 +448,19 @@ export function DealObject() {
 
 const FOLLOW_UP_LINES = [
   "Je vous envoie le récapitulatif et l'exemple de déploiement de la Cartonnerie du Val d'ici mardi.",
-  "Vous invitez Hugo Ravel au rendez-vous du jeudi 9 octobre, à 10:00.",
+  "Hugo Ravel nous transmet le circuit de validation du budget avant notre rendez-vous du jeudi 9 octobre, à 10:00.",
 ];
 
 const CRM_ROWS: [string, string][] = [
-  ["Étape", "Présentation"],
-  ["Montant", `40${NB}000${NB}€`],
+  ["Étape", "Évaluation"],
   ["Prochain rendez-vous", `9${NB}oct.`],
+  ["Interlocuteur finance", "Hugo Ravel"],
 ];
 
 const FOLLOW_UP_COMMITMENTS: { who: string; text: string; when: string; done?: boolean }[] = [
   { who: "Thomas", text: "Envoyer le récapitulatif du R2", when: `2${NB}oct.`, done: true },
   { who: "Thomas", text: "Envoyer l'exemple de déploiement", when: `7${NB}oct.` },
-  { who: "Claire", text: "Inviter Hugo Ravel au R3", when: `9${NB}oct.` },
+  { who: "Hugo", text: "Transmettre le circuit de validation", when: `9${NB}oct.` },
 ];
 
 export function FollowUpObject() {
@@ -552,7 +561,7 @@ export function DigestObject() {
       "Ce qui a bien fonctionné dans l'équipe",
       [
         "Thomas a obtenu un R3 daté chez Valdor, avec le directeur financier invité.",
-        "Julie a bien traité l'objection prix chez Lumen Logistique en chiffrant le retour sur investissement.",
+        "Julie a bien traité l'objection prix chez Airbus en chiffrant le retour sur investissement.",
       ],
     ],
     [

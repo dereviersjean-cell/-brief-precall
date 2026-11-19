@@ -20,6 +20,8 @@ export default function Page() {
   return (
     <SiteChrome>
       <PageHero
+        art="/landing/login-scene.jpg"
+        ink="#1A3261"
         label="Pour les directeurs commerciaux et dirigeants"
         title="Identifiez les deals sur lesquels votre intervention"
         accent="peut faire la différence."

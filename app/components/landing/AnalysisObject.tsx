@@ -40,13 +40,13 @@ const IMPACT_TONES = {
   Vigilance: "bg-amber-50 text-amber-700",
 } as const;
 const IMPACT: { tag: keyof typeof IMPACT_TONES; text: string }[] = [
-  { tag: "Nouveau", text: "Le directeur financier, Hugo Ravel, entre dans la décision." },
+  { tag: "Nouveau", text: "Le directeur financier, Hugo Ravel, a rejoint l'échange : il entre dans la décision." },
   { tag: "Nouveau", text: "Budget évoqué : 40 000 € par an, à confirmer par écrit." },
   { tag: "Vigilance", text: "Claire craint la charge de déploiement pour son équipe planning." },
 ];
 
-const OURS = ["Envoyer le récapitulatif et l'exemple de déploiement de la Cartonnerie du Val · aujourd'hui"];
-const THEIRS = ["Claire invite Hugo Ravel au R3 · jeudi 9 oct."];
+const OURS = ["Envoyer le récapitulatif du R2 · aujourd'hui", "Envoyer l'exemple de déploiement de la Cartonnerie du Val · avant le 7 oct."];
+const THEIRS = ["Hugo Ravel transmet le circuit de validation du budget · avant le 9 oct."];
 const NEXT_QUESTIONS = ["Qui signe, et selon quel circuit de validation ?", "Quelle échéance pour démarrer avant l'ouverture de la ligne ?"];
 
 // Playbook client : ce que le deal sait après ce rendez-vous.

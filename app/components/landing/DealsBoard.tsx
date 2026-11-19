@@ -2,24 +2,28 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { MousePointerClick } from "lucide-react";
+import { CircleAlert, MessageCircleQuestion, MousePointerClick, Zap } from "lucide-react";
 import { StateChip } from "@/app/mes-deals/deal-ui";
 import type { DealState } from "@/lib/deal-progress";
-import { AppSidebar } from "./AppSidebar";
-import { ValdorLogo } from "./brands";
+import { BrandTile } from "./brands";
 import { NB, rep } from "./team-data";
+import { Ticker } from "./Ticker";
 
-// « Suivi des deals », la page du manager, au format réel (app/deals :
-// DealsBoardClient, SuiviView du 14/11/2026, ForecastView du 10/11/2026) :
-//   - Suivi › À reprendre : trois chiffres, une carte par deal qui demande
-//     l'intervention du manager (le problème, l'action recommandée, la
-//     question à poser au commercial), puis les deals endormis ;
-//   - Suivi › Tous les deals : le tableau de l'équipe ;
-//   - Prévision : ce que dit HubSpot comparé à ce que les calls confirment.
-// Mêmes libellés et même ordre de priorité que l'app (dégradation, engagement
-// non tenu, blocage ; `lib/deal-suivi.ts`). Remplace l'aperçu Performance
-// (notes sur 5, analytics), retiré de l'app le 05/11/2026.
-// Données fictives, annoncées en pied ; les totaux se recoupent.
+// « Suivi des deals », la page du manager — le « Manager Radar » du cadrage
+// GTM. Mise en page reprise de la maquette d'Hubert (référence visuelle 02) :
+// trois chiffres, puis à gauche la liste des deals par onglet (à reprendre,
+// endormis, tous) et à droite la fiche du deal sélectionné — le problème,
+// l'action recommandée, la question à poser au commercial. Libellés et ordre
+// de priorité de l'app (SuiviView, `lib/deal-suivi.ts`) ; la vue « Prévision »
+// (ForecastView) est au format réel.
+// Un essai en radar animé (points sur fond bleu nuit, faisceau tournant) a
+// été écarté par Jean le 19/11/2026 : « ça fait jeu vidéo ». Rester sobre :
+// fond clair, une seule couleur d'accent, aucun effet qui tourne.
+// Les deals portent le nom et le logo en couleur d'entreprises connues
+// (demande de Jean, 19/11/2026 ; `BrandTile` dans brands.tsx). Les situations
+// décrites sont inventées : le pied le dit en toutes lettres, pour qu'on ne
+// lise pas un vrai deal en cours.
+// Équipe, situations et montants fictifs ; les totaux se recoupent.
 
 type Kind = "Dégradation" | "Engagement non tenu" | "Blocage";
 
@@ -31,7 +35,6 @@ const KIND_TONES: Record<Kind, string> = {
 
 type Deal = {
   name: string;
-  color: string;
   owner: string;
   state: DealState;
   rank: number;
@@ -41,45 +44,58 @@ type Deal = {
 };
 
 const DEALS: Deal[] = [
-  { name: "Valdor Emballages", color: "#0B6B58", owner: "thomas", state: "progres", rank: 2, stage: "Présentation", amount: 40000, last: "2 oct." },
-  { name: "Arvel Industrie", color: "#4B5BA8", owner: "thomas", state: "qualifier", rank: 1, stage: "Qualification", amount: 0, last: "2 oct." },
-  { name: "Hexa Transports", color: "#B4532A", owner: "karim", state: "recul", rank: 2, stage: "Présentation", amount: 32000, last: "1er oct." },
-  { name: "Kalio Santé", color: "#1E8C93", owner: "lea", state: "progres", rank: 2, stage: "Évaluation", amount: 22000, last: "30 sept." },
-  { name: "Lumen Logistique", color: "#6C4BB0", owner: "julie", state: "relancer", rank: 3, stage: "Proposition", amount: 58000, last: "22 sept." },
-  { name: "Studio Lin", color: "#C2453A", owner: "lea", state: "qualifier", rank: 2, stage: "Qualification", amount: 12000, last: "19 sept." },
-  { name: "Novaterm Industrie", color: "#3F6B3A", owner: "thomas", state: "relancer", rank: 1, stage: "Qualification", amount: 0, last: "16 sept." },
-  { name: "Atelier Moreau", color: "#9A6B2F", owner: "julie", state: "relancer", rank: 2, stage: "Évaluation", amount: 18000, last: "11 sept." },
+  { name: "Renault", owner: "thomas", state: "progres", rank: 2, stage: "Évaluation", amount: 40000, last: "2 oct." },
+  { name: "Dassault Systèmes", owner: "thomas", state: "qualifier", rank: 1, stage: "Qualification", amount: 0, last: "2 oct." },
+  { name: "Carrefour", owner: "karim", state: "recul", rank: 2, stage: "Évaluation", amount: 32000, last: "1er oct." },
+  { name: "Schneider Electric", owner: "lea", state: "progres", rank: 2, stage: "Évaluation", amount: 22000, last: "30 sept." },
+  { name: "Airbus", owner: "julie", state: "relancer", rank: 3, stage: "Proposition", amount: 58000, last: "22 sept." },
+  { name: "Leroy Merlin", owner: "lea", state: "qualifier", rank: 2, stage: "Qualification", amount: 12000, last: "19 sept." },
+  { name: "SNCF", owner: "thomas", state: "relancer", rank: 1, stage: "Qualification", amount: 0, last: "16 sept." },
+  { name: "Orange", owner: "julie", state: "relancer", rank: 2, stage: "Évaluation", amount: 18000, last: "11 sept." },
 ];
 
 const deal = (name: string) => DEALS.find((x) => x.name === name) ?? DEALS[0];
 
-const ALERTS: { deal: string; kind: Kind; problem: string; action: string; question: string }[] = [
+// Les questions sont celles qu'un manager pose à son commercial, dans le ton
+// de l'app (`coachingQuestions`, lib/deal-coaching.ts) : tutoiement, question
+// ouverte, jamais un reproche. Deux par deal, comme dans l'app — la première
+// cherche la cause, la seconde ouvre la suite.
+const ALERTS: { deal: string; kind: Kind; problem: string; action: string; questions: [string, string] }[] = [
   {
-    deal: "Hexa Transports",
+    deal: "Carrefour",
     kind: "Dégradation",
     problem: "Le prospect a cité un concurrent moins cher et repoussé sa décision au trimestre prochain.",
     action: "Reprendre avec Karim le chiffrage du retour sur investissement avant sa relance.",
-    question: "Qui, chez Hexa, a demandé le devis concurrent ?",
+    questions: [
+      "Qu'est-ce qui a changé chez Carrefour depuis le dernier call pour que la décision glisse d'un trimestre ?",
+      "Le concurrent est-il moins cher à périmètre égal ? Sur quoi peux-tu rechiffrer le retour sur investissement ?",
+    ],
   },
   {
-    deal: "Lumen Logistique",
+    deal: "Airbus",
     kind: "Engagement non tenu",
     problem: "La proposition promise pour le 26 septembre n'est pas partie.",
     action: "Faire partir la proposition aujourd'hui, avec une date de retour convenue.",
-    question: "Qu'est-ce qui retient l'envoi de la proposition ?",
+    questions: [
+      "Qu'est-ce qui te manque pour envoyer la proposition : un chiffrage, une validation, une information du client ?",
+      "Quelle nouvelle date peux-tu donner à Airbus aujourd'hui, et de quoi as-tu besoin pour la tenir ?",
+    ],
   },
   {
-    deal: "Studio Lin",
+    deal: "Leroy Merlin",
     kind: "Blocage",
     problem: "Deux rendez-vous, et le décideur n'est toujours pas identifié.",
     action: "Préparer avec Léa la question du circuit de décision pour le prochain échange.",
-    question: "Qui signe chez Studio Lin, en dehors de votre contact ?",
+    questions: [
+      "Qui valide le budget chez Leroy Merlin, et comment le faire venir au prochain call ?",
+      "Veux-tu qu'on prépare ensemble la question du circuit de décision ?",
+    ],
   },
 ];
 
 const SLEEPING: { deal: string; idle: number }[] = [
-  { deal: "Atelier Moreau", idle: 21 },
-  { deal: "Novaterm Industrie", idle: 16 },
+  { deal: "Orange", idle: 21 },
+  { deal: "SNCF", idle: 16 },
 ];
 
 // Prévision du mois : HubSpot d'après l'étape de chaque deal, Brief d'après ce
@@ -93,127 +109,113 @@ const FORECAST: { owner: string; count: number; pipeline: number; hubspot: numbe
 const SIGNED = 38000;
 
 const euros = (n: number) => `${Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, NB)}${NB}€`;
-const nb = (s: string) => s.replace(/ \?/g, `${NB}?`);
 const meta = (d: Deal) => [`R${d.rank}`, d.stage, d.amount ? euros(d.amount) : null].filter(Boolean).join(" · ");
 const CAPS = "text-[11px] font-semibold uppercase tracking-[0.08em] text-land-faint";
 
-function DealLogo({ d, size = 34 }: { d: Deal; size?: number }) {
-  if (d.name.startsWith("Valdor")) return <ValdorLogo size={size} />;
-  return (
-    <span
-      className="grid shrink-0 place-items-center rounded-lg font-bold text-white"
-      style={{ backgroundColor: d.color, width: size, height: size, fontSize: size * 0.42 }}
-      aria-hidden
-    >
-      {d.name[0]}
-    </span>
-  );
+function DealLogo({ d, large = false }: { d: Deal; large?: boolean }) {
+  return <BrandTile name={d.name} size={large ? 44 : 36} />;
 }
 
-function Stat({ value, label, tone = "text-land-ink" }: { value: string | number; label: string; tone?: string }) {
+function Stat({ value, format = "int", label, tone = "text-land-ink" }: { value: number; format?: "int" | "euros"; label: string; tone?: string }) {
+  // Trois chiffres côte à côte, y compris sur téléphone : corps réduit sous `sm`.
   return (
-    <div className="min-w-0 flex-1 basis-40 rounded-2xl border border-land-line bg-land-surface px-4 py-3.5">
-      <div className={`text-[24px] font-semibold tabular-nums tracking-[-0.02em] ${tone}`}>{value}</div>
-      <div className="text-[13px] leading-snug text-land-muted">{label}</div>
+    <div className="min-w-0 rounded-2xl border border-land-line bg-land-surface px-2.5 py-3 sm:px-4 sm:py-3.5">
+      <div className={`whitespace-nowrap text-[16px] font-semibold tracking-[-0.02em] sm:text-[24px] ${tone}`}>
+        <Ticker value={value} format={format} />
+      </div>
+      <div className="text-[11.5px] leading-snug text-land-muted sm:text-[13px]">{label}</div>
     </div>
   );
 }
 
-function ToResume() {
-  const atStake = ALERTS.reduce((sum, a) => sum + deal(a.deal).amount, 0);
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-3">
-        <Stat value={ALERTS.length} label="deals demandent votre intervention" tone="text-rose-700" />
-        <Stat value={SLEEPING.length} label="deals endormis" />
-        <Stat value={euros(atStake)} label="en jeu sur les deals à reprendre" />
-      </div>
-      {ALERTS.map((a) => {
-        const d = deal(a.deal);
-        const first = rep(d.owner).first;
-        return (
-          <article key={a.deal} className="rounded-2xl border border-land-line bg-land-surface p-4 sm:p-5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex min-w-0 items-center gap-3">
-                <DealLogo d={d} />
-                <div className="min-w-0">
-                  <div className="truncate text-[15.5px] font-semibold text-land-ink">
-                    {d.name} <span className="text-[13px] font-medium text-land-muted">· {first}</span>
-                  </div>
-                  <div className="text-[12.5px] text-land-muted">{meta(d)}</div>
-                </div>
-              </div>
-              <span className={`rounded-full px-2.5 py-0.5 text-[12px] font-semibold ${KIND_TONES[a.kind]}`}>{a.kind}</span>
-            </div>
-            <dl className="mt-3 grid grid-cols-1 gap-x-4 gap-y-1.5 text-[13.5px] leading-snug sm:grid-cols-[150px_minmax(0,1fr)]">
-              <dt className={`${CAPS} pt-0.5`}>Le problème</dt>
-              <dd className="text-land-muted">{a.problem}</dd>
-              <dt className={`${CAPS} pt-0.5`}>Action recommandée</dt>
-              <dd className="font-semibold text-land-ink">{a.action}</dd>
-            </dl>
-            <div className="mt-3 rounded-xl bg-land-accent-soft px-3.5 py-2.5">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-land-accent">À demander à {first}</div>
-              <p className="mt-0.5 text-[13.5px] font-medium leading-snug text-land-ink">{nb(a.question)}</p>
-            </div>
-          </article>
-        );
-      })}
-      <section className="rounded-2xl border border-land-line bg-land-surface p-4 sm:p-5">
-        <div className="text-[15.5px] font-semibold text-land-ink">
-          Deals endormis <span className="text-[13px] font-medium text-land-muted">· {SLEEPING.length}</span>
-        </div>
-        <p className="mt-0.5 text-[13px] text-land-muted">À relancer ou à clôturer. Ils ne demandent pas forcément votre intervention.</p>
-        <ul className="mt-2 divide-y divide-land-line">
-          {SLEEPING.map((s) => {
-            const d = deal(s.deal);
-            return (
-              <li key={s.deal} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2.5">
-                <span className="min-w-0">
-                  <span className="text-[14px] font-semibold text-land-ink">{d.name}</span>{" "}
-                  <span className="text-[13px] text-land-muted">· {rep(d.owner).first}</span>
-                  <span className="block text-[12.5px] text-land-muted">{meta(d)}</span>
-                </span>
-                <span className="whitespace-nowrap text-[13px] text-land-muted">{s.idle} jours sans échange</span>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-    </div>
-  );
+// ─── Suivi : la liste et la fiche ────────────────────────────────────────────
+
+type Tab = "reprendre" | "endormis" | "tous";
+
+const alertOf = (name: string) => ALERTS.find((a) => a.deal === name);
+const sleepOf = (name: string) => SLEEPING.find((x) => x.deal === name);
+
+const TAB_DEALS: Record<Tab, string[]> = {
+  reprendre: ALERTS.map((a) => a.deal),
+  endormis: SLEEPING.map((x) => x.deal),
+  tous: DEALS.map((d) => d.name),
+};
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: "reprendre", label: "À reprendre" },
+  { key: "endormis", label: "Endormis" },
+  { key: "tous", label: "Tous les deals" },
+];
+
+// Ce que dit la fiche d'un deal qui n'appelle pas d'intervention.
+const QUIET: Record<string, string> = {
+  "Orange": "À relancer ou à clôturer. Il ne demande pas forcément votre intervention.",
+  "SNCF": "À relancer ou à clôturer. Il ne demande pas forcément votre intervention.",
+  "Renault": "R3 daté avec le directeur financier : aucune intervention nécessaire.",
+  "Schneider Electric": "Deuxième rendez-vous tenu, critères de décision confirmés.",
+  "Dassault Systèmes": "Premier rendez-vous tenu : la qualification commence.",
+};
+
+/** Le signal d'un deal dans la liste : son alerte, son sommeil, sinon son état. */
+function Signal({ name }: { name: string }) {
+  const alert = alertOf(name);
+  const sleep = sleepOf(name);
+  if (alert) return <span className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-[12px] font-semibold ${KIND_TONES[alert.kind]}`}>{alert.kind}</span>;
+  if (sleep) return <span className="whitespace-nowrap rounded-full bg-slate-100 px-2.5 py-0.5 text-[12px] font-semibold text-slate-600">{sleep.idle} j sans échange</span>;
+  return <StateChip state={deal(name).state} />;
 }
 
-function AllDeals() {
-  const columns = "sm:grid-cols-[minmax(0,1.2fr)_120px_120px_minmax(0,1fr)_128px]";
+function DealList({ tab, onTab, selected, onSelect }: { tab: Tab; onTab: (t: Tab) => void; selected: string; onSelect: (name: string) => void }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-land-line bg-land-surface">
-      <div className={`hidden gap-4 border-b border-land-line px-5 py-3 ${CAPS} sm:grid ${columns}`}>
-        <span>Deal</span>
-        <span>Commercial</span>
-        <span>État</span>
-        <span>Étape</span>
-        <span>Dernier échange</span>
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-land-line bg-land-surface">
+      <div role="tablist" aria-label="Deals affichés" className="flex gap-1 overflow-x-auto border-b border-land-line px-2 sm:px-3">
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            data-demo={`tab-${t.key}`}
+            aria-selected={tab === t.key}
+            onClick={() => onTab(t.key)}
+            className={`-mb-px shrink-0 border-b-2 px-2.5 py-3 text-[13.5px] transition-colors ${
+              tab === t.key ? "border-land-accent font-semibold text-land-accent" : "border-transparent text-land-muted hover:text-land-ink"
+            }`}
+          >
+            {t.label}
+            <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[11.5px] font-semibold tabular-nums ${tab === t.key ? "bg-land-accent-soft" : "bg-land-sunken"}`}>
+              {TAB_DEALS[t.key].length}
+            </span>
+          </button>
+        ))}
       </div>
-      <ul>
-        {DEALS.map((d) => {
-          const owner = rep(d.owner);
+      <ul key={tab} className="land-swap p-1.5" role="tabpanel">
+        {TAB_DEALS[tab].map((name) => {
+          const d = deal(name);
+          const on = selected === name;
           return (
-            <li key={d.name} className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 border-b border-land-line px-4 py-2.5 last:border-0 sm:px-5 ${columns}`}>
-              <span className="flex min-w-0 items-center gap-3">
-                <DealLogo d={d} size={30} />
-                <span className="truncate text-[14px] font-semibold text-land-ink">{d.name}</span>
-              </span>
-              <span className="flex min-w-0 items-center gap-2 text-[13px] text-land-ink">
-                <Image src={owner.photo} alt="" width={26} height={26} className="h-[26px] w-[26px] rounded-full object-cover" />
-                <span className="truncate">{owner.first}</span>
-              </span>
-              <span>
-                <StateChip state={d.state} />
-              </span>
-              <span className="truncate text-[13px] text-land-muted">
-                R{d.rank} · {d.stage}
-              </span>
-              <span className="text-[13px] text-land-muted">{d.last}</span>
+            <li key={name}>
+              <button
+                type="button"
+                data-demo={`row-${name}`}
+                aria-pressed={on}
+                onClick={() => onSelect(name)}
+                className={`flex w-full flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl px-2.5 py-2.5 text-left transition-colors ${
+                  on ? "bg-land-accent-soft ring-1 ring-inset ring-land-accent/35" : "hover:bg-land-sunken"
+                }`}
+              >
+                <DealLogo d={d} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[14px] font-semibold text-land-ink">{d.name}</span>
+                  <span className="block truncate text-[12.5px] text-land-muted">
+                    {rep(d.owner).first} · {meta(d)}
+                  </span>
+                </span>
+                {/* Sur téléphone le signal passe sous le nom : côte à côte, il
+                    le tronquait (« Lumen Lo… »). */}
+                <span className="w-full pl-[48px] sm:w-auto sm:pl-0">
+                  <Signal name={name} />
+                </span>
+              </button>
             </li>
           );
         })}
@@ -222,28 +224,114 @@ function AllDeals() {
   );
 }
 
+function Block({ icon: Icon, tone, title, children }: { icon: typeof Zap; tone: string; title: string; children: React.ReactNode }) {
+  return (
+    <div className="flex gap-3">
+      <span className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl ${tone}`}>
+        <Icon className="h-4 w-4" aria-hidden />
+      </span>
+      <div className="min-w-0">
+        <div className={CAPS}>{title}</div>
+        <div className="mt-0.5 text-[14px] leading-snug">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+/** La fiche du deal sélectionné. */
+function DealCard({ name }: { name: string }) {
+  const d = deal(name);
+  const owner = rep(d.owner);
+  const alert = alertOf(name);
+  const sleep = sleepOf(name);
+  return (
+    <article key={name} className="land-swap min-w-0 rounded-2xl border border-land-line bg-land-surface p-4 shadow-[var(--land-shadow)] sm:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-3">
+          <DealLogo d={d} large />
+          <div className="min-w-0">
+            <div className="truncate text-[17px] font-semibold tracking-tight text-land-ink">{d.name}</div>
+            <div className="text-[12.5px] text-land-muted">{meta(d)}</div>
+          </div>
+        </div>
+        <Signal name={name} />
+      </div>
+      <div className="mt-3 flex items-center gap-2 border-b border-land-line pb-3.5 text-[13px] text-land-muted">
+        <Image src={owner.photo} alt="" width={22} height={22} className="h-[22px] w-[22px] shrink-0 rounded-full object-cover" />
+        <span>
+          Suivi par <span className="font-medium text-land-ink">{owner.first}</span> · dernier échange le {d.last}
+        </span>
+      </div>
+      {alert ? (
+        <div className="mt-4 space-y-4">
+          <Block icon={CircleAlert} tone="bg-rose-50 text-rose-700" title="Le problème">
+            <span className="text-land-muted">{alert.problem}</span>
+          </Block>
+          <Block icon={Zap} tone="bg-land-accent-soft text-land-accent" title="Action recommandée">
+            <span className="font-semibold text-land-ink">{alert.action}</span>
+          </Block>
+          <div className="rounded-xl bg-land-accent-soft px-3.5 py-3">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-land-accent">
+              <MessageCircleQuestion className="h-3.5 w-3.5" aria-hidden /> À demander à {owner.first}
+            </div>
+            <ul className="mt-1.5 space-y-1.5">
+              {alert.questions.map((q) => (
+                <li key={q} className="text-[14px] font-medium leading-snug text-land-ink">
+                  «{NB}{q.replace(/ ([:?])/g, `${NB}$1`)}{NB}»
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      ) : (
+        <p className="mt-4 text-[14px] leading-snug text-land-muted">
+          {sleep && <span className="font-semibold text-land-ink">{sleep.idle} jours sans échange. </span>}
+          {QUIET[name].replace(/ :/g, `${NB}:`)}
+        </p>
+      )}
+    </article>
+  );
+}
+
+function SuiviPanel({ tab, onTab, selected, onSelect }: { tab: Tab; onTab: (t: Tab) => void; selected: string; onSelect: (name: string) => void }) {
+  const atStake = ALERTS.reduce((sum, a) => sum + deal(a.deal).amount, 0);
+  return (
+    <div className="space-y-3 sm:space-y-4">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <Stat value={ALERTS.length} label="deals à reprendre" tone="text-rose-700" />
+        <Stat value={SLEEPING.length} label="deals endormis" />
+        <Stat value={atStake} format="euros" label="en jeu sur ces deals" />
+      </div>
+      <div className="grid grid-cols-1 items-start gap-3 sm:gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
+        <DealList tab={tab} onTab={onTab} selected={selected} onSelect={onSelect} />
+        <DealCard name={selected} />
+      </div>
+    </div>
+  );
+}
+
 function Forecast() {
   const hubspot = FORECAST.reduce((s, f) => s + f.hubspot, 0);
   const brief = FORECAST.reduce((s, f) => s + f.brief, 0);
   const count = FORECAST.reduce((s, f) => s + f.count, 0);
-  const cards: { label: string; value: string; detail: string; tone: string; box: string }[] = [
+  const cards: { label: string; value: number; detail: string; tone: string; box: string }[] = [
     {
       label: "Atterrissage prévu par Brief",
-      value: euros(SIGNED + brief),
+      value: SIGNED + brief,
       detail: `${euros(SIGNED)} déjà signés + ${euros(brief)} attendus sur ${count} deals`,
       tone: "text-land-ink",
       box: "border-land-line bg-land-surface",
     },
     {
       label: "Ce que dit HubSpot",
-      value: euros(SIGNED + hubspot),
+      value: SIGNED + hubspot,
       detail: `${euros(SIGNED)} signés + ${euros(hubspot)} d'après l'étape de chaque deal`,
       tone: "text-land-muted",
       box: "border-land-line bg-land-surface",
     },
     {
       label: "Écart",
-      value: euros(hubspot - brief),
+      value: hubspot - brief,
       detail: "Ce que HubSpot compte et que les calls ne confirment pas",
       tone: "text-amber-900",
       box: "border-amber-200 bg-amber-50",
@@ -256,7 +344,9 @@ function Forecast() {
         {cards.map((c) => (
           <div key={c.label} className={`rounded-2xl border p-4 ${c.box}`}>
             <div className={`text-[13px] ${c.box.includes("amber") ? "text-amber-900" : "text-land-muted"}`}>{c.label}</div>
-            <div className={`mt-1 text-[26px] font-bold tabular-nums tracking-tight ${c.tone}`}>{c.value}</div>
+            <div className={`mt-1 text-[26px] font-bold tracking-tight ${c.tone}`}>
+              <Ticker value={c.value} format="euros" />
+            </div>
             <div className={`mt-1 text-[12.5px] leading-snug ${c.box.includes("amber") ? "text-amber-900" : "text-land-muted"}`}>{c.detail}</div>
           </div>
         ))}
@@ -384,51 +474,36 @@ function FakeCursor({ x, y, click }: { x: number; y: number; click: number }) {
 // ─── L'aperçu ────────────────────────────────────────────────────────────────
 
 type View = "suivi" | "prevision";
-type Sub = "reprendre" | "tous";
+
+const VIEWS: { key: View; label: string }[] = [
+  { key: "suivi", label: "Suivi" },
+  { key: "prevision", label: "Prévision" },
+];
 
 export function DealsBoard({ demo = false }: { demo?: boolean }) {
   const [view, setView] = useState<View>("suivi");
-  const [sub, setSub] = useState<Sub>("reprendre");
+  const [tab, setTab] = useState<Tab>("reprendre");
+  const [selected, setSelected] = useState(ALERTS[0].deal);
+  // Changer d'onglet garde le deal ouvert s'il y figure, sinon ouvre le premier.
+  const openTab = (t: Tab) => {
+    setTab(t);
+    setSelected((cur) => (TAB_DEALS[t].includes(cur) ? cur : TAB_DEALS[t][0]));
+  };
   const rootRef = useRef<HTMLDivElement>(null);
   const { cursor, stopped } = useDemo(demo, rootRef, [
-    { target: "sub-tous", run: () => setSub("tous") },
+    { target: `row-${ALERTS[1].deal}`, run: () => setSelected(ALERTS[1].deal) },
+    { target: `row-${ALERTS[2].deal}`, run: () => setSelected(ALERTS[2].deal) },
+    { target: "tab-endormis", run: () => openTab("endormis") },
     { target: "view-prevision", run: () => setView("prevision") },
     {
       target: "view-suivi",
       run: () => {
         setView("suivi");
-        setSub("reprendre");
+        setTab("reprendre");
+        setSelected(ALERTS[0].deal);
       },
     },
   ]);
-
-  const pill = (key: View, label: string) => (
-    <button
-      type="button"
-      data-demo={`view-${key}`}
-      aria-pressed={view === key}
-      onClick={() => setView(key)}
-      className={`h-8 rounded-full px-3.5 text-[13px] font-medium transition-colors ${
-        view === key ? "bg-land-surface text-land-ink shadow-[0_1px_3px_oklch(0.19_0.02_266/0.12)]" : "text-land-muted hover:text-land-ink"
-      }`}
-    >
-      {label}
-    </button>
-  );
-  const tab = (key: Sub, label: string, count: number) => (
-    <button
-      type="button"
-      role="tab"
-      data-demo={`sub-${key}`}
-      aria-selected={sub === key}
-      onClick={() => setSub(key)}
-      className={`-mb-px border-b-2 px-3.5 py-2.5 text-[14px] transition-colors ${
-        sub === key ? "border-land-accent font-semibold text-land-accent" : "border-transparent text-land-muted hover:text-land-ink"
-      }`}
-    >
-      {label} <span className="font-medium">· {count}</span>
-    </button>
-  );
 
   return (
     <div ref={rootRef} className="relative">
@@ -444,51 +519,51 @@ export function DealsBoard({ demo = false }: { demo?: boolean }) {
             <MousePointerClick className="h-3.5 w-3.5 text-land-accent" aria-hidden />
             {/* Version courte sur téléphone : l'étiquette ne doit jamais
                 déborder de l'écran. */}
-            <span className="sm:hidden">{stopped ? `À vous${NB}: touchez un onglet` : "Démo interactive · touchez pour essayer"}</span>
-            <span className="hidden sm:inline">{stopped ? `À vous${NB}: cliquez sur un onglet` : "Démo interactive · cliquez sur un onglet"}</span>
+            <span className="sm:hidden">{stopped ? `À vous${NB}: touchez un deal` : "Démo interactive · touchez pour essayer"}</span>
+            <span className="hidden sm:inline">{stopped ? `À vous${NB}: cliquez sur un deal ou un onglet` : "Démo interactive · cliquez sur un deal ou un onglet"}</span>
           </span>
         </div>
       )}
       {cursor && <FakeCursor {...cursor} />}
-      <div className="overflow-hidden rounded-[22px] border border-land-line bg-land-bg shadow-[var(--land-shadow-lg)]">
-        <div className="flex">
-          {/* Barre latérale de l'app : mêmes entrées, même ordre. */}
-          <AppSidebar active="suivi" note="3 deals à reprendre, 6 rendez-vous à venir dans l'équipe." />
-
-          <div className="min-w-0 flex-1">
-            {/* En-tête de la page : titre, puis Suivi / Prévision. */}
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-land-line bg-land-surface px-4 py-3.5 sm:px-6">
-              <div>
-                <div className="text-[17px] font-semibold tracking-tight text-land-ink">Suivi des deals</div>
-                <div className="text-[12px] text-land-muted">Les deals de vos commerciaux, et où votre intervention compte.</div>
-              </div>
-              <div className="inline-flex items-center rounded-full bg-land-sunken p-1" role="group" aria-label="Vue affichée">
-                {pill("suivi", "Suivi")}
-                {pill("prevision", "Prévision")}
-              </div>
-            </div>
-
-            <div className="min-h-[460px] p-3 sm:p-5 lg:min-h-[600px]">
-              {view === "suivi" ? (
-                <>
-                  <div role="tablist" aria-label="Vues du suivi" className="mb-4 flex flex-wrap gap-1 border-b border-land-line">
-                    {tab("reprendre", "À reprendre", ALERTS.length)}
-                    {tab("tous", "Tous les deals", DEALS.length)}
-                  </div>
-                  <div key={sub} className="land-swap" role="tabpanel">
-                    {sub === "reprendre" ? <ToResume /> : <AllDeals />}
-                  </div>
-                </>
-              ) : (
-                <div className="land-swap">
-                  <Forecast />
-                </div>
-              )}
+      <div className="overflow-hidden rounded-[26px] border border-land-line bg-land-bg shadow-[var(--land-shadow-lg)]">
+        {/* En-tête : le titre de la page de l'app, puis les trois vues. */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-land-line bg-land-surface px-4 py-3.5 sm:px-6">
+          <div className="flex items-center gap-3">
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-land-accent text-[14px] font-semibold text-white">B</span>
+            <div>
+              <div className="text-[17px] font-semibold tracking-tight text-land-ink">Suivi des deals</div>
+              <div className="text-[12px] text-land-muted">Les deals de vos commerciaux, et où votre intervention compte.</div>
             </div>
           </div>
+          <div className="inline-flex items-center rounded-full bg-land-sunken p-1" role="group" aria-label="Vue affichée">
+            {VIEWS.map((v) => (
+              <button
+                key={v.key}
+                type="button"
+                data-demo={`view-${v.key}`}
+                aria-pressed={view === v.key}
+                onClick={() => setView(v.key)}
+                className={`h-8 rounded-full px-3 text-[13px] font-medium transition-colors sm:px-3.5 ${
+                  view === v.key ? "bg-land-surface text-land-ink shadow-[0_1px_3px_oklch(0.19_0.02_266/0.12)]" : "text-land-muted hover:text-land-ink"
+                }`}
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="min-h-[460px] p-3 sm:p-5 lg:min-h-[500px]">
+          {view === "suivi" ? (
+            <SuiviPanel tab={tab} onTab={openTab} selected={selected} onSelect={setSelected} />
+          ) : (
+            <div className="land-swap">
+              <Forecast />
+            </div>
+          )}
         </div>
         <div className="border-t border-land-line bg-land-surface px-5 py-2.5 text-[11.5px] text-land-faint">
-          Exemple au format réel de Suivi des deals. Équipe, deals et montants fictifs.
+          Exemple illustratif d&apos;après Suivi des deals. Entreprises citées pour l&apos;exemple{NB}: équipe, situations et montants fictifs.
         </div>
       </div>
     </div>

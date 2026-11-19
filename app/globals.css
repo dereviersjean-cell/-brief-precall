@@ -723,6 +723,256 @@ body {
   transition-delay: 0ms;
 }
 
+/* Entrée dans l'écran, une seule fois (Reveal.tsx, 19/11/2026). Le script
+   pose `data-inview` sur le conteneur ; sans lui, rien n'est masqué. Les
+   listes se lisent point par point, et dans un aperçu produit les lignes
+   arrivent comme dans la séquence collante : le deal vient d'être analysé.
+   Opacité et transformation seulement (rien qui recalcule la mise en page). */
+.landing .land-reveal {
+  transition: opacity 600ms ease-out, transform 700ms cubic-bezier(0.16, 1, 0.3, 1), filter 600ms ease-out;
+  transition-delay: calc(var(--i, 0) * 90ms);
+}
+.landing [data-inview="false"] .land-reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  filter: blur(6px);
+  transition-delay: 0ms;
+}
+.landing [data-inview="false"] .land-step-row {
+  opacity: 0;
+  transform: translateY(8px);
+  transition-delay: 0ms;
+}
+/* Faisceau de la « Priorité Brief » (technique du Border Beam de Magic UI,
+   github.com/magicuidesign/magicui, réécrite en CSS seul) : un calque posé
+   sur l'anneau de la carte, dont le masque ne laisse voir que la bordure, et
+   une traînée de lumière qui en fait le tour sur un `offset-path`. Il dit où
+   regarder d'abord. Il ne tourne que lorsque la fiche est à l'écran (Reveal)
+   ou que son étape est lue (séquence collante). Sans `offset-path: rect()`,
+   pas de faisceau : l'anneau bleu reste seul. */
+@keyframes land-beam {
+  to { offset-distance: 100%; }
+}
+.landing .land-beam {
+  display: none;
+}
+@supports (offset-path: rect(0 auto auto 0 round 16px)) {
+  .landing .land-beam {
+    display: block;
+    position: absolute;
+    inset: -2px;
+    border: 2px solid transparent;
+    border-radius: inherit;
+    pointer-events: none;
+    -webkit-mask-image: linear-gradient(transparent, transparent), linear-gradient(#000, #000);
+    mask-image: linear-gradient(transparent, transparent), linear-gradient(#000, #000);
+    -webkit-mask-clip: padding-box, border-box;
+    mask-clip: padding-box, border-box;
+    -webkit-mask-composite: source-in;
+    mask-composite: intersect;
+  }
+  .landing .land-beam::after {
+    content: "";
+    position: absolute;
+    width: 110px;
+    aspect-ratio: 1;
+    background: linear-gradient(to left, var(--land-sun), var(--land-coral), transparent);
+    offset-path: rect(0 auto auto 0 round 16px);
+    offset-distance: 0%;
+    opacity: 0;
+    transition: opacity 500ms ease-out;
+  }
+  .landing [data-inview="true"] .land-beam::after,
+  .landing .land-stage-item[data-active="true"] .land-beam::after {
+    opacity: 1;
+    animation: land-beam 5.5s linear infinite;
+  }
+}
+/* Flèche d'un bouton ou d'un lien : c'est elle qui bouge au survol, pas le
+   bouton (sa cible ne se dérobe pas sous le pointeur). */
+.landing .land-arrow {
+  transition: transform 250ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .landing a:hover > .land-arrow,
+  .landing button:hover > .land-arrow {
+    transform: translateX(3px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing .land-reveal {
+    transition: opacity 200ms ease-out;
+    transition-delay: 0ms;
+  }
+  .landing [data-inview="false"] .land-reveal,
+  .landing [data-inview="false"] .land-step-row {
+    transform: none;
+    filter: none;
+  }
+  .landing .land-beam {
+    display: none;
+  }
+  .landing .land-arrow {
+    transition: none;
+  }
+  .landing a:hover > .land-arrow,
+  .landing button:hover > .land-arrow {
+    transform: none;
+  }
+}
+
+/* ── Effets du 19/11/2026, repris de deux bibliothèques d'interface
+   publiées sur GitHub — Magic UI (magicuidesign/magicui, MIT) et React Bits
+   (DavidHDev/react-bits) — et réécrits ici en CSS, sans dépendance : aucun
+   fichier n'en est copié. Chacun a son repli sous mouvement réduit. ── */
+
+/* Titre du haut de page, mot à mot (Text Animate / Blur Text) : chaque mot
+   sort du flou et se pose, l'un après l'autre. Une seule fois, au chargement. */
+@keyframes land-word {
+  from { opacity: 0; transform: translateY(0.3em); filter: blur(10px); }
+}
+.landing .land-word {
+  display: inline-block;
+  animation: land-word 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--w, 0) * 65ms + 120ms);
+}
+
+/* Pastille du haut de page (Animated Shiny Text) : un reflet traverse le
+   texte toutes les six secondes. */
+@keyframes land-shine {
+  0%, 55% { background-position: 150% 0; }
+  100% { background-position: -50% 0; }
+}
+.landing .land-shine {
+  background-image: linear-gradient(110deg, currentColor 42%, #fff 50%, currentColor 58%);
+  background-size: 250% 100%;
+  background-position: 150% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: land-shine 6s ease-in-out 1.6s infinite;
+}
+
+/* Bouton d'appel à l'action (Shimmer Button) : un reflet le balaie au
+   survol. C'est le reflet qui bouge, pas le bouton. */
+.landing .land-cta {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.landing .land-cta::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(105deg, transparent 35%, var(--land-cta-glint, oklch(1 0 0 / 0.35)) 50%, transparent 65%);
+  transform: translateX(-120%);
+}
+@media (hover: hover) and (pointer: fine) {
+  .landing .land-cta:hover::after {
+    transform: translateX(120%);
+    transition: transform 800ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+/* Cartes à halo (Magic Card / Spotlight Card) : une lueur suit le pointeur,
+   dans la carte et sur sa bordure. Reveal.tsx écrit --mx / --my sur chaque
+   carte ; hors survol, tout s'éteint. Pointeur fin seulement. */
+.landing .land-spot {
+  position: relative;
+  isolation: isolate;
+}
+.landing .land-spot::before,
+.landing .land-spot::after {
+  content: "";
+  position: absolute;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 350ms ease-out;
+}
+/* La lueur dans la carte. */
+.landing .land-spot::before {
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), oklch(0.52 0.2 265 / 0.09), transparent 70%);
+}
+/* La bordure qui s'allume près du pointeur. */
+.landing .land-spot::after {
+  inset: -1px;
+  border: 1px solid transparent;
+  background: radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%), oklch(0.52 0.2 265 / 0.7), transparent 70%) border-box;
+  -webkit-mask-image: linear-gradient(transparent, transparent), linear-gradient(#000, #000);
+  mask-image: linear-gradient(transparent, transparent), linear-gradient(#000, #000);
+  -webkit-mask-clip: padding-box, border-box;
+  mask-clip: padding-box, border-box;
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+@media (hover: hover) and (pointer: fine) {
+  .landing .land-spot:hover::before,
+  .landing .land-spot:hover::after {
+    opacity: 1;
+  }
+}
+
+/* Trame de points (Dot Pattern) : une texture qui s'efface vers le texte,
+   dans l'angle d'une section. Décorative, immobile. */
+.landing .land-dots {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(oklch(0.52 0.2 265 / 0.22) 1px, transparent 1.5px);
+  background-size: 22px 22px;
+  -webkit-mask-image: radial-gradient(ellipse 55% 75% at 100% 0%, #000 10%, transparent 72%);
+  mask-image: radial-gradient(ellipse 55% 75% at 100% 0%, #000 10%, transparent 72%);
+}
+
+/* Barre de progression de lecture sous la navigation (Scroll Progress),
+   pilotée par le défilement lui-même là où le navigateur le permet ;
+   ailleurs elle n'existe pas. */
+@keyframes land-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.landing .land-progress {
+  display: none;
+}
+@supports (animation-timeline: scroll()) {
+  .landing .land-progress {
+    display: block;
+    transform-origin: left center;
+    animation: land-progress linear both;
+    animation-timeline: scroll(root block);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing .land-word {
+    animation: land-fade 250ms ease-out both;
+  }
+  .landing .land-shine {
+    animation: none;
+    -webkit-text-fill-color: currentColor;
+    background-image: none;
+  }
+  .landing .land-cta::after {
+    display: none;
+  }
+  .landing .land-progress {
+    display: none;
+  }
+}
+
+/* À l'impression, rien n'attend le défilement. */
+@media print {
+  .landing [data-inview="false"] .land-reveal,
+  .landing [data-inview="false"] .land-step-row {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* Colonne de texte (grand écran) : l'étape lue est nette, les autres
    s'estompent ; la pastille reste opaque pour masquer le rail qui passe
    derrière. Pastille de l'étape lue : halo de sa couleur et léger grossissement ;

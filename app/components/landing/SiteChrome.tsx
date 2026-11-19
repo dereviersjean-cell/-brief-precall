@@ -96,6 +96,8 @@ function Nav() {
           <MobileMenu links={MOBILE_LINKS} />
         </div>
       </div>
+      {/* Avancement de la lecture, piloté par le défilement (globals.css). */}
+      <span aria-hidden className="land-progress absolute inset-x-0 -bottom-px h-0.5 bg-land-accent" />
     </header>
   );
 }

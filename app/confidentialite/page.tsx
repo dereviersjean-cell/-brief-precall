@@ -98,7 +98,7 @@ export default function PrivacyPolicyPage() {
               items={[
                 <><B>Identité</B> : nom, adresse email et photo de profil de votre compte Google ou Microsoft.</>,
                 <><B>Agenda</B> : les événements de votre calendrier (horaires, participants, titre du rendez-vous), et la possibilité d&apos;écrire dans la description d&apos;un événement pour y déposer votre brief pré-rendez-vous.</>,
-                <><B>Emails</B> : l&apos;envoi d&apos;emails à votre initiative (relance, devis) depuis votre propre boîte Gmail ou Outlook, en votre nom, après que vous en avez relu le contenu. <B>Brief n&apos;a aucun accès en lecture à votre messagerie</B> : ni le contenu de vos messages, ni leurs en-têtes.</>,
+                <><B>Emails</B> : l&apos;envoi d&apos;emails à votre initiative (suivi, relance) depuis votre propre boîte Gmail ou Outlook, en votre nom, après que vous en avez relu le contenu. <B>Brief n&apos;a aucun accès en lecture à votre messagerie</B> : ni le contenu de vos messages, ni leurs en-têtes.</>,
               ]}
             />
             <p>

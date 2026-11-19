@@ -19,7 +19,7 @@ const LOGIN_INK = "#0E2658";
 // « exemple » (mention retirée à la demande de Jean, 12/10/2026).
 const MORNING = [
   { icon: FileCheck2, tone: "bg-emerald-400/20 text-emerald-200", label: "Les briefs du jour, prêts", detail: "Préparés la veille, aussi dans vos événements d'agenda" },
-  { icon: Mic, tone: "bg-land-coral/25 text-orange-200", label: "Les calls d'hier, analysés", detail: "Notés sur la grille de votre équipe" },
+  { icon: Mic, tone: "bg-land-coral/25 text-orange-200", label: "Les calls d'hier, analysés", detail: "Avec ce que chacun change dans son deal" },
   { icon: MessageSquareWarning, tone: "bg-land-sun/25 text-yellow-200", label: "Les objections à revoir", detail: "Avec la réponse de votre playbook" },
 ];
 

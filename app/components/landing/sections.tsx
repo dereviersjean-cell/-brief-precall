@@ -22,10 +22,11 @@ import type { ReactNode } from "react";
 import { SALES_CONTACT, BRIEFS_ACCESS_DAILY_LIMIT } from "@/lib/sales-contact";
 import { CTA_LABEL } from "@/app/components/landing/SiteChrome";
 import { Journey, type JourneyStep } from "@/app/components/landing/Journey";
-import { ClientLogos, HERO_INK } from "@/app/components/landing/ClientLogos";
+import { HERO_INK } from "@/app/components/landing/ClientLogos";
 import { MethodPreview } from "@/app/components/landing/MethodPreview";
 import { DealsBoard } from "@/app/components/landing/DealsBoard";
 import { MeetingPairObject } from "@/app/components/landing/MeetingPairObject";
+import { Reveal } from "@/app/components/landing/Reveal";
 import { DealObject, FollowUpObject, DigestObject } from "@/app/components/landing/objects";
 import { NB } from "@/app/components/landing/team-data";
 import { TestimonialCarousel, CompanyMark } from "@/app/components/landing/TestimonialCarousel";
@@ -66,9 +67,25 @@ export const H2 = "text-[34px] font-semibold leading-[1.06] tracking-[-0.035em] 
 // `light` : sur un aplat d'encre ; `accent` : sur fond clair.
 
 const CTA_STYLES = {
-  light: "bg-white text-land-ink hover:-translate-y-0.5 focus-visible:outline-white",
+  // Encre fixe et non `text-land-ink` : en thème sombre ce jeton devient clair,
+  // et le libellé disparaissait sur le bouton blanc (vu le 19/11/2026).
+  light: "bg-white text-[oklch(0.19_0.02_266)] focus-visible:outline-white [--land-cta-glint:oklch(0.52_0.2_265/0.16)]",
   accent: "bg-land-accent text-white hover:brightness-110 focus-visible:outline-land-accent",
 };
+
+/** Titre de haut de page animé mot à mot (classe `land-word`, globals.css).
+ * `from` décale la cascade quand le titre est en deux morceaux. Les mots
+ * restent du texte ordinaire, séparés par de vraies espaces. */
+function Words({ text, from = 0 }: { text: string; from?: number }) {
+  return text.split(" ").map((word, i) => (
+    <span key={i}>
+      <span className="land-word" style={{ "--w": from + i } as React.CSSProperties}>
+        {word}
+      </span>{" "}
+    </span>
+  ));
+}
+const count = (text: string) => text.split(" ").length;
 
 export function Cta({ tone = "accent", className = "" }: { tone?: keyof typeof CTA_STYLES; className?: string }) {
   return (
@@ -76,9 +93,9 @@ export function Cta({ tone = "accent", className = "" }: { tone?: keyof typeof C
       href={SALES_CONTACT.bookingUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className={`inline-flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-full px-6 text-[16px] font-semibold transition-[transform,filter] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 ${CTA_STYLES[tone]} ${className}`}
+      className={`land-cta inline-flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-full px-6 text-[16px] font-semibold transition-[transform,filter,background-color] duration-200 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 ${CTA_STYLES[tone]} ${className}`}
     >
-      {CTA_LABEL} <ArrowRight className="h-4 w-4" aria-hidden />
+      {CTA_LABEL} <ArrowRight className="land-arrow h-4 w-4" aria-hidden />
     </a>
   );
 }
@@ -93,6 +110,8 @@ function Eyebrow({ children }: { children: ReactNode }) {
 // Haut de page illustré, sur le modèle de lemlist et Clay (demande de Jean du
 // 12/10/2026) : une scène en 3D qui se fond en bas dans un aplat d'encre bleue
 // où se posent le titre (à gauche) et l'accroche avec le bouton (à droite).
+// La bande « L'équipe derrière Brief a accompagné les équipes commerciales
+// de… » et ses logos ont été retirés le 19/11/2026 à la demande de Jean.
 // Textes du cadrage GTM (19/11/2026) : la promesse est de transformer
 // davantage d'opportunités en clients, pour un dirigeant ou un directeur
 // commercial.
@@ -121,13 +140,19 @@ export function Hero() {
                 style={{ backgroundImage: `linear-gradient(180deg, transparent, ${HERO_INK})` }}
               />
             </div>
-            <div className="relative -mt-10 grid grid-cols-1 gap-6 px-5 sm:px-10 md:-mt-16 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:items-end lg:gap-16 lg:px-16">
-              <div className="land-hero-text" style={{ "--i": 0 } as React.CSSProperties}>
-                <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-[13px] font-medium text-white/85 ring-1 ring-white/15">
-                  L&apos;IA au service de votre exécution commerciale
+            <div className="relative -mt-10 grid grid-cols-1 gap-6 px-5 pb-10 sm:px-10 md:-mt-16 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:items-end lg:gap-16 lg:px-16 lg:pb-14">
+              <div>
+                <span
+                  className="land-hero-text inline-flex rounded-full bg-white/10 px-3 py-1 text-[13px] font-medium text-white/85 ring-1 ring-white/15"
+                  style={{ "--i": 0 } as React.CSSProperties}
+                >
+                  <span className="land-shine">L&apos;IA au service de votre exécution commerciale</span>
                 </span>
                 <h1 className="mt-5 max-w-[16ch] text-[40px] font-semibold leading-[1.02] tracking-[-0.04em] sm:text-[56px] lg:text-[64px]">
-                  Transformez davantage de vos opportunités <span className="text-land-sun">en clients.</span>
+                  <Words text="Transformez davantage de vos opportunités" />
+                  <span className="text-land-sun">
+                    <Words text="en clients." from={5} />
+                  </span>
                 </h1>
               </div>
               <div className="land-hero-text lg:pb-2" style={{ "--i": 1 } as React.CSSProperties}>
@@ -143,7 +168,6 @@ export function Hero() {
                 </p>
               </div>
             </div>
-            <ClientLogos className="px-5 pb-10 pt-10 sm:px-10 lg:px-16 lg:pb-12 lg:pt-10" />
           </div>
         </div>
     </section>
@@ -173,15 +197,16 @@ const PAINS = [
 
 export function PainSection() {
   return (
-    <section className="border-t border-land-line">
-      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-28">
+    <section className="relative overflow-hidden border-t border-land-line">
+      <div aria-hidden className="land-dots" />
+      <div className="relative mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-28">
         <h2 className={`${H2} max-w-[22ch] text-land-ink`}>Vos deals ne se perdent pas toujours face à la concurrence.</h2>
         <p className="mt-6 max-w-[58ch] text-[18px] leading-relaxed text-land-muted md:text-[20px]">
           Parfois, ils se perdent simplement parce que les bonnes actions n&apos;ont pas été menées au bon moment.
         </p>
-        <ul className="mt-12 grid grid-cols-1 gap-5 md:grid-cols-3 lg:mt-14">
-          {PAINS.map((p) => (
-            <li key={p.title} className="rounded-[22px] border border-land-line bg-land-surface p-6">
+        <Reveal as="ul" spotlight className="mt-12 grid grid-cols-1 gap-5 md:grid-cols-3 lg:mt-14">
+          {PAINS.map((p, i) => (
+            <li key={p.title} className="land-reveal land-spot rounded-[22px] border border-land-line bg-land-surface p-6" style={{ "--i": i } as React.CSSProperties}>
               <span className="grid h-11 w-11 place-items-center rounded-2xl bg-land-accent-soft text-land-accent">
                 <p.icon className="h-5 w-5" aria-hidden />
               </span>
@@ -189,7 +214,7 @@ export function PainSection() {
               <p className="mt-2 text-[15px] leading-relaxed text-land-muted">{p.body}</p>
             </li>
           ))}
-        </ul>
+        </Reveal>
       </div>
     </section>
   );
@@ -241,7 +266,7 @@ function AudiencePill({ icon: Icon, children }: { icon: typeof Users; children: 
   );
 }
 
-const MORE = "group mt-7 inline-flex items-center gap-1.5 text-[15px] font-medium text-land-ink hover:text-land-accent";
+const MORE = "mt-7 inline-flex items-center gap-1.5 text-[15px] font-medium text-land-ink hover:text-land-accent";
 
 // ─── Accueil : la solution, pour les deux publics ────────────────────────────
 
@@ -284,9 +309,9 @@ export function SolutionSection() {
             <h3 className="mt-5 max-w-[20ch] text-[28px] font-semibold leading-[1.12] tracking-[-0.03em] text-land-ink md:text-[36px]">
               Faites avancer chaque opportunité, rendez-vous après rendez-vous.
             </h3>
-            <ul className="mt-8 space-y-6">
-              {REP_POINTS.map((p) => (
-                <li key={p.title} className="flex gap-4">
+            <Reveal as="ul" className="mt-8 space-y-6">
+              {REP_POINTS.map((p, i) => (
+                <li key={p.title} className="land-reveal flex gap-4" style={{ "--i": i } as React.CSSProperties}>
                   <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-land-accent-soft text-land-accent">
                     <p.icon className="h-5 w-5" aria-hidden />
                   </span>
@@ -296,17 +321,19 @@ export function SolutionSection() {
                   </div>
                 </li>
               ))}
-            </ul>
+            </Reveal>
             <Link href="/commerciaux" className={MORE}>
-              Brief pour les commerciaux <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
+              Brief pour les commerciaux <ArrowRight className="land-arrow h-4 w-4" aria-hidden />
             </Link>
           </div>
-          <div>
+          {/* La fiche se « lit » quand elle arrive à l'écran : la priorité
+              d'abord, puis les engagements et l'état du deal, ligne à ligne. */}
+          <Reveal>
             <ScreenTag>Deal Macro</ScreenTag>
-            <div className="mt-5 rounded-[28px] bg-land-accent-soft p-2.5 sm:p-4">
+            <div className="land-reveal mt-5 rounded-[28px] bg-land-accent-soft p-2.5 sm:p-4">
               <DealObject />
             </div>
-          </div>
+          </Reveal>
         </div>
 
         {/* Pour les directeurs commerciaux et dirigeants : « Suivi des
@@ -318,7 +345,7 @@ export function SolutionSection() {
               Identifiez les deals sur lesquels votre intervention peut faire la différence.
             </h3>
             <Link href="/directeurs-commerciaux" className={`${MORE} mt-0 lg:mb-1.5`}>
-              Brief pour les directeurs commerciaux <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
+              Brief pour les directeurs commerciaux <ArrowRight className="land-arrow h-4 w-4" aria-hidden />
             </Link>
           </div>
           <div className="mt-10">
@@ -357,8 +384,9 @@ const CRM_LOGOS = ["hubspot", "pipedrive"];
 
 export function ReassuranceSection() {
   return (
-    <section className="border-t border-land-line">
-      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-28">
+    <section className="relative overflow-hidden border-t border-land-line">
+      <div aria-hidden className="land-dots" />
+      <div className="relative mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-28">
         <h2 className={`${H2} max-w-[20ch]`}>
           <span className="text-land-ink">Votre méthode de vente. Votre CRM.</span>{" "}
           <span className="text-land-faint">Brief s&apos;occupe du reste.</span>
@@ -366,9 +394,9 @@ export function ReassuranceSection() {
         <p className="mt-6 max-w-[58ch] text-[18px] leading-relaxed text-land-muted md:text-[20px]">
           Un copilote qui s&apos;intègre à votre environnement et s&apos;adapte à votre façon de vendre, sans complexité.
         </p>
-        <ul className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-3 lg:mt-14">
-          {REASSURANCE.map((p) => (
-            <li key={p.title}>
+        <Reveal as="ul" className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-3 lg:mt-14">
+          {REASSURANCE.map((p, i) => (
+            <li key={p.title} className="land-reveal" style={{ "--i": i } as React.CSSProperties}>
               <span className="grid h-11 w-11 place-items-center rounded-2xl bg-land-accent-soft text-land-accent">
                 <p.icon className="h-5 w-5" aria-hidden />
               </span>
@@ -376,7 +404,7 @@ export function ReassuranceSection() {
               <p className="mt-2 text-[15px] leading-relaxed text-land-muted">{p.body}</p>
             </li>
           ))}
-        </ul>
+        </Reveal>
         <div className="mt-12 flex flex-wrap items-center gap-x-8 gap-y-5 border-t border-land-line pt-8">
           <span className="text-[14px] font-semibold text-land-ink">Compatible avec vos outils</span>
           <ul className="flex items-center gap-2.5">
@@ -429,9 +457,9 @@ export function ManagerRadarSection() {
     <section id="manager-radar" className="scroll-mt-20">
       <div className="mx-auto max-w-6xl px-4 pb-20 pt-14 sm:px-6 lg:pb-28 lg:pt-20">
         <ManagerRadar />
-        <ul className="mt-16 grid grid-cols-1 gap-8 md:grid-cols-3 lg:mt-20">
-          {MANAGER_POINTS.map((p) => (
-            <li key={p.title}>
+        <Reveal as="ul" className="mt-16 grid grid-cols-1 gap-8 md:grid-cols-3 lg:mt-20">
+          {MANAGER_POINTS.map((p, i) => (
+            <li key={p.title} className="land-reveal" style={{ "--i": i } as React.CSSProperties}>
               <span className="grid h-11 w-11 place-items-center rounded-2xl bg-land-accent-soft text-land-accent">
                 <p.icon className="h-5 w-5" aria-hidden />
               </span>
@@ -439,7 +467,7 @@ export function ManagerRadarSection() {
               <p className="mt-2 text-[15px] leading-relaxed text-land-muted">{p.body}</p>
             </li>
           ))}
-        </ul>
+        </Reveal>
       </div>
     </section>
   );
@@ -494,14 +522,14 @@ export function ExecutionSection() {
                 </div>
               </div>
             </div>
-            <ul className="mt-6 space-y-3 text-[15px] text-land-ink">
-              {EXECUTION_CHECKS.map((t) => (
-                <li key={t} className="flex gap-3">
+            <Reveal as="ul" className="mt-6 space-y-3 text-[15px] text-land-ink">
+              {EXECUTION_CHECKS.map((t, i) => (
+                <li key={t} className="land-reveal flex gap-3" style={{ "--i": i } as React.CSSProperties}>
                   <Check className="mt-1 h-4 w-4 shrink-0 text-land-accent" aria-hidden />
                   <span>{t}</span>
                 </li>
               ))}
-            </ul>
+            </Reveal>
           </figure>
         </div>
 
@@ -875,7 +903,7 @@ const FAQ_GROUPS = [
       title: "Le produit",
       items: [
         { q: `Comment Brief aide-t-il à transformer davantage d'opportunités en clients ?`, a: `En identifiant ce qui freine chaque deal, en recommandant les prochaines actions aux commerciaux et en indiquant aux managers où intervenir.` },
-        { q: `Comment Brief rejoint mes rendez-vous ?`, a: `Vous connectez votre agenda Google ou Outlook. Brief détecte les visios (Meet, Teams, Zoom) et y envoie son bot, « Brief Notetaker », qui enregistre et transcrit. Les réunions internes (point hebdomadaire, entretien, déjeuner…) sont reconnues à leur titre et ne sont pas enregistrées ; vous pouvez toujours forcer l'analyse d'un rendez-vous, ou en exclure un.` },
+        { q: `Comment Brief rejoint mes rendez-vous ?`, a: `Vous connectez votre agenda Google ou Outlook. Brief détecte les visios (Meet, Teams, Zoom) et y envoie son bot, « Brief Notetaker », qui enregistre et transcrit. Les réunions internes (point hebdomadaire, entretien, déjeuner…) sont reconnues à leur titre et ne sont pas enregistrées ; vous pouvez forcer l'analyse de l'une d'elles.` },
         { q: `Comment Brief suit-il un deal d'un rendez-vous à l'autre ?`, a: `Chaque rendez-vous enregistré crée ou complète le deal de son prospect. Brief retient ce que le deal sait déjà (douleur, budget, décideur, échéance…), les engagements pris de chaque côté et le prochain rendez-vous. La page du deal affiche son état, une priorité et ce qu'il reste à obtenir ; le brief du rendez-vous suivant repart de là.` },
         { q: `Comment Brief apprend-il notre méthode de vente ?`, a: `Le manager choisit la méthode de qualification (MEDDIC, BANT, MEDDPICC ou le socle Brief) et ce qu'il faut obtenir à chaque étape commerciale, sur les étapes de votre pipeline HubSpot quand il est connecté. Il fixe aussi les objections de référence et la façon d'y répondre. Tout se règle sur une seule page, Méthode, modifiable à tout moment.` },
         { q: `Brief note-t-il mes commerciaux ?`, a: `Non. Brief ne met de note ni sur un call ni sur un commercial. Après chaque rendez-vous, le commercial lit ce qu'il a bien exécuté et, au plus, deux points à travailler, chacun avec la phrase à dire la prochaine fois. Le manager, lui, voit les deals de ses commerciaux qui demandent son intervention, et la question à leur poser.` },
@@ -1052,13 +1080,17 @@ export function PageHero({
         {/* Même gouttière que le contenu des sections : le texte s'aligne. */}
         <div className="relative mx-auto max-w-6xl px-4 pb-14 pt-14 sm:px-6 md:pb-20 md:pt-20 lg:min-h-[440px]">
           <span className="land-hero-text inline-flex rounded-full bg-white/10 px-3 py-1 text-[13px] font-medium text-white/85 ring-1 ring-white/15">
-            {label}
+            <span className="land-shine">{label}</span>
           </span>
           <h1
-            className={`land-hero-text mt-5 text-[40px] font-semibold leading-[1.03] tracking-[-0.04em] sm:text-[56px] lg:text-[64px] ${art ? "max-w-[15ch]" : "max-w-[18ch]"}`}
-            style={{ "--i": 1 } as React.CSSProperties}
+            className={`mt-5 text-[40px] font-semibold leading-[1.03] tracking-[-0.04em] sm:text-[56px] lg:text-[64px] ${art ? "max-w-[15ch]" : "max-w-[18ch]"}`}
           >
-            {title} {accent && <span className="text-land-sun">{accent}</span>}
+            <Words text={title} />
+            {accent && (
+              <span className="text-land-sun">
+                <Words text={accent} from={count(title)} />
+              </span>
+            )}
           </h1>
           <p
             className={`land-hero-text mt-6 text-[18px] leading-relaxed text-white/85 sm:text-[19px] ${art ? "max-w-[44ch]" : "max-w-[58ch]"}`}
@@ -1127,9 +1159,9 @@ export function SecurityContent() {
   return (
     <section className="border-t border-land-line">
       <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-28">
-        <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <Reveal as="ul" spotlight className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {SECURITY_POINTS.map((p) => (
-            <li key={p.title} className="rounded-[22px] border border-land-line bg-land-surface p-6">
+            <li key={p.title} className="land-spot rounded-[22px] border border-land-line bg-land-surface p-6">
               <span className="grid h-11 w-11 place-items-center rounded-2xl bg-land-accent-soft text-land-accent">
                 <p.icon className="h-5 w-5" aria-hidden />
               </span>
@@ -1137,7 +1169,7 @@ export function SecurityContent() {
               <p className="mt-2 text-[15px] leading-relaxed text-land-muted">{p.body.replace(/« /g, `«${NB}`).replace(/ »/g, `${NB}»`)}</p>
             </li>
           ))}
-        </ul>
+        </Reveal>
 
       </div>
     </section>

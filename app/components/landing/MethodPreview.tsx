@@ -46,8 +46,8 @@ const LEVELS: [number, string, string][] = [
 
 const EXAMPLES: [string, string, string][] = [
   ["Cartonnerie du Val", "Emballage", "Délais clients tenus dès le premier mois du deuxième site, sans recrutement au planning."],
-  ["Lumen Logistique", "Transport et logistique", "Temps de préparation des tournées divisé par deux en un trimestre."],
-  ["Atelier Moreau", "Mobilier sur mesure", "Devis envoyés en 24 heures au lieu de cinq jours."],
+  ["Transports Vasseur", "Transport et logistique", "Temps de préparation des tournées divisé par deux en un trimestre."],
+  ["Menuiserie Aubin", "Mobilier sur mesure", "Devis envoyés en 24 heures au lieu de cinq jours."],
 ];
 
 const CARD = "rounded-2xl border border-land-line bg-land-surface p-4 sm:p-5";
