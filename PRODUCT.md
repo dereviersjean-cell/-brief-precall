@@ -63,7 +63,7 @@ Brief raises a sales team's closing rate. It prepares every meeting (a brief on 
 
 ## Accessibility & Inclusion
 
-WCAG AA contrast in light and dark modes; touch targets ≥ 40 px on mobile; reduced-motion respected (fade instead of movement).
+WCAG AA contrast (light theme only: the dark variant was removed on 19/11/2026 at Jean's request); touch targets ≥ 40 px on mobile; reduced-motion respected (fade instead of movement).
 
 ## Site structure (12/10/2026)
 
