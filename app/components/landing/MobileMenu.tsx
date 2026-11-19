@@ -4,13 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 
-// Menu du site public sous `lg` (depuis le 12/10/2026 il mène aux pages
-// Produit, Accompagnement… et non plus à des ancres d'une page unique). La barre de navigation desktop masque ses
-// ancres en dessous de 1024 px : sans ce tiroir, un visiteur sur téléphone
-// n'avait aucun moyen d'atteindre FAQ, Intégrations, etc. autrement qu'en
-// faisant défiler toute la page. Seuil relevé de `md` à `lg` le 12/10/2026 :
-// à 768 px, les cinq ancres + « Se connecter » ne tenaient pas sur une ligne
-// et passaient sur deux, collées au logo.
+// Menu du site public sous `lg`. La barre de navigation desktop masque ses
+// liens en dessous de 1024 px : sans ce tiroir, un visiteur sur téléphone
+// n'aurait aucun moyen d'atteindre les pages Produit ou « Comment ça marche ».
+// Les deux pages du menu Produit y sont à plat (SiteChrome passe la liste).
 export function MobileMenu({ links }: { links: { href: string; label: string }[] }) {
   const [open, setOpen] = useState(false);
 

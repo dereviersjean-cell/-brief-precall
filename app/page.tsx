@@ -1,21 +1,15 @@
 import type { Metadata } from "next";
 import { APP_URL } from "@/lib/app-url";
 import { SiteChrome } from "@/app/components/landing/SiteChrome";
-import {
-  Hero,
-  MethodSection,
-  TeamSection,
-  AccompanimentTeaser,
-  Testimonials,
-  Faq,
-  FinalCTA,
-} from "@/app/components/landing/sections";
+import { Hero, PainSection, SolutionSection, ReassuranceSection, FinalCTA } from "@/app/components/landing/sections";
 
-// Accueil du site public (découpé en pages le 12/10/2026, sur le modèle de
-// lemlist, PayFit et uptoo) : une vitrine courte qui donne envie et renvoie
-// au détail — Produit, Accompagnement, Intégrations, Sécurité. La séquence
-// animée des trois moments y figure en entier, comme sur Produit (demande de
-// Jean du 12/10/2026). Les sections vivent dans
+// Accueil du site public. Déroulé du cadrage GTM d'Hubert (« Website V2 »,
+// 19/11/2026) : la promesse, trois douleurs, la solution pour les deux
+// publics (commerciaux, puis directeurs commerciaux avec « Suivi des deals »
+// en grand), la réassurance, l'appel à l'action. Objectif de la page :
+// convaincre un dirigeant ou un directeur commercial que Brief fait avancer
+// davantage de deals avec le pipeline existant. Les quatre leviers animés,
+// les témoignages et la FAQ n'y sont plus. Les sections vivent dans
 // app/components/landing/sections.tsx.
 //
 // Typographie française : les espaces avant « : ; ? ! » et à l'intérieur des
@@ -75,11 +69,9 @@ export default function HomePage() {
   return (
     <SiteChrome jsonLd={JSON_LD}>
       <Hero />
-      <MethodSection />
-      <TeamSection />
-      <AccompanimentTeaser />
-      <Testimonials />
-      <Faq />
+      <PainSection />
+      <SolutionSection />
+      <ReassuranceSection />
       <FinalCTA />
     </SiteChrome>
   );

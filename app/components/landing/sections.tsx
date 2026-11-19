@@ -1,38 +1,101 @@
-// Sections de la landing, partagées par l'accueil et les pages Produit,
-// Accompagnement et Intégrations (site découpé en pages le 12/10/2026, à la
-// manière de lemlist, PayFit ou uptoo). Chaque page n'assemble que ce dont
-// elle a besoin ; l'habillage commun (barre, pied de page, police) est dans
-// SiteChrome.tsx.
+// Sections du site public, partagées par l'accueil et les pages Directeurs
+// commerciaux, Commerciaux, Comment ça marche, Intégrations et Sécurité.
+// Chaque page n'assemble que ce dont elle a besoin ; l'habillage commun
+// (barre, pied de page, police) est dans SiteChrome.tsx.
+//
+// Textes du 19/11/2026 : ceux du cadrage GTM d'Hubert (« Website V2,
+// maquettes et intentions »), repris mot pour mot sur l'accueil et les deux
+// pages par public. Ses maquettes fixent la hiérarchie, pas le dessin : le
+// design, les composants et les aperçus au format réel du site sont gardés
+// (consigne du cadrage : « réutiliser les vraies captures produit »). Ses
+// écrans d'exemple portaient des chiffres inventés (taux de conversion,
+// exécution du playbook en %) ; le cadrage interdit d'en publier, les aperçus
+// restent donc ceux de l'app.
+// Un seul appel à l'action partout : « Voir Brief en action », vers le
+// planning de rendez-vous.
+//
+// Typographie française : les espaces avant « : ; ? ! » et à l'intérieur des
+// guillemets sont des espaces insécables (U+00A0), invisibles dans l'éditeur.
 import Link from "next/link";
 import Image from "next/image";
+import type { ReactNode } from "react";
 import { SALES_CONTACT, BRIEFS_ACCESS_DAILY_LIMIT } from "@/lib/sales-contact";
+import { CTA_LABEL } from "@/app/components/landing/SiteChrome";
 import { Journey, type JourneyStep } from "@/app/components/landing/Journey";
-import { AnalysisObject } from "@/app/components/landing/AnalysisObject";
 import { ClientLogos, HERO_INK } from "@/app/components/landing/ClientLogos";
 import { MethodPreview } from "@/app/components/landing/MethodPreview";
 import { DealsBoard } from "@/app/components/landing/DealsBoard";
-import { UpcomingMeetings } from "@/app/components/landing/UpcomingMeetings";
-import { SourcesObject, DealObject, MethodObject, DigestObject } from "@/app/components/landing/objects";
-import { PARCOURS, TOOL_WEEKS } from "@/app/components/landing/Accompaniment";
+import { MeetingPairObject } from "@/app/components/landing/MeetingPairObject";
+import { DealObject, FollowUpObject, DigestObject } from "@/app/components/landing/objects";
 import { NB } from "@/app/components/landing/team-data";
 import { TestimonialCarousel, CompanyMark } from "@/app/components/landing/TestimonialCarousel";
 import { FEATURED, CARDS, visibleTestimonials } from "@/app/components/landing/testimonials-data";
-import { ArrowRight, ArrowUpRight, Check, ShieldCheck, Globe2, Mic, Plus, Mail, ListChecks, Hourglass, TrendingUp, CalendarClock, Bot, Lock, Server, EyeOff, Trash2 } from "lucide-react";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  BarChart3,
+  BookOpen,
+  Bot,
+  Building2,
+  CalendarClock,
+  CalendarDays,
+  Check,
+  EyeOff,
+  Globe2,
+  Layers,
+  Lock,
+  Mail,
+  Mic,
+  Plus,
+  Server,
+  ShieldCheck,
+  Target,
+  Trash2,
+  TrendingUp,
+  UserRound,
+  Users,
+  Zap,
+} from "lucide-react";
 
 // Titres de section en deux tons : l'affirmation en encre, la suite en gris.
 // C'est la seule hiérarchie dont ils ont besoin — pas de surtitre.
 export const H2 = "text-[34px] font-semibold leading-[1.06] tracking-[-0.035em] md:text-[52px] lg:text-[60px]";
 
+// ─── Appel à l'action ────────────────────────────────────────────────────────
+// Le seul du site (cadrage GTM) : il ouvre le planning de rendez-vous.
+// `light` : sur un aplat d'encre ; `accent` : sur fond clair.
+
+const CTA_STYLES = {
+  light: "bg-white text-land-ink hover:-translate-y-0.5 focus-visible:outline-white",
+  accent: "bg-land-accent text-white hover:brightness-110 focus-visible:outline-land-accent",
+};
+
+export function Cta({ tone = "accent", className = "" }: { tone?: keyof typeof CTA_STYLES; className?: string }) {
+  return (
+    <a
+      href={SALES_CONTACT.bookingUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`inline-flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-full px-6 text-[16px] font-semibold transition-[transform,filter] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 ${CTA_STYLES[tone]} ${className}`}
+    >
+      {CTA_LABEL} <ArrowRight className="h-4 w-4" aria-hidden />
+    </a>
+  );
+}
+
+/** Surtitre de section (« La solution Brief », « Exécution et performance »). */
+function Eyebrow({ children }: { children: ReactNode }) {
+  return <p className="mb-4 text-[13px] font-semibold uppercase tracking-[0.12em] text-land-accent">{children}</p>;
+}
+
 // ─── Haut de page ────────────────────────────────────────────────────────────
 
 // Haut de page illustré, sur le modèle de lemlist et Clay (demande de Jean du
-// 12/10/2026, après une photo d'équipe jugée trop banale) : une scène en 3D
-// qui raconte le produit — un chemin qui relie les trois moments (le dossier,
-// le micro de la visio, le podium) — et qui se fond en bas dans un aplat
-// d'encre bleue où se posent le titre (à gauche) et l'accroche avec les
-// boutons (à droite). Juste en dessous, la séquence animée des trois moments
-// (MethodSection), celle de la page Produit : c'est l'animation que Jean veut
-// sur l'accueil (12/10/2026), pas le brief qui s'écrit.
+// 12/10/2026) : une scène en 3D qui se fond en bas dans un aplat d'encre bleue
+// où se posent le titre (à gauche) et l'accroche avec le bouton (à droite).
+// Textes du cadrage GTM (19/11/2026) : la promesse est de transformer
+// davantage d'opportunités en clients, pour un dirigeant ou un directeur
+// commercial.
 
 export function Hero() {
   return (
@@ -59,36 +122,25 @@ export function Hero() {
               />
             </div>
             <div className="relative -mt-10 grid grid-cols-1 gap-6 px-5 sm:px-10 md:-mt-16 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:items-end lg:gap-16 lg:px-16">
-              <h1
-                className="land-hero-text max-w-[15ch] text-[40px] font-semibold leading-[1.02] tracking-[-0.04em] sm:text-[56px] lg:text-[64px]"
-                style={{ "--i": 0 } as React.CSSProperties}
-              >
-                {/* Sur le modèle de PayFit (« Paie, admin, RH : nos experts
-                    assurent, vous décidez ») : ce qu'on prend en charge, puis
-                    ce qui reste au commercial. Choix de Jean, 12/10/2026. */}
-                Briefs, débriefs, coaching :{" "}
-                <span className="text-white/70">on s&apos;en charge,</span>{" "}
-                <span className="text-land-sun">vous closez.</span>
-              </h1>
+              <div className="land-hero-text" style={{ "--i": 0 } as React.CSSProperties}>
+                <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-[13px] font-medium text-white/85 ring-1 ring-white/15">
+                  L&apos;IA au service de votre exécution commerciale
+                </span>
+                <h1 className="mt-5 max-w-[16ch] text-[40px] font-semibold leading-[1.02] tracking-[-0.04em] sm:text-[56px] lg:text-[64px]">
+                  Transformez davantage de vos opportunités <span className="text-land-sun">en clients.</span>
+                </h1>
+              </div>
               <div className="land-hero-text lg:pb-2" style={{ "--i": 1 } as React.CSSProperties}>
                 <p className="max-w-[34rem] text-[18px] leading-relaxed text-white/90 sm:text-[19px]">
-                  La plateforme qui structure votre équipe commerciale autour de votre méthode : chaque rendez-vous
-                  préparé, chaque call débriefé, chaque deal suivi jusqu&apos;à la signature.
+                  Brief identifie ce qui freine vos deals, recommande les prochaines actions à vos commerciaux et indique à
+                  vos managers où intervenir pour accélérer leur progression jusqu&apos;au closing.
                 </p>
-                <div className="mt-7 flex flex-wrap items-center gap-3">
-                  <Link
-                    href="/inscription"
-                    className="inline-flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-white px-6 text-[16px] font-semibold text-land-ink transition-transform hover:-translate-y-0.5 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-                  >
-                    Essayer gratuitement <ArrowRight className="h-4 w-4" />
-                  </Link>
-                  <a
-                    href="#methode"
-                    className="inline-flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-full border border-white/35 px-6 text-[16px] font-medium text-white transition-[background-color,transform] hover:bg-white/10 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-                  >
-                    Voir les 4 leviers <ArrowRight className="h-4 w-4 rotate-90" />
-                  </a>
+                <div className="mt-7">
+                  <Cta tone="light" />
                 </div>
+                <p className="mt-4 inline-flex items-center gap-2 text-[14px] text-white/70">
+                  <CalendarDays className="h-4 w-4" aria-hidden /> Découvrez Brief lors d&apos;une démonstration personnalisée.
+                </p>
               </div>
             </div>
             <ClientLogos className="px-5 pb-10 pt-10 sm:px-10 lg:px-16 lg:pb-12 lg:pt-10" />
@@ -99,92 +151,42 @@ export function Hero() {
 }
 
 
-// ─── La semaine de l'équipe ──────────────────────────────────────────────────
-// Ce qui arrive (rendez-vous à venir, brief prêt, bot programmé) : la liste
-// que le commercial ouvre chaque jour (demande de Jean, 12/10/2026).
+// ─── Accueil : les trois douleurs ────────────────────────────────────────────
 
-export function WeekSection() {
-  return (
-    <section id="rendez-vous" className="scroll-mt-20 border-t border-land-line">
-      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-32">
-        <h2 className={`${H2} max-w-[19ch]`}>
-          <span className="text-land-ink">Vos prochains rendez-vous, déjà préparés.</span>{" "}
-          <span className="text-land-faint">Le brief est prêt la veille.</span>
-        </h2>
-        <p className="mt-6 max-w-[58ch] text-[18px] leading-relaxed text-land-muted md:text-[20px]">
-          Brief lit votre agenda Google ou Outlook. Chaque rendez-vous avec un prospect a son brief prêt la veille à 18:00,
-          aussi déposé dans l&apos;événement d&apos;agenda ; un rendez-vous ajouté à la main se prépare en un clic. Les
-          réunions internes sont reconnues à leur titre : ni brief, ni enregistrement.
-        </p>
-        <div className="mt-14 lg:mt-16">
-          <UpcomingMeetings />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── Votre équipe ────────────────────────────────────────────────────────────
-// La section du directeur commercial. Depuis le 18/11/2026 elle montre
-// « Suivi des deals » (les deals de ses commerciaux qui demandent son
-// intervention) à la place du tableau de bord Performance et de la fiche par
-// commercial notée sur 5, retirés de l'app le 05/11/2026.
-
-const TEAM_POINTS = [
+const PAINS = [
   {
-    icon: ListChecks,
-    title: "Ce qui remonte, dans l'ordre",
-    body: "Un deal qui se dégrade, un engagement non tenu, un blocage : une carte par deal, le plus urgent en premier.",
-  },
-  {
-    icon: Hourglass,
-    title: "Les deals endormis, à part",
-    body: "14 jours sans échange, 7 quand le deal est en proposition : à relancer ou à clôturer, sans encombrer le reste.",
+    icon: CalendarDays,
+    title: "Des opportunités mal exploitées",
+    body: "Les rendez-vous s'enchaînent, mais les informations décisives ne sont pas toujours obtenues pour faire progresser le deal.",
   },
   {
     icon: TrendingUp,
-    title: "Une prévision fondée sur les calls",
-    body: "Ce que HubSpot compte d'après l'étape, ce que les calls confirment, et l'écart, commercial par commercial.",
+    title: "Des deals qui stagnent",
+    body: "Prochaines étapes floues, engagements oubliés, relances tardives : des opportunités prometteuses finissent par s'essouffler.",
+  },
+  {
+    icon: Users,
+    title: "Des managers qui interviennent trop tard",
+    body: "Sans visibilité sur les vrais blocages, les directeurs commerciaux découvrent parfois les risques lorsqu'il est déjà trop tard pour agir.",
   },
 ];
 
-
-export function TeamSection() {
+export function PainSection() {
   return (
-    <section id="equipe" className="scroll-mt-20 border-t border-land-line bg-land-surface">
-      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-32">
-        <h2 className={`${H2} max-w-[19ch]`}>
-          <span className="text-land-ink">Voyez quels deals demandent votre intervention.</span>{" "}
-          <span className="text-land-faint">Le problème, l&apos;action, la question à poser.</span>
-        </h2>
+    <section className="border-t border-land-line">
+      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-28">
+        <h2 className={`${H2} max-w-[22ch] text-land-ink`}>Vos deals ne se perdent pas toujours face à la concurrence.</h2>
         <p className="mt-6 max-w-[58ch] text-[18px] leading-relaxed text-land-muted md:text-[20px]">
-          Brief suit les deals de vos commerciaux à partir de leurs calls. Il fait remonter ceux qui se dégradent, ceux
-          où un engagement n&apos;a pas été tenu et ceux qui restent bloqués, avec l&apos;action recommandée et la question
-          à poser au commercial. Vous savez où intervenir, et sur quoi.
+          Parfois, ils se perdent simplement parce que les bonnes actions n&apos;ont pas été menées au bon moment.
         </p>
-
-        {/* « Suivi des deals », interactif, avec sa démonstration automatique
-            (curseur qui clique tant qu'on n'a pas pris la main). Placé juste
-            après les quatre leviers (choix de Jean, 12/10/2026). */}
-        <div className="relative mt-16 lg:mt-20">
-          <div aria-hidden className="land-aurora absolute -inset-x-2 -bottom-6 top-24 rounded-[36px] sm:-inset-x-6 lg:-inset-x-10">
-            <i />
-            <i />
-            <i />
-          </div>
-          <div className="relative">
-            <DealsBoard demo />
-          </div>
-        </div>
-
-        <ul className="mt-16 grid grid-cols-1 gap-8 md:grid-cols-3 lg:mt-20">
-          {TEAM_POINTS.map((p) => (
-            <li key={p.title}>
+        <ul className="mt-12 grid grid-cols-1 gap-5 md:grid-cols-3 lg:mt-14">
+          {PAINS.map((p) => (
+            <li key={p.title} className="rounded-[22px] border border-land-line bg-land-surface p-6">
               <span className="grid h-11 w-11 place-items-center rounded-2xl bg-land-accent-soft text-land-accent">
                 <p.icon className="h-5 w-5" aria-hidden />
               </span>
-              <div className="mt-4 text-[18px] font-semibold tracking-tight text-land-ink">{p.title}</div>
-              <p className="mt-2 text-[15px] leading-relaxed text-land-muted">{p.body.replace(/ :/g, `${NB}:`)}</p>
+              <div className="mt-5 text-[18px] font-semibold tracking-tight text-land-ink">{p.title}</div>
+              <p className="mt-2 text-[15px] leading-relaxed text-land-muted">{p.body}</p>
             </li>
           ))}
         </ul>
@@ -193,157 +195,277 @@ export function TeamSection() {
   );
 }
 
-// ─── La méthode : quatre leviers ─────────────────────────────────────────────
+// ─── Aperçus produit partagés ────────────────────────────────────────────────
+// « Deal Macro » et « Manager Radar » sont les noms du cadrage GTM pour deux
+// écrans de l'app : la page d'un deal et « Suivi des deals ». L'étiquette
+// porte le nom du cadrage ; l'aperçu, lui, reste l'écran réel.
 
-const STEPS: JourneyStep[] = [
-  {
-    verb: "Préparer",
-    when: "Mercredi 18:00",
-    moment: "La veille du rendez-vous",
-    title: "Arrivez en connaissant votre prospect.",
-    body: "La veille, Brief compile un dossier prêt à lire en 3 minutes. Finies les 20 minutes éparpillées entre LinkedIn, Pappers et le site du prospect.",
-    points: [
-      { title: "Entreprise, contact et contexte sourcés", body: "Activité, clients, chiffres clés, actualité : depuis les registres officiels, les annuaires professionnels et le web. L'origine du rendez-vous est lue dans HubSpot." },
-      { title: "Une accroche et les enjeux à explorer", body: "Une question d'ouverture prête à dire, et trois enjeux au plus, chacun avec son hypothèse et la question à poser." },
-      {
-        title: "Les références de toute l'équipe",
-        body: "Brief compare le prospect aux cas clients de l'équipe, importés d'un fichier, saisis à la main ou repris de vos deals gagnés. Il en retient deux, classées preuve de ROI, cas d'usage ou référence simple, avec la phrase à dire.",
-      },
-      {
-        title: "À partir du R2, le brief repart du deal",
-        body: "Les priorités du rendez-vous, les freins déjà exprimés et ce qui y répond, les engagements pris de chaque côté.",
-      },
-    ],
-    object: <SourcesObject />,
-  },
-  {
-    verb: "Débriefer",
-    when: "Jeudi 15:20",
-    moment: "Juste après le call",
-    title: "Chaque call débriefé en trois questions.",
-    body: "Le bot rejoint la visio et transcrit en français. Brief répond ensuite aux trois questions d'un commercial qui raccroche : ce que ce rendez-vous a changé dans le deal, ce qu'il faut faire maintenant, ce qui aurait pu être mieux exécuté. Essayez les trois onglets.",
-    points: [
-      { title: "L'impact sur le deal", body: "Ce qui est nouveau, ce qui recule, un concurrent cité, un point de vigilance, et l'état du deal avant et après le rendez-vous." },
-      { title: "Les engagements des deux côtés", body: "Ce que vous devez faire, ce que le prospect a promis, pour quand, et ce qu'il faut obtenir au rendez-vous suivant." },
-      { title: "Un coaching, pas une note", body: "Deux points bien exécutés, deux à travailler au plus, chacun avec la phrase à dire la prochaine fois." },
-      { title: "L'email de suivi et le CRM", body: "L'email de suivi est rédigé, prêt à relire. Le compte rendu part dans HubSpot ou Pipedrive, et les propriétés du deal HubSpot se mettent à jour." },
-    ],
-    object: <AnalysisObject />,
-  },
-  {
-    verb: "Progresser",
-    when: "Lundi 08:00",
-    moment: "Entre deux rendez-vous, sur chaque deal",
-    title: "Chaque deal a sa priorité, chaque commercial sait quoi faire.",
-    body: "Chaque rendez-vous enregistré crée ou complète le deal de son prospect. Le commercial ouvre ses deals et voit lesquels avancent, lesquels sont à relancer, et l'action à mener sur chacun. Ce que le deal sait déjà tient en huit lignes.",
-    points: [
-      { title: "Cinq états, calculés depuis les calls", body: "En progrès, à qualifier, à relancer, à l'arrêt, en recul : personne ne les saisit à la main." },
-      { title: "Une priorité par deal", body: "Ce qu'il faut faire, pourquoi maintenant, comment. Un engagement en retard passe devant tout le reste." },
-      { title: "Gagné, perdu, abandonné", body: "Vous clôturez le deal dans Brief, l'étape change dans HubSpot, et un deal gagné rejoint les références de l'équipe." },
-      { title: "Entraînement sur ses vraies objections", body: "Un prospect joué par l'IA, à la voix, reprend les objections restées sans réponse dans ses calls. À la fin : ses points forts, et la meilleure réponse à réutiliser." },
-    ],
-    object: <DealObject />,
-  },
-  {
-    verb: "Structurer",
-    when: "Dès le départ",
-    moment: "Une méthode pour toute l'équipe",
-    title: "Toute l'équipe vend avec la même méthode, la vôtre.",
-    body: "Votre méthode de qualification, ce qu'il faut obtenir à chaque étape, vos réponses aux objections, vos références : réglés une fois, sur une seule page. Chaque nouveau commercial arrive dans une équipe qui a déjà sa méthode.",
-    points: [
-      { title: "Des objectifs par étape commerciale", body: "Sur les étapes de votre pipeline HubSpot : ce qu'il faut avoir obtenu avant de passer à la suivante. MEDDIC, BANT, MEDDPICC ou le socle Brief." },
-      { title: "Vos objections, vos réponses", body: "Vous fixez les catégories et la façon de traiter chacune. Brief y range chaque objection entendue en call, et vous suggère les nouvelles catégories qui reviennent." },
-      { title: "Des références classées", body: "Preuve de ROI, cas d'usage ou référence simple : Brief dit lesquelles citer telles quelles, et lesquelles sont à compléter." },
-      { title: "Mis en place avec votre expert", body: "Un expert de l'équipe Brief installe tout avec vous, une brique par semaine pendant huit semaines." },
-    ],
-    object: <MethodObject />,
-  },
-];
-
-// Les quatre leviers, tels que l'introduction de « La méthode » les annonce.
-// Mêmes couleurs que la séquence (Journey) : bleu, corail, soleil, lilas.
-// Titre « Quatre leviers. Un seul objectif : le ROI. » (Jean, 13/10/2026),
-// à la place de « Trois moments. Un seul objectif : le closing. »
-export const MOMENTS = [
-  { verb: "Préparer", when: "la veille", anchor: "preparer", soft: "bg-land-accent-soft", solid: "bg-land-accent" },
-  { verb: "Débriefer", when: "après le call", anchor: "debriefer", soft: "bg-land-coral-soft", solid: "bg-land-coral" },
-  { verb: "Progresser", when: "entre deux rendez-vous", anchor: "progresser", soft: "bg-land-sun-soft", solid: "bg-land-sun-ink" },
-  { verb: "Structurer", when: "dès le départ", anchor: "structurer", soft: "bg-land-lilac-soft", solid: "bg-land-lilac-ink" },
-];
-
-// Introduction de « La méthode ». Rendue deux fois, une seule visible : dans
-// la section (téléphone, tablette, mouvement réduit) ou, en mode épinglé, à
-// gauche du brief replié en fin de haut de page (cf. HeroStage).
-export function MethodIntro() {
+function ScreenTag({ children }: { children: ReactNode }) {
   return (
-    <>
-      <h2 className={`${H2} max-w-[16ch]`}>
-        <span className="text-land-ink">Quatre leviers.</span>{" "}
-        <span className="text-land-faint">Un seul objectif : le ROI.</span>
-      </h2>
-      <p className="mt-6 max-w-[54ch] text-[18px] leading-relaxed text-land-muted md:text-[20px]">
-        Préparer chaque rendez-vous, débriefer chaque call, faire progresser chaque deal, structurer toute
-        l&apos;équipe autour de votre méthode. Brief actionne les quatre, pour que chaque rendez-vous rapporte
-        davantage.
-      </p>
-      {/* Les leviers annoncés d'emblée, numérotés, dans leur couleur et
-          reliés par un trait : la structure se lit avant même d'entrer dans
-          la séquence. Verticale, elle tient aussi dans la colonne étroite du
-          haut de page épinglé. */}
-      <ol className="relative mt-8 space-y-3" aria-label="Les quatre leviers">
-        <span aria-hidden className="absolute bottom-5 left-[19px] top-5 w-0.5 rounded-full bg-land-line" />
-        {MOMENTS.map((m, i) => (
-          <li key={m.verb} className="relative">
-            <a
-              href={`#${m.anchor}`}
-              className={`inline-flex items-center gap-3 rounded-full py-1.5 pl-1.5 pr-5 transition-transform hover:translate-x-1 ${m.soft}`}
-            >
-              <span className={`grid h-7 w-7 place-items-center rounded-full text-[13px] font-semibold text-white ring-4 ring-land-bg ${m.solid}`}>
-                {i + 1}
-              </span>
-              <span className="text-[15px] leading-tight">
-                <span className="font-semibold text-land-ink">{m.verb}</span>{" "}
-                <span className="text-land-muted">· {m.when}</span>
-              </span>
-            </a>
-          </li>
-        ))}
-      </ol>
-    </>
+    <span className="inline-flex items-center gap-2 rounded-full bg-land-surface px-3 py-1.5 text-[13px] font-semibold text-land-ink shadow-[var(--land-shadow)] ring-1 ring-land-line">
+      <span className="h-2 w-2 rounded-full bg-land-accent" aria-hidden />
+      {children}
+    </span>
   );
 }
 
-export function MethodSection() {
+/** « Suivi des deals », interactif, sur sa nappe de couleur, avec sa
+ * démonstration automatique (curseur qui clique tant qu'on n'a pas pris la
+ * main). Le cadrage demande une place forte pour cet écran. */
+function ManagerRadar() {
   return (
-    <section id="methode" className="land-method scroll-mt-20 border-t border-land-line">
-      <div className="mx-auto max-w-6xl px-4 pt-20 sm:px-6 lg:pb-16 lg:pt-32">
-        <MethodIntro />
+    <div>
+      <ScreenTag>Manager Radar</ScreenTag>
+      <div className="relative mt-8">
+        <div aria-hidden className="land-aurora absolute -inset-x-2 -bottom-6 top-24 rounded-[36px] sm:-inset-x-6 lg:-inset-x-10">
+          <i />
+          <i />
+          <i />
+        </div>
+        <div className="relative">
+          <DealsBoard demo />
+        </div>
       </div>
-      <div className="mx-auto max-w-6xl px-4 pb-16 sm:px-6 lg:pb-24">
-        <Journey steps={STEPS} />
+    </div>
+  );
+}
+
+function AudiencePill({ icon: Icon, children }: { icon: typeof Users; children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full bg-land-accent-soft py-1.5 pl-2 pr-3.5 text-[13.5px] font-semibold text-land-accent">
+      <span className="grid h-6 w-6 place-items-center rounded-full bg-land-surface">
+        <Icon className="h-3.5 w-3.5" aria-hidden />
+      </span>
+      {children}
+    </span>
+  );
+}
+
+const MORE = "group mt-7 inline-flex items-center gap-1.5 text-[15px] font-medium text-land-ink hover:text-land-accent";
+
+// ─── Accueil : la solution, pour les deux publics ────────────────────────────
+
+const REP_POINTS = [
+  {
+    icon: Target,
+    title: "Savoir quoi faire pour faire avancer le deal",
+    body: "Brief repère les informations manquantes, les objections et les prochaines étapes à sécuriser.",
+  },
+  {
+    icon: CalendarDays,
+    title: "Mieux exécuter chaque rendez-vous",
+    body: "Préparation contextualisée, analyse du playbook et suggestions concrètes.",
+  },
+  {
+    icon: Zap,
+    title: "Automatiser le suivi commercial",
+    body: "CRM enrichi, emails de suivi préparés et engagements visibles.",
+  },
+];
+
+export function SolutionSection() {
+  return (
+    <section id="solution" className="scroll-mt-20 border-t border-land-line bg-land-surface">
+      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-32">
+        <Eyebrow>La solution Brief</Eyebrow>
+        <h2 className={`${H2} max-w-[20ch]`}>
+          <span className="text-land-ink">Des commerciaux mieux guidés.</span>{" "}
+          <span className="text-land-faint">Des managers qui savent où agir.</span>
+        </h2>
+        <p className="mt-6 max-w-[58ch] text-[18px] leading-relaxed text-land-muted md:text-[20px]">
+          Brief s&apos;appuie sur votre méthode commerciale et l&apos;historique de vos échanges pour aider vos équipes à
+          faire progresser davantage d&apos;opportunités.
+        </p>
+
+        {/* Pour les commerciaux : le texte, puis la page d'un deal. */}
+        <div className="mt-16 grid grid-cols-1 items-center gap-10 lg:mt-20 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)] lg:gap-12">
+          <div>
+            <AudiencePill icon={UserRound}>Pour les commerciaux</AudiencePill>
+            <h3 className="mt-5 max-w-[20ch] text-[28px] font-semibold leading-[1.12] tracking-[-0.03em] text-land-ink md:text-[36px]">
+              Faites avancer chaque opportunité, rendez-vous après rendez-vous.
+            </h3>
+            <ul className="mt-8 space-y-6">
+              {REP_POINTS.map((p) => (
+                <li key={p.title} className="flex gap-4">
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-land-accent-soft text-land-accent">
+                    <p.icon className="h-5 w-5" aria-hidden />
+                  </span>
+                  <div>
+                    <div className="text-[17px] font-semibold tracking-tight text-land-ink">{p.title}</div>
+                    <p className="mt-1 text-[15px] leading-relaxed text-land-muted">{p.body}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <Link href="/commerciaux" className={MORE}>
+              Brief pour les commerciaux <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
+            </Link>
+          </div>
+          <div>
+            <ScreenTag>Deal Macro</ScreenTag>
+            <div className="mt-5 rounded-[28px] bg-land-accent-soft p-2.5 sm:p-4">
+              <DealObject />
+            </div>
+          </div>
+        </div>
+
+        {/* Pour les directeurs commerciaux et dirigeants : « Suivi des
+            deals » en grand. */}
+        <div className="mt-24 lg:mt-32">
+          <AudiencePill icon={Users}>Pour les directeurs commerciaux et dirigeants</AudiencePill>
+          <div className="mt-5 flex flex-wrap items-end justify-between gap-x-10 gap-y-2">
+            <h3 className="max-w-[24ch] text-[28px] font-semibold leading-[1.12] tracking-[-0.03em] text-land-ink md:text-[36px]">
+              Identifiez les deals sur lesquels votre intervention peut faire la différence.
+            </h3>
+            <Link href="/directeurs-commerciaux" className={`${MORE} mt-0 lg:mb-1.5`}>
+              Brief pour les directeurs commerciaux <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
+            </Link>
+          </div>
+          <div className="mt-10">
+            <ManagerRadar />
+          </div>
+        </div>
       </div>
     </section>
   );
 }
 
-// ─── Managers ────────────────────────────────────────────────────────────────
+// ─── Accueil : la réassurance ────────────────────────────────────────────────
+// CRM existant, méthode propre au client, faible charge administrative.
+// La maquette du cadrage affichait quatre CRM ; Brief ne se connecte qu'à
+// HubSpot et Pipedrive, seuls affichés (décision de Jean, 19/11/2026).
 
-// Section manager (refaite le 12/10/2026, reprise le 18/11/2026). Ce qui
-// distingue Brief — la méthode du manager, appliquée à chaque call et à
-// chaque deal — montrée sur la vraie page Méthode (qui a remplacé la page
-// Playbook et sa grille de notation le 05/11/2026), puis le bilan du vendredi.
-export function ManagerSection() {
+const REASSURANCE = [
+  {
+    icon: Layers,
+    title: "Votre CRM reste votre référence",
+    body: "Brief exploite vos opportunités et facilite leur enrichissement sans imposer un nouveau pipeline.",
+  },
+  {
+    icon: BookOpen,
+    title: "Votre méthode commerciale",
+    body: "Brief s'appuie sur les étapes et critères de vente de votre entreprise pour contextualiser ses analyses.",
+  },
+  {
+    icon: Zap,
+    title: "Moins de travail administratif",
+    body: "Comptes rendus, emails de suivi et informations clés sont automatiquement organisés pour vous concentrer sur la vente.",
+  },
+];
+
+const CRM_LOGOS = ["hubspot", "pipedrive"];
+
+export function ReassuranceSection() {
   return (
-    <section id="manager" className="scroll-mt-20 border-t border-land-line bg-land-surface">
-      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-32">
-        <h2 className={`${H2} max-w-[17ch]`}>
-          <span className="text-land-ink">Vous fixez la méthode.</span>{" "}
-          <span className="text-land-faint">Brief l&apos;applique à chaque call.</span>
+    <section className="border-t border-land-line">
+      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-28">
+        <h2 className={`${H2} max-w-[20ch]`}>
+          <span className="text-land-ink">Votre méthode de vente. Votre CRM.</span>{" "}
+          <span className="text-land-faint">Brief s&apos;occupe du reste.</span>
         </h2>
         <p className="mt-6 max-w-[58ch] text-[18px] leading-relaxed text-land-muted md:text-[20px]">
-          Votre méthode de qualification, ce qu&apos;il faut obtenir à chaque étape du pipeline, vos réponses aux
-          objections, les clients à citer. Réglée une fois, modifiable à tout moment : c&apos;est d&apos;après elle que
-          Brief lit chaque call et dit ce qui manque sur chaque deal.
+          Un copilote qui s&apos;intègre à votre environnement et s&apos;adapte à votre façon de vendre, sans complexité.
+        </p>
+        <ul className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-3 lg:mt-14">
+          {REASSURANCE.map((p) => (
+            <li key={p.title}>
+              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-land-accent-soft text-land-accent">
+                <p.icon className="h-5 w-5" aria-hidden />
+              </span>
+              <div className="mt-4 text-[18px] font-semibold tracking-tight text-land-ink">{p.title}</div>
+              <p className="mt-2 text-[15px] leading-relaxed text-land-muted">{p.body}</p>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-12 flex flex-wrap items-center gap-x-8 gap-y-5 border-t border-land-line pt-8">
+          <span className="text-[14px] font-semibold text-land-ink">Compatible avec vos outils</span>
+          <ul className="flex items-center gap-2.5">
+            {CRM_LOGOS.map((file) => (
+              <li
+                key={file}
+                className="inline-flex h-11 items-center gap-2.5 rounded-xl border border-land-line bg-land-surface px-3.5 text-[14.5px] font-medium text-land-ink"
+              >
+                <StackLogo file={file} size={22} /> {STACK_LOGOS[file]}
+              </li>
+            ))}
+          </ul>
+          <span className="inline-flex max-w-[40ch] items-start gap-2.5 text-[14.5px] leading-snug text-land-muted lg:ml-auto">
+            <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-land-accent-soft text-land-accent">
+              <Check className="h-3 w-3" aria-hidden />
+            </span>
+            Conçu pour les équipes commerciales B2B, sans nécessiter une équipe RevOps dédiée.
+          </span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Directeurs commerciaux et dirigeants ────────────────────────────────────
+// Ordre du cadrage GTM : d'abord les opportunités à risque (Manager Radar),
+// puis l'exécution du playbook, puis la conversion — sans donner au coaching
+// plus de place qu'au suivi des deals.
+
+const MANAGER_POINTS = [
+  {
+    icon: Target,
+    title: "Repérez rapidement les deals à risque",
+    body: "Identifiez les opportunités qui se bloquent et les raisons précises de leur ralentissement.",
+  },
+  {
+    icon: Zap,
+    title: "Intervenez au bon moment",
+    body: "Recevez des recommandations concrètes et contextualisées pour aider vos commerciaux à relancer la progression.",
+  },
+  {
+    icon: TrendingUp,
+    title: "Pilotez l'exécution et la performance",
+    body: "Suivez l'application de votre playbook et mesurez l'impact sur la conversion de votre équipe.",
+  },
+];
+
+export function ManagerRadarSection() {
+  return (
+    <section id="manager-radar" className="scroll-mt-20">
+      <div className="mx-auto max-w-6xl px-4 pb-20 pt-14 sm:px-6 lg:pb-28 lg:pt-20">
+        <ManagerRadar />
+        <ul className="mt-16 grid grid-cols-1 gap-8 md:grid-cols-3 lg:mt-20">
+          {MANAGER_POINTS.map((p) => (
+            <li key={p.title}>
+              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-land-accent-soft text-land-accent">
+                <p.icon className="h-5 w-5" aria-hidden />
+              </span>
+              <div className="mt-4 text-[18px] font-semibold tracking-tight text-land-ink">{p.title}</div>
+              <p className="mt-2 text-[15px] leading-relaxed text-land-muted">{p.body}</p>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+const EXECUTION_CHECKS = [
+  "Exécution du playbook par étape",
+  "Progression des deals et taux de conversion",
+  "Performance de chaque commercial",
+  "Tendances et points d'attention de l'équipe",
+];
+
+// « Exécution et performance ». La maquette du cadrage montrait un taux
+// d'exécution du playbook et une note par commercial, que l'app n'a pas : à
+// leur place, les écrans réels qui portent ce pilotage — la page Méthode (ce
+// qu'il faut obtenir à chaque étape, les objections et leur traitement) et le
+// bilan de la semaine (ce qui a marché, les points d'attention).
+export function ExecutionSection() {
+  return (
+    <section id="execution" className="scroll-mt-20 border-t border-land-line bg-land-surface">
+      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-32">
+        <Eyebrow>Exécution et performance</Eyebrow>
+        <h2 className={`${H2} max-w-[18ch] text-land-ink`}>Un pilotage complet de votre exécution commerciale.</h2>
+        <p className="mt-6 max-w-[58ch] text-[18px] leading-relaxed text-land-muted md:text-[20px]">
+          Au-delà des deals à risque, Brief vous donne une vision claire de l&apos;exécution de votre playbook et de la
+          performance de votre équipe pour identifier les leviers d&apos;amélioration.
         </p>
 
         <div className="mt-14 grid grid-cols-1 gap-8 lg:mt-16 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-start lg:gap-10">
@@ -373,11 +495,7 @@ export function ManagerSection() {
               </div>
             </div>
             <ul className="mt-6 space-y-3 text-[15px] text-land-ink">
-              {[
-                "Des objectifs par étape commerciale, calés sur votre pipeline HubSpot.",
-                "Les objections rangées dans vos catégories, avec votre réponse de référence.",
-                "Un bilan chaque vendredi : ce qui a marché, points d'attention, à ne pas oublier.",
-              ].map((t) => (
+              {EXECUTION_CHECKS.map((t) => (
                 <li key={t} className="flex gap-3">
                   <Check className="mt-1 h-4 w-4 shrink-0 text-land-accent" aria-hidden />
                   <span>{t}</span>
@@ -397,7 +515,110 @@ export function ManagerSection() {
   );
 }
 
-// ─── Preuve ──────────────────────────────────────────────────────────────────
+// ─── Commerciaux ─────────────────────────────────────────────────────────────
+// Ordre du cadrage GTM : faire avancer le deal d'abord (la page d'un deal),
+// mieux exécuter les rendez-vous ensuite (avant : le brief ; après :
+// l'analyse), et l'administratif en dernier seulement — ce sont des
+// accélérateurs, pas la promesse principale. Ton : un copilote qui renforce
+// l'expertise du commercial, des recommandations justifiées, jamais une IA
+// « qui sait mieux vendre ».
+
+export const REP_PROMISES = [
+  { icon: Zap, text: "Des actions concrètes pour faire avancer vos deals" },
+  { icon: Target, text: "Des rendez-vous mieux exécutés" },
+  { icon: Layers, text: "Moins d'administratif, plus de vente" },
+];
+
+export function RepPromises() {
+  return (
+    <ul className="mt-9 flex flex-wrap gap-x-7 gap-y-3">
+      {REP_PROMISES.map((p) => (
+        <li key={p.text} className="inline-flex max-w-[22ch] items-start gap-2.5 text-[14px] leading-snug text-white/85">
+          <p.icon className="mt-0.5 h-4 w-4 shrink-0 text-land-sun" aria-hidden />
+          {p.text}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+const AUDIENCE = [
+  { icon: Users, text: "Équipes de 3 à 15+ commerciaux" },
+  { icon: Building2, text: "PME et ETI" },
+  { icon: BarChart3, text: "Cycles de vente complexes" },
+  { icon: Layers, text: "Vente en valeur" },
+];
+
+export function AudienceStrip() {
+  return (
+    <section aria-label="Pour qui" className="mx-auto max-w-6xl px-4 pt-12 sm:px-6 lg:pt-16">
+      <p className="text-center text-[15px] text-land-muted">
+        Conçu pour les <span className="font-semibold text-land-ink">équipes commerciales B2B</span>
+      </p>
+      <ul className="mt-6 grid grid-cols-2 gap-x-6 gap-y-4 border-b border-land-line pb-10 md:grid-cols-4 lg:pb-12">
+        {AUDIENCE.map((a) => (
+          <li key={a.text} className="flex items-center justify-center gap-2.5 text-center text-[15px] text-land-ink">
+            <a.icon className="h-5 w-5 shrink-0 text-land-muted" aria-hidden />
+            {a.text}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+const REP_STEPS: JourneyStep[] = [
+  {
+    verb: "Deals",
+    moment: "Progression des deals",
+    lead: "Identifiez les blocages",
+    title: "et les prochaines actions.",
+    body: "Pour chaque opportunité, Brief analyse les échanges et les informations du CRM, détecte ce qui pourrait freiner la progression du deal et vous suggère les actions les plus pertinentes.",
+    points: [
+      { title: "Informations manquantes (décideur, budget, calendrier…)" },
+      { title: "Objections non résolues" },
+      { title: "Prochaines étapes à sécuriser" },
+    ],
+    object: <DealObject />,
+  },
+  {
+    verb: "Rendez-vous",
+    moment: "Rendez-vous commerciaux",
+    lead: "Préparez et exécutez",
+    title: "des rendez-vous plus efficaces.",
+    body: "Brief vous aide à arriver mieux préparé, à approfondir les bons sujets pendant l'échange et à améliorer votre exécution commerciale grâce à une analyse post-meeting contextualisée.",
+    points: [
+      { title: "Préparation du rendez-vous : enjeux, questions clés, preuves" },
+      { title: "Analyse de l'échange au regard de votre playbook" },
+      { title: "Suggestions concrètes pour la suite" },
+    ],
+    object: <MeetingPairObject />,
+  },
+  {
+    verb: "Suivi",
+    moment: "Suivi et exécution",
+    lead: "Automatisez le suivi",
+    title: "et gardez le cap.",
+    body: "Brief transforme vos échanges en actions de suivi concrètes, sans charge administrative, pour garder vos opportunités en mouvement.",
+    points: [
+      { title: "Compte rendu automatique du rendez-vous" },
+      { title: "Email de suivi prêt à envoyer, personnalisé" },
+      { title: "Engagements des deux parties suivis et centralisés" },
+      { title: "Synchronisation des informations clés dans le CRM" },
+    ],
+    object: <FollowUpObject />,
+  },
+];
+
+export function RepJourney() {
+  return (
+    <section id="benefices" className="scroll-mt-20">
+      <div className="mx-auto max-w-6xl px-4 pb-16 pt-6 sm:px-6 lg:pb-24 lg:pt-10">
+        <Journey steps={REP_STEPS} label="Les trois bénéfices pour les commerciaux" />
+      </div>
+    </section>
+  );
+}
 
 // ─── Témoignages ─────────────────────────────────────────────────────────────
 
@@ -637,6 +858,8 @@ export function Integrations({ showTitle = true }: { showTitle?: boolean }) {
 }
 
 // ─── FAQ ─────────────────────────────────────────────────────────────────────
+// Depuis le 19/11/2026 elle n'est plus sur l'accueil (la maquette du cadrage
+// GTM n'en a pas) : elle ferme la page « Comment ça marche ».
 // Développée le 12/10/2026, reprise le 18/11/2026 (14 questions en trois
 // thèmes) après la fin de la note sur 5 et l'arrivée des deals. Chaque réponse
 // est vérifiable dans le code : bot « Brief Notetaker » et son message
@@ -651,7 +874,7 @@ const FAQ_GROUPS = [
     {
       title: "Le produit",
       items: [
-        { q: `Comment Brief augmente concrètement le taux de closing ?`, a: `En travaillant quatre leviers : arriver préparé à chaque rendez-vous, savoir après chaque call ce qu'il a changé dans le deal et ce qu'il faut faire, faire avancer chaque deal avec une priorité claire, et structurer toute l'équipe autour d'une même méthode.` },
+        { q: `Comment Brief aide-t-il à transformer davantage d'opportunités en clients ?`, a: `En identifiant ce qui freine chaque deal, en recommandant les prochaines actions aux commerciaux et en indiquant aux managers où intervenir.` },
         { q: `Comment Brief rejoint mes rendez-vous ?`, a: `Vous connectez votre agenda Google ou Outlook. Brief détecte les visios (Meet, Teams, Zoom) et y envoie son bot, « Brief Notetaker », qui enregistre et transcrit. Les réunions internes (point hebdomadaire, entretien, déjeuner…) sont reconnues à leur titre et ne sont pas enregistrées ; vous pouvez toujours forcer l'analyse d'un rendez-vous, ou en exclure un.` },
         { q: `Comment Brief suit-il un deal d'un rendez-vous à l'autre ?`, a: `Chaque rendez-vous enregistré crée ou complète le deal de son prospect. Brief retient ce que le deal sait déjà (douleur, budget, décideur, échéance…), les engagements pris de chaque côté et le prochain rendez-vous. La page du deal affiche son état, une priorité et ce qu'il reste à obtenir ; le brief du rendez-vous suivant repart de là.` },
         { q: `Comment Brief apprend-il notre méthode de vente ?`, a: `Le manager choisit la méthode de qualification (MEDDIC, BANT, MEDDPICC ou le socle Brief) et ce qu'il faut obtenir à chaque étape commerciale, sur les étapes de votre pipeline HubSpot quand il est connecté. Il fixe aussi les objections de référence et la façon d'y répondre. Tout se règle sur une seule page, Méthode, modifiable à tout moment.` },
@@ -708,7 +931,7 @@ export function Faq() {
                 rel="noopener noreferrer"
                 className="inline-flex h-10 items-center gap-1.5 rounded-full bg-land-accent px-4 text-[14px] font-medium text-white transition-[filter] hover:brightness-110"
               >
-                Prendre rendez-vous <ArrowUpRight className="h-4 w-4" aria-hidden />
+                {CTA_LABEL} <ArrowUpRight className="h-4 w-4" aria-hidden />
               </a>
               <a
                 href="mailto:contact@brief-ai.fr"
@@ -747,59 +970,28 @@ export function Faq() {
 
 // ─── Dernier appel ───────────────────────────────────────────────────────────
 // Même style que le haut de page (aplat d'encre, illustration en pâte à
-// modeler, texte blanc), contenu propre : comment démarrer, en trois étapes.
+// modeler, texte blanc). Texte du cadrage GTM ; `body` change sur la page
+// Commerciaux, où l'on s'adresse au commercial et non à son dirigeant.
 // Bleu du fond de l'illustration du dernier appel : le texte s'y pose.
 const CTA_INK = "#213F94";
 
-const START_STEPS = [
-  { title: "Connectez Google ou Microsoft", body: "Deux minutes, sans carte bancaire." },
-  { title: "Brief lit votre agenda", body: "Il repère les rendez-vous avec vos prospects." },
-  { title: "Le premier brief arrive la veille", body: "Prêt à lire en trois minutes avant le rendez-vous." },
-];
+const CTA_BODY = "Découvrez comment Brief peut aider vos équipes à transformer davantage d'opportunités en clients.";
 
-export function FinalCTA() {
+export function FinalCTA({ body = CTA_BODY }: { body?: string }) {
   return (
-    <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6 lg:pb-28">
+    <section className="mx-auto max-w-6xl px-4 pb-20 pt-4 sm:px-6 lg:pb-28">
       <div
         className="relative grid grid-cols-1 overflow-hidden rounded-[32px] text-white lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]"
         style={{ backgroundColor: CTA_INK }}
       >
-        <div className="relative order-2 px-6 pb-12 pt-6 sm:px-12 lg:order-1 lg:py-16">
-          <h2 className="max-w-[14ch] text-[40px] font-semibold leading-[1.02] tracking-[-0.04em] md:text-[60px]">
-            Prêt à <span className="text-land-sun">closer plus</span> ?
+        <div className="relative order-2 px-6 pb-12 pt-6 sm:px-12 lg:order-1 lg:py-20">
+          <h2 className="max-w-[16ch] text-[40px] font-semibold leading-[1.04] tracking-[-0.04em] md:text-[56px]">
+            Faites avancer plus de deals. <span className="text-land-sun">Closez davantage.</span>
           </h2>
-          <ol className="mt-9 space-y-4">
-            {START_STEPS.map((st, i) => (
-              <li key={st.title} className="flex items-start gap-4">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/12 text-[15px] font-semibold ring-1 ring-white/20">
-                  {i + 1}
-                </span>
-                <span>
-                  <span className="block text-[17px] font-semibold">{st.title}</span>
-                  <span className="block text-[14.5px] text-white/70">{st.body}</span>
-                </span>
-              </li>
-            ))}
-          </ol>
-          <div className="mt-10 flex flex-wrap gap-3">
-            <Link
-              href="/inscription"
-              className="inline-flex h-12 items-center gap-2 whitespace-nowrap rounded-full bg-white px-6 text-[16px] font-semibold text-land-ink transition-transform hover:-translate-y-0.5 active:scale-[0.98]"
-            >
-              Essayer gratuitement <ArrowRight className="h-4 w-4" />
-            </Link>
-            <a
-              href={SALES_CONTACT.bookingUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-12 items-center gap-2 whitespace-nowrap rounded-full border border-white/35 px-6 text-[16px] font-medium transition-[background-color,transform] hover:bg-white/10 active:scale-[0.98]"
-            >
-              Équiper toute l&apos;équipe <ArrowUpRight className="h-4 w-4" />
-            </a>
+          <p className="mt-6 max-w-[44ch] text-[18px] leading-relaxed text-white/85">{body}</p>
+          <div className="mt-9">
+            <Cta tone="light" />
           </div>
-          <p className="mt-4 text-[13px] text-white/55">
-            Pour l&apos;analyse des calls et le suivi des deals, on met Brief en place avec vous.
-          </p>
         </div>
         <div className="relative order-1 aspect-[16/10] lg:order-2 lg:-ml-0.5 lg:aspect-auto">
           <Image src="/landing/cta-scene.jpg" alt="" fill sizes="(min-width: 1024px) 45vw, 100vw" className="object-cover" />
@@ -819,56 +1011,6 @@ export function FinalCTA() {
   );
 }
 
-
-// ─── Accueil : les 3 moments en bref ─────────────────────────────────────────
-// Version courte de la séquence de la page Produit : trois cartes numérotées,
-// chacune avec un fait produit, qui renvoient au détail.
-// ─── Accueil : l'accompagnement en bref ──────────────────────────────────────
-export function AccompanimentTeaser() {
-  return (
-    <section className="border-t border-land-line">
-      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-28">
-        <div className="rounded-[28px] bg-land-surface p-6 shadow-[var(--land-shadow)] ring-1 ring-land-line sm:p-10">
-          <div className="grid grid-cols-1 items-end gap-6 lg:grid-cols-[minmax(0,1.3fr)_auto]">
-            <div>
-              <h2 className="max-w-[22ch] text-[30px] font-semibold leading-[1.08] tracking-[-0.035em] md:text-[44px]">
-                <span className="text-land-ink">D&apos;abord l&apos;outil.</span>{" "}
-                <span className="text-land-faint">Ensuite, on structure votre équipe et on configure Brief pour elle.</span>
-              </h2>
-              <p className="mt-4 max-w-[58ch] text-[17px] leading-relaxed text-land-muted">
-                Un expert de l&apos;équipe Brief vous accompagne huit semaines, un point par semaine, une brique à la fois.
-              </p>
-            </div>
-            <Link
-              href="/accompagnement"
-              className="inline-flex h-12 items-center gap-2 justify-self-start rounded-full bg-land-accent px-6 text-[15.5px] font-medium text-white transition-[filter] hover:brightness-110 lg:justify-self-end"
-            >
-              Découvrir l&apos;accompagnement <ArrowRight className="h-4 w-4" aria-hidden />
-            </Link>
-          </div>
-          <div className="mt-9 overflow-x-auto pb-1">
-            <ol className="relative grid min-w-[720px] grid-cols-9 gap-2">
-              <span className="absolute left-[5.5%] right-[5.5%] top-[15px] h-0.5 bg-land-line" aria-hidden />
-              {PARCOURS.map((p) => (
-                <li key={p.week} className="relative flex flex-col items-center text-center">
-                  <span
-                    className={`grid h-8 w-8 place-items-center rounded-full text-[12px] font-semibold text-white ring-4 ring-land-surface ${
-                      p.week < TOOL_WEEKS ? "bg-land-accent" : "bg-land-coral"
-                    }`}
-                  >
-                    S{p.week}
-                  </span>
-                  <span className="mt-2 text-[12px] font-medium leading-snug text-land-ink">{p.title}</span>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 // ─── En-tête des pages intérieures ───────────────────────────────────────────
 // Même grammaire que le haut de page de l'accueil (aplat d'encre, texte blanc,
 // accent jaune), en plus compact et sans illustration.
@@ -879,6 +1021,8 @@ export function PageHero({
   lead,
   art,
   ink = HERO_INK,
+  cta = false,
+  children,
 }: {
   label: string;
   title: string;
@@ -888,6 +1032,10 @@ export function PageHero({
   art?: string;
   /** Couleur de l'aplat : celle du fond de l'illustration, pour un fondu sans couture. */
   ink?: string;
+  /** Affiche l'appel à l'action du site sous l'accroche. */
+  cta?: boolean;
+  /** Complément sous le bouton (les trois promesses de la page Commerciaux). */
+  children?: ReactNode;
 }) {
   return (
     <section className="px-2 pt-2 sm:px-3 sm:pt-3">
@@ -918,6 +1066,12 @@ export function PageHero({
           >
             {lead}
           </p>
+          {(cta || children) && (
+            <div className="land-hero-text" style={{ "--i": 3 } as React.CSSProperties}>
+              {cta && <Cta tone="light" className="mt-8" />}
+              {children}
+            </div>
+          )}
           {art && (
             <div className="relative mt-10 aspect-[16/10] overflow-hidden rounded-2xl lg:hidden" aria-hidden>
               <Image src={art} alt="" fill loading="eager" sizes="(min-width: 1024px) 16px, 100vw" className="object-cover object-[70%_50%]" />

@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import Image from "next/image";
 import { ValdorLogo, CartonnerieLogo } from "@/app/components/landing/brands";
 import { StateChip } from "@/app/mes-deals/deal-ui";
-import { Check, Clock, History, MapPin, Plus } from "lucide-react";
+import { Check, Clock, History, MapPin } from "lucide-react";
 
 // Les aperçus produit de la landing. Chacun reprend la STRUCTURE RÉELLE d'un
 // écran de Brief — mêmes sections, même ordre, mêmes libellés — mais sur un
@@ -17,7 +17,8 @@ import { Check, Clock, History, MapPin, Plus } from "lucide-react";
 //   AnalysisObject    ↔ la page d'un meeting en trois questions
 //                       (app/feedback/[id]/MeetingOverviewView.tsx)
 //   DealObject        ↔ la page d'un deal (app/deal/[dealId]/DealMacroView.tsx)
-//   MethodObject      ↔ la page Méthode (app/methode/page.tsx)
+//   FollowUpObject    ↔ ce qui suit un rendez-vous : email de suivi rédigé,
+//                       propriétés HubSpot mises à jour, engagements
 //   DigestObject      ↔ le bilan hebdomadaire manager (lib/admin-config.ts)
 //
 // Le fil : Thomas Lefèvre (commercial) suit le deal Valdor Emballages avec
@@ -429,102 +430,115 @@ export function DealObject() {
   );
 }
 
-// ─── Structurer : la méthode de toute l'équipe ───────────────────────────────
-// Ce que le manager règle une fois pour toute l'équipe, sur la page Méthode :
-// la méthode de qualification et ce qu'il faut obtenir à chaque étape
-// commerciale (celles du pipeline HubSpot, sinon Qualification, Évaluation,
-// Proposition), les objections de référence et leur consigne, les références
-// clients en trois niveaux.
+// ─── Suivi et exécution : ce que Brief prépare après le rendez-vous ──────────
+// Troisième bénéfice de la page Commerciaux (cadrage GTM du 19/11/2026) :
+// l'email de suivi rédigé, prêt à relire (app/feedback/[id], onglet « Email de
+// suivi »), les propriétés du deal mises à jour dans HubSpot
+// (lib/hubspot-autofill-run.ts) et les engagements des deux parties, tels que
+// la page du deal les suit. Même rendez-vous que l'analyse : le R2 Valdor.
 
-const STAGE_GOALS: [string, string[]][] = [
-  ["Qualification", ["Douleur", "Impact", "Décideur", "Échéance"]],
-  ["Évaluation", ["Critères de décision", "Budget", "Process de décision"]],
-  ["Proposition", ["Allié chez le client"]],
-];
-const OBJECTION_CATS: [string, number][] = [
-  ["Prix et budget", 14],
-  ["Charge de déploiement pour l'équipe", 9],
-  ["Solution déjà en place", 6],
-];
-const REFERENCE_LEVELS: [string, string, string][] = [
-  ["9", "preuves de ROI", "bg-emerald-50 text-emerald-800"],
-  ["11", "cas d'usage", "bg-land-accent-soft text-land-accent"],
-  ["4", "références simples", "bg-land-sunken text-land-ink"],
+const FOLLOW_UP_LINES = [
+  "Je vous envoie le récapitulatif et l'exemple de déploiement de la Cartonnerie du Val d'ici mardi.",
+  "Vous invitez Hugo Ravel au rendez-vous du jeudi 9 octobre, à 10:00.",
 ];
 
-export function MethodObject() {
+const CRM_ROWS: [string, string][] = [
+  ["Étape", "Présentation"],
+  ["Montant", `40${NB}000${NB}€`],
+  ["Prochain rendez-vous", `9${NB}oct.`],
+];
+
+const FOLLOW_UP_COMMITMENTS: { who: string; text: string; when: string; done?: boolean }[] = [
+  { who: "Thomas", text: "Envoyer le récapitulatif du R2", when: `2${NB}oct.`, done: true },
+  { who: "Thomas", text: "Envoyer l'exemple de déploiement", when: `7${NB}oct.` },
+  { who: "Claire", text: "Inviter Hugo Ravel au R3", when: `9${NB}oct.` },
+];
+
+export function FollowUpObject() {
   return (
     <div className={`overflow-hidden ${SHEET}`}>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-land-line px-6 py-3.5 sm:px-7">
-        <span className="text-[14px] font-semibold text-land-ink">Méthode de vente de l&apos;équipe</span>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-land-sunken px-2.5 py-0.5 text-[11.5px] font-medium text-land-muted">
-          Méthode MEDDIC
-        </span>
-      </div>
-
-      <div className="space-y-5 px-6 py-5 sm:px-7">
-        <section>
+      <MeetingHeader
+        when={`Jeu. 2${NB}oct. · 15:20`}
+        status={<span className="text-[13px] font-medium text-land-ink">Après le rendez-vous · Valdor Emballages</span>}
+      />
+      <div className="grid grid-cols-1 gap-4 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.78fr)] sm:px-5">
+        <section className="rounded-2xl border border-land-line px-4 py-3.5">
           <div className="flex items-center justify-between gap-3">
-            <Label>Objectifs par étape commerciale</Label>
-            <span className="text-[11.5px] text-land-faint">étapes du pipeline HubSpot</span>
+            <Label tone="accent">Email de suivi</Label>
+            <span className="rounded-full bg-land-accent-soft px-2 py-0.5 text-[11.5px] font-semibold text-land-accent">Prêt à relire</span>
           </div>
-          <div className="mt-2.5 space-y-2">
-            {STAGE_GOALS.map(([stage, goals], i) => (
-              <div key={stage} className="land-step-row grid grid-cols-[104px_minmax(0,1fr)] items-start gap-3" style={d(i)}>
-                <span className="pt-1 text-[13px] font-semibold text-land-ink">{stage}</span>
-                <span className="flex flex-wrap gap-1.5">
-                  {goals.map((g) => (
-                    <span key={g} className="rounded-full bg-land-sunken px-2.5 py-1 text-[12px] text-land-ink">
-                      {g}
-                    </span>
-                  ))}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="border-t border-land-line pt-4">
-          <Label>Objections et réponses</Label>
-          <ul className="mt-2.5 flex flex-wrap gap-1.5">
-            {OBJECTION_CATS.map(([label, n]) => (
-              <li key={label} className="inline-flex items-center gap-1.5 rounded-full border border-land-line px-2.5 py-1 text-[12px] text-land-ink">
-                {label} <span className="tabular-nums text-land-faint">{n}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="land-step-row mt-2 flex items-center justify-between gap-3 rounded-xl border border-dashed border-land-line px-3 py-2" style={d(3)}>
-            <span className="text-[12.5px] text-land-muted">
-              <span className="font-medium text-land-ink">Suggérée{NB}:</span> Délais de validation juridique · 4{NB}calls
-            </span>
-            <span className="inline-flex shrink-0 items-center gap-1 text-[12px] font-semibold text-land-accent">
-              <Plus className="h-3.5 w-3.5" aria-hidden /> Ajouter
-            </span>
+          <dl className="mt-2.5 space-y-1 border-b border-land-line pb-2.5 text-[12.5px]">
+            <div className="flex gap-2">
+              <dt className="text-land-faint">À{NB}:</dt>
+              <dd className="text-land-ink">Claire Mercier</dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="text-land-faint">Objet{NB}:</dt>
+              <dd className="text-land-ink">Suite à notre échange, prochaines étapes</dd>
+            </div>
+          </dl>
+          <div className="mt-2.5 space-y-2 text-[13px] leading-relaxed text-land-ink">
+            <p>Bonjour Claire,</p>
+            <p>Merci pour notre échange d&apos;aujourd&apos;hui. Comme convenu{NB}:</p>
+            <ul className="space-y-1.5">
+              {FOLLOW_UP_LINES.map((t, i) => (
+                <li key={t} className="land-step-row flex gap-2" style={d(i)}>
+                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-land-accent" aria-hidden />
+                  <span>{t}</span>
+                </li>
+              ))}
+            </ul>
+            <p>N&apos;hésitez pas si vous avez la moindre question.</p>
+            <p className="text-land-muted">Bien cordialement, Thomas</p>
           </div>
         </section>
 
-        <section className="border-t border-land-line pt-4">
-          <Label>Références clients</Label>
-          <div className="mt-2.5 flex flex-wrap gap-1.5 text-[12.5px]">
-            {REFERENCE_LEVELS.map(([n, label, tone]) => (
-              <span key={label} className={`rounded-lg px-2.5 py-1 ${tone}`}>
-                <strong className="tabular-nums">{n}</strong> {label}
+        <aside className="min-w-0 space-y-4">
+          <section className="land-step-row rounded-2xl border border-land-line px-4 py-3.5" style={d(2)}>
+            <div className="flex items-center justify-between gap-3">
+              <span className="inline-flex items-center gap-2 text-[14px] font-semibold text-land-ink">
+                <Image src="/landing/stack/hubspot.svg" alt="" width={18} height={18} unoptimized className="h-[18px] w-[18px]" />
+                HubSpot
               </span>
-            ))}
-          </div>
-        </section>
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11.5px] font-semibold text-emerald-700">
+                <Check className="h-3 w-3" aria-hidden /> Mis à jour
+              </span>
+            </div>
+            <dl className="mt-2.5 space-y-1.5 text-[12.5px]">
+              {CRM_ROWS.map(([k, v]) => (
+                <div key={k} className="flex items-baseline justify-between gap-3">
+                  <dt className="text-land-muted">{k}</dt>
+                  <dd className="font-semibold tabular-nums text-land-ink">{v}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
 
-        <section className="flex items-center justify-between gap-3 border-t border-land-line pt-4">
-          <div className="flex -space-x-2">
-            {["thomas", "julie", "karim", "lea"].map((n) => (
-              <Image key={n} src={`/landing/people/avatar-${n}.jpg`} alt="" width={30} height={30} className="h-[30px] w-[30px] rounded-full object-cover ring-2 ring-land-surface" />
-            ))}
-          </div>
-          <span className="text-right text-[12.5px] text-land-muted">4 commerciaux, une seule méthode</span>
-        </section>
+          <section className="land-step-row rounded-2xl border border-land-line px-4 py-3.5" style={d(3)}>
+            <div className="text-[14px] font-semibold text-land-ink">Engagements</div>
+            <ul className="mt-1.5 divide-y divide-land-line">
+              {FOLLOW_UP_COMMITMENTS.map((c) => (
+                <li key={c.text} className="flex items-start gap-2 py-2 text-[12.5px] leading-snug">
+                  <span
+                    className={`mt-px grid h-4 w-4 shrink-0 place-items-center rounded border-2 ${
+                      c.done ? "border-land-accent bg-land-accent text-white" : "border-land-line"
+                    }`}
+                    aria-hidden
+                  >
+                    {c.done && <Check className="h-3 w-3" />}
+                  </span>
+                  <span className="min-w-0 flex-1 text-land-ink">
+                    <span className="font-semibold">{c.who}</span> · {c.text}
+                  </span>
+                  <span className="shrink-0 tabular-nums text-land-faint">{c.when}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </aside>
       </div>
       <div className="border-t border-land-line px-6 py-3 text-[12px] text-land-faint sm:px-7">
-        Exemple. Objectifs, objections et références fictifs.
+        Exemple. Email, deal et personnes fictifs.
       </div>
     </div>
   );

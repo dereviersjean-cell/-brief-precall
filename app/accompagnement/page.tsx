@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { SiteChrome } from "@/app/components/landing/SiteChrome";
-import { PageHero, Testimonials, FinalCTA } from "@/app/components/landing/sections";
+import { PageHero, Testimonials, Faq, FinalCTA } from "@/app/components/landing/sections";
 import { Accompaniment } from "@/app/components/landing/Accompaniment";
 
 export const metadata: Metadata = {
-  title: "Accompagnement · Brief",
+  title: "Comment ça marche · Brief",
   description: "Brief commence par l'outil, puis un expert structure votre équipe commerciale et configure Brief autour de vos besoins : un point par semaine pendant huit semaines.",
 };
 
@@ -14,13 +14,14 @@ export default function Page() {
       <PageHero
         art="/landing/art-accompagnement.jpg"
         ink="#28479B"
-        label="Accompagnement"
+        label="Comment ça marche"
         title="Un outil, puis un expert"
         accent="pour structurer votre équipe."
         lead="Vos commerciaux commencent par les briefs et l'analyse des calls. Ensuite, un expert de l'équipe Brief vous accompagne chaque semaine pour structurer votre organisation commerciale et configurer Brief autour de vos besoins."
       />
       <Accompaniment />
       <Testimonials />
+      <Faq />
       <FinalCTA />
     </SiteChrome>
   );

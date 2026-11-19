@@ -1,8 +1,5 @@
 import Image from "next/image";
-import Link from "next/link";
 import {
-  ArrowRight,
-  ArrowUpRight,
   Bot,
   CalendarCheck,
   Check,
@@ -14,17 +11,16 @@ import {
   MousePointer2,
 } from "lucide-react";
 import { SALES_CONTACT } from "@/lib/sales-contact";
+import { Cta } from "./sections";
 import { ValdorLogo } from "./brands";
 import { NB } from "./team-data";
 
 // « D'abord l'outil, ensuite on vous accompagne » (12/10/2026), sur le modèle
 // de la section « 4 leviers » d'uptoo.fr : une grille 2 × 2 illustrée sur des
 // aplats pastel, puis le parcours.
-// Depuis le 13/10/2026, chaque carte dit quel levier de la méthode (« Quatre
-// leviers. Un seul objectif : le ROI. ») elle met en place, dans la couleur
-// de ce levier : Équipez = 1 et 2 (bleu), Coachez = 3 Progresser (soleil),
-// Structurez = 4 Structurer (lilas). Configurez n'est pas un levier : aplat
-// neutre. Sans ce lien, les deux séries de quatre se faisaient concurrence.
+// Les quatre cartes ne renvoient plus aux « quatre leviers » : la séquence a
+// quitté le site le 19/11/2026 (cadrage GTM d'Hubert). Les aplats gardent
+// leurs couleurs.
 // L'outil (briefs, analyse et suivi des calls) est la porte d'entrée ; le
 // reste se déploie avec un expert, un point par semaine — c'est le parcours
 // réel de lib/parcours.ts (huit semaines, une brique ouverte par semaine).
@@ -141,16 +137,16 @@ export function Accompaniment() {
         </p>
 
         <p className="mt-14 text-[13px] font-semibold uppercase tracking-[0.12em] text-land-faint lg:mt-16">
-          Les quatre leviers, mis en place avec vous
+          Mis en place avec vous
         </p>
         <ul className="mt-6 grid grid-cols-1 gap-x-8 gap-y-14 md:grid-cols-2">
           {/* 1. Le produit d'appel */}
           <Lever
             tone="bg-land-accent-soft"
-            tag="Leviers 1 et 2 · dès la semaine 1"
+            tag="Dès la semaine 1"
             title="Équipez vos commerciaux"
             body="Un brief prêt la veille de chaque rendez-vous, chaque visio enregistrée et débriefée, chaque deal suivi d'un rendez-vous à l'autre. Gratuit pour commencer, sans carte bancaire."
-            href="/produit#methode"
+            href="/commerciaux"
           >
             <Chip
               className="left-[8%] top-[14%]"
@@ -183,7 +179,7 @@ export function Accompaniment() {
           {/* 2. Le coaching */}
           <Lever
             tone="bg-land-sun-soft"
-            tag="Levier 3 · avec votre expert"
+            tag="Avec votre expert"
             title="Coachez vos équipes"
             body="Chaque semaine, votre expert prépare le point à partir des vrais calls et des vrais deals de l'équipe : le call exemplaire à réécouter, les deals à reprendre, les objections qui résistent, puis l'entraînement de vos commerciaux sur ces objections-là."
             href={SALES_CONTACT.bookingUrl}
@@ -208,10 +204,10 @@ export function Accompaniment() {
           {/* 3. La méthode */}
           <Lever
             tone="bg-land-lilac-soft"
-            tag="Levier 4 · avec votre expert"
+            tag="Avec votre expert"
             title="Structurez votre méthode"
             body="Votre expert fixe avec vous la méthode de qualification et ce qu'il faut obtenir à chaque étape commerciale, puis installe les rituels : le point hebdomadaire, le bilan de la semaine, les réponses de référence aux objections."
-            href="/produit#structurer"
+            href="/directeurs-commerciaux#execution"
           >
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
               <div className="relative flex flex-col items-center gap-3">
@@ -317,21 +313,11 @@ export function Accompaniment() {
               })}
             </ol>
           </div>
-          <div className="mt-7 flex flex-wrap gap-3 border-t border-land-line pt-6">
-            <a
-              href={SALES_CONTACT.bookingUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-11 items-center gap-2 rounded-full bg-land-accent px-5 text-[15px] font-medium text-white transition-[filter] hover:brightness-110"
-            >
-              Parler à un expert <ArrowUpRight className="h-4 w-4" aria-hidden />
-            </a>
-            <Link
-              href="/inscription"
-              className="inline-flex h-11 items-center gap-2 rounded-full border border-land-line px-5 text-[15px] font-medium text-land-ink transition-colors hover:bg-land-sunken"
-            >
-              Commencer par l&apos;outil <ArrowRight className="h-4 w-4" aria-hidden />
-            </Link>
+          {/* Un seul appel à l'action sur tout le site (cadrage GTM,
+              19/11/2026) : il remplace « Parler à un expert » et « Commencer
+              par l'outil ». */}
+          <div className="mt-7 border-t border-land-line pt-6">
+            <Cta />
           </div>
         </div>
       </div>
