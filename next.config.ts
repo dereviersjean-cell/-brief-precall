@@ -10,6 +10,12 @@ const nextConfig: NextConfig = {
   // commit la produisait correctement. Un build un peu plus long vaut mieux
   // qu'un déploiement qui ment sur son contenu.
   experimental: {
+    // Posé par `next upgrade --agent=security` le 20/11/2026, avec la montée
+    // 16.4.4 → 16.4.6 : dit à Next que les montées de sécurité de cette app
+    // sont faites par un agent, et évite que `next build` s'arrête à nouveau
+    // sur l'avertissement bloquant (SecurityFatalError) pour une version déjà
+    // traitée.
+    agentUpgrade: "security",
     turbopackFileSystemCacheForBuild: false,
     // Retour instantané sur une page déjà visitée (demande de Jean, 14/10/2026) :
     // le navigateur garde chaque page en mémoire au lieu de la redemander au
