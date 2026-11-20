@@ -66,7 +66,7 @@ export default async function HelpPage() {
               Revoir la présentation de Brief <ArrowRight className="h-3.5 w-3.5" />
             </Link>
             <Link
-              href="/demo/dashboard?tour=1"
+              href="/demo/feedback?tour=1"
               className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[color:var(--violet)] hover:underline"
             >
               Refaire la visite guidée <ArrowRight className="h-3.5 w-3.5" />

@@ -11,9 +11,10 @@ import type { ModuleKey } from "@/lib/modules";
 // qu'est Brief, ni ce qu'il reste à brancher. On pouvait le terminer et
 // atterrir sur un tableau de bord vide sans comprendre pourquoi.
 //
-// Structure calquée sur les trois piliers de la landing (Préparer / Débriefer
-// / Progresser) : quelqu'un qui a lu le site retrouve les mêmes mots, et
-// l'ordre suit celui d'un vrai cycle de vente.
+// Trois étapes dans l'ordre d'un cycle de vente : préparer le rendez-vous, le
+// débriefer, faire avancer le deal. Mêmes mots que le site public depuis sa
+// V2 du 19/11/2026 — qui ne parle plus ni de note ni de grille, l'app ne
+// notant plus un call depuis le 05/11/2026.
 
 type Pillar = { icon: LucideIcon; step: string; title: string; lead: string; detail: string };
 
@@ -32,12 +33,16 @@ function pillarsFor(modules: readonly ModuleKey[]): Pillar[] {
   ].filter((item): item is string => item !== null);
   const destinations = has("crm") ? "votre boîte mail et votre CRM" : "votre boîte mail";
 
+  // Plus de note ni de score : ce qu'on montre, c'est le deal qui avance —
+  // sa priorité, les engagements pris, son état.
   const progressDetail = [
-    has("playbook") ? "Chaque call est noté sur la grille de votre équipe." : "Chaque call est noté sur les étapes clés d'un rendez-vous de vente.",
+    has("playbook")
+      ? "Chaque rendez-vous alimente son deal : ce qui a été obtenu, et ce qui manque encore à l'étape où vous en êtes."
+      : "Chaque rendez-vous alimente son deal : ce qui a été obtenu, et ce qui manque encore pour avancer.",
     has("objections")
-      ? "Vous voyez vos scores évoluer, quelles objections reviennent, comment vous les traitez, et ce qu'il aurait fallu répondre."
-      : "Vous voyez vos scores évoluer, ce que vous faites bien et ce qu'il faut travailler.",
-    "Votre manager suit la même chose à l'échelle de l'équipe.",
+      ? "Vous voyez la prochaine action à mener, les engagements pris de part et d'autre, et les objections qui reviennent avec ce qu'il aurait fallu répondre."
+      : "Vous voyez la prochaine action à mener et les engagements pris de part et d'autre.",
+    "Votre manager suit les mêmes deals dans Suivi des deals.",
   ].join(" ");
 
   return [
@@ -59,8 +64,8 @@ function pillarsFor(modules: readonly ModuleKey[]): Pillar[] {
     {
       icon: TrendingUp,
       step: "3",
-      title: "Progresser",
-      lead: "Au fil des rendez-vous, vous voyez ce qui fait la différence.",
+      title: "Faire avancer vos deals",
+      lead: "Après le rendez-vous, vous voyez où en est le deal et ce qui le bloque.",
       detail: progressDetail,
     },
   ];
@@ -201,7 +206,7 @@ export default function WelcomeClient({
 
       <div className="mt-8 flex flex-wrap items-center gap-3">
         <Link
-          href="/demo/dashboard?tour=1"
+          href="/demo/feedback?tour=1"
           className="inline-flex h-10 items-center gap-2 rounded-lg bg-[color:var(--primary)] px-4 text-[14px] font-medium text-white transition hover:brightness-110"
         >
           <Compass className="h-4 w-4" />

@@ -2,7 +2,7 @@ import AppSidebar from "@/app/components/AppSidebar";
 import AppShell from "@/app/components/AppShell";
 import TopBar from "@/app/components/TopBar";
 import GuidedTour from "@/app/components/GuidedTour";
-import PerformanceTabs from "@/app/components/PerformanceTabs";
+import DemoPerformanceTabs from "./DemoPerformanceTabs";
 import DemoBanner from "./DemoBanner";
 import type { ReactNode } from "react";
 
@@ -17,7 +17,7 @@ export default function DemoLayout({ children }: { children: ReactNode }) {
       <div className="flex-1 ml-0 lg:ml-60 min-w-0">
         <TopBar />
         <DemoBanner />
-        <PerformanceTabs />
+        <DemoPerformanceTabs />
         {/* Même fond que app/dashboard/layout.tsx. */}
         <div style={{ background: "linear-gradient(180deg, oklch(0.965 0.022 270) 0px, var(--background) 520px)" }}>{children}</div>
         <GuidedTour />

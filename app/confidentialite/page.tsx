@@ -115,7 +115,7 @@ export default function PrivacyPolicyPage() {
               items={[
                 <>L&apos;enregistrement, la transcription et l&apos;analyse de vos visios (Google Meet, Teams, Zoom), lorsqu&apos;un bot Brief y est invité.</>,
                 <>Les données de vos contacts et opportunités issues d&apos;un CRM connecté (HubSpot, Pipedrive).</>,
-                <>Le contenu d&apos;un playbook commercial importé depuis Notion, Word ou PDF.</>,
+                <>La méthode de vente de votre équipe, telle que votre manager la renseigne dans Brief.</>,
                 <>Des informations publiques sur les entreprises de vos prospects (registre légal français, actualités).</>,
               ]}
             />
@@ -126,10 +126,10 @@ export default function PrivacyPolicyPage() {
             <LegalBullets
               items={[
                 <>Générer un dossier de préparation avant chaque rendez-vous.</>,
-                <>Transcrire et analyser vos appels selon le playbook de votre équipe.</>,
+                <>Transcrire et analyser vos appels selon la méthode de vente de votre équipe.</>,
                 <>Rédiger des brouillons d&apos;email de suivi, que vous relisez avant envoi.</>,
                 <>Vous permettre de vous entraîner sur les objections que vous avez rencontrées.</>,
-                <>Donner à votre manager une vue agrégée de la performance de l&apos;équipe.</>,
+                <>Donner à votre manager l&apos;état d&apos;avancement des deals de son équipe.</>,
               ]}
             />
             <div className="rounded-[20px] bg-land-accent-soft p-5 text-land-ink sm:p-6">

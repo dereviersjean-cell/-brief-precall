@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Search, Loader2, Mic } from "lucide-react";
 import CompanyLogo from "@/app/components/CompanyLogo";
+import ConditionalLink from "@/app/components/ui/ConditionalLink";
 import { PageHeader } from "@/app/components/ui/PageHeader";
 import { companyDomainFromEmail, companyNameFromDomain } from "@/lib/company-domain";
 import { deriveNameFromEmail, externalSpeakerNames } from "@/lib/format";
@@ -14,7 +14,11 @@ import type { CallWithAnalysis } from "@/lib/db";
 // Claap) : on ne lit plus le détail d'un call à première vue, on retrouve
 // vite n'importe lequel — recherche, période, deal, rang, tri — avec en tête
 // les statistiques clés de la personne. Le détail est sur /feedback/[id].
-// L'ancienne vue (FeedbackClient) reste pour la démonstration (/demo).
+//
+// Sert aussi l'écran de démonstration /demo/feedback depuis le 20/11/2026 :
+// l'ancienne vue (FeedbackClient) y montrait encore la note sur 5, retirée du
+// produit le 05/11/2026. D'où `linksEnabled` — en démonstration les calls
+// n'existent pas en base, leurs lignes doivent rester inertes.
 
 type DealLink = { dealId: string; dealName: string; rank: number };
 type Period = "7" | "30" | "90" | "all";
@@ -69,11 +73,11 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
   );
 }
 
-function CallTile({ row }: { row: Row }) {
+function CallTile({ row, linksEnabled }: { row: Row; linksEnabled: boolean }) {
   const { call } = row;
   return (
-    <Link
-      href={`/feedback/${call.id}`}
+    <ConditionalLink
+      href={linksEnabled ? `/feedback/${call.id}` : null}
       className="group flex min-w-0 flex-col rounded-2xl border border-border bg-white p-4 transition-shadow hover:shadow-[0_14px_32px_-18px_rgba(15,23,42,0.35)]"
     >
       <div className="flex items-start gap-3">
@@ -115,7 +119,7 @@ function CallTile({ row }: { row: Row }) {
         {formatDate(row.dateIso)}
         {call.duration_seconds ? ` · ${formatDuration(call.duration_seconds)}` : ""}
       </p>
-    </Link>
+    </ConditionalLink>
   );
 }
 
@@ -126,6 +130,7 @@ export default function CallLibrary({
   people,
   selectedId,
   now,
+  linksEnabled = true,
 }: {
   calls: CallWithAnalysis[];
   dealLinks: Record<string, DealLink>;
@@ -135,6 +140,8 @@ export default function CallLibrary({
   selectedId: string | null;
   // Instant de référence pour les périodes et « analyse en cours ».
   now: number;
+  // Faux sur /demo : les tuiles ne mènent nulle part (ConditionalLink).
+  linksEnabled?: boolean;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -296,9 +303,9 @@ export default function CallLibrary({
                 Aucun call ne correspond. Élargissez la période ou modifiez la recherche.
               </div>
             ) : (
-              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div data-tour="feedback-list" className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {visible.map((r) => (
-                  <CallTile key={r.call.id} row={r} />
+                  <CallTile key={r.call.id} row={r} linksEnabled={linksEnabled} />
                 ))}
               </div>
             )}

@@ -23,9 +23,21 @@ import { useModules } from "./ModulesProvider";
 // ⚠ La visite traverse plusieurs pages, et chaque page a son propre layout
 // dans Next : ce composant doit être monté dans le layout de CHACUNE des
 // pages listées dans STEPS.path, faute de quoi la bulle disparaît en y
-// arrivant et la visite s'arrête sans rien dire. Montée aujourd'hui dans
-// app/dashboard/layout.tsx, app/brief/layout.tsx et app/feedback/layout.tsx.
-// Toute nouvelle valeur de `path` impose d'ajouter le montage correspondant.
+// arrivant et la visite s'arrête sans rien dire. Toutes les étapes vivent
+// aujourd'hui sous /demo, couvert par app/demo/layout.tsx ; il reste monté
+// dans app/brief/layout.tsx, app/feedback/layout.tsx et app/playbook/layout.tsx
+// pour qu'une bulle ouverte survive à une sortie de la démonstration. Toute
+// nouvelle valeur de `path` impose d'ajouter le montage correspondant.
+//
+// Mise à jour du 20/11/2026 : la visite ne passe plus par Performance (vue
+// d'ensemble, Scores, Analytics) ni par la grille du playbook. Ces écrans sont
+// sortis de la barre latérale le 27/10/2026 et la note sur 5 a été retirée le
+// 05/11/2026 : la visite montrait un produit qui n'existe plus. Les pages de
+// démonstration correspondantes (/demo/dashboard, /demo/scores,
+// /demo/analytics, /demo/playbook) restent en place, comme les pages d'app
+// qu'elles doublent, mais plus aucune étape n'y mène. La phase « Préparer »
+// n'a pas d'étape : il n'existe pas d'écran de démonstration de /brief, et
+// pointer la vraie page le premier jour montrerait une liste vide.
 
 // `path` : page sur laquelle l'étape doit être jouée. La visite y navigue
 // d'elle-même — pointer uniquement la sidebar ne montrait que la navigation,
@@ -52,22 +64,13 @@ type TourStep = {
 
 const STEPS: TourStep[] = [
   {
-    path: "/demo/dashboard",
+    path: "/demo/feedback",
     target: "nav-brief",
     phase: "Repères",
     kind: "section",
     where: "Menu de gauche",
-    title: "Trois sections, un cycle",
-    body: "Le menu n'est pas une liste de fonctionnalités : c'est le déroulé d'un rendez-vous. On le prépare, on le débriefe, on en tire de quoi progresser. Pendant cette visite, les écrans sont remplis d'un exemple pour que vous voyiez le résultat — le bandeau orange vous le rappelle.",
-  },
-  {
-    path: "/demo/dashboard",
-    target: "overview-stats",
-    phase: "Repères",
-    kind: "contenu",
-    where: "Performance › Vue d'ensemble",
-    title: "Votre tableau de bord une fois alimenté",
-    body: "Les rendez-vous de la semaine, le score moyen et sa progression, les derniers calls et les contacts actifs. Tout se remplit seul à mesure que vos rendez-vous ont lieu.",
+    title: "Le menu suit un cycle de vente",
+    body: "Ce n'est pas une liste de fonctionnalités : on prépare un rendez-vous (Brief, où son dossier vous attend la veille), on le débriefe (Analyse rendez-vous), et ce qu'il en reste fait avancer un deal (Deals). Pendant cette visite, les écrans sont remplis d'un exemple pour que vous voyiez le résultat — le bandeau orange vous le rappelle.",
   },
   {
     path: "/demo/feedback",
@@ -76,7 +79,7 @@ const STEPS: TourStep[] = [
     kind: "section",
     where: "Analyse rendez-vous",
     title: "Après le rendez-vous",
-    body: "Un assistant rejoint la visio et prend les notes à votre place. Chaque échange atterrit ici, transcrit et noté, sans que vous ayez rien saisi.",
+    body: "Un assistant rejoint la visio et prend les notes à votre place. Chaque échange atterrit ici, transcrit et analysé, sans que vous ayez rien saisi.",
   },
   {
     path: "/demo/feedback",
@@ -84,27 +87,8 @@ const STEPS: TourStep[] = [
     phase: "Débriefer",
     kind: "contenu",
     where: "Analyse rendez-vous",
-    title: "Un compte-rendu par rendez-vous",
-    body: "Chaque ligne porte sa note et son résumé. En l'ouvrant : le transcript complet, les points clés, les objections soulevées et vos réponses, les prochaines étapes, et un email de suivi prêt à relire. Chaque phrase renvoie au moment de la vidéo.",
-  },
-  {
-    path: "/demo/scores",
-    target: "demo-scores",
-    phase: "Progresser",
-    kind: "contenu",
-    where: "Performance › Scores",
-    title: "Scores — est-ce que je progresse ?",
-    body: "La courbe semaine après semaine, et le détail par dimension de votre playbook. Ici le traitement des objections est à 2,4 : c'est le point faible, et les autres onglets vont dire pourquoi.",
-  },
-  {
-    path: "/demo/analytics",
-    module: "insights",
-    target: "analytics-tiles",
-    phase: "Progresser",
-    kind: "contenu",
-    where: "Performance › Analytics",
-    title: "Analytics — comment je conduis un échange",
-    body: "Temps de parole, monologues, questions posées, temps laissé au prospect. Comparé à la moyenne de l'équipe, jamais à une norme abstraite. Cliquez sur une tuile pour changer de métrique.",
+    title: "Tous vos rendez-vous, retrouvables",
+    body: "Une tuile par rendez-vous : l'interlocuteur, le deal auquel il se rattache, son rang. La recherche, la période et le deal servent à retrouver le bon. En l'ouvrant, la page répond à trois questions — ce qui s'est dit, où en est le deal, quoi faire ensuite — avec le transcript, les objections et l'email de suivi déjà rédigé.",
   },
   {
     path: "/demo/objections",
@@ -113,21 +97,11 @@ const STEPS: TourStep[] = [
     phase: "Progresser",
     kind: "contenu",
     where: "Playbook & objections › Objections rencontrées",
-    title: "Objections — qu'est-ce qui me bloque",
+    title: "Les objections qui vous bloquent",
     body: "Chaque objection rencontrée, son volume, et la part que vous traitez bien. Ici « équipe commerciale interne » revient 7 fois, dont 4 sans réponse — et 4 deals perdus. Dans votre compte, un clic ouvre le verbatim, votre réponse, et ce qu'il aurait fallu dire.",
   },
   {
-    path: "/demo/playbook",
-    module: "playbook",
-    target: "demo-playbook",
-    phase: "Progresser",
-    kind: "contenu",
-    where: "Playbook & objections › Grille de notation",
-    title: "Playbook — la grille qui vous note",
-    body: "Les dimensions évaluées, leur poids et les questions qui les composent. Définie par votre manager. La consulter évite les mauvaises surprises : vous savez exactement sur quoi vous êtes attendu.",
-  },
-  {
-    path: "/demo/dashboard",
+    path: "/demo/feedback",
     target: "nav-notifications",
     phase: "Progresser",
     kind: "commande",
@@ -136,7 +110,7 @@ const STEPS: TourStep[] = [
     body: "Le plus souvent vous n'ouvrirez pas cette application. Le brief arrive dans votre boîte mail avant le rendez-vous, le compte-rendu dans votre CRM après. Ce réglage décide de ce que vous recevez et où.",
   },
   {
-    path: "/demo/dashboard",
+    path: "/demo/feedback",
     target: "topbar-search",
     phase: "Repères",
     kind: "commande",
