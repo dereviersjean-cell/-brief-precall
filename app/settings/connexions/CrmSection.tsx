@@ -16,6 +16,10 @@ type Props = {
   // Mise à jour automatique des propriétés (managers, fiche deal active).
   autofillAvailable?: boolean;
   autofillActive?: boolean;
+  // Écriture dans le HubSpot du client : faux par défaut depuis la migration
+  // 046 — connecter son CRM ne doit rien y changer tant que le client ne l'a
+  // pas demandé.
+  hubspotAutoPush?: boolean;
 };
 
 export default function CrmSection({
@@ -23,6 +27,7 @@ export default function CrmSection({
   hubspotConnected: initialHubspotConnected,
   autofillAvailable = false,
   autofillActive = false,
+  hubspotAutoPush = false,
 }: Props) {
   const [pipedriveConnected, setPipedriveConnected] = useState(initialPipedriveConnected);
   const [pipedriveDisconnecting, setPipedriveDisconnecting] = useState(false);
@@ -32,6 +37,8 @@ export default function CrmSection({
   const [hubspotDisconnecting, setHubspotDisconnecting] = useState(false);
   const [hubspotImporting, setHubspotImporting] = useState(false);
   const [hubspotImportResult, setHubspotImportResult] = useState<{ count: number } | { error: string } | null>(null);
+  const [autoPush, setAutoPush] = useState(hubspotAutoPush);
+  const [autoPushSaving, setAutoPushSaving] = useState(false);
 
   const searchParams = useSearchParams();
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -233,14 +240,57 @@ export default function CrmSection({
                     </p>
                   )
                 )}
+                {/* Le choix d'écrire, posé avant tout réglage de détail : un
+                    client qui vient de brancher son CRM doit décider lui-même,
+                    et voir en une phrase ce que Brief y déposerait. Arrêté par
+                    défaut depuis la migration 046. */}
+                {autofillAvailable && (
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="text-[13.5px] font-semibold text-foreground">Écriture dans votre HubSpot</p>
+                      <p className="text-[13px] text-[color:var(--muted-foreground)]">
+                        {autoPush
+                          ? "Après chaque call, Brief dépose une note de synthèse sur le deal et met à jour les propriétés que vous avez réglées."
+                          : "Brief ne modifie rien dans votre HubSpot. Il le lit pour préparer et analyser vos rendez-vous, rien de plus."}
+                      </p>
+                    </div>
+                    <button
+                      disabled={autoPushSaving}
+                      onClick={async () => {
+                        const next = !autoPush;
+                        setAutoPushSaving(true);
+                        try {
+                          const res = await fetch("/api/deal-memory/hubspot-mapping", {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ autoPush: next }),
+                          });
+                          if (!res.ok) throw new Error(String(res.status));
+                          // On affiche ce que le serveur a retenu, pas ce
+                          // qu'on a demandé.
+                          const data = (await res.json()) as { autoPush?: boolean };
+                          setAutoPush(data.autoPush ?? next);
+                        } catch {
+                          setToast({ type: "error", message: "Le réglage n'a pas pu être enregistré, réessayez." });
+                        }
+                        setAutoPushSaving(false);
+                      }}
+                      className="inline-flex h-9 shrink-0 items-center rounded-lg border border-border bg-white px-3.5 text-[13px] font-medium text-slate-900 transition-colors hover:bg-slate-50 disabled:opacity-50"
+                    >
+                      {autoPushSaving ? "Enregistrement…" : autoPush ? "Désactiver" : "Autoriser l'écriture"}
+                    </button>
+                  </div>
+                )}
                 {autofillAvailable && (
                   <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[#EEF2FD] px-4 py-3">
                     <div className="min-w-0">
                       <p className="text-[13.5px] font-semibold text-foreground">Mise à jour automatique des propriétés</p>
                       <p className="text-[13px] text-[color:var(--muted-foreground)]">
-                        {autofillActive
-                          ? "Active : Brief remplit vos propriétés HubSpot après chaque call."
-                          : "Brief lit votre HubSpot et remplit vos propriétés après chaque call."}
+                        {!autoPush
+                          ? "Réglable dès maintenant, mais rien ne partira tant que l'écriture n'est pas autorisée ci-dessus."
+                          : autofillActive
+                            ? "Active : Brief remplit vos propriétés HubSpot après chaque call."
+                            : "Brief lit votre HubSpot et remplit vos propriétés après chaque call."}
                       </p>
                     </div>
                     <Link

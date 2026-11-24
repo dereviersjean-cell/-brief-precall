@@ -78,7 +78,9 @@ export default function HubspotSetupClient({
   const [simulation, setSimulation] = useState<{ plans: PlannedWrite[]; noteHtml: string } | null>(null);
   const [simError, setSimError] = useState<string | null>(null);
   const [simulating, setSimulating] = useState(false);
-  const [autoPush, setAutoPush] = useState(initial?.current.autoPush ?? true);
+  // Arrêté tant qu'on ne sait pas : l'écriture dans le HubSpot du client se
+  // décide avec lui, elle ne se présume pas (migration 046).
+  const [autoPush, setAutoPush] = useState(initial?.current.autoPush ?? false);
   const [rules, setRules] = useState<DealRules | null>(initial?.rules ?? null);
   const [applying, setApplying] = useState(false);
   const [applied, setApplied] = useState<{ created: string[] } | null>(null);

@@ -1,4 +1,4 @@
-import { getRecallCalendarId, getCrmTokens, getEnabledModulesForUser, getOrganizationHubspotAutofill, getOrganizationMicrosoftConsent, isDealMemoryEnabledForOrganization } from "@/lib/db";
+import { getRecallCalendarId, getCrmTokens, getEnabledModulesForUser, getOrganizationHubspotAutofill, getOrganizationMicrosoftConsent, isDealMemoryEnabledForOrganization, isHubspotAutoPushEnabled } from "@/lib/db";
 import { getEffectiveUserId, getViewer } from "@/lib/session-user";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -56,6 +56,9 @@ export default async function ConnexionsSettingsPage() {
     (await isDealMemoryEnabledForOrganization(viewer!.organizationId!));
   const autofillActive =
     autofillAvailable && (coerceAutofillConfig(await getOrganizationHubspotAutofill(viewer!.organizationId!))?.active ?? false);
+  // Écriture dans le HubSpot du client : un choix, jamais un défaut
+  // (migration 046). Sans lui, Brief lit le CRM et n'y touche pas.
+  const hubspotAutoPush = autofillAvailable ? await isHubspotAutoPushEnabled(viewer!.organizationId!) : false;
 
   // Consentement administrateur Microsoft (lib/microsoft-admin-consent.ts) :
   // sans lui, aucun salarié d'un client en Microsoft 365 ne peut se
@@ -104,7 +107,7 @@ export default async function ConnexionsSettingsPage() {
       />
       {modules.includes("crm") && (
         <div className="mt-6">
-          <CrmSection pipedriveConnected={pipedriveTokens !== null} hubspotConnected={hubspotTokens !== null} autofillAvailable={autofillAvailable} autofillActive={autofillActive} />
+          <CrmSection pipedriveConnected={pipedriveTokens !== null} hubspotConnected={hubspotTokens !== null} autofillAvailable={autofillAvailable} autofillActive={autofillActive} hubspotAutoPush={hubspotAutoPush} />
         </div>
       )}
     </>

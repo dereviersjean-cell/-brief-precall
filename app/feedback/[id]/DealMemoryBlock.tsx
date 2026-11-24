@@ -213,7 +213,10 @@ function HubspotMapping() {
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<MappingState | null>(null);
   const [draft, setDraft] = useState<Partial<Record<DealMemoryFieldKey, string>>>({});
-  const [autoPush, setAutoPush] = useState(true);
+  // Faux tant que la vraie valeur n'est pas lue : l'écriture dans le HubSpot
+  // du client est un choix, et une case cochée par défaut le préjugerait
+  // (migration 046).
+  const [autoPush, setAutoPush] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading" | "saving" | "saved" | "error">("idle");
 
   useEffect(() => {

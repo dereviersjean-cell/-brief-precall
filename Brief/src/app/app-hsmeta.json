@@ -4,7 +4,7 @@
   "config": {
     "description": "Brief - Sales intelligence tool by Oliverlist",
     "name": "Brief",
-    "distribution": "private",
+    "distribution": "marketplace",
     "auth": {
       "type": "oauth",
       "redirectUrls": [
