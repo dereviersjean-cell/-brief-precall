@@ -2460,6 +2460,33 @@ export async function setOrganizationHubspotAutofill(organizationId: string, con
   if (error) throw error;
 }
 
+// Consentement administrateur Microsoft (migration 045) : l'accord donné une
+// fois par l'informatique du client, sans lequel aucun de ses salariés en
+// Microsoft 365 ne peut se connecter. Forme lue par
+// coerceMicrosoftAdminConsent (lib/microsoft-admin-consent.ts).
+export async function getOrganizationMicrosoftConsent(organizationId: string): Promise<unknown | null> {
+  const { data, error } = await supabaseAdmin
+    .from("organizations")
+    .select("microsoft_admin_consent")
+    .eq("id", organizationId)
+    .maybeSingle();
+  if (error) {
+    console.error("[db] getOrganizationMicrosoftConsent failed (migration 045 ?):", error.message);
+    return null;
+  }
+  return (data as { microsoft_admin_consent?: unknown } | null)?.microsoft_admin_consent ?? null;
+}
+
+// Appelé depuis le retour de consentement, qui n'a PAS de session : le droit
+// d'écrire vient de l'état signé de l'URL, vérifié par l'appelant.
+export async function setOrganizationMicrosoftConsent(organizationId: string, consent: unknown): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("organizations")
+    .update({ microsoft_admin_consent: consent })
+    .eq("id", organizationId);
+  if (error) throw error;
+}
+
 export async function markDealMemoryPushed(callId: string): Promise<string> {
   const at = new Date().toISOString();
   const { error } = await supabaseAdmin.from("call_deal_memory").update({ hubspot_pushed_at: at }).eq("call_id", callId);

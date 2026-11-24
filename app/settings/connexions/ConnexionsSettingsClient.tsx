@@ -3,9 +3,10 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession, signIn } from "next-auth/react";
-import { AlertTriangle, CalendarCheck, Video, Share2 } from "lucide-react";
+import { AlertTriangle, CalendarCheck, Check, Lock, Mail, Video, Share2, X } from "lucide-react";
 import HowItWorksCard, { type PipelineStep } from "@/app/settings/_components/HowItWorksCard";
 import OnceConnected, { RECALL_EFFECTS, SLACK_EFFECTS } from "./OnceConnected";
+import type { MicrosoftAdminConsent } from "@/lib/microsoft-admin-consent";
 
 const PIPELINE_STEPS: PipelineStep[] = [
   {
@@ -45,6 +46,10 @@ export default function ConnexionsSettingsClient({
   slackConnected: initialSlackConnected,
   slackEnabled,
   crmEnabled,
+  microsoftCardVisible,
+  microsoftConsent,
+  microsoftConsentLink,
+  microsoftConsentMailto,
 }: {
   recallConnected: boolean;
   // Agenda enregistré mais coupé chez Recall (jeton expiré ou révoqué).
@@ -57,6 +62,14 @@ export default function ConnexionsSettingsClient({
   // ni mention dans les textes.
   slackEnabled: boolean;
   crmEnabled: boolean;
+  // Consentement administrateur Microsoft : carte réservée aux managers,
+  // l'accord engageant toute l'organisation. Le lien et le message sont
+  // construits côté serveur (page.tsx) — lib/microsoft-admin-consent.ts
+  // importe `crypto`, qui n'a rien à faire dans le bundle du navigateur.
+  microsoftCardVisible: boolean;
+  microsoftConsent: MicrosoftAdminConsent | null;
+  microsoftConsentLink: string | null;
+  microsoftConsentMailto: string | null;
 }) {
   const router = useRouter();
   const { data: session } = useSession();
@@ -65,6 +78,7 @@ export default function ConnexionsSettingsClient({
 
   const [slackConnected, setSlackConnected] = useState(initialSlackConnected);
   const [slackDisconnecting, setSlackDisconnecting] = useState(false);
+  const [consentLinkCopied, setConsentLinkCopied] = useState(false);
 
   const searchParams = useSearchParams();
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -249,6 +263,145 @@ export default function ConnexionsSettingsClient({
             >
               {reconnecting ? "Redirection…" : "Se reconnecter avec Google"}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Microsoft 365 — l'accord de l'administrateur du client, sans lequel
+          aucun de ses salariés en Microsoft 365 ne peut se connecter (le
+          pourquoi est en tête de lib/microsoft-admin-consent.ts). Montrée aux
+          managers seulement. Pas d'état « en attente » : Brief ne peut pas
+          savoir qu'un message ouvert dans la messagerie du manager a vraiment
+          été envoyé — il faudrait enregistrer le clic, décision de Jean. */}
+      {microsoftCardVisible && (microsoftConsent || microsoftConsentLink) && (
+        <div className="rounded-2xl border border-border bg-white mt-6">
+          <div className="px-5 py-5 sm:px-6">
+            <h2 className="mb-1 text-[14px] font-semibold text-slate-900">Microsoft 365</h2>
+            {microsoftConsent ? (
+              <>
+                <div className="flex items-start gap-3">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[color:var(--success-soft)]">
+                    <Check className="h-4 w-4 text-emerald-700" strokeWidth={2.2} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[13.5px] font-semibold text-slate-900">Accordé pour toute votre entreprise</p>
+                    <p className="mt-0.5 text-[13px] leading-relaxed text-slate-500">
+                      Le{" "}
+                      {new Date(microsoftConsent.grantedAt).toLocaleDateString("fr-FR", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })}
+                      {microsoftConsent.grantedBy ? `, par ${microsoftConsent.grantedBy}` : ""}. Vos commerciaux peuvent se
+                      connecter avec Microsoft et brancher leur agenda Outlook.
+                    </p>
+                    <p className="mt-2 text-[12.5px] leading-relaxed text-slate-400">
+                      Pour retirer cet accord, votre administrateur passe par Microsoft Entra ID › Applications
+                      d&apos;entreprise › Brief. Cela ne se fait pas depuis Brief.
+                    </p>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="mb-4 text-[13px] leading-relaxed text-slate-500">
+                  Si vos commerciaux utilisent Outlook, Microsoft demande l&apos;accord de votre administrateur avant
+                  qu&apos;un salarié puisse connecter son agenda. Une fois accordé, ils se connectent sans rien voir ;
+                  sans cet accord, ils tombent sur « Approbation de l&apos;administrateur requise ».
+                </p>
+
+                <div className="mb-4 rounded-xl bg-slate-50 px-4 py-3">
+                  <p className="mb-2 text-[12px] font-semibold text-slate-700">
+                    Ce que votre administrateur verra, et rien d&apos;autre
+                  </p>
+                  <ul className="space-y-1.5">
+                    <li className="flex items-center gap-2 text-[12.5px] text-slate-600">
+                      <Check className="h-3.5 w-3.5 shrink-0 text-emerald-700" strokeWidth={2.4} />
+                      <span>
+                        <span className="font-semibold text-slate-900">Lire votre agenda</span> — pour repérer les
+                        rendez-vous à préparer
+                      </span>
+                    </li>
+                    <li className="flex items-center gap-2 text-[12.5px] text-slate-600">
+                      <Check className="h-3.5 w-3.5 shrink-0 text-emerald-700" strokeWidth={2.4} />
+                      <span>
+                        <span className="font-semibold text-slate-900">Envoyer un email en votre nom</span> — les emails
+                        de suivi, après relecture
+                      </span>
+                    </li>
+                    <li className="flex items-center gap-2 text-[12.5px] text-slate-600">
+                      <X className="h-3.5 w-3.5 shrink-0 text-rose-700" strokeWidth={2.4} />
+                      <span>
+                        <span className="font-semibold text-slate-900">Aucune lecture de votre messagerie</span> — ni
+                        contenu, ni en-têtes
+                      </span>
+                    </li>
+                  </ul>
+                </div>
+
+                <label htmlFor="ms-consent-link" className="mb-1.5 block text-[12px] font-semibold text-slate-500">
+                  Le lien à faire ouvrir par votre administrateur
+                </label>
+                <div className="mb-4 flex flex-wrap items-center gap-2.5">
+                  <input
+                    id="ms-consent-link"
+                    type="text"
+                    readOnly
+                    value={microsoftConsentLink ?? ""}
+                    className="h-10 min-w-0 flex-[999_1_360px] rounded-lg border border-border px-3 font-mono text-[12.5px] text-slate-600"
+                  />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!microsoftConsentLink) return;
+                      try {
+                        await navigator.clipboard.writeText(microsoftConsentLink);
+                        setConsentLinkCopied(true);
+                        setTimeout(() => setConsentLinkCopied(false), 3000);
+                      } catch {
+                        // Presse-papier refusé (navigateur, permission) : le
+                        // champ reste sélectionnable à la main, on ne prétend
+                        // pas avoir copié.
+                        setToast({ type: "error", message: "Copie impossible : sélectionnez le lien à la main." });
+                      }
+                    }}
+                    className="h-10 shrink-0 rounded-lg border border-border bg-white px-4 text-[13px] font-medium text-slate-900 transition-colors hover:bg-slate-50"
+                  >
+                    {consentLinkCopied ? "Copié" : "Copier le lien"}
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  {microsoftConsentMailto && (
+                    <a
+                      href={microsoftConsentMailto}
+                      className="inline-flex h-11 items-center gap-2 rounded-lg bg-[color:var(--primary)] px-4 text-[14px] font-medium text-white transition-all hover:brightness-110"
+                    >
+                      <Mail className="h-4 w-4" />
+                      Envoyer à mon informatique
+                    </a>
+                  )}
+                  <a
+                    href="/api/microsoft/admin-consent/start"
+                    className="inline-flex h-11 items-center gap-2 rounded-lg border border-border bg-white px-4 text-[13.5px] font-medium text-slate-900 transition-colors hover:bg-slate-50"
+                  >
+                    <Lock className="h-3.5 w-3.5" />
+                    L&apos;ouvrir moi-même
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => router.refresh()}
+                    className="text-[13px] font-medium text-[color:var(--violet)] hover:underline"
+                  >
+                    Vérifier maintenant
+                  </button>
+                </div>
+                <p className="mt-2.5 text-[12.5px] leading-relaxed text-slate-400">
+                  « Envoyer à mon informatique » ouvre un message déjà rédigé, avec le lien et la liste des droits.
+                  Brief n&apos;envoie rien lui-même : vous relisez, vous envoyez. Le lien vaut trente jours.
+                </p>
+              </>
+            )}
           </div>
         </div>
       )}

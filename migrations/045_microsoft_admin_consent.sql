@@ -1,0 +1,21 @@
+-- 045 — Consentement administrateur Microsoft, 24/11/2026.
+-- À exécuter dans le SQL editor Supabase (prod).
+--
+-- Sur un tenant Microsoft 365, un salarié ne peut PAS consentir seul aux
+-- droits que Brief demande : le réglage par défaut d'un tenant n'autorise le
+-- consentement utilisateur que pour les autorisations classées à faible
+-- impact (openid, profile, email, offline_access, User.Read), et
+-- Calendars.Read comme Mail.Send n'en font pas partie. Son administrateur
+-- doit donc accorder l'accès une fois pour l'organisation.
+--
+-- Ce que l'accord donne, une fois obtenu, vit ici :
+--   organizations.microsoft_admin_consent jsonb
+--     { tenant: "<id du tenant>", grantedAt: "<ISO>", grantedBy: "<email|null>" }
+-- Écrit par app/api/microsoft/admin-consent/callback, lu par
+-- Paramètres › Connexions (carte « Microsoft 365 »).
+--
+-- Sans cette colonne, la carte reste à l'état « à faire approuver » même
+-- après un accord : rien ne plante, mais rien ne se retient non plus
+-- (lib/db.ts attrape l'erreur et rend null, pattern du bug #14).
+
+alter table organizations add column if not exists microsoft_admin_consent jsonb;

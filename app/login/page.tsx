@@ -5,6 +5,8 @@ import { GoogleSignInButton } from "./GoogleSignInButton";
 import { MicrosoftSignInButton } from "./MicrosoftSignInButton";
 import { EmailSignIn } from "./EmailSignIn";
 import { safeInternalPath } from "@/lib/safe-path";
+import { APP_URL } from "@/lib/app-url";
+import { buildAdminConsentUrl, consentMailto } from "@/lib/microsoft-admin-consent";
 
 export const metadata: Metadata = {
   title: "Connexion — Brief",
@@ -25,6 +27,22 @@ export default async function LoginPage({
   const { error, callbackUrl } = await searchParams;
   const errorMessage = error ? ERROR_MESSAGES[error] ?? null : null;
 
+  // Les codes que NextAuth pose quand un départ OAuth échoue. Le détail
+  // Microsoft (AADSTS65001, AADSTS90094) n'arrive pas jusqu'ici.
+  const oauthFailed = !!error && ["OAuthSignin", "OAuthCallback", "Callback", "AccessDenied", "OAuthAccountNotLinked"].includes(error);
+  const azureClientId = process.env.AZURE_AD_CLIENT_ID;
+  // Lien sans état signé : cette personne n'a pas de compte, donc pas
+  // d'organisation à porter (voir buildAdminConsentUrl).
+  const consentMail =
+    oauthFailed && azureClientId
+      ? consentMailto({
+          link: buildAdminConsentUrl({
+            clientId: azureClientId,
+            redirectUri: `${APP_URL}/api/microsoft/admin-consent/callback`,
+          }),
+        })
+      : null;
+
   // Où renvoyer après la connexion. Le middleware pose ce paramètre quand il
   // intercepte une page demandée sans session — un lien de notification ouvert
   // déconnecté, typiquement. Assaini avant usage : il vient de l'URL, donc de
@@ -43,6 +61,34 @@ export default async function LoginPage({
 
             {errorMessage && (
               <div className="mt-6 rounded-2xl bg-land-coral-soft px-4 py-3 text-[14px] text-land-coral-ink">{errorMessage}</div>
+            )}
+
+            {/* Échec d'un départ OAuth : la première cause connue, chez un
+                client en Microsoft 365, est l'accord d'administrateur jamais
+                donné (le pourquoi est en tête de
+                lib/microsoft-admin-consent.ts). NextAuth ne transmet pas le
+                code AADSTS jusqu'ici — d'où un texte qui PROPOSE
+                l'explication sans l'affirmer, et l'instrumentation posée dans
+                lib/auth.ts pour savoir ce qui arrive vraiment. */}
+            {oauthFailed && consentMail && (
+              <div className="mt-4 rounded-2xl border border-land-line bg-land-sunken px-4 py-4">
+                <p className="text-[14px] font-semibold text-land-ink">Vous vous connectiez avec Microsoft ?</p>
+                <p className="mt-1.5 text-[13.5px] leading-relaxed text-land-muted">
+                  Si votre entreprise est sur Microsoft 365, l&apos;accès à Brief doit être autorisé une fois par votre
+                  administrateur. Microsoft l&apos;exige avant qu&apos;un salarié puisse connecter son agenda : ce
+                  n&apos;est pas votre compte qui est refusé.
+                </p>
+                <a
+                  href={consentMail}
+                  className="mt-3 inline-flex items-center gap-2 text-[13.5px] font-semibold text-land-accent underline-offset-4 hover:underline"
+                >
+                  Prévenir mon administrateur
+                </a>
+                <p className="mt-1.5 text-[12.5px] leading-relaxed text-land-faint">
+                  Ouvre un message déjà rédigé, avec le lien d&apos;autorisation et la liste exacte des droits demandés.
+                  Rien n&apos;est envoyé sans vous.
+                </p>
+              </div>
             )}
 
             <div className="mt-9 space-y-3">

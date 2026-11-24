@@ -8,6 +8,7 @@ import { checkSharedRateLimit } from "./rate-limit";
 import { resolveUserForLogin, saveGoogleTokens, getGoogleTokens, getUserAuthState, touchUserLastSeen, type AuthProvider } from "./db";
 import { refreshGoogleAccessTokenOnce } from "./gmail";
 import { MICROSOFT_LOGIN_SCOPES, refreshMicrosoftAccessToken } from "./microsoft";
+import { reportWarning } from "./monitoring";
 
 function toAuthProvider(nextAuthProvider: string): AuthProvider | null {
   if (nextAuthProvider === "google") return "google";
@@ -368,5 +369,23 @@ export const authOptions: AuthOptions = {
   pages: {
     signIn: "/login",
     error: "/login",
+  },
+  // Instrumentation du 24/11/2026. NextAuth ne transmet à /login qu'un code
+  // à lui (« OAuthCallback »…) : le motif de Microsoft, lui, n'arrive jamais
+  // jusqu'à l'écran. Or c'est ce motif qui dirait si un client en Microsoft
+  // 365 est bloqué faute de consentement administrateur (AADSTS65001,
+  // AADSTS90094) — l'écran de connexion propose aujourd'hui l'explication
+  // sans pouvoir l'affirmer. Ce crochet l'enregistre pour qu'un vrai refus
+  // tranche la question.
+  //
+  // On n'enregistre PAS la charge complète que NextAuth passe ici : elle peut
+  // porter un code d'autorisation ou un jeton. Seulement le code NextAuth et
+  // l'identifiant AADSTS, qui suffisent au diagnostic.
+  logger: {
+    error(code, metadata) {
+      const raw = metadata instanceof Error ? metadata.message : "";
+      const aadsts = /AADSTS\d+/i.exec(raw)?.[0] ?? null;
+      reportWarning("auth.oauth_error", new Error(code), aadsts ? { aadsts } : undefined);
+    },
   },
 };
