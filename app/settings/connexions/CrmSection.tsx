@@ -10,6 +10,11 @@ import OnceConnected, { CRM_EFFECTS } from "./OnceConnected";
 // désormais au même endroit. Le composant lit toujours ?crm=… dans l'URL —
 // les callbacks OAuth HubSpot et Pipedrive redirigent maintenant vers
 // /settings/connexions?crm=…, cf. les routes de callback.
+// Un pipeline proposé à l'import, tel que le rend GET
+// /api/crm/hubspot/import-references : son nom, ses étapes gagnées (pour que
+// le client reconnaisse le sien) et le nombre de deals qu'il contient.
+type HubspotPipelineChoice = { id: string; label: string; wonStages: string[]; total: number };
+
 type Props = {
   pipedriveConnected: boolean;
   hubspotConnected: boolean;
@@ -36,9 +41,37 @@ export default function CrmSection({
   const [hubspotConnected, setHubspotConnected] = useState(initialHubspotConnected);
   const [hubspotDisconnecting, setHubspotDisconnecting] = useState(false);
   const [hubspotImporting, setHubspotImporting] = useState(false);
-  const [hubspotImportResult, setHubspotImportResult] = useState<{ count: number } | { error: string } | null>(null);
+  // `total` = ce que le portail contient vraiment, `count` ce qu'on a pris :
+  // au-delà du plafond, l'écran doit le dire plutôt que laisser croire à un
+  // import complet.
+  const [hubspotImportResult, setHubspotImportResult] = useState<{ count: number; total: number } | { error: string } | null>(null);
   const [autoPush, setAutoPush] = useState(hubspotAutoPush);
   const [autoPushSaving, setAutoPushSaving] = useState(false);
+  // Pipelines proposés au choix, quand le portail en a plusieurs.
+  const [hubspotPipelines, setHubspotPipelines] = useState<HubspotPipelineChoice[] | null>(null);
+
+  async function importPipeline(pipelineId: string) {
+    setHubspotImporting(true);
+    setHubspotImportResult(null);
+    try {
+      const res = await fetch("/api/crm/hubspot/import-references", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pipelineId }),
+      });
+      const data = (await res.json()) as { ok?: boolean; count?: number; total?: number; error?: string };
+      if (!res.ok || !data.ok) {
+        setHubspotImportResult({ error: data.error ?? "Erreur lors de l'import." });
+      } else {
+        setHubspotImportResult({ count: data.count ?? 0, total: data.total ?? 0 });
+        setHubspotPipelines(null);
+      }
+    } catch {
+      setHubspotImportResult({ error: "Une erreur est survenue." });
+    } finally {
+      setHubspotImporting(false);
+    }
+  }
 
   const searchParams = useSearchParams();
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -185,15 +218,24 @@ export default function CrmSection({
                   <button
                     disabled={hubspotImporting}
                     onClick={async () => {
+                      // On demande d'abord les pipelines : « gagné » n'a de
+                      // sens que dans un pipeline, et un portail d'entreprise
+                      // en a plusieurs dont tous ne sont pas des pipelines de
+                      // vente. Un seul candidat : pas de question inutile.
                       setHubspotImporting(true);
                       setHubspotImportResult(null);
+                      setHubspotPipelines(null);
                       try {
-                        const res = await fetch("/api/crm/hubspot/import-references", { method: "POST" });
-                        const data = await res.json() as { ok?: boolean; count?: number; error?: string };
-                        if (!res.ok || !data.ok) {
-                          setHubspotImportResult({ error: data.error ?? "Erreur lors de l'import." });
+                        const res = await fetch("/api/crm/hubspot/import-references");
+                        const data = (await res.json()) as { pipelines?: HubspotPipelineChoice[]; error?: string };
+                        if (!res.ok || !data.pipelines) {
+                          setHubspotImportResult({ error: data.error ?? "Erreur lors de la lecture des pipelines." });
+                        } else if (data.pipelines.length === 0) {
+                          setHubspotImportResult({ error: "Aucun pipeline de ce portail n'a d'étape gagnée." });
+                        } else if (data.pipelines.length === 1) {
+                          await importPipeline(data.pipelines[0].id);
                         } else {
-                          setHubspotImportResult({ count: data.count ?? 0 });
+                          setHubspotPipelines(data.pipelines);
                         }
                       } catch {
                         setHubspotImportResult({ error: "Une erreur est survenue." });
@@ -231,12 +273,42 @@ export default function CrmSection({
                     {hubspotDisconnecting ? "Déconnexion…" : "Déconnecter"}
                   </button>
                 </div>
+                {hubspotPipelines && (
+                  <div className="rounded-xl border border-border px-4 py-3">
+                    <p className="text-[13.5px] font-semibold text-foreground">Quel pipeline est votre pipeline de vente ?</p>
+                    <p className="mt-0.5 text-[12.5px] leading-relaxed text-[color:var(--muted-foreground)]">
+                      Seuls les deals gagnés de celui-ci deviendront des références. Vos autres pipelines (suivi de compte,
+                      partenariats…) ont aussi des étapes « gagnées », qui ne sont pas des ventes.
+                    </p>
+                    <div className="mt-3 flex flex-col gap-2">
+                      {hubspotPipelines.map((p) => (
+                        <button
+                          key={p.id}
+                          disabled={hubspotImporting}
+                          onClick={() => importPipeline(p.id)}
+                          className="flex items-center justify-between gap-3 rounded-lg border border-border bg-white px-3.5 py-2.5 text-left transition-colors hover:bg-slate-50 disabled:opacity-50"
+                        >
+                          <span className="min-w-0">
+                            <span className="block text-[13.5px] font-medium text-slate-900">{p.label}</span>
+                            <span className="block truncate text-[12px] text-slate-500">
+                              Étape{p.wonStages.length !== 1 ? "s" : ""} gagnée{p.wonStages.length !== 1 ? "s" : ""} : {p.wonStages.join(", ")}
+                            </span>
+                          </span>
+                          <span className="shrink-0 text-[12.5px] font-medium tabular-nums text-slate-500">
+                            {p.total} deal{p.total !== 1 ? "s" : ""}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {hubspotImportResult && (
                   "error" in hubspotImportResult ? (
                     <p className="text-[13px] text-rose-700">{hubspotImportResult.error}</p>
                   ) : (
                     <p className="text-[13px] font-medium text-emerald-700">
-                      {hubspotImportResult.count} référence{hubspotImportResult.count !== 1 ? "s" : ""} importée{hubspotImportResult.count !== 1 ? "s" : ""} depuis HubSpot.
+                      {hubspotImportResult.count} référence{hubspotImportResult.count !== 1 ? "s" : ""} importée{hubspotImportResult.count !== 1 ? "s" : ""} depuis HubSpot
+                      {hubspotImportResult.total > hubspotImportResult.count ? `, sur ${hubspotImportResult.total} deals gagnés` : ""}.
                     </p>
                   )
                 )}

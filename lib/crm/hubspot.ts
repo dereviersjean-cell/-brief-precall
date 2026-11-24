@@ -1,6 +1,11 @@
 import { marked, Renderer } from "marked";
 import { getCrmTokens, saveCrmTokens } from "../db";
 import { APP_URL } from "@/lib/app-url";
+// La règle des étapes gagnées vit à part, sans import, pour être testable
+// sans variables d'environnement (lib/crm/hubspot-pipelines.ts).
+import { wonStagesOf } from "./hubspot-pipelines";
+
+export { wonStagesOf };
 
 const REDIRECT_URI = `${APP_URL}/api/crm/hubspot/callback`;
 // deals.write and contacts.write added for module Distribution Flexible
@@ -94,40 +99,88 @@ export type HubspotDeal = {
   closedate: string | null;
 };
 
-export async function getWonDeals(accessToken: string): Promise<HubspotDeal[]> {
-  const res = await fetch("https://api.hubapi.com/crm/v3/objects/deals/search", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      filterGroups: [
-        {
-          filters: [
-            { propertyName: "dealstage", operator: "EQ", value: "closedwon" },
-          ],
-        },
-      ],
-      properties: ["dealname", "amount", "closedate", "hs_object_id"],
-      limit: 100,
-    }),
-  });
+export type HubspotPipeline = {
+  id: string;
+  label: string;
+  /** Les étapes de CE pipeline que HubSpot compte comme gagnées. */
+  wonStages: { id: string; label: string }[];
+};
 
-  if (res.status === 401) throw new Error("getWonDeals auth failed: 401");
+export async function getDealPipelines(accessToken: string): Promise<HubspotPipeline[]> {
+  const res = await fetch("https://api.hubapi.com/crm/v3/pipelines/deals", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (res.status === 401) throw new Error("getDealPipelines auth failed: 401");
+  if (!res.ok) throw new Error(`getDealPipelines failed: ${res.status}`);
 
   const data = (await res.json()) as { results?: unknown[] };
-  if (!res.ok) throw new Error(`getWonDeals failed: ${res.status}`);
-
-  return (data.results ?? []).map((d) => {
-    const deal = d as { id: string; properties: Record<string, string | null> };
+  return (data.results ?? []).map((p) => {
+    const pipe = p as { id?: unknown; label?: unknown; stages?: unknown };
     return {
-      id: deal.id,
-      dealname: deal.properties.dealname ?? null,
-      amount: deal.properties.amount ?? null,
-      closedate: deal.properties.closedate ?? null,
+      id: String(pipe.id),
+      label: typeof pipe.label === "string" ? pipe.label : String(pipe.id),
+      wonStages: wonStagesOf(pipe),
     };
   });
+}
+
+/** Au-delà, on arrête : importer des milliers de références noierait l'écran. */
+export const WON_DEALS_MAX = 500;
+
+/**
+ * Les deals gagnés des étapes demandées, page par page.
+ *
+ * `total` est ce que le portail contient vraiment, `deals` ce qu'on en a pris
+ * (WON_DEALS_MAX au plus) : l'écran peut donc dire « 100 sur 1451 » au lieu de
+ * laisser croire à un import complet.
+ */
+export async function getWonDeals(
+  accessToken: string,
+  options: { stageIds: string[]; max?: number }
+): Promise<{ deals: HubspotDeal[]; total: number }> {
+  const stageIds = options.stageIds.filter((id) => id.trim().length > 0);
+  if (stageIds.length === 0) return { deals: [], total: 0 };
+  const max = options.max ?? WON_DEALS_MAX;
+
+  const deals: HubspotDeal[] = [];
+  let total = 0;
+  let after: string | undefined;
+
+  while (deals.length < max) {
+    const res = await fetch("https://api.hubapi.com/crm/v3/objects/deals/search", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        filterGroups: [{ filters: [{ propertyName: "dealstage", operator: "IN", values: stageIds }] }],
+        properties: ["dealname", "amount", "closedate", "hs_object_id"],
+        limit: Math.min(100, max - deals.length),
+        ...(after ? { after } : {}),
+      }),
+    });
+
+    if (res.status === 401) throw new Error("getWonDeals auth failed: 401");
+    const data = (await res.json()) as { results?: unknown[]; total?: number; paging?: { next?: { after?: string } } };
+    if (!res.ok) throw new Error(`getWonDeals failed: ${res.status}`);
+
+    total = typeof data.total === "number" ? data.total : total;
+    for (const d of data.results ?? []) {
+      const deal = d as { id: string; properties: Record<string, string | null> };
+      deals.push({
+        id: deal.id,
+        dealname: deal.properties.dealname ?? null,
+        amount: deal.properties.amount ?? null,
+        closedate: deal.properties.closedate ?? null,
+      });
+    }
+
+    after = data.paging?.next?.after;
+    if (!after || (data.results ?? []).length === 0) break;
+  }
+
+  return { deals, total };
 }
 
 export type HubspotCompany = {
