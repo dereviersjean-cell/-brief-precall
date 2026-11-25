@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "./supabase";
 import { isBillingBlocked } from "./billing-rules";
-import { generateEmbedding } from "./embeddings";
+import { generateEmbedding, generateEmbeddingsBatch } from "./embeddings";
 import type { TranscriptJson } from "./recall";
 import type { NotificationEventType, NotificationChannel, NotificationPreference } from "./notification-preferences";
 import { coerceMeetingStageConfig, type MeetingStage, type MeetingStageConfig } from "./meeting-stage";
@@ -630,36 +630,54 @@ export type ClientReference = {
   created_at?: string;
 };
 
+/** Le texte qui nourrit l'embedding d'une référence.
+ *
+ *  ⚠ `raw_text` en fait partie depuis le 25/11/2026. Sans lui, une référence
+ *  importée d'un CRM s'embeddait sur son seul nom de client — les 500 deals
+ *  gagnés importés d'Oliverlist n'auraient jamais remonté dans un brief. */
+export function referenceEmbeddingText(r: Pick<ClientReference, "client_name" | "sector" | "company_size" | "problem" | "solution" | "result" | "raw_text">): string {
+  return [r.client_name, r.sector, r.company_size, r.problem, r.solution, r.result, r.raw_text]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+}
+
 export async function saveClientReferences(
   userId: string,
-  references: Array<Omit<ClientReference, "id" | "user_id" | "created_at">>
+  references: Array<Omit<ClientReference, "id" | "user_id" | "created_at">>,
+  options: { replaceSource?: string } = {}
 ): Promise<void> {
+  // Le remplacement d'abord : une réimportation doit refaire le même ensemble,
+  // pas l'empiler. Sans ça, réimporter HubSpot doublait 1 451 lignes.
+  if (options.replaceSource) {
+    const { error } = await supabaseAdmin
+      .from("client_references")
+      .delete()
+      .eq("user_id", userId)
+      .eq("source", options.replaceSource);
+    if (error) throw error;
+  }
+
   if (references.length === 0) return;
 
-  const rows = await Promise.all(
-    references.map(async (r) => {
-      let embedding: number[] | null = null;
-      if (r.embedding !== undefined) {
-        // Pre-computed by caller (e.g. Inngest batch) — use as-is
-        embedding = r.embedding;
-      } else {
-        const embeddingText = [r.sector, r.problem, r.solution, r.result, r.client_name]
-          .filter(Boolean)
-          .join(" ");
-        if (embeddingText.trim()) {
-          try {
-            embedding = await generateEmbedding(embeddingText);
-          } catch (err) {
-            console.warn("[db] generateEmbedding failed, saving without embedding:", err);
-          }
-        }
-      }
-      return { ...r, user_id: userId, embedding };
-    })
-  );
+  // Un seul appel Voyage par tranche, et non un par référence : l'ancien
+  // Promise.all lançait autant de requêtes que de références (500 d'un coup
+  // lors de l'import HubSpot du 25/11/2026).
+  const toEmbed = references.map((r) => (r.embedding === undefined ? referenceEmbeddingText(r) : ""));
+  const computed = await generateEmbeddingsBatch(toEmbed.map((t) => t || " "));
 
-  const { error } = await supabaseAdmin.from("client_references").insert(rows);
-  if (error) throw error;
+  const rows = references.map((r, i) => ({
+    ...r,
+    user_id: userId,
+    embedding: r.embedding !== undefined ? r.embedding : toEmbed[i] ? computed[i] : null,
+  }));
+
+  // Par tranches : un insert de plusieurs milliers de vecteurs de 1 024
+  // flottants dépasse ce que PostgREST avale en une fois.
+  for (let i = 0; i < rows.length; i += 500) {
+    const { error } = await supabaseAdmin.from("client_references").insert(rows.slice(i, i + 500));
+    if (error) throw error;
+  }
 }
 
 export async function getClientReferences(userId: string): Promise<ClientReference[]> {
@@ -737,7 +755,7 @@ export async function createClientReference(
   userId: string,
   ref: Omit<ClientReference, "id" | "user_id" | "created_at" | "embedding">
 ): Promise<ClientReference> {
-  const embeddingText = [ref.sector, ref.problem, ref.solution, ref.result, ref.client_name].filter(Boolean).join(" ");
+  const embeddingText = referenceEmbeddingText(ref);
   let embedding: number[] | null = null;
   if (embeddingText.trim()) {
     try {
@@ -757,7 +775,7 @@ export async function createClientReference(
 }
 
 // Editing a reference changes the very text the embedding is derived from
-// (sector/problem/solution/result/client_name — see saveClientReferences),
+// (voir referenceEmbeddingText),
 // so the embedding is always regenerated here rather than left stale. If
 // regeneration fails, the previous embedding is kept rather than nulled out
 // — a transient Voyage AI error shouldn't silently drop a reference from
@@ -769,16 +787,16 @@ export async function updateClientReference(
 ): Promise<ClientReference> {
   const { data: current, error: fetchError } = await supabaseAdmin
     .from("client_references")
-    .select("client_name, sector, company_size, problem, solution, result, embedding")
+    .select("client_name, sector, company_size, problem, solution, result, raw_text, embedding")
     .eq("id", referenceId)
     .eq("user_id", userId)
     .single();
   if (fetchError) throw fetchError;
 
   const merged = { ...(current as Record<string, unknown>), ...patch } as ClientReference;
-  const embeddingText = [merged.sector, merged.problem, merged.solution, merged.result, merged.client_name]
-    .filter(Boolean)
-    .join(" ");
+  // raw_text compris : une modification ne doit pas appauvrir l'embedding
+  // d'une référence importée (25/11/2026).
+  const embeddingText = referenceEmbeddingText(merged);
 
   let embedding = current.embedding as number[] | null;
   if (embeddingText.trim()) {

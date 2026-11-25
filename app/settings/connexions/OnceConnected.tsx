@@ -20,7 +20,7 @@ export default function OnceConnected({ items }: { items: string[] }) {
 export const CRM_EFFECTS = (crm: "HubSpot" | "Pipedrive") => [
   `Chaque brief s'enrichit de ${crm} : fiche entreprise, deal en cours.`,
   "Après chaque rendez-vous, brief et compte-rendu sont ajoutés au deal ou au contact (à activer dans Notifications).",
-  "Vos deals gagnés peuvent servir de références dans vos briefs.",
+  "Vos deals gagnés peuvent servir de références dans vos briefs — réimporter refait la liste, sans doublon.",
 ];
 
 export const RECALL_EFFECTS = [

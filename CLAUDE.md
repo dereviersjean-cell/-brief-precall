@@ -1341,3 +1341,45 @@ sur l'année, triés du plus récent au plus ancien. Chez Oliverlist 132 deals
 tombent hors champ, sans conséquence visible (les autres pipelines n'ont aucun
 deal de l'année). Sur un portail plus gros, le plafond affamerait les pipelines
 secondaires : à ce moment-là, paginer par pipeline plutôt qu'en vrac.
+
+## Un deal gagné ne dit rien : l'entreprise liée, oui — 25 novembre 2026
+
+Premier import sur le portail d'Oliverlist : **500 références sur 1 451**, et
+toutes affichées « Secteur et taille non renseignés ». Deux fautes distinctes.
+
+**Le plafond.** `WON_DEALS_MAX = 500` coupait sans que l'écran le dise
+franchement. Porté à 5 000.
+
+**Le fond.** `buildReference` ne lisait que le deal : nom, montant, date de
+clôture. Or un deal gagné ne porte presque rien — sur ce portail, **5 montants
+sur 1 451**, aucune description. Les 500 lignes créées valaient donc
+« Deal : Utelys — Clôturé le : 2021-10-01 », et surtout leur embedding était
+calculé sur le seul nom du client : aucune de ces références ne serait jamais
+remontée dans un brief. Tout ce qui est utile est sur **l'entreprise associée
+au deal** : secteur 83 %, effectif 83 %, description 88 %, ville et pays.
+
+Ce qui est en place :
+- `getDealCompanies` (lib/crm/hubspot.ts) : association `deals → companies`
+  puis `companies/batch/read`, par lots de 100 — deux appels par lot ;
+- `lib/crm/hubspot-references.ts` : `buildReference(deal, company)`, sans
+  import, donc testable. Secteur lisible (`HOSPITALITY` → `Hospitality` ;
+  l'énumération HubSpot est en anglais, la traduire demanderait 150 entrées à
+  tenir), effectif accordé, `raw_text` qui commence par la description de
+  l'entreprise ;
+- `referenceEmbeddingText` (lib/db.ts) **inclut `raw_text`**. C'est le point
+  qui compte : sans lui, l'enrichissement n'aurait rien changé à la recherche
+  par similarité. Les trois endroits qui calculaient ce texte chacun de leur
+  côté passent par cette fonction, et `updateClientReference` relit `raw_text`
+  pour ne pas appauvrir l'embedding à chaque modification ;
+- `saveClientReferences` prend `{ replaceSource }` : réimporter **refait**
+  l'ensemble des références venues de HubSpot au lieu de les empiler. Les
+  références saisies à la main ou importées d'un fichier ne sont pas touchées ;
+- les embeddings passent par `generateEmbeddingsBatch` et l'insert est
+  tranché par 500. L'ancien `Promise.all` lançait un appel Voyage **par
+  référence** — 500 requêtes simultanées lors de cet import ;
+- `maxDuration = 300` sur la route.
+
+Mesuré en lecture seule sur le vrai portail
+(`scripts/preview-hubspot-references.ts`, qui ne s'enregistre rien) :
+1 451 deals en 3,4 s, 1 450 entreprises liées en 3,1 s, 83 % avec secteur et
+effectif, 93 % avec un texte nourri. 329 tests.

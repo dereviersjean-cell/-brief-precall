@@ -3,9 +3,12 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { requireActiveUser } from "@/lib/api-auth";
 import { getCrmTokens, saveCrmTokens, saveClientReferences } from "@/lib/db";
-import { getDealPipelines, getWonDeals, refreshHubspotToken, WON_DEALS_MAX } from "@/lib/crm/hubspot";
-import type { HubspotDeal } from "@/lib/crm/hubspot";
-import type { ClientReference } from "@/lib/db";
+import { getDealCompanies, getDealPipelines, getWonDeals, refreshHubspotToken, WON_DEALS_MAX } from "@/lib/crm/hubspot";
+import { buildReference } from "@/lib/crm/hubspot-references";
+
+// 1 451 deals chez un client réel : 15 recherches espacées, 15 lectures
+// d'associations, 15 lectures d'entreprises, puis les embeddings par tranches.
+export const maxDuration = 300;
 
 // Import des deals gagnés du client en références citables.
 //
@@ -18,33 +21,6 @@ import type { ClientReference } from "@/lib/db";
 // refusés, Recouvrement, Deleted. On importerait des comptes supprimés comme
 // références à citer en rendez-vous. D'où : le client désigne SON pipeline de
 // vente, et on ne prend que les étapes gagnées de celui-là.
-
-function formatAmount(amount: string | null): string | null {
-  if (!amount) return null;
-  const num = parseFloat(amount);
-  if (isNaN(num)) return null;
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(num);
-}
-
-function buildReference(deal: HubspotDeal): Omit<ClientReference, "id" | "user_id" | "created_at"> {
-  const result = formatAmount(deal.amount);
-  const rawParts = [
-    deal.dealname ? `Deal : ${deal.dealname}` : null,
-    result ? `Valeur : ${result}` : null,
-    deal.closedate ? `Clôturé le : ${deal.closedate.slice(0, 10)}` : null,
-  ].filter(Boolean);
-
-  return {
-    client_name: deal.dealname,
-    sector: null,
-    company_size: null,
-    problem: null,
-    solution: null,
-    result,
-    raw_text: rawParts.join(" — "),
-    source: "hubspot",
-  };
-}
 
 type Ran<T> = { ok: true; value: T } | { ok: false; response: NextResponse };
 
@@ -133,18 +109,29 @@ export async function POST(request: Request) {
     // Les étapes sont relues ici plutôt que reçues du navigateur : elles
     // décident de ce qu'on importe, elles ne viennent pas du client.
     if (!pipeline || pipeline.wonStages.length === 0) return null;
-    return getWonDeals(accessToken, { stageIds: pipeline.wonStages.map((s) => s.id) });
+    const won = await getWonDeals(accessToken, { stageIds: pipeline.wonStages.map((s) => s.id) });
+    // L'entreprise liée porte le secteur, l'effectif et la description : sans
+    // elle, un deal gagné ne donne qu'un nom et une date (25/11/2026).
+    const companies = await getDealCompanies(accessToken, won.deals.map((d) => d.id));
+    return { ...won, companies };
   });
   if (!ran.ok) return ran.response;
   if (ran.value === null) {
     return NextResponse.json({ error: "Ce pipeline n'existe plus, ou n'a aucune étape gagnée." }, { status: 404 });
   }
 
-  const { deals, total } = ran.value;
+  const { deals, companies, total } = ran.value;
   if (deals.length === 0) return NextResponse.json({ ok: true, count: 0, total: 0 });
 
   try {
-    await saveClientReferences(userId, deals.map(buildReference));
+    // replaceSource : réimporter refait l'ensemble des références venues de
+    // HubSpot au lieu de les empiler. Celles saisies à la main ou importées
+    // d'un fichier ne sont pas touchées.
+    await saveClientReferences(
+      userId,
+      deals.map((d) => buildReference(d, companies.get(d.id) ?? null)),
+      { replaceSource: "hubspot" }
+    );
   } catch (err) {
     console.error("[hubspot/import-references] saveClientReferences en échec:", err instanceof Error ? err.message : String(err));
     return NextResponse.json({ error: "Erreur lors de la sauvegarde des références." }, { status: 500 });

@@ -4,6 +4,7 @@ import { APP_URL } from "@/lib/app-url";
 // La règle des étapes gagnées vit à part, sans import, pour être testable
 // sans variables d'environnement (lib/crm/hubspot-pipelines.ts).
 import { wonStagesOf } from "./hubspot-pipelines";
+import type { WonDealCompany } from "./hubspot-references";
 // Espacement des recherches et reprise sur 429 (lib/crm/hubspot-fetch.ts).
 import { hubspotFetch } from "./hubspot-fetch";
 
@@ -126,8 +127,13 @@ export async function getDealPipelines(accessToken: string): Promise<HubspotPipe
   });
 }
 
-/** Au-delà, on arrête : importer des milliers de références noierait l'écran. */
-export const WON_DEALS_MAX = 500;
+/**
+ * Au-delà, on arrête. Le plafond était à 500 : sur le portail d'Oliverlist,
+ * 1 451 deals gagnés, donc un import silencieusement amputé des deux tiers
+ * (25/11/2026). 5 000 couvre un portail réel tout en bornant la durée de la
+ * route (une recherche par centaine, espacée de 220 ms).
+ */
+export const WON_DEALS_MAX = 5000;
 
 /**
  * Les deals gagnés des étapes demandées, page par page.
@@ -183,6 +189,83 @@ export async function getWonDeals(
   }
 
   return { deals, total };
+}
+
+/**
+ * L'entreprise associée à chaque deal, par lots de 100 : deux appels par lot
+ * (l'association, puis les propriétés). C'est là que vit tout ce qui rend une
+ * référence utile — secteur, effectif, description. Un deal sans entreprise
+ * liée rend simplement rien pour cet identifiant.
+ */
+export async function getDealCompanies(
+  accessToken: string,
+  dealIds: string[]
+): Promise<Map<string, WonDealCompany>> {
+  const byDeal = new Map<string, WonDealCompany>();
+  if (dealIds.length === 0) return byDeal;
+
+  const headers = { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" };
+  const COMPANY_PROPS = ["name", "industry", "numberofemployees", "city", "country", "description", "annualrevenue"];
+
+  for (let i = 0; i < dealIds.length; i += 100) {
+    const chunk = dealIds.slice(i, i + 100);
+
+    const assocRes = await hubspotFetch("https://api.hubapi.com/crm/v4/associations/deals/companies/batch/read", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ inputs: chunk.map((id) => ({ id })) }),
+    });
+    if (assocRes.status === 401) throw new Error("getDealCompanies auth failed: 401");
+    if (!assocRes.ok) {
+      // L'enrichissement est un bonus : sans lui l'import reste correct, juste
+      // pauvre. On ne fait pas échouer la route pour ça.
+      console.warn(`[hubspot] associations deals→companies : ${assocRes.status}`);
+      continue;
+    }
+    const assoc = (await assocRes.json()) as {
+      results?: { from?: { id?: string }; to?: { toObjectId?: string | number }[] }[];
+    };
+
+    const companyOfDeal = new Map<string, string>();
+    for (const row of assoc.results ?? []) {
+      const dealId = row.from?.id;
+      const companyId = row.to?.[0]?.toObjectId;
+      if (dealId && companyId !== undefined) companyOfDeal.set(String(dealId), String(companyId));
+    }
+    const companyIds = [...new Set(companyOfDeal.values())];
+    if (companyIds.length === 0) continue;
+
+    const compRes = await hubspotFetch("https://api.hubapi.com/crm/v3/objects/companies/batch/read", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ properties: COMPANY_PROPS, inputs: companyIds.map((id) => ({ id })) }),
+    });
+    if (compRes.status === 401) throw new Error("getDealCompanies auth failed: 401");
+    if (!compRes.ok) {
+      console.warn(`[hubspot] companies/batch/read : ${compRes.status}`);
+      continue;
+    }
+    const comp = (await compRes.json()) as { results?: { id: string; properties: Record<string, string | null> }[] };
+
+    const byCompanyId = new Map<string, WonDealCompany>();
+    for (const c of comp.results ?? []) {
+      byCompanyId.set(String(c.id), {
+        name: c.properties.name ?? null,
+        industry: c.properties.industry ?? null,
+        numberofemployees: c.properties.numberofemployees ?? null,
+        city: c.properties.city ?? null,
+        country: c.properties.country ?? null,
+        description: c.properties.description ?? null,
+        annualrevenue: c.properties.annualrevenue ?? null,
+      });
+    }
+    for (const [dealId, companyId] of companyOfDeal) {
+      const company = byCompanyId.get(companyId);
+      if (company) byDeal.set(dealId, company);
+    }
+  }
+
+  return byDeal;
 }
 
 export type HubspotCompany = {
