@@ -1,13 +1,17 @@
-// Simulation de l'import des deals gagnés HubSpot en références : rien n'est
-// enregistré. Écrit après l'import raté du 25/11/2026 (500 lignes sans
-// secteur ni taille) pour voir ce qui serait créé avant de le créer.
+// L'import des deals gagnés HubSpot en références. Écrit après l'import raté
+// du 25/11/2026 (500 lignes sans secteur ni taille) pour voir ce qui serait
+// créé avant de le créer.
+//
+// Simulation par défaut : rien n'est enregistré. `--apply` enregistre, et
+// REMPLACE les références déjà venues de HubSpot (celles saisies à la main ou
+// importées d'un fichier ne sont pas touchées).
 //
 // Depuis la racine du repo :
 //   node --env-file=.env.local --experimental-strip-types \
 //     --import ./scripts/lib/register-loader.mjs \
-//     scripts/preview-hubspot-references.ts --user=<id> [--pipeline=<id>]
+//     scripts/preview-hubspot-references.ts --user=<id> [--pipeline=<id>] [--apply]
 
-import { getCrmTokens, saveCrmTokens, referenceEmbeddingText } from "../lib/db";
+import { getCrmTokens, saveCrmTokens, referenceEmbeddingText, saveClientReferences } from "../lib/db";
 import { getDealCompanies, getDealPipelines, getWonDeals, refreshHubspotToken } from "../lib/crm/hubspot";
 import { buildReference } from "../lib/crm/hubspot-references";
 
@@ -52,7 +56,14 @@ async function main() {
     console.log(`  raw_text : ${r.raw_text}`);
     console.log(`  embedding sur : ${referenceEmbeddingText(r).slice(0, 140)}…`);
   }
-  console.log(`\ntotal ${Date.now() - t0} ms. Simulation : rien d'enregistré.`);
+  if (!process.argv.includes("--apply")) {
+    console.log(`\ntotal ${Date.now() - t0} ms. Simulation : rien d'enregistré (--apply pour enregistrer).`);
+    return;
+  }
+
+  const t2 = Date.now();
+  await saveClientReferences(userId, refs, { replaceSource: "hubspot" });
+  console.log(`\n${refs.length} références enregistrées en ${Date.now() - t2} ms (les précédentes venues de HubSpot ont été remplacées).`);
 }
 
 main().catch((err) => {
