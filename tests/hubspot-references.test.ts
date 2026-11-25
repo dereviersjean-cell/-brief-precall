@@ -68,8 +68,16 @@ describe("buildReference", () => {
     assert.equal(ref.source, "hubspot");
     assert.equal(
       ref.raw_text,
-      "Utelys conçoit des guest apps sur-mesure pour les hôtels. — Secteur : Hospitality — Taille : 5 salariés — Localisation : Toulouse, France — Signé le : 2021-10-01"
+      "Utelys conçoit des guest apps sur-mesure pour les hôtels. — Localisation : Toulouse, France — Signé le : 2021-10-01"
     );
+  });
+
+  test("secteur et taille ne sont pas répétés dans le texte : ils ont leur colonne", () => {
+    const ref = buildReference(deal, utelys);
+    assert.ok(!(ref.raw_text ?? "").includes("Secteur :"));
+    assert.ok(!(ref.raw_text ?? "").includes("Taille :"));
+    assert.equal(ref.sector, "Hospitality");
+    assert.equal(ref.company_size, "5 salariés");
   });
 
   test("sans entreprise liée, on garde le nom du deal et la date", () => {

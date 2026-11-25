@@ -1383,3 +1383,44 @@ Mesuré en lecture seule sur le vrai portail
 (`scripts/preview-hubspot-references.ts`, qui ne s'enregistre rien) :
 1 451 deals en 3,4 s, 1 450 entreprises liées en 3,1 s, 83 % avec secteur et
 effectif, 93 % avec un texte nourri. 329 tests.
+
+## « Aucun détail en base » : la moitié manquante de l'import — 25 novembre 2026
+
+Question de Jean sur les descriptions en anglais (997 sur 1 451, 252 en
+français, 166 absentes). Réponse : l'anglais ne gêne pas — `voyage-3` est
+multilingue, donc un prospect décrit en français tombe bien sur une
+description anglaise du même métier, et cette description n'est affichée nulle
+part. **Ne rien traduire.**
+
+Mais la question en a découvert une vraie. `referenceLine` (lib/brief-generator.ts)
+ne donnait au modèle que `problem`, `solution`, `result`, `sector`,
+`company_size`. Or les trois premiers **se saisissent à la main** : une
+référence importée d'un CRM ne les a jamais. Le modèle recevait donc, pour
+1 451 clients signés :
+
+    - Utelys (Hospitality, 5 salariés) — aucun détail en base
+
+La recherche avait été réparée le matin même, mais la référence retrouvée
+n'avait rien à dire. `raw_text` ne sortait pas de la base.
+
+- `referenceDetail` (lib/reference-quality.ts) : le détail libre, blancs
+  écrasés, borné à 400 caractères sans couper un mot — un import de fichier
+  peut y avoir mis une page ;
+- `referenceLine` l'utilise **en secours seulement** : une fiche remplie à la
+  main passe devant la description de l'entreprise ;
+- `attachRawText` (lib/embeddings.ts) : le RPC `match_client_references` ne
+  rend pas `raw_text` (colonnes : id, client_name, sector, company_size,
+  problem, solution, result, similarity). Une lecture de plus sur les seules
+  références retenues, plutôt qu'une migration du RPC ; en échec, le brief
+  part sans le détail ;
+- `buildReference` ne répète plus `Secteur :` ni `Taille :` dans `raw_text` :
+  ces colonnes partent déjà dans la ligne et dans l'embedding.
+
+Vérifié sur la base réelle, « logiciel de planification des équipes pour une
+chaîne hôtelière » → Gest'Team (gestion des temps et plannings), HeyTeam,
+Winerim (hôtels et restaurants), chacune avec sa description. Les références
+saisies à la main gardent la priorité. 335 tests.
+
+Les 153 références sans secteur ni description (10,5 %) sont laissées telles
+quelles : leur embedding tient au seul nom, elles ne remonteront presque
+jamais, et `referenceLevel` les classe déjà `simple`.

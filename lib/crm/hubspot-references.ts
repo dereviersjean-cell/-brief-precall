@@ -80,10 +80,11 @@ export function buildReference(deal: WonDeal, company: WonDealCompany | null): B
   const result = formatAmount(deal.amount);
   const place = [company?.city, company?.country].map((v) => (v ?? "").trim()).filter(Boolean).join(", ");
 
+  // Ni secteur ni taille ici : ils ont leur colonne, qui part déjà dans
+  // l'embedding et dans la ligne donnée au modèle. Les répéter ne faisait que
+  // doubler le texte (constaté le 25/11/2026 sur un brief réel).
   const parts = [
     company?.description?.trim() || null,
-    sector ? `Secteur : ${sector}` : null,
-    size ? `Taille : ${size}` : null,
     place ? `Localisation : ${place}` : null,
     result ? `Montant : ${result}` : null,
     deal.closedate ? `Signé le : ${deal.closedate.slice(0, 10)}` : null,

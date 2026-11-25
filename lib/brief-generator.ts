@@ -9,7 +9,7 @@ import type { CrmEnrichment } from "./crm/enrichment";
 import { extractJsonObject } from "./ai-json";
 import { seniorityLabel, type ApolloContact } from "./apollo";
 import { reportError, reportWarning } from "./monitoring";
-import { hasRealValue } from "./reference-quality";
+import { hasRealValue, referenceDetail } from "./reference-quality";
 import type { ReferenceLevel } from "./types";
 import { MEETING_ORIGINS, type MeetingContext } from "./meeting-origin";
 
@@ -78,12 +78,21 @@ function buildContactBlock(contact: ApolloContact | null): string {
 
 // Une référence candidate telle qu'on la donne au modèle : les « Unknown » et
 // « Non spécifié » de la base sont retirés, sinon il les recopie à l'oral.
-function referenceLine(r: SimilarReference): string {
+// Exportée pour la vérification (scripts) et les tests.
+export function referenceLine(r: SimilarReference): string {
   const parts = [
     hasRealValue(r.problem) ? `Problème : ${r.problem}` : null,
     hasRealValue(r.solution) ? `Ce qui a été fait : ${r.solution}` : null,
     hasRealValue(r.result) ? `Résultat : ${r.result}` : null,
   ].filter(Boolean);
+  // Faute de fiche remplie, le détail libre — c'est tout ce qu'une référence
+  // importée d'un CRM possède, et sans lui le modèle lisait « aucun détail en
+  // base » pour 1 451 clients signés (25/11/2026). En secours seulement : une
+  // fiche renseignée à la main vaut mieux que la description de l'entreprise.
+  if (parts.length === 0) {
+    const detail = referenceDetail(r.raw_text);
+    if (detail) parts.push(detail);
+  }
   const who = [r.sector, hasRealValue(r.company_size) ? r.company_size : null].filter(Boolean).join(", ");
   return `- ${r.client_name ?? "Client"}${who ? ` (${who})` : ""}${parts.length > 0 ? ` — ${parts.join(" — ")}` : " — aucun détail en base"}`;
 }

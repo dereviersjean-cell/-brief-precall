@@ -8,8 +8,32 @@ export type SimilarReference = {
   problem: string | null;
   solution: string | null;
   result: string | null;
+  /** Le détail libre de la fiche. Le RPC match_client_references ne le rend
+   *  pas ; il est joint après coup (attachRawText). */
+  raw_text?: string | null;
   similarity: number;
 };
+
+/**
+ * Joint `raw_text` aux références trouvées. Une référence importée d'un CRM
+ * n'a ni problème ni résultat — sans ce texte, elle arrive au modèle comme
+ * « aucun détail en base » alors que la base en a (25/11/2026). Une lecture
+ * de plus plutôt qu'une migration du RPC.
+ */
+async function attachRawText(rows: SimilarReference[]): Promise<SimilarReference[]> {
+  if (rows.length === 0) return rows;
+  const { data, error } = await supabaseAdmin
+    .from("client_references")
+    .select("id, raw_text")
+    .in("id", rows.map((r) => r.id));
+  if (error) {
+    // Le brief vaut mieux sans le détail que pas de brief du tout.
+    console.warn("[embeddings] raw_text non joint:", error.message);
+    return rows;
+  }
+  const byId = new Map((data ?? []).map((d) => [d.id as string, (d.raw_text as string | null) ?? null]));
+  return rows.map((r) => ({ ...r, raw_text: byId.get(r.id) ?? null }));
+}
 
 export async function generateEmbeddingsBatch(texts: string[]): Promise<(number[] | null)[]> {
   if (texts.length === 0) return [];
@@ -90,7 +114,7 @@ export async function findSimilarReferences(
   });
 
   if (error) throw error;
-  return (data ?? []) as SimilarReference[];
+  return attachRawText((data ?? []) as SimilarReference[]);
 }
 
 // Les mêmes candidates, cherchées chez plusieurs utilisateurs (toute une
@@ -116,7 +140,7 @@ export async function findSimilarReferencesForUsers(
     })
   );
   const seen = new Set<string>();
-  return lists
+  const best = lists
     .flat()
     .sort((a, b) => b.similarity - a.similarity)
     .filter((r) => {
@@ -126,4 +150,6 @@ export async function findSimilarReferencesForUsers(
       return true;
     })
     .slice(0, limit);
+  // Après le tri et la coupe : une seule lecture, pour les retenues.
+  return attachRawText(best);
 }
