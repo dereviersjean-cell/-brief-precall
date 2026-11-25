@@ -4,6 +4,8 @@ import { APP_URL } from "@/lib/app-url";
 // La règle des étapes gagnées vit à part, sans import, pour être testable
 // sans variables d'environnement (lib/crm/hubspot-pipelines.ts).
 import { wonStagesOf } from "./hubspot-pipelines";
+// Espacement des recherches et reprise sur 429 (lib/crm/hubspot-fetch.ts).
+import { hubspotFetch } from "./hubspot-fetch";
 
 export { wonStagesOf };
 
@@ -107,7 +109,7 @@ export type HubspotPipeline = {
 };
 
 export async function getDealPipelines(accessToken: string): Promise<HubspotPipeline[]> {
-  const res = await fetch("https://api.hubapi.com/crm/v3/pipelines/deals", {
+  const res = await hubspotFetch("https://api.hubapi.com/crm/v3/pipelines/deals", {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   if (res.status === 401) throw new Error("getDealPipelines auth failed: 401");
@@ -147,7 +149,7 @@ export async function getWonDeals(
   let after: string | undefined;
 
   while (deals.length < max) {
-    const res = await fetch("https://api.hubapi.com/crm/v3/objects/deals/search", {
+    const res = await hubspotFetch("https://api.hubapi.com/crm/v3/objects/deals/search", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -196,7 +198,7 @@ export async function searchCompany(
   accessToken: string,
   companyName: string
 ): Promise<HubspotCompany[]> {
-  const res = await fetch("https://api.hubapi.com/crm/v3/objects/companies/search", {
+  const res = await hubspotFetch("https://api.hubapi.com/crm/v3/objects/companies/search", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -273,7 +275,7 @@ export async function hasHubSpotWriteAccess(userId: string): Promise<boolean> {
       console.warn("[hasHubSpotWriteAccess] saveCrmTokens failed (non-blocking):", err)
     );
 
-    const res = await fetch(`https://api.hubapi.com/oauth/v1/access-tokens/${fresh.access_token}`);
+    const res = await hubspotFetch(`https://api.hubapi.com/oauth/v1/access-tokens/${fresh.access_token}`);
     if (!res.ok) {
       console.error(`[hasHubSpotWriteAccess] tokeninfo request failed (${res.status}) for user ${userId}`);
       return false;
@@ -287,7 +289,7 @@ export async function hasHubSpotWriteAccess(userId: string): Promise<boolean> {
 }
 
 export async function resolveContactId(accessToken: string, email: string): Promise<string | null> {
-  const res = await fetch("https://api.hubapi.com/crm/v3/objects/contacts/search", {
+  const res = await hubspotFetch("https://api.hubapi.com/crm/v3/objects/contacts/search", {
     method: "POST",
     headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -323,7 +325,7 @@ export async function findHubSpotDealForEmail(userId: string, contactEmail: stri
     const contactId = await resolveContactId(accessToken, contactEmail);
     if (!contactId) return null;
 
-    const assocRes = await fetch(`https://api.hubapi.com/crm/v4/objects/contacts/${contactId}/associations/deals`, {
+    const assocRes = await hubspotFetch(`https://api.hubapi.com/crm/v4/objects/contacts/${contactId}/associations/deals`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     if (assocRes.status === 401) throw new Error("findHubSpotDealForEmail auth failed: 401");
@@ -332,7 +334,7 @@ export async function findHubSpotDealForEmail(userId: string, contactEmail: stri
     const dealIds = (assocData.results ?? []).map((r) => r.toObjectId);
     if (dealIds.length === 0) return null;
 
-    const dealsRes = await fetch("https://api.hubapi.com/crm/v3/objects/deals/batch/read", {
+    const dealsRes = await hubspotFetch("https://api.hubapi.com/crm/v3/objects/deals/batch/read", {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({ inputs: dealIds.map((id) => ({ id })), properties: ["dealstage", "createdate"] }),
@@ -361,7 +363,7 @@ export async function findClosedDealsForEmail(userId: string, contactEmail: stri
     const contactId = await resolveContactId(accessToken, contactEmail);
     if (!contactId) return null;
 
-    const assocRes = await fetch(`https://api.hubapi.com/crm/v4/objects/contacts/${contactId}/associations/deals`, {
+    const assocRes = await hubspotFetch(`https://api.hubapi.com/crm/v4/objects/contacts/${contactId}/associations/deals`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     if (assocRes.status === 401) throw new Error("findClosedDealsForEmail auth failed: 401");
@@ -370,7 +372,7 @@ export async function findClosedDealsForEmail(userId: string, contactEmail: stri
     const dealIds = (assocData.results ?? []).map((r) => r.toObjectId);
     if (dealIds.length === 0) return null;
 
-    const dealsRes = await fetch("https://api.hubapi.com/crm/v3/objects/deals/batch/read", {
+    const dealsRes = await hubspotFetch("https://api.hubapi.com/crm/v3/objects/deals/batch/read", {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({ inputs: dealIds.map((id) => ({ id })), properties: ["dealstage", "closedate", "amount"] }),
@@ -410,7 +412,7 @@ export async function findHubSpotMeetingForEmail(
     const contactId = await resolveContactId(accessToken, contactEmail);
     if (!contactId) return null;
 
-    const assocRes = await fetch(`https://api.hubapi.com/crm/v4/objects/contacts/${contactId}/associations/meetings`, {
+    const assocRes = await hubspotFetch(`https://api.hubapi.com/crm/v4/objects/contacts/${contactId}/associations/meetings`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     if (assocRes.status === 401) throw new Error("findHubSpotMeetingForEmail auth failed: 401");
@@ -419,7 +421,7 @@ export async function findHubSpotMeetingForEmail(
     const meetingIds = (assocData.results ?? []).map((r) => r.toObjectId);
     if (meetingIds.length === 0) return null;
 
-    const meetingsRes = await fetch("https://api.hubapi.com/crm/v3/objects/meetings/batch/read", {
+    const meetingsRes = await hubspotFetch("https://api.hubapi.com/crm/v3/objects/meetings/batch/read", {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -511,7 +513,7 @@ function mergeHubspotMeetingBody(existingBody: string, section: string): string 
 // disconnected note would have anyway.
 export async function appendToHubSpotMeetingBody(userId: string, meetingId: string, htmlBody: string): Promise<void> {
   return withHubspotAuth(userId, async (accessToken) => {
-    const getRes = await fetch(
+    const getRes = await hubspotFetch(
       `https://api.hubapi.com/crm/v3/objects/meetings/${meetingId}?properties=hs_meeting_body`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
@@ -522,7 +524,7 @@ export async function appendToHubSpotMeetingBody(userId: string, meetingId: stri
     const section = `${HUBSPOT_MEETING_BODY_MARKER}<br>${htmlBody}`;
     const newBody = mergeHubspotMeetingBody(meeting.properties?.hs_meeting_body ?? "", section);
 
-    const patchRes = await fetch(`https://api.hubapi.com/crm/v3/objects/meetings/${meetingId}`, {
+    const patchRes = await hubspotFetch(`https://api.hubapi.com/crm/v3/objects/meetings/${meetingId}`, {
       method: "PATCH",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({ properties: { hs_meeting_body: newBody } }),
@@ -557,7 +559,7 @@ async function findExistingHubspotNoteId(
   objectId: string,
   marker: string
 ): Promise<string | null> {
-  const assocRes = await fetch(`https://api.hubapi.com/crm/v4/objects/${objectType}/${objectId}/associations/notes`, {
+  const assocRes = await hubspotFetch(`https://api.hubapi.com/crm/v4/objects/${objectType}/${objectId}/associations/notes`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   if (assocRes.status === 401) throw new Error("findExistingHubspotNoteId auth failed: 401");
@@ -566,7 +568,7 @@ async function findExistingHubspotNoteId(
   const noteIds = (assocData.results ?? []).map((r) => r.toObjectId);
   if (noteIds.length === 0) return null;
 
-  const notesRes = await fetch("https://api.hubapi.com/crm/v3/objects/notes/batch/read", {
+  const notesRes = await hubspotFetch("https://api.hubapi.com/crm/v3/objects/notes/batch/read", {
     method: "POST",
     headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
     body: JSON.stringify({ inputs: noteIds.map((id) => ({ id })), properties: ["hs_note_body"] }),
@@ -591,7 +593,7 @@ async function upsertHubspotNote(
 
   const existingNoteId = await findExistingHubspotNoteId(accessToken, toObjectType, toObjectId, hubspotNoteMarkerNeedle(uid));
   if (existingNoteId) {
-    const patchRes = await fetch(`https://api.hubapi.com/crm/v3/objects/notes/${existingNoteId}`, {
+    const patchRes = await hubspotFetch(`https://api.hubapi.com/crm/v3/objects/notes/${existingNoteId}`, {
       method: "PATCH",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({ properties: { hs_note_body: bodyWithMarker } }),
@@ -600,7 +602,7 @@ async function upsertHubspotNote(
     return;
   }
 
-  const res = await fetch("https://api.hubapi.com/crm/v3/objects/notes", {
+  const res = await hubspotFetch("https://api.hubapi.com/crm/v3/objects/notes", {
     method: "POST",
     headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
     body: JSON.stringify({

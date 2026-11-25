@@ -2,6 +2,7 @@ import { createHubSpotNoteOnDeal, resolveContactId, withHubspotAuth } from "./hu
 import type { HubspotDealSnapshot } from "../deal-memory-schema";
 import { computePipelineStats, stageStays, type PipelineStageDef, type PipelineStats } from "../deal-pipeline-stats";
 import { companyDomainFromEmail } from "../company-domain";
+import { hubspotFetch } from "./hubspot-fetch";
 
 export type { HubspotDealSnapshot };
 
@@ -29,13 +30,21 @@ function enteredCurrentStage(history: StageHistoryEntry[] | undefined, currentSt
 const API = "https://api.hubapi.com";
 
 async function getJson<T>(accessToken: string, path: string, init?: RequestInit): Promise<T | null> {
-  const res = await fetch(`${API}${path}`, {
+  const res = await hubspotFetch(`${API}${path}`, {
     ...init,
     headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json", ...(init?.headers ?? {}) },
   });
   // withHubspotAuth ne renouvelle le jeton que sur une erreur qui mentionne 401.
   if (res.status === 401) throw new Error(`HubSpot ${path} auth failed: 401`);
-  if (!res.ok) return null;
+  // Un refus pour débit n'est pas « pas de donnée » : il doit remonter comme
+  // panne, sinon le quota se lit comme un portail vide (25/11/2026).
+  if (res.status === 429) throw new Error(`HubSpot ${path} : limite de débit atteinte (429), reprises épuisées`);
+  if (!res.ok) {
+    // Sans ce journal, l'appelant ne jette qu'un « refusée » sans cause : une
+    // heure perdue à retrouver le code de retour côté Sentry.
+    console.warn(`[hubspot] ${path} -> ${res.status} : ${(await res.text()).slice(0, 300)}`);
+    return null;
+  }
   return (await res.json()) as T;
 }
 
@@ -317,14 +326,14 @@ export async function getHubspotTokenInfo(userId: string): Promise<{ scopes: str
 export async function createBriefDealProperty(userId: string, property: { name: string; label: string; description: string }): Promise<"created" | "exists"> {
   return withHubspotAuth(userId, async (accessToken) => {
     const headers = { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" };
-    const group = await fetch(`${API}/crm/v3/properties/deals/groups`, {
+    const group = await hubspotFetch(`${API}/crm/v3/properties/deals/groups`, {
       method: "POST",
       headers,
       body: JSON.stringify({ name: "brief", label: "Brief", displayOrder: -1 }),
     });
     if (group.status === 401) throw new Error("createBriefDealProperty auth failed: 401");
     if (!group.ok && group.status !== 409) throw new Error(`Création du groupe Brief refusée (${group.status}) : ${await group.text()}`);
-    const res = await fetch(`${API}/crm/v3/properties/deals`, {
+    const res = await hubspotFetch(`${API}/crm/v3/properties/deals`, {
       method: "POST",
       headers,
       body: JSON.stringify({ ...property, groupName: "brief", type: "string", fieldType: "textarea" }),
@@ -421,7 +430,7 @@ export async function pushToHubSpotDeal(
 ): Promise<void> {
   if (Object.keys(payload.properties).length > 0) {
     await withHubspotAuth(userId, async (accessToken) => {
-      const res = await fetch(`${API}/crm/v3/objects/deals/${dealId}`, {
+      const res = await hubspotFetch(`${API}/crm/v3/objects/deals/${dealId}`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify({ properties: payload.properties }),

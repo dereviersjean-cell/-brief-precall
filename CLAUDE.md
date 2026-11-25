@@ -1302,3 +1302,42 @@ Demande de Jean : après chaque call, Brief remplit seul les propriétés HubSpo
 - **Garde-fous** (ne pas assouplir sans Jean) : jamais de valeur sans passage du call ; une valeur saisie à la main n'est remplacée que si la règle est « même si elle est remplie » ; l'étape du deal n'avance que vers l'avant, dans son pipeline, jamais vers une étape de clôture ; rien sur un deal clos ; un refus de HubSpot n'empêche pas la note.
 - **Journal** : `hubspot_writes` avec `object_type` / `object_id` (migration 042), `field` = `objet.propriété`.
 - **Droit HubSpot** : écrire sur les entreprises demande `crm.objects.companies.write` (scope optionnel de l'application HubSpot + variable Vercel `HUBSPOT_OPTIONAL_SCOPES`, puis reconnexion). Sans lui, les propriétés d'entreprise sont passées avec la raison « Reconnectez HubSpot… » et l'écran affiche un bandeau.
+
+## Limite de débit HubSpot : l'espacement, pas la reprise — 25 novembre 2026
+
+Sentry, au cron de 7 h : `Recherche des deals HubSpot refusée`. Message sans
+cause, car `getJson` repliait tout échec non-401 sur `null` et l'appelant jetait
+une phrase sans code de retour. Reproduit en local sur le portail d'Oliverlist :
+HTTP **429**, `errorType: RATE_LIMIT`, `policyName: SECONDLY`, à la 10ᵉ page.
+
+HubSpot limite les endpoints `/search` à **5 appels par seconde et par portail**
+— un quota à part du quota général. Le parcours des pipelines
+(`getHubSpotPipelineStats`) pagine par centaines : 2 132 deals sur l'année chez
+Oliverlist, donc 21 recherches enchaînées, parties à ~7 par seconde. Elle
+mourait à la 10ᵉ.
+
+Ce qui est en place (`lib/crm/hubspot-fetch.ts`, `hubspotFetch` substitué à
+`fetch` dans les trois fichiers `lib/crm/hubspot*.ts`) :
+- **un espacement de 220 ms entre recherches**, soit 4,5/s. C'est lui qui évite
+  le 429 ; le créneau est réservé avant l'attente (`nextSlot`), donc deux
+  recherches lancées en parallèle se rangent l'une derrière l'autre ;
+- **une reprise sur 429 seulement**, 3 au plus, `Retry-After` s'il est là
+  (plafonné à 10 s) sinon 1/2/4 s avec dispersion. Pas de reprise sur 5xx : un
+  5xx sur une écriture a pu passer, un 429 non ;
+- **un 429 qui jette** dans `getJson` au lieu de rendre `null` : un quota ne doit
+  jamais se lire comme un portail vide — c'est la même famille de bug que
+  « 0 références importées » ;
+- **le statut et le corps au journal** sur tout autre échec, pour que Sentry dise
+  la cause et pas seulement « refusée ».
+
+L'échange de jetons OAuth reste sur `fetch` : il ne relève pas de ces quotas.
+
+Vérifié de bout en bout sur le vrai portail, en lecture seule
+(`scripts/refresh-deal-pipelines.ts` sans `--apply`) : avant, l'erreur ; après,
+les 4 pipelines rendus en 10,4 s. 317 tests.
+
+À savoir pour plus tard : `STATS_MAX_DEALS = 2000` coupe au-delà de 2 000 deals
+sur l'année, triés du plus récent au plus ancien. Chez Oliverlist 132 deals
+tombent hors champ, sans conséquence visible (les autres pipelines n'ont aucun
+deal de l'année). Sur un portail plus gros, le plafond affamerait les pipelines
+secondaires : à ce moment-là, paginer par pipeline plutôt qu'en vrac.
