@@ -2,6 +2,23 @@ import { Resend } from "resend";
 import { marked, Renderer } from "marked";
 import { APP_URL } from "@/lib/app-url";
 
+// Où atterrit la réponse d'un utilisateur.
+//
+// ⚠ Pourquoi (26/11/2026) : le `from` de tous ces emails est
+// contact@brief-ai.fr, qui n'était PAS une boîte mais une redirection OVH (le
+// MX Plan du domaine ne permet pas de créer de compte). Le MX de brief-ai.fr
+// est passé chez Google depuis, sans qu'aucun compte y soit créé : la
+// redirection ne reçoit plus rien, et un test d'envoi rebondit. Sans reply_to,
+// toute réponse à une invitation, un brief ou un digest partait donc dans le
+// vide — sans que personne ne le sache.
+//
+// hello@oliverlist.com est déjà l'adresse de contact affichée dans le produit
+// (app/training/TrainingLockedClient.tsx). À remplacer par une vraie adresse
+// Brief dès que le Workspace de brief-ai.fr sera monté : poser
+// RESEND_REPLY_TO sur Vercel suffit, sans toucher au code — et redéployer, une
+// variable ne s'applique qu'aux déploiements créés après.
+const REPLY_TO = process.env.RESEND_REPLY_TO ?? "hello@oliverlist.com";
+
 // Palette for the two notification templates below (module Distribution
 // Flexible, sous-étape B) — distinct from the indigo (#4f46e5) used by the
 // simpler transactional emails above; matches the landing page's actual
@@ -146,6 +163,7 @@ export async function sendTrainingUnlockRequestEmail(params: {
 
   const { error } = await resend.emails.send({
     from: process.env.RESEND_FROM_EMAIL!,
+    replyTo: REPLY_TO,
     to,
     subject: `Demande de déblocage — Entraînement (${organizationName ?? userEmail})`,
     html,
@@ -166,6 +184,7 @@ export async function sendInvitationEmail(params: {
 
   const { error } = await resend.emails.send({
     from: process.env.RESEND_FROM_EMAIL!,
+    replyTo: REPLY_TO,
     to: params.to,
     // Le nom de l'équipe dans l'objet : c'est lui que le destinataire reconnaît.
     subject: `Votre accès à Brief pour l'équipe ${params.organizationName}`,
@@ -257,7 +276,7 @@ export function buildLoginCodeEmail(params: { code: string; intent: LoginCodeInt
 export async function sendLoginCodeEmail(params: { to: string; code: string; intent: LoginCodeIntent; firstName?: string | null }): Promise<void> {
   const resend = new Resend(process.env.RESEND_API_KEY);
   const { subject, html } = buildLoginCodeEmail(params);
-  const { error } = await resend.emails.send({ from: process.env.RESEND_FROM_EMAIL!, to: params.to, subject, html });
+  const { error } = await resend.emails.send({ from: process.env.RESEND_FROM_EMAIL!, replyTo: REPLY_TO, to: params.to, subject, html });
   if (error) {
     throw new Error(`sendLoginCodeEmail failed: ${error.message}`);
   }
@@ -294,6 +313,7 @@ export async function sendCalendarDisconnectedEmail(params: {
 
   const { error } = await resend.emails.send({
     from: process.env.RESEND_FROM_EMAIL!,
+    replyTo: REPLY_TO,
     to: params.to,
     subject: "Votre agenda n'est plus relié à Brief",
     html,
@@ -460,6 +480,7 @@ export async function sendBriefPreCallEmail(params: {
 
   const { error } = await resend.emails.send({
     from: process.env.RESEND_FROM_EMAIL!,
+    replyTo: REPLY_TO,
     to,
     subject,
     html: emailShellHtml(body),
@@ -520,6 +541,7 @@ export async function sendCallAnalysisEmail(params: {
 
   const { error } = await resend.emails.send({
     from: process.env.RESEND_FROM_EMAIL!,
+    replyTo: REPLY_TO,
     to,
     subject,
     html: emailShellHtml(body),
@@ -566,6 +588,7 @@ export async function sendCommercialWeeklyDigestEmail(params: {
   const resend = new Resend(process.env.RESEND_API_KEY);
   const { error } = await resend.emails.send({
     from: process.env.RESEND_FROM_EMAIL!,
+    replyTo: REPLY_TO,
     to,
     subject: `📬 Votre semaine sur Brief — ${periodLabel}`,
     html: emailShellHtml(body),
@@ -635,6 +658,7 @@ export async function sendManagerWeeklyDigestEmail(params: {
   const resend = new Resend(process.env.RESEND_API_KEY);
   const { error } = await resend.emails.send({
     from: process.env.RESEND_FROM_EMAIL!,
+    replyTo: REPLY_TO,
     to,
     subject: `📬 La semaine de votre équipe — ${periodLabel}`,
     html: emailShellHtml(body),
@@ -788,7 +812,7 @@ export function buildDealMorningEmail(params: { deals: DealMorningEmailDeal[]; t
 
 export async function sendBuiltEmail(to: string, email: { subject: string; html: string }, scope: string): Promise<void> {
   const resend = new Resend(process.env.RESEND_API_KEY);
-  const { error } = await resend.emails.send({ from: process.env.RESEND_FROM_EMAIL!, to, subject: email.subject, html: email.html });
+  const { error } = await resend.emails.send({ from: process.env.RESEND_FROM_EMAIL!, replyTo: REPLY_TO, to, subject: email.subject, html: email.html });
   if (error) {
     throw new Error(`${scope} failed: ${error.message}`);
   }

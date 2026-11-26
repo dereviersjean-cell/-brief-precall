@@ -1593,6 +1593,19 @@ vraie.** Elle l'était quand la messagerie était chez OVH. Avec Gmail :
 `v=spf1 include:_spf.google.com -all`, plus le DKIM `google._domainkey` à
 générer dans la console d'administration.
 
+**Confirmé par Jean le 26/11 : un envoi vers `contact@brief-ai.fr` rebondit.**
+Donc, depuis la bascule du MX, sont morts : les réponses aux 9 emails de
+`lib/email.ts`, le lien « Nous contacter » du pied de page, et **l'adresse de
+contact RGPD de la politique de confidentialité** — une adresse qu'une
+politique de confidentialité doit tenir.
+
+Palliatif posé le 26/11 : `REPLY_TO` dans `lib/email.ts`, appliqué aux 9
+envois, `RESEND_REPLY_TO` sinon `hello@oliverlist.com` (déjà l'adresse de
+contact affichée dans l'écran Entraînement). Le `from` ne change pas : il est
+signé SPF et DKIM par Resend, y toucher casserait l'authentification. Une
+réponse arrive donc enfin quelque part. Restent à rebrancher ailleurs qu'ici :
+le pied de page, les mentions légales et la politique de confidentialité.
+
 À savoir pour la suite : **le MX Plan OVH inclus au domaine ne permet pas de
 créer de boîte**, seulement des redirections — c'est pour ça que
 `contact@brief-ai.fr` en était une. Une vraie adresse passe donc forcément par
