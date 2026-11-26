@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   description: "Comment Brief collecte, utilise et protège vos données, y compris les données de votre compte Google.",
 };
 
-const UPDATED = "13 octobre 2026";
+const UPDATED = "26 novembre 2026";
 
 
 const ESSENTIALS = [
@@ -210,6 +210,11 @@ export default function PrivacyPolicyPage() {
               Brief utilise uniquement des cookies strictement nécessaires au fonctionnement du service, notamment un
               cookie de session pour vous garder connecté. Nous n&apos;utilisons pas de cookies publicitaires ni de
               traceurs tiers à des fins de suivi marketing.
+            </p>
+            <p>
+              Nous mesurons l&apos;audience de nos pages publiques avec Vercel Web Analytics, l&apos;outil de notre
+              hébergeur. Cette mesure ne dépose aucun cookie et ne crée aucun identifiant permettant de vous suivre
+              d&apos;une visite à l&apos;autre : elle compte les pages vues et les provenances, de façon agrégée.
             </p>
           </LegalSection>
 

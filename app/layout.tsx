@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   title: "Brief — Préparez chaque call en 2 minutes",
@@ -44,6 +45,14 @@ export default function RootLayout({
     <html lang="fr" className={`h-full ${brief.variable}`}>
       <body className="min-h-full flex flex-col bg-background text-ink antialiased">
         <Providers>{children}</Providers>
+        {/* Mesure d'audience (26/11/2026). Le site n'en avait aucune : on
+            envoyait des campagnes vers brief-ai.fr sans savoir si quiconque y
+            venait. Celle de Vercel parce que le site y est déjà hébergé —
+            rien à héberger de plus, et SURTOUT aucun cookie ni identifiant
+            persistant, donc pas de bandeau de consentement à poser sur une
+            landing page dont c'est le pire ennemi. Pour distinguer les
+            sources, baliser les liens des mails : ?utm_source=... */}
+        <Analytics />
       </body>
     </html>
   );

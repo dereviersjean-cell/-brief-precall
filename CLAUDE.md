@@ -1424,3 +1424,45 @@ saisies à la main gardent la priorité. 335 tests.
 Les 153 références sans secteur ni description (10,5 %) sont laissées telles
 quelles : leur embedding tient au seul nom, elles ne remonteront presque
 jamais, et `referenceLevel` les classe déjà `simple`.
+
+## Le site ne mesurait rien — 26 novembre 2026
+
+brief-ai.fr n'avait aucun outil d'analyse d'audience : on envoyait des
+campagnes vers le site sans pouvoir dire si quiconque y venait. Le logo HubSpot
+sur la page est celui d'une intégration, rien d'autre.
+
+**Vercel Web Analytics** (`@vercel/analytics`, `<Analytics />` dans
+app/layout.tsx), pour deux raisons :
+- le site est déjà hébergé sur Vercel (vérifié : `server: Vercel` sur
+  brief-ai.fr), donc rien de plus à héberger ni de compte à ouvrir ;
+- **aucun cookie, aucun identifiant persistant** — donc pas de bandeau de
+  consentement, qui est le pire ennemi d'une landing page. Plausible aurait
+  la même propriété mais coûte un abonnement ; Google Analytics impose le
+  bandeau et un transfert hors UE.
+
+En développement le composant charge `va.vercel-scripts.com/.../script.debug.js`
+(vérifié dans le navigateur, sans erreur console) ; en production il sert
+`/_vercel/insights/script.js`, en première partie sur le domaine.
+
+Section « Cookies » de /confidentialite complétée, date de révision portée au
+26 novembre 2026.
+
+**Pour séparer les sources, c'est aux liens des mails de le dire** : la mesure
+rend la provenance et la page, pas l'identité. Sans `?utm_source=...` dans les
+liens des campagnes, tout arrive en « direct ».
+
+### Les domaines d'expédition, eux, ne redirigent pas (à faire, hors repo)
+
+Relevé le 26/11/2026 :
+
+| domaine | A | ce qu'un prospect voit |
+|---|---|---|
+| joinbriefai.com | 100.63.128.113 | **301 vers brief-ai.fr** |
+| getbriefai.com | 3.19.125.204 | page « Just a quick hello 👋 » |
+| startbriefai.com | 3.19.125.204 | idem |
+| testbriefai.com | 3.19.125.204 | idem |
+
+Les trois pointent sur une machine AWS qui sert la page d'attente ; seul
+joinbriefai.com est configuré avec une redirection. Les quatre zones DNS sont
+chez Google (`ns-cloud-d*.googledomains.com`). À corriger chez Zapmail (cible
+de redirection) ou dans la zone DNS — rien à faire dans ce dépôt.
