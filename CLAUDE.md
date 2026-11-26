@@ -1555,3 +1555,46 @@ que d'en perdre un vrai — on rappellerait quelqu'un qui n'a rien fait.
 
 Le jeton n'est ni dans le dépôt ni dans le code du séquenceur : Jean le tire
 lui-même et le colle aux deux endroits. 352 tests.
+
+## Le MX de brief-ai.fr est passé chez Google, et personne n'a fini — 26 novembre 2026
+
+Relevé du DNS ce jour, à comparer avec la section « Domaine émetteur des emails »
+ci-dessus, écrite le 31/08/2026 :
+
+| | documenté au 31/08 | relevé le 26/11 |
+|---|---|---|
+| MX racine | messagerie **OVH** (MX Plan) | **`1 smtp.google.com`** |
+| SPF racine | `v=spf1 include:mx.ovh.com -all` | inchangé — donc **n'autorise plus l'expéditeur réel** |
+| `google._domainkey` | — | **absent** |
+| vérification Google | — | **deux** `google-site-verification` |
+| Resend (`send`, `rsend`, DKIM) | en place | en place, intact |
+
+Quelqu'un a commencé une bascule vers Google Workspace — MX changé, domaine
+vérifié — et s'est arrêté là. Aucun compte n'existe :
+`hubert.delalance@brief-ai.fr` répond « Couldn't find this account » à la
+connexion Google.
+
+**Ce que ça casse, par ordre de gravité :**
+
+1. **`contact@brief-ai.fr` était une redirection OVH, pas une boîte.** Le MX ne
+   pointant plus sur OVH, cette redirection ne reçoit plus rien. Or c'est le
+   `From` de **tous** les emails Resend de l'app (invitation, brief pré-call,
+   analyse de call, digests…), et aucune fonction de `lib/email.ts` ne pose de
+   `reply_to` : **toute réponse d'un utilisateur part dans le vide**. C'est aussi
+   l'adresse de collecte DMARC (`rua`). À tester en lui écrivant de l'extérieur.
+2. **La page de rendez-vous d'Hubert a disparu** (« Appointment not found ») et
+   les neuf boutons du site pointent dessus (`lib/sales-contact.ts`).
+3. **Le SPF racine est désormais faux** : il autorise OVH, qui n'envoie plus
+   rien, et pas Google. Resend n'est pas concerné (son enveloppe est sur
+   `send.brief-ai.fr`), mais tout envoi Google depuis `@brief-ai.fr` échouerait.
+
+**La note du 31/08 « il n'y a AUCUN SPF à fusionner à la racine » n'est plus
+vraie.** Elle l'était quand la messagerie était chez OVH. Avec Gmail :
+`v=spf1 include:_spf.google.com -all`, plus le DKIM `google._domainkey` à
+générer dans la console d'administration.
+
+À savoir pour la suite : **le MX Plan OVH inclus au domaine ne permet pas de
+créer de boîte**, seulement des redirections — c'est pour ça que
+`contact@brief-ai.fr` en était une. Une vraie adresse passe donc forcément par
+Workspace, et le palier compte : Essentials et Frontline n'ouvrent aucun droit
+aux pages de réservation, Business Starter en autorise une seule.
