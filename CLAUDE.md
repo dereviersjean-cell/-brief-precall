@@ -1516,3 +1516,42 @@ mails pointent sur un 404), puis la migration 047 dans Supabase, et seulement
 après `clasp push --force` depuis .claude/scripts/briefsend/gas. Le banc
 d'essai `test/gas.test.js` a bien attrapé le changement d'URL — il attendait
 l'ancien lien.
+
+## Les passerelles de messagerie se font passer pour Chrome — 26 novembre 2026
+
+Une heure après la mise en service de /go, dix lignes en base, toutes
+`automated = false`. Aucune n'était humaine :
+
+- **la même fiche cliquait deux fois à 4 secondes d'écart** (fiche 90 à
+  14 h 31 min 51 s puis 55 s) avec **deux versions de Chrome différentes**,
+  151 puis 155. Une personne n'a pas deux navigateurs ;
+- Chrome 113, 151, 153, 154 et 155 mélangés sur du Windows — un groupe de
+  sept personnes ne se répartit jamais ainsi ;
+- **exactement trois clics par campagne**, là où l'humain est grumeleux ;
+- tout dans les neuf minutes suivant l'envoi.
+
+Ce sont les passerelles de sécurité des messageries (Proofpoint, Mimecast,
+Defender), qui ouvrent les liens à la place du destinataire. Elles se
+présentent comme un Chrome ordinaire : **aucune liste de user-agents ne les
+attrapera**, et `looksAutomated` ne pouvait pas les voir. Le seul signal qui
+les trahit est le **délai depuis l'envoi**.
+
+D'où la chaîne :
+- `email_sends` (migration 048) reçoit chaque envoi ;
+- `noterEnvoi_` dans le séquenceur appelle `/api/campaign/sent` juste après
+  avoir journalisé l'envoi, **sans jeton il ne fait rien** et l'envoi part
+  quand même : une statistique ne doit jamais empêcher un mail ;
+- `/api/campaign/sent` vérifie un jeton partagé (`CAMPAIGN_SEND_TOKEN` côté
+  Vercel, clé `CLIC_TOKEN` de l'onglet Réglages côté classeur), en
+  comparaison à temps constant, et valide le corps avant d'écrire ;
+- la vue **`clics_humains`** écarte : les `automated`, les clics à moins de
+  2 minutes de l'envoi, et les paires de clics d'une même fiche à moins d'une
+  minute avec des user-agents différents. Sans envoi connu, le clic est gardé
+  plutôt que jeté.
+
+Les deux clics d'une paire suspecte sont écartés, pas seulement l'un :
+on ne sait pas lequel serait le bon, et compter un faux clic coûte plus cher
+que d'en perdre un vrai — on rappellerait quelqu'un qui n'a rien fait.
+
+Le jeton n'est ni dans le dépôt ni dans le code du séquenceur : Jean le tire
+lui-même et le colle aux deux endroits. 352 tests.

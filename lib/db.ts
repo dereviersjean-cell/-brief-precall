@@ -7988,3 +7988,28 @@ export async function recordEmailClick(click: EmailClick): Promise<void> {
     console.warn("[db] recordEmailClick:", err instanceof Error ? err.message : String(err));
   }
 }
+
+/**
+ * Note qu'un mail de campagne vient de partir (route /api/campaign/sent).
+ *
+ * Ne jette jamais, comme recordEmailClick : le séquenceur ne doit pas cesser
+ * d'envoyer parce que la statistique tousse.
+ */
+export async function recordEmailSend(send: {
+  contactRef: string;
+  campaign: string | null;
+  mailStep: number | null;
+  sentAt: string;
+}): Promise<void> {
+  try {
+    const { error } = await supabaseAdmin.from("email_sends").insert({
+      contact_ref: send.contactRef,
+      campaign: send.campaign,
+      mail_step: send.mailStep,
+      sent_at: send.sentAt,
+    });
+    if (error) console.warn("[db] recordEmailSend:", error.message);
+  } catch (err) {
+    console.warn("[db] recordEmailSend:", err instanceof Error ? err.message : String(err));
+  }
+}

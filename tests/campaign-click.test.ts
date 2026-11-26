@@ -1,6 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { campaignDestination, looksAutomated, mailStepOf, parseCampaignClick } from "../lib/campaign-click";
+import { campaignDestination, looksAutomated, mailStepOf, parseCampaignClick, parseSendBody } from "../lib/campaign-click";
 
 // Les liens des mails Brief (séquenceur Apps Script, lienSite_) :
 // https://brief-ai.fr/go?utm_source=email&utm_medium=prospection
@@ -105,5 +105,41 @@ describe("looksAutomated", () => {
   test("sans en-tête du tout : automatisé — aucun navigateur ne se présente ainsi", () => {
     assert.equal(looksAutomated(null), true);
     assert.equal(looksAutomated(""), true);
+  });
+});
+
+// Le séquenceur annonce chaque envoi à /api/campaign/sent : sans l'heure
+// d'envoi, impossible d'écarter les passerelles de sécurité, qui ouvrent les
+// liens en se faisant passer pour un Chrome ordinaire (26/11/2026).
+describe("parseSendBody", () => {
+  const bon = { contactRef: "1234", campaign: "C2", mailStep: 1, sentAt: "2026-11-26T13:28:00.000Z" };
+
+  test("accepte ce que le séquenceur envoie, campagne en minuscules", () => {
+    assert.deepEqual(parseSendBody(bon), {
+      contactRef: "1234",
+      campaign: "c2",
+      mailStep: 1,
+      sentAt: "2026-11-26T13:28:00.000Z",
+    });
+  });
+
+  test("refuse un corps sans fiche ou sans heure : la ligne serait inutilisable", () => {
+    assert.equal(parseSendBody({ ...bon, contactRef: "" }), null);
+    assert.equal(parseSendBody({ ...bon, contactRef: undefined }), null);
+    assert.equal(parseSendBody({ ...bon, sentAt: "pas une date" }), null);
+    assert.equal(parseSendBody({ ...bon, sentAt: undefined }), null);
+    assert.equal(parseSendBody(null), null);
+    assert.equal(parseSendBody("1234"), null);
+  });
+
+  test("une étape hors de 1-9 vaut null plutôt qu'un nombre fantaisiste", () => {
+    assert.equal(parseSendBody({ ...bon, mailStep: 0 })?.mailStep, null);
+    assert.equal(parseSendBody({ ...bon, mailStep: 42 })?.mailStep, null);
+    assert.equal(parseSendBody({ ...bon, mailStep: 1.5 })?.mailStep, null);
+    assert.equal(parseSendBody({ ...bon, mailStep: "3" })?.mailStep, 3);
+  });
+
+  test("une valeur démesurée est coupée", () => {
+    assert.equal(parseSendBody({ ...bon, contactRef: "x".repeat(5000) })?.contactRef.length, 120);
   });
 });

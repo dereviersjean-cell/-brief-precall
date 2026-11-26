@@ -84,3 +84,35 @@ export function looksAutomated(userAgent: string | null | undefined): boolean {
   if (/(bot\b|crawler|spider|scanner|preview|\bcurl\/|\bwget\b|python-requests|headless)/.test(ua)) return true;
   return SCANNERS.some((s) => ua.includes(s));
 }
+
+export type CampaignSend = {
+  contactRef: string;
+  campaign: string | null;
+  mailStep: number | null;
+  sentAt: string;
+};
+
+/**
+ * Le corps que le séquenceur envoie à /api/campaign/sent.
+ *
+ * Tout est vérifié : la route est publique, protégée par un jeton partagé qui
+ * vit dans un classeur Google. Un jeton qui fuite ne doit permettre d'écrire
+ * que des lignes bien formées.
+ */
+export function parseSendBody(body: unknown): CampaignSend | null {
+  if (!body || typeof body !== "object") return null;
+  const b = body as Record<string, unknown>;
+
+  const contactRef = typeof b.contactRef === "string" ? b.contactRef.trim().slice(0, MAX) : "";
+  if (!contactRef) return null;
+
+  const sentAtRaw = typeof b.sentAt === "string" ? b.sentAt : "";
+  const sentAt = new Date(sentAtRaw);
+  if (!sentAtRaw || Number.isNaN(sentAt.getTime())) return null;
+
+  const campaign = typeof b.campaign === "string" ? b.campaign.trim().slice(0, MAX).toLowerCase() || null : null;
+  const step = typeof b.mailStep === "number" ? b.mailStep : Number(b.mailStep);
+  const mailStep = Number.isInteger(step) && step >= 1 && step <= 9 ? step : null;
+
+  return { contactRef, campaign, mailStep, sentAt: sentAt.toISOString() };
+}
