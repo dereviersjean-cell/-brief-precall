@@ -1611,3 +1611,33 @@ créer de boîte**, seulement des redirections — c'est pour ça que
 `contact@brief-ai.fr` en était une. Une vraie adresse passe donc forcément par
 Workspace, et le palier compte : Essentials et Frontline n'ouvrent aucun droit
 aux pages de réservation, Business Starter en autorise une seule.
+
+## Prise de rendez-vous : Cal.com sur l'agenda Outlook — 26 novembre 2026
+
+L'ancien lien Google Agenda répondait « Appointment not found » et les **neuf**
+boutons du site pointaient dessus (`lib/sales-contact.ts` : navigation, deux
+endroits de l'accueil, deux de la page Accompagnement, panneau du plan gratuit,
+« parler à un commercial », inscription, onboarding).
+
+Reprendre sur Google était impossible : l'adresse choisie,
+`maxime.bertin@joinbriefai.com`, est sur **Microsoft 365**, pas Google —
+`MX joinbriefai-com.mail.protection.outlook.com`, SPF Outlook,
+**DMARC `p=reject`**. C'est un des quatre domaines Zapmail des campagnes, d'où
+l'envoi par Microsoft Graph. Créer un compte Google sur cette adresse aurait
+donné une page de réservation lisant un agenda Google **vide**, donc des
+créneaux proposés pendant des rendez-vous déjà pris.
+
+`https://cal.com/hubert-helvkl/30min`, en offre gratuite : Cal.com lit l'agenda
+Outlook pour les conflits et génère le lien visio. Le `p=reject` interdit à un
+tiers d'envoyer au nom du domaine — Cal.com envoie donc depuis le sien, avec
+l'adresse de Maxime en réponse, ce qui convient.
+
+Deux choix de Jean, assumés : `firstName` reste **Hubert** (nom du profil
+Cal.com) alors que l'agenda connecté est celui de Maxime — l'invitation déposée
+chez le prospect portera donc l'adresse de Maxime ; et `email` reste
+`hubert.delalance@brief-ai.fr`, **qui rebondit**, le temps que le Workspace du
+domaine soit monté.
+
+À ne pas faire : publier `maxime.bertin@joinbriefai.com` sur le site. C'est une
+boîte d'envoi de prospection ; aspirée sur une page publique, le spam qu'elle
+recevrait abîmerait la réputation d'expéditeur des campagnes.
