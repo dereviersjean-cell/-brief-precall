@@ -216,6 +216,13 @@ export default function PrivacyPolicyPage() {
               hébergeur. Cette mesure ne dépose aucun cookie et ne crée aucun identifiant permettant de vous suivre
               d&apos;une visite à l&apos;autre : elle compte les pages vues et les provenances, de façon agrégée.
             </p>
+            <p>
+              Si vous arrivez sur ce site en cliquant sur le lien d&apos;un email que nous vous avons envoyé, nous
+              enregistrons ce clic : la campagne concernée, la date, et la référence de votre fiche dans notre base de
+              prospection. Cela nous sert à savoir quels messages intéressent leurs destinataires et à ne pas relancer
+              inutilement. Cet enregistrement repose sur notre intérêt légitime à mesurer nos actions commerciales ;
+              vous pouvez demander sa suppression à tout moment, à l&apos;adresse indiquée plus bas.
+            </p>
           </LegalSection>
 
           <LegalSection id="modifications" title="Modifications de cette politique">

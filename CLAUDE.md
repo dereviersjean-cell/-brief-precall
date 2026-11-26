@@ -1466,3 +1466,53 @@ Les trois pointent sur une machine AWS qui sert la page d'attente ; seul
 joinbriefai.com est configuré avec une redirection. Les quatre zones DNS sont
 chez Google (`ns-cloud-d*.googledomains.com`). À corriger chez Zapmail (cible
 de redirection) ou dans la zone DNS — rien à faire dans ce dépôt.
+
+## Les clics des campagnes : une route à nous, pas l'outil d'audience — 26 novembre 2026
+
+Suite du matin. Le balisage des liens était déjà en place côté séquenceur
+(`lienSite_`, .claude/scripts/briefsend/gas/Code.js) et conforme : trois mails
+signés « Brief · Découvrir Brief », `utm_campaign=c1|c2|c3`,
+`utm_content=mail1|2|3`, `r=<id du contact>`. Ce qui ne tenait pas, c'était la
+mesure que je venais de poser :
+
+- **les filtres UTM de Vercel Web Analytics sont derrière l'option payante
+  « Plus »** — « available with Web Analytics Plus and Enterprise », et la
+  grille tarifaire affiche N/A pour Pro. Sans elle, impossible de séparer C1 de
+  C2 ni le mail 1 du mail 3 ;
+- **aucun paramètre libre n'est retenu.** Les dimensions sont routes, pages,
+  domaine, référents, UTM, pays, navigateur, appareil, OS. `r` disparaît —
+  donc on ne sait jamais QUI a cliqué, qui est tout l'objet du balisage.
+
+Leçon : j'avais choisi l'outil sur « pas de cookie, rien à héberger » sans
+vérifier qu'il savait lire ce que nos liens lui donnaient.
+
+**La route `/go`** (app/go/route.ts) : note le clic dans `email_clicks`
+(migration 047), puis renvoie le prospect sur l'accueil en **302** — pas 301,
+qu'un navigateur met en cache, ce qui ferait disparaître le deuxième clic d'une
+même personne. Publique à dessein : absente du matcher de middleware.ts, comme
+/microsoft-autorise.
+
+Trois choix qui comptent :
+- **la destination est calculée avant l'écriture**, et `recordEmailClick` ne
+  jette jamais. Une base qui tousse, ou la migration pas encore passée, ne doit
+  pas envoyer un prospect sur une page d'erreur. Vérifié : sans la table, le
+  302 part quand même et le journal dit pourquoi ;
+- **`r` est retiré de la destination**, les `utm_*` sont gardés. L'identifiant
+  du contact n'a rien à faire dans la barre d'adresse de la personne ni dans le
+  référent qu'elle enverra au site suivant ; l'outil d'audience, lui, continue
+  de voir la provenance ;
+- **`automated`** : les passerelles de sécurité (Proofpoint, Mimecast,
+  Defender…) ouvrent les liens à la place du destinataire. Sans ce tri, un mail
+  jamais lu compte comme un clic et on rappelle quelqu'un qui n'a rien fait. La
+  ligne est marquée, jamais jetée — un faux positif effacerait un vrai clic.
+  Compter les humains : `where automated is false`.
+
+Section « Cookies » de /confidentialite complétée une seconde fois : la mesure
+d'audience est anonyme, l'enregistrement d'un clic ne l'est pas, et le dire est
+la moindre des choses.
+
+**Ordre de déploiement, impératif** : d'abord le site (sinon les liens des
+mails pointent sur un 404), puis la migration 047 dans Supabase, et seulement
+après `clasp push --force` depuis .claude/scripts/briefsend/gas. Le banc
+d'essai `test/gas.test.js` a bien attrapé le changement d'URL — il attendait
+l'ancien lien.

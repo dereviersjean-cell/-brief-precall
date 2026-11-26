@@ -7949,3 +7949,42 @@ export async function deleteManualMeeting(userId: string, id: string): Promise<v
     .eq("user_id", userId);
   if (error) throw error;
 }
+
+// ─── Clics des liens de campagne (migration 047, 26/11/2026) ────────────────
+
+export type EmailClick = {
+  contactRef: string | null;
+  campaign: string | null;
+  mailStep: number | null;
+  utmSource: string | null;
+  utmMedium: string | null;
+  referrer: string | null;
+  userAgent: string | null;
+  automated: boolean;
+};
+
+/**
+ * Enregistre un clic venu d'un mail de campagne (route /go).
+ *
+ * Ne jette jamais : l'appelant doit rediriger le prospect quoi qu'il arrive.
+ * Perdre une ligne de statistique est sans gravité ; envoyer quelqu'un sur une
+ * page d'erreur parce que la base tousse, non. La table peut aussi ne pas
+ * exister encore (migration 047 non passée) — même traitement.
+ */
+export async function recordEmailClick(click: EmailClick): Promise<void> {
+  try {
+    const { error } = await supabaseAdmin.from("email_clicks").insert({
+      contact_ref: click.contactRef,
+      campaign: click.campaign,
+      mail_step: click.mailStep,
+      utm_source: click.utmSource,
+      utm_medium: click.utmMedium,
+      referrer: click.referrer,
+      user_agent: click.userAgent,
+      automated: click.automated,
+    });
+    if (error) console.warn("[db] recordEmailClick:", error.message);
+  } catch (err) {
+    console.warn("[db] recordEmailClick:", err instanceof Error ? err.message : String(err));
+  }
+}
